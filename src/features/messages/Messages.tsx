@@ -101,8 +101,8 @@ export function Messages({ data }: { data: MessagesData }) {
                   <p className="mb-2 text-[12px] font-semibold text-muted">Insert a variable</p>
                   <div className="flex flex-wrap gap-1.5">
                     {VARIABLES.map((v) => (
-                      <button key={v.key} type="button" onClick={() => insert(v.key)} className="inline-flex items-center gap-1.5 rounded-pill bg-grey-100 px-2.5 py-1.5 text-[12px] font-bold hover:bg-grey-200">
-                        <Plus size={12} strokeWidth={2.2} />{v.label}<span className="font-mono text-[10.5px] font-semibold text-muted">{`{{${v.key}}}`}</span></button>
+                      <button key={v.key} type="button" title={`{{${v.key}}}`} onClick={() => insert(v.key)} className="inline-flex items-center gap-1.5 rounded-pill bg-grey-100 px-2.5 py-1.5 text-[12px] font-bold hover:bg-grey-200">
+                        <Plus size={12} strokeWidth={2.2} />{v.label}</button>
                     ))}
                   </div>
                 </div>
