@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "../../vendor/river-apps-ui-kit/packages/tokens/dist/theme.css";
+
+/* Let Tailwind see the class names used inside the kit's components (consumed from the submodule source). */
+@source "../../vendor/river-apps-ui-kit/packages/ui/src";
+
+/* Same base layer as the kit docs app (apps/docs/app/globals.css). */
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  b, strong { font-weight: 700; }
+  button:not(:disabled) { cursor: pointer; }
+}
+
+@keyframes bp-scan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(206px); } }
+.bp-scanline { animation: bp-scan 2.4s ease-in-out infinite; }
