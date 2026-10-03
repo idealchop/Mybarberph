@@ -1,15 +1,9 @@
 "use client";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import type { Tier } from "@/data";
+import { canUse, TIER_COOKIE, type Feature } from "./tier-shared";
 
-export const TIER_COOKIE = "bp_demo_tier";
-
-/** Features gated by tier (plan §3.4). Partner (free) = River Mobile verification only. */
-export type Feature =
-  | "dashboard" | "queue" | "sales" | "customers" | "barbers" | "vouchers" | "messages" | "kiosk" | "settings" | "partner_app";
-
-const PARTNER_FEATURES: ReadonlySet<Feature> = new Set(["partner_app", "settings"]);
-export const canUse = (tier: Tier, f: Feature) => tier === "paid" || PARTNER_FEATURES.has(f);
+export type { Feature } from "./tier-shared";
 
 interface TierCtx { tier: Tier; setTier: (t: Tier) => void; can: (f: Feature) => boolean }
 const Ctx = createContext<TierCtx | null>(null);

@@ -119,6 +119,11 @@ export const verifiedVisits: VerifiedVisit[] = [
   { id: "vv-6", customerName: "Marco Diaz", referenceId: "RM-48141", serviceLabel: "Two-block", barberName: "Tin", at: at("13:05", "2026-10-03"), atLabel: "Sat 1:05 PM", status: "completed" },
   { id: "vv-7", customerName: "Allan Ramos", referenceId: "RM-48133", serviceLabel: "Classic cut", at: at("11:40", "2026-10-03"), atLabel: "Sat 11:40 AM", status: "no_show" },
   { id: "vv-8", customerName: "Bryan Co", referenceId: "RM-48120", serviceLabel: "Undercut", barberName: "JM", at: at("18:15", "2026-10-02"), atLabel: "Fri 6:15 PM", status: "completed" },
+  { id: "vv-9", customerName: "Dino Reyes", referenceId: "RM-48112", serviceLabel: "Skin fade", barberName: "Caloy", at: at("16:30", "2026-10-02"), atLabel: "Fri 4:30 PM", status: "completed" },
+  { id: "vv-10", customerName: "Sam Torres", referenceId: "RM-48101", serviceLabel: "Kids’ cut", barberName: "Tin", at: at("17:20", "2026-10-01"), atLabel: "Thu 5:20 PM", status: "completed" },
+  { id: "vv-11", customerName: "Ely Gomez", referenceId: "RM-48094", serviceLabel: "Classic cut", barberName: "Ruben", at: at("11:05", "2026-10-01"), atLabel: "Thu 11:05 AM", status: "completed" },
+  { id: "vv-12", customerName: "Ivan Morales", referenceId: "RM-48087", serviceLabel: "Two-block", barberName: "JM", at: at("19:10", "2026-09-30"), atLabel: "Wed 7:10 PM", status: "completed" },
+  { id: "vv-13", customerName: "Rico Mercado", referenceId: "RM-48079", serviceLabel: "Fade + beard", barberName: "Caloy", at: at("15:45", "2026-09-29"), atLabel: "Tue 3:45 PM", status: "completed" },
 ];
 
 export const partnerNotifications: PartnerNotification[] = [

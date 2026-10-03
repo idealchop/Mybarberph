@@ -22,11 +22,13 @@ SHOTS = [
     ("04-kiosk-5-in-chair", "/kiosk", TAB, [("click", "text=Carlo “Caloy” Santos"), ("click", "button:has-text(\"Skin fade\")"), ("click", "text=Continue"), ("click", "text=Continue"), ("click", "text=Get my ticket"), ("click", "text=I’m in the chair")]),
     ("04-kiosk-6-payment", "/kiosk", TAB, [("click", "text=Carlo “Caloy” Santos"), ("click", "button:has-text(\"Skin fade\")"), ("click", "text=Continue"), ("click", "text=Continue"), ("click", "text=Get my ticket"), ("click", "text=I’m in the chair"), ("click", "text=Confirm haircut is done")]),
     ("04-kiosk-7-feedback", "/kiosk", TAB, [("click", "text=Carlo “Caloy” Santos"), ("click", "button:has-text(\"Skin fade\")"), ("click", "text=Continue"), ("click", "text=Continue"), ("click", "text=Get my ticket"), ("click", "text=I’m in the chair"), ("click", "text=Confirm haircut is done"), ("click", "text=Paid in cash"), ("click", "[aria-label=\"5 stars\"]"), ("click", "text=Clean fade")]),
-    ("05-partner-home", "/partner", PHONE, []),
-    ("05-partner-incoming", "/partner/incoming", PHONE, []),
-    ("05-partner-scan", "/partner/scan", PHONE, []),
-    ("05-partner-scan-verified", "/partner/scan", PHONE, [("click", "text=Simulate scan")]),
-    ("05-partner-history", "/partner/history", PHONE, []),
+    ("05-partner-home", "/partner", PHONE, [("tier", "partner")]),
+    ("05-partner-incoming", "/partner/incoming", PHONE, [("tier", "partner")]),
+    ("05-partner-scan", "/partner/scan", PHONE, [("tier", "partner")]),
+    ("05-partner-scan-verified", "/partner/scan", PHONE, [("tier", "partner"), ("click", "text=Simulate scan"), ("wait", "text=Visit verified")]),
+    ("05-partner-history", "/partner/history", PHONE, [("tier", "partner")]),
+    ("05-partner-shop", "/partner/shop", PHONE, [("tier", "partner")]),
+    ("05-partner-desktop-frame", "/partner", DESK, [("tier", "partner")]),
     ("06-customers", "/customers", DESK, []),
     ("07-customer-detail", "/customers/cu-paolo", DESK, []),
     ("08-barbers", "/barbers", DESK, []),
@@ -52,6 +54,8 @@ with sync_playwright() as p:
             if action == "click":
                 pg.click(sel)
                 pg.wait_for_timeout(250)
+            elif action == "wait":
+                pg.wait_for_selector(sel)
         pg.evaluate("document.fonts.ready")
         pg.wait_for_timeout(400)
         out = os.path.join(OUT, f"{name}.png")
