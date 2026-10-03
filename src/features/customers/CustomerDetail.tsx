@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, Check, MessageSquare, Pencil, Phone, QrCode as QrIcon, Smartphone, UserCheck } from "lucide-react";
 import { Avatar, Badge, Button, cn, Input, ProgressRing } from "@river-apps/ui";
 import { Stars } from "@/components/art";
@@ -31,7 +32,7 @@ export function CustomerDetail({ data }: { data: CustomerDetailData }) {
 
   return (
     <>
-      <a href="/customers" className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-bold text-muted hover:text-ink"><ArrowLeft size={15} strokeWidth={2} />Customers</a>
+      <Link href="/customers" className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-bold text-muted hover:text-ink"><ArrowLeft size={15} strokeWidth={2} />Customers</Link>
       <PageHeader title={c.name} subtitle={`${personal ? "Personal record" : "Walk-in record"} · ${SOURCE_LABEL[c.source]} · last visit ${lastVisitLabel(c.lastVisitAt).toLowerCase()}`}
         actions={<Button leadingIcon={<QrIcon size={18} strokeWidth={1.75} />} onClick={() => setQr(true)}>Generate queue QR</Button>} />
 

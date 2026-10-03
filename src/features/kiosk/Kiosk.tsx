@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { ArrowRight, Banknote, Check, CreditCard, Shuffle, Smartphone, Wallet } from "lucide-react";
 import { Avatar, Button, cn, Input, PhoneInput, ProgressRing, SampleDataTag, SegmentedControl, SuccessState } from "@river-apps/ui";
 import { BarberIcon, HaircutArt, Portrait, Star } from "@/components/art";
@@ -72,8 +73,7 @@ export function Kiosk({ data }: { data: KioskData }) {
   /* auto restart after feedback */
   useEffect(() => {
     if (step !== "done") return;
-    if (countdown <= 0) { reset(); return; }
-    const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    const id = setTimeout(() => (countdown <= 1 ? reset() : setCountdown((c) => c - 1)), 1000);
     return () => clearTimeout(id);
   }, [step, countdown]);
 
@@ -126,7 +126,7 @@ export function Kiosk({ data }: { data: KioskData }) {
   return (
     <div className="relative mx-auto flex min-h-dvh w-full max-w-[1180px] flex-col bg-canvas px-5 pb-[128px] pt-5 sm:px-8">
       <header className="flex h-12 items-center justify-between gap-3">
-        <a href="/" aria-label="Barbers.ph home"><Brand /></a>
+        <Link href="/" aria-label="Barbers.ph home"><Brand /></Link>
         <ol className="hidden items-center gap-2 text-[13.5px] font-bold md:flex" aria-label="Progress">
           {steps.map(([key, label], i) => (
             <li key={key} className="contents">
