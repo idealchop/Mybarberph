@@ -1,0 +1,20 @@
+{
+  "extends": "./vendor/river-apps-ui-kit/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@river-apps/ui": ["./vendor/river-apps-ui-kit/packages/ui/src/index.ts"],
+      "@river-apps/icons": ["./vendor/river-apps-ui-kit/packages/icons/src/index.ts"],
+      "@river-apps/tokens": ["./vendor/river-apps-ui-kit/packages/tokens/dist/index.js"],
+      "@river-apps/tokens/*": ["./vendor/river-apps-ui-kit/packages/tokens/dist/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+  "exclude": ["node_modules", "vendor/river-apps-ui-kit/apps"]
+}

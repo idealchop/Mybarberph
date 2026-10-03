@@ -1,0 +1,3 @@
+[submodule "vendor/river-apps-ui-kit"]
+	path = vendor/river-apps-ui-kit
+	url = https://github.com/idealchop/river-apps-ui-kit.git
