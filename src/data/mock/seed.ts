@@ -62,19 +62,19 @@ export const barbers: Barber[] = [
   { id: "b-caloy", name: "Carlo “Caloy” Santos", nickname: "Caloy", avatar: "sky", specialty: "Fades · beard design", defaultChairId: "c-2",
     serviceIds: ["sv-skin-fade", "sv-fade-beard", "sv-crew", "sv-two-block", "sv-pompadour", "sv-skin-fade-beard", "sv-hot-towel", "sv-beard", "ad-beard-design", "ad-hair-tattoo", "ad-wash"],
     recommendedServiceIds: ["sv-skin-fade", "sv-fade-beard", "sv-crew", "sv-two-block", "sv-pompadour"],
-    rating: { avg: 4.9, count: 1200 }, cutsLabel: "1.2k cuts", status: "in_chair", commissionPct: 40, active: true },
+    rating: { avg: 4.9, count: 1200 }, cutsLabel: "1.2k cuts", status: "in_chair", etaMins: 12, commissionPct: 40, active: true },
   { id: "b-ruben", name: "Ruben Dizon", nickname: "Ruben", avatar: "mint", specialty: "Classic & senior cuts", defaultChairId: "c-1",
     serviceIds: ["sv-classic", "sv-senior", "sv-crew", "sv-skin-fade", "sv-beard", "sv-buzz", "ad-wash"],
     recommendedServiceIds: ["sv-classic", "sv-senior", "sv-crew", "sv-skin-fade", "sv-buzz"],
-    rating: { avg: 4.8, count: 3400 }, cutsLabel: "3.4k cuts", status: "in_chair", commissionPct: 40, active: true },
+    rating: { avg: 4.8, count: 3400 }, cutsLabel: "3.4k cuts", status: "in_chair", etaMins: 9, commissionPct: 40, active: true },
   { id: "b-tin", name: "Kristine “Tin” Lopez", nickname: "Tin", avatar: "butter", specialty: "Kids’ cuts · two-block", defaultChairId: "c-3",
     serviceIds: ["sv-kids", "sv-two-block", "sv-crew", "sv-classic", "sv-beard", "sv-undercut", "ad-wash"],
     recommendedServiceIds: ["sv-kids", "sv-two-block", "sv-crew", "sv-undercut", "sv-classic"],
-    rating: { avg: 5.0, count: 860 }, cutsLabel: "860 cuts", status: "in_chair", commissionPct: 35, active: true },
+    rating: { avg: 5.0, count: 860 }, cutsLabel: "860 cuts", status: "in_chair", etaMins: 4, commissionPct: 35, active: true },
   { id: "b-jm", name: "JM Villanueva", nickname: "JM", avatar: "lilac", specialty: "Undercut · pompadour", defaultChairId: "c-4",
     serviceIds: ["sv-undercut", "sv-pompadour", "sv-two-block", "sv-skin-fade", "sv-buzz", "ad-hair-tattoo", "ad-wash"],
     recommendedServiceIds: ["sv-undercut", "sv-pompadour", "sv-two-block", "sv-skin-fade", "sv-buzz"],
-    rating: { avg: 4.7, count: 540 }, cutsLabel: "540 cuts", status: "available", commissionPct: 35, active: true },
+    rating: { avg: 4.7, count: 540 }, cutsLabel: "540 cuts", status: "available", etaMins: 0, commissionPct: 35, active: true },
 ];
 
 export const chairs: Chair[] = [

@@ -50,6 +50,8 @@ export interface Barber {
   rating: { avg: number; count: number };
   cutsLabel: string;
   status: "in_chair" | "available" | "off";
+  /** Estimated wait for a new walk-in (from the queue service; drives the kiosk and River Mobile ETAs). */
+  etaMins?: number;
   commissionPct?: number;
   active: boolean;
 }
