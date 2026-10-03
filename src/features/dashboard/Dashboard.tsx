@@ -7,7 +7,7 @@ import { BarberIcon } from "@/components/art";
 import { CodeChip, Panel, PanelHeader, TextLink } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
 import type { Barber, Chair, DailySales, Insight, ReferralStats, SalesSummary, Ticket, Voucher } from "@/data";
-import { firstName, peso } from "@/lib/format";
+import { avgWaitMins, firstName, peso } from "@/lib/format";
 
 export interface DashboardData {
   summary: SalesSummary;
@@ -41,7 +41,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
   const series = data.sales[Number(range) as 7 | 14 | 30];
   const total = series.reduce((a, d) => a + d.sales, 0);
   const waiting = tickets.filter((t) => t.status === "waiting").sort((a, b) => (b.nextUp ? 1 : 0) - (a.nextUp ? 1 : 0) || (a.estimatedWaitMins ?? 0) - (b.estimatedWaitMins ?? 0));
-  const avgWait = Math.round(waiting.reduce((a, t) => a + (t.estimatedWaitMins ?? 0), 0) / Math.max(1, waiting.length) * 0.8);
+  const avgWait = avgWaitMins(waiting.map((t) => t.estimatedWaitMins ?? 0));
   const barberById = (id?: string) => barbers.find((b) => b.id === id);
   const ranked = [...barbers].sort((a, b) => (data.stats[b.id]?.sales ?? 0) - (data.stats[a.id]?.sales ?? 0));
   const target = 2500000;

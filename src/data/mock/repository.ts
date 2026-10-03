@@ -59,10 +59,12 @@ export class MockBarbersRepository implements BarbersRepository {
   async listIncomingBookings() { return clone(this.db.incoming); }
   async acceptBooking(id: string) { return this.patchBooking(id, "accepted"); }
   async declineBooking(id: string) { return this.patchBooking(id, "declined"); }
-  /** Mock scan: an empty code means "the customer standing at the counter" (the one marked "here"). */
+  /** Mock scan: an empty code means "the customer standing at the counter" (the one marked "here", else the next accepted booking). */
   async verifyScan(code: string): Promise<ScanResult> {
     const ref = code.trim().toUpperCase();
-    const b = ref ? this.db.incoming.find((x) => x.referenceId === ref) : this.db.incoming.find((x) => x.status === "here");
+    const b = ref
+      ? this.db.incoming.find((x) => x.referenceId === ref && x.status !== "declined")
+      : this.db.incoming.find((x) => x.status === "here") ?? this.db.incoming.find((x) => x.status === "accepted");
     if (!b) return { ok: false, reason: "not_found" };
     b.status = "verified";
     this.db.visits.unshift({

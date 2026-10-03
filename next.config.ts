@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   agentRules: false,
+  devIndicators: false,
   turbopack: {
     resolveAlias: {
       "@river-apps/ui": `${kit}/ui/src/index.ts`,

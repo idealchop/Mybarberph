@@ -16,5 +16,6 @@
   button:not(:disabled) { cursor: pointer; }
 }
 
-@keyframes bp-scan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(206px); } }
-.bp-scanline { animation: bp-scan 2.4s ease-in-out infinite; }
+@keyframes bp-scan { 0%, 100% { top: 6%; } 50% { top: 94%; } }
+.bp-scanline { top: 6%; animation: bp-scan 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .bp-scanline { animation: none; top: 50%; } }

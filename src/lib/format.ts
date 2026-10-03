@@ -28,3 +28,23 @@ export function initialsShort(name: string) {
   const parts = name.split(" ");
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]![0]}.` : name;
 }
+
+/** Compact service label for tight rows ("Skin fade + beard trim" → "Fade + beard"). */
+export function shortService(label: string) {
+  const map: Record<string, string> = { "Skin fade + beard trim": "Fade + beard", "Haircut + hot towel": "Cut + hot towel" };
+  return map[label] ?? label;
+}
+
+/** "Andrei M." */
+export function shortName(name: string) {
+  const parts = name.split(" ").filter(Boolean);
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]![0]}.` : name;
+}
+
+/**
+ * "avg wait" shown in headers. Mock heuristic: three quarters of the mean current estimate (people at the
+ * end of the line rarely wait the full estimate). A backend would report the measured average instead.
+ */
+export function avgWaitMins(estimates: number[]) {
+  return Math.round((estimates.reduce((a, n) => a + n, 0) / Math.max(1, estimates.length)) * 0.75);
+}
