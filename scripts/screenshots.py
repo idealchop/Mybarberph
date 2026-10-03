@@ -12,6 +12,7 @@ DESK, TAB, PHONE = (1440, 900), (1180, 820), (390, 844)
 
 # name, path, viewport, optional list of (action, selector) steps run before the shot
 SHOTS = [
+    ("00-launcher", "/", DESK, []),
     ("01-dashboard", "/dashboard", DESK, []),
     ("02-queue", "/queue", DESK, []),
     ("03-sales", "/sales", DESK, []),
