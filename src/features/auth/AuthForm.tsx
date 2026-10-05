@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, SampleDataTag, cn } from "@river-apps/ui";
 import { Brand } from "@/components/shell/Brand";
-import { authErrorMessage, signInEmail, signInWithGoogle, signUpEmail } from "@/lib/firebase/auth-context";
+import { authErrorMessage, signInEmail, signUpEmail } from "@/lib/firebase/auth-context";
+import { ensureShopAndRedirect } from "@/lib/post-login";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -14,7 +15,6 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [shopName, setShopName] = useState("Kanto Kings Barbershop");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const googleEnabled = process.env.NEXT_PUBLIC_FIREBASE_GOOGLE_ENABLED === "true";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,24 +22,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       if (mode === "login") await signInEmail(email.trim(), password);
       else await signUpEmail(email.trim(), password, shopName.trim());
-      router.replace("/dashboard");
+      await ensureShopAndRedirect(router, { shopName: shopName.trim() });
       router.refresh();
     } catch (err) {
       setError(authErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function google() {
-    setBusy(true); setError(null);
-    try {
-      await signInWithGoogle();
-      router.replace("/dashboard");
-      router.refresh();
-    } catch (err) {
-      setError(authErrorMessage(err));
-    } finally {
       setBusy(false);
     }
   }
@@ -65,12 +51,6 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <Button type="submit" disabled={busy} className="mt-1 w-full">{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create shop"}</Button>
       </form>
 
-      {googleEnabled && (
-        <>
-          <div className="my-5 flex items-center gap-3 text-[12px] font-semibold text-muted"><span className="h-px flex-1 bg-grey-200" /><span>or</span><span className="h-px flex-1 bg-grey-200" /></div>
-          <Button type="button" variant="secondary" disabled={busy} onClick={google} className="w-full">Continue with Google</Button>
-        </>
-      )}
 
       <p className={cn("mt-6 text-center text-[13px] font-semibold text-muted")}>
         {mode === "login" ? (
@@ -79,7 +59,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           <>Already have an account? <Link href="/login" className="font-bold text-ink underline underline-offset-2">Sign in</Link></>
         )}
       </p>
-      <p className="mt-3 text-center text-[12px] font-medium text-muted"><Link href="/" className="underline underline-offset-2">← All demo screens (sample data)</Link></p>
+      <p className="mt-3 text-center text-[12px] font-medium text-muted"><Link href="/" className="underline underline-offset-2">← Phone / Google sign-in</Link></p>
     </div>
   );
 }

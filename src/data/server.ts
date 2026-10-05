@@ -20,7 +20,7 @@ export async function getServerRepository(): Promise<BarbersRepository> {
   const { redirect } = await import("next/navigation");
   const ctx = await getSessionContext();
   if (!ctx) {
-    redirect("/login");
+    redirect("/");
     throw new Error("unreachable");
   }
   return new FirestoreBarbersRepository(adminDb(), ctx.shopId);

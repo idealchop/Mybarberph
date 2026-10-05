@@ -74,7 +74,7 @@ export function PartnerShell({ initial, children }: { initial: PartnerState; chi
           <MobileTabBar items={tabs} activeKey={active} position="absolute" label="Partner app" />
           <div aria-hidden className="absolute bottom-2 left-1/2 z-50 h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-ink" />
         </div>
-        <p className="mt-5 hidden text-center text-[12.5px] font-semibold text-muted sm:block">Barbers.ph Partner app · phone preview · <Link href="/dashboard" className="font-bold text-ink underline decoration-grey-300 underline-offset-[3px]">Owner dashboard</Link> · <Link href="/" className="font-bold text-ink underline decoration-grey-300 underline-offset-[3px]">All screens</Link></p>
+        <p className="mt-5 hidden text-center text-[12.5px] font-semibold text-muted sm:block">Barbers.ph Partner app · phone preview · <Link href="/dashboard" className="font-bold text-ink underline decoration-grey-300 underline-offset-[3px]">Owner dashboard</Link> · <Link href="/demo" className="font-bold text-ink underline decoration-grey-300 underline-offset-[3px]">Demo screens</Link></p>
       </ClientNav>
       <DemoTierSwitch />
     </Ctx.Provider>

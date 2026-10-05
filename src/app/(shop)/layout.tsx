@@ -1,3 +1,4 @@
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import { ShopShell } from "@/components/shell/ShopShell";
 import { getServerRepository } from "@/data/server";
 
@@ -9,5 +10,9 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     messages: 3,
     riverNew: incoming.filter((b) => b.status !== "declined" && b.status !== "verified").length - 1,
   };
-  return <ShopShell counts={counts}>{children}</ShopShell>;
+  return (
+    <RequireAuth>
+      <ShopShell counts={counts}>{children}</ShopShell>
+    </RequireAuth>
+  );
 }

@@ -17,4 +17,4 @@ export const SHOP_NAV: ShopNavDef[] = [
   { key: "settings", label: "Settings", href: "/settings", icon: <Settings {...ic} /> },
 ];
 
-export const HELP_ITEM = { key: "help", label: "Help", href: "/", icon: <CircleHelp {...ic} /> };
+export const HELP_ITEM = { key: "help", label: "Help", href: "/demo", icon: <CircleHelp {...ic} /> };

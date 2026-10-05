@@ -1,3 +1,4 @@
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import type { Metadata } from "next";
 import { getServerRepository } from "@/data/server";
 import { PartnerShell } from "@/features/partner/PartnerShell";
@@ -10,5 +11,9 @@ export default async function PartnerLayout({ children }: { children: React.Reac
   const [incoming, visits, notifications, barbers, shop] = await Promise.all([
     repo.listIncomingBookings(), repo.listVerifiedVisits(), repo.listPartnerNotifications(), repo.listBarbers(), repo.getShop(),
   ]);
-  return <PartnerShell initial={{ incoming, visits, notifications, barbers, shop }}>{children}</PartnerShell>;
+  return (
+    <RequireAuth>
+      <PartnerShell initial={{ incoming, visits, notifications, barbers, shop }}>{children}</PartnerShell>
+    </RequireAuth>
+  );
 }
