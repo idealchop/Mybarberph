@@ -33,8 +33,9 @@ export function TierProvider({ initialTier, children }: { initialTier: Tier; chi
   const setTier = useCallback((t: Tier) => {
     set(t);
     document.cookie = `${TIER_COOKIE}=${t}; path=/; max-age=31536000; samesite=lax`;
-    void getRepository().updateShopTier(t).catch(() => {
-      /* offline / mock — cookie + local state still apply */
+    const billingPlan = t === "paid" ? "monthly_950" : "partner";
+    void getRepository().updateShopBilling({ billingPlan, billingStatus: "active" }).catch(() => {
+      void getRepository().updateShopTier(t).catch(() => undefined);
     });
   }, []);
 

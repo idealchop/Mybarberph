@@ -30,7 +30,12 @@ export class FirestoreBarbersRepository implements BarbersRepository {
   async getShop(): Promise<Shop> {
     const snap = await this.shopRef().get();
     if (!snap.exists) throw new Error("Shop not found");
-    return { id: snap.id, ...(snap.data() as Omit<Shop, "id">) };
+    const data = snap.data() as Omit<Shop, "id">;
+    const tier = data.tier === "partner" ? "partner" : "paid";
+    const billingPlan = data.billingPlan
+      ?? (tier === "partner" ? "partner" : "monthly_950");
+    const billingStatus = data.billingStatus ?? "active";
+    return { id: snap.id, ...data, tier, billingPlan, billingStatus };
   }
 
   async updateShopSettings(patch: Partial<Shop["settings"]>): Promise<Shop> {
@@ -41,9 +46,26 @@ export class FirestoreBarbersRepository implements BarbersRepository {
   }
 
   async updateShopTier(tier: import("../types").Tier): Promise<Shop> {
-    await this.shopRef().update({ tier });
-    const shop = await this.getShop();
-    return { ...shop, tier };
+    const billingPlan = tier === "paid" ? "monthly_950" : "partner";
+    await this.shopRef().update({ tier, billingPlan, billingStatus: "active" });
+    return this.getShop();
+  }
+
+  async updateShopProfile(patch: Partial<Pick<Shop, "name" | "phone" | "address" | "city" | "hours" | "location">>): Promise<Shop> {
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(patch)) {
+      if (v !== undefined) clean[k] = v;
+    }
+    if (Object.keys(clean).length) await this.shopRef().update(clean);
+    return this.getShop();
+  }
+
+  async updateShopBilling(input: { billingPlan: import("../types").BillingPlan; billingStatus?: import("../types").BillingStatus }): Promise<Shop> {
+    const { tierForPlan } = await import("@/lib/billing");
+    const tier = tierForPlan(input.billingPlan);
+    const billingStatus = input.billingStatus ?? "active";
+    await this.shopRef().update({ billingPlan: input.billingPlan, billingStatus, tier });
+    return this.getShop();
   }
 
   private async listCol<T extends { id: string }>(name: string): Promise<T[]> {

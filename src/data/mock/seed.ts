@@ -16,7 +16,8 @@ export const shop: Shop = {
   id: "kanto-kings", name: "Kanto Kings Barbershop", slug: "kanto-kings-marikina", city: "Marikina",
   address: "28 J.P. Rizal St, Concepcion Uno, Marikina City", phone: "+63 917 555 0142",
   hours: [{ day: "Mon–Fri", open: "10:00 AM", close: "9:00 PM" }, { day: "Sat–Sun", open: "9:00 AM", close: "9:00 PM" }],
-  timezone: "Asia/Manila", tier: "paid", ownerName: "Jimboy",
+  timezone: "Asia/Manila", tier: "paid", billingPlan: "monthly_950", billingStatus: "active", ownerName: "Jimboy",
+  location: { lat: 14.6507, lng: 121.1029, formattedAddress: "28 J.P. Rizal St, Concepcion Uno, Marikina City" },
   settings: {
     queueMode: "per_barber", kioskEnabled: true, tipsEnabled: true, requireScanVerification: true, autoAcceptScans: false,
     emailOwnerOnScan: true, smsOwnerOnScan: false, confirmCompleteTimeoutMins: 15, acceptingRiverMobile: true,

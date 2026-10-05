@@ -14,7 +14,7 @@ const UNLOCKS = ["Walk-in queue and waitlist", "Kiosk with payments and tips", "
 
 export function PartnerShop() {
   const { shop } = usePartner();
-  const { tier, setTier } = useTier();
+  const { tier } = useTier();
   const router = useRouter();
   const [accepting, setAccepting] = useState(shop.settings.acceptingRiverMobile);
   const [notify, setNotify] = useState(true);
@@ -43,7 +43,7 @@ export function PartnerShop() {
             illustration={<BarberIcon name="clipper" size={92} />} illustrationClassName="right-3 top-3"
             actions={<>
               <ul className="-mt-1 flex w-full flex-col gap-1 text-[13px] font-medium text-on-ink-muted">{UNLOCKS.map((u) => <li key={u} className="flex items-center gap-1.5"><Lock size={12} strokeWidth={2} />{u}</li>)}</ul>
-              <Button variant="white" fullWidth className="mt-1" onClick={() => { setTier("paid"); router.push("/dashboard"); }}>Upgrade to Paid</Button>
+              <Button variant="white" fullWidth className="mt-1" onClick={() => { router.push("/settings#plans"); }}>See plans · ₱950/mo</Button>
             </>} />
         </Section>
       ) : (

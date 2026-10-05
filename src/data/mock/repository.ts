@@ -25,6 +25,19 @@ export class MockBarbersRepository implements BarbersRepository {
   }
   async updateShopTier(tier: import("../types").Tier) {
     this.db.shop.tier = tier;
+    this.db.shop.billingPlan = tier === "paid" ? "monthly_950" : "partner";
+    this.db.shop.billingStatus = "active";
+    return clone(this.db.shop);
+  }
+  async updateShopProfile(patch: Partial<Pick<import("../types").Shop, "name" | "phone" | "address" | "city" | "hours" | "location">>) {
+    Object.assign(this.db.shop, patch);
+    return clone(this.db.shop);
+  }
+  async updateShopBilling(input: { billingPlan: import("../types").BillingPlan; billingStatus?: import("../types").BillingStatus }) {
+    const { tierForPlan } = await import("@/lib/billing");
+    this.db.shop.billingPlan = input.billingPlan;
+    this.db.shop.billingStatus = input.billingStatus ?? "active";
+    this.db.shop.tier = tierForPlan(input.billingPlan);
     return clone(this.db.shop);
   }
   async listBarbers() { return clone(this.db.barbers); }

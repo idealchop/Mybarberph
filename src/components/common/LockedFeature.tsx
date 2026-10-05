@@ -21,9 +21,9 @@ export function Gate({ feature, children }: { feature: Feature; children: ReactN
         className="max-w-[460px]"
         illustration={<span className="relative"><BarberIcon name="pole" size={84} /><span className="absolute -bottom-1 -right-2 inline-flex size-8 items-center justify-center rounded-full bg-ink text-on-ink"><Lock size={15} strokeWidth={2.2} /></span></span>}
         title={`${NAMES[feature]} is on Paid`}
-        description="Your shop is on the free Partner plan: River Mobile customers, Scan to verify, verified visits and notifications. Upgrade unlocks queue, sales, kiosk, CRM and more. Billing will run through River Apps."
+        description="You’re on free Partner: River Mobile bookings, Scan to verify, history and notifications. Full shop is ₱950/month or ₱10,000 once."
         action={<div className="flex flex-wrap justify-center gap-2.5">
-          <Button size="md" href="/settings">Upgrade in Settings</Button>
+          <Button size="md" href="/settings#plans">See plans</Button>
           <Button size="md" variant="secondary" href="/partner">Open partner app</Button>
         </div>}
       />

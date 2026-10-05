@@ -7,7 +7,7 @@ import type { BarbersRepository } from "@/data";
 export const runtime = "nodejs";
 
 const ALLOWED = new Set<keyof BarbersRepository>([
-  "getShop", "updateShopSettings", "updateShopTier", "listBarbers", "getBarber", "saveBarber", "listChairs",
+  "getShop", "updateShopSettings", "updateShopTier", "updateShopProfile", "updateShopBilling", "listBarbers", "getBarber", "saveBarber", "listChairs",
   "listServices", "saveService", "listHaircutStyles", "listTickets", "addWalkIn", "startTicket",
   "finishTicket", "listWaitlist", "textWaitlist", "listIncomingBookings", "acceptBooking",
   "declineBooking", "verifyScan", "listVerifiedVisits", "listPartnerNotifications",

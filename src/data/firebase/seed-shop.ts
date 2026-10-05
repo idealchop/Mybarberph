@@ -27,12 +27,15 @@ export async function seedDemoShop(
   opts: { shopId?: string; shopName?: string; tier?: "partner" | "paid" } = {},
 ): Promise<{ shopId: string }> {
   const shopId = opts.shopId ?? seed.shop.id;
+  const tier = opts.tier ?? "paid";
   const shop = {
     ...stripId(seed.shop),
     id: undefined,
     name: opts.shopName ?? seed.shop.name,
     ownerUid: owner.uid,
-    tier: opts.tier ?? "paid",
+    tier,
+    billingPlan: tier === "paid" ? "monthly_950" : "partner",
+    billingStatus: "active" as const,
     ownerName: owner.displayName || seed.shop.ownerName,
   };
   delete (shop as { id?: string }).id;

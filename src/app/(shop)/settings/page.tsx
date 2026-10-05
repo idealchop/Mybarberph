@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getServerRepository } from "@/data/server";
 import { Settings } from "@/features/settings/Settings";
 
 export const metadata: Metadata = { title: "Settings" };
 
-/** Settings is available on both tiers (Partner sees River Mobile options; Paid-only sections are locked). */
 export default async function SettingsPage() {
   const shop = await (await getServerRepository()).getShop();
-  return <Settings shop={shop} />;
+  return (
+    <Suspense fallback={<div className="py-10 text-[14px] font-semibold text-muted">Loading settings…</div>}>
+      <Settings shop={shop} />
+    </Suspense>
+  );
 }

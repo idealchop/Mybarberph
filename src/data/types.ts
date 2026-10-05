@@ -10,16 +10,32 @@ import type { AvatarPreset } from "@river-apps/icons";
 export type Centavos = number;
 export type Tier = "partner" | "paid";
 
+/** Commercial plan on the shop. Partner is free; the other two unlock Paid features. */
+export type BillingPlan = "partner" | "monthly_950" | "lifetime_10000";
+export type BillingStatus = "active" | "pending" | "canceled";
+
+export interface ShopLocation {
+  lat: number;
+  lng: number;
+  formattedAddress: string;
+  placeId?: string;
+}
+
 export interface Shop {
   id: string;
   name: string;
   slug: string;
   city: string;
   address: string;
+  /** Map pin for River Mobile proximity. Optional until the owner sets it in Settings. */
+  location?: ShopLocation;
   phone: string;
   hours: { day: string; open: string; close: string }[];
   timezone: "Asia/Manila";
   tier: Tier;
+  /** Which commercial plan the shop is on (drives tier). */
+  billingPlan: BillingPlan;
+  billingStatus: BillingStatus;
   ownerName: string;
   settings: {
     queueMode: "single" | "per_barber";
