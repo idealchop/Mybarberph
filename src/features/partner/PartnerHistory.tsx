@@ -13,7 +13,7 @@ export function PartnerHistory() {
   const noShow = visits.length - ok;
   return (
     <>
-      <PageTitle title="History" subtitle="Verified River Mobile visits" back={null} />
+      <PageTitle title="History" subtitle="Verified visits" back={null} />
       <div className="mx-4 mt-3 grid grid-cols-3 gap-2.5">
         {[["This week", String(ok)], ["No-shows", String(noShow)], ["Show rate", `${Math.round((ok / Math.max(1, visits.length)) * 100)}%`]].map(([k, v]) => (
           <div key={k} className="flex flex-col rounded-[18px] bg-surface p-3 leading-tight shadow-card"><small className="text-[12px] font-semibold text-muted">{k}</small><b className="mt-0.5 text-[20px] font-extrabold tracking-[-0.02em]">{v}</b></div>

@@ -109,12 +109,12 @@ export function Queue({ data }: { data: QueueData }) {
 
   return (
     <>
-      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${chairs.length} chairs · ${waiting.length} waiting · avg wait ${avgWait} min`}
+      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${waiting.length} waiting · ${avgWait} min avg`}
         search="Search ticket or name" searchWidth={260} onSearch={setQ}
         actions={<Button variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setWalkIn(true)}>Add walk-in</Button>} />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_372px]">
-        <div className="flex min-w-0 flex-col gap-[18px]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+        <div className="flex min-w-0 flex-col gap-5">
           {/* chairs */}
           <section aria-label="Chairs" className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {chairs.map((c) => {
@@ -145,7 +145,7 @@ export function Queue({ data }: { data: QueueData }) {
           {/* live queue */}
           <Panel className="pb-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <PanelHeader title="Live queue" subtitle="By ticket number · updated just now" />
+              <PanelHeader title="Live queue" subtitle="Live" />
               <SegmentedControl<Filter> label="Filter queue" value={filter} onChange={setFilter} options={[
                 { value: "all", label: `All ${inChair.length + waiting.length + done.length}` }, { value: "waiting", label: `Waiting ${waiting.length}` },
                 { value: "in_chair", label: `In chair ${inChair.length}` }, { value: "done", label: `Done ${done.length}` }]} />
@@ -161,17 +161,17 @@ export function Queue({ data }: { data: QueueData }) {
                     const b = barber(t.barberId);
                     return (
                       <tr key={t.id} onClick={() => setSelected(t)} className={cn("cursor-pointer border-t border-line hover:bg-grey-50", isDone(t) && "opacity-60")}>
-                        <td className="whitespace-nowrap py-[9px] pl-1 pr-3"><Ref>{t.referenceId}</Ref></td>
-                        <td className="whitespace-nowrap py-[9px] pr-3"><span className="flex items-center gap-2.5"><Avatar name={t.customerName} preset={t.customerAvatar} size={30} /><b className="truncate text-[14px] tracking-[-0.01em]">{t.customerName}</b></span></td>
-                        <td className="whitespace-nowrap py-[9px] pr-3 text-[13.5px] font-semibold">{t.serviceLabel}</td>
-                        <td className="whitespace-nowrap py-[9px] pr-3"><span className="flex flex-col leading-[1.25]"><b className="text-[13.5px]">{b ? b.nickname : "Any barber"}</b><span className="text-[12px] font-semibold text-muted">{chair(t.chairId)?.label ?? "—"}</span></span></td>
-                        <td className="whitespace-nowrap py-[9px] pr-3">{t.source === "partner"
+                        <td className="whitespace-nowrap py-3 pl-1 pr-3"><Ref>{t.referenceId}</Ref></td>
+                        <td className="whitespace-nowrap py-3 pr-3"><span className="flex items-center gap-2.5"><Avatar name={t.customerName} preset={t.customerAvatar} size={30} /><b className="truncate text-[14px] tracking-[-0.01em]">{t.customerName}</b></span></td>
+                        <td className="whitespace-nowrap py-3 pr-3 text-[13.5px] font-semibold">{t.serviceLabel}</td>
+                        <td className="whitespace-nowrap py-3 pr-3"><span className="flex flex-col leading-snug"><b className="text-[13.5px]">{b ? b.nickname : "Any barber"}</b><span className="text-[12px] font-semibold text-muted">{chair(t.chairId)?.label ?? "—"}</span></span></td>
+                        <td className="whitespace-nowrap py-3 pr-3">{t.source === "partner"
                           ? <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink-2"><Smartphone size={14} strokeWidth={1.75} />River Mobile</span>
                           : <span className="text-[12.5px] font-semibold text-muted">Walk-in</span>}</td>
-                        <td className="whitespace-nowrap py-[9px] pr-3 text-[13px] font-semibold text-ink-2">
+                        <td className="whitespace-nowrap py-3 pr-3 text-[13px] font-semibold text-ink-2">
                           {t.status === "in_service" ? `Since ${clockShort(t.startedAt ?? NOW)}` : isDone(t) ? `Done ${clockShort(t.completedAt ?? NOW)}` : `${t.estimatedWaitMins ?? 0} min`}
                         </td>
-                        <td className="whitespace-nowrap py-[9px] pr-1 text-right"><StatusPill status={t.status} nextUp={t.nextUp} /></td>
+                        <td className="whitespace-nowrap py-3 pr-1 text-right"><StatusPill status={t.status} nextUp={t.nextUp} /></td>
                       </tr>
                     );
                   })}
@@ -182,7 +182,7 @@ export function Queue({ data }: { data: QueueData }) {
           </Panel>
         </div>
 
-        <aside className="flex flex-col gap-[18px]">
+        <aside className="flex flex-col gap-5">
           {/* River Mobile booking */}
           <Panel className="p-4">
             {featured ? (
@@ -195,12 +195,12 @@ export function Queue({ data }: { data: QueueData }) {
 
           {/* Waitlist */}
           <Panel className="pb-2">
-            <PanelHeader className="mb-1" title="Waitlist" subtitle="We text them when a chair frees up" action={<Badge variant="soft">{waitlist.length}</Badge>} />
+            <PanelHeader className="mb-1" title="Waitlist" subtitle="Text when a chair frees" action={<Badge variant="soft">{waitlist.length}</Badge>} />
             <ul>
               {waitlist.map((w) => (
-                <li key={w.id} className="flex items-center gap-3 py-[7px]">
+                <li key={w.id} className="flex items-center gap-3 py-2.5">
                   <Avatar name={w.name} preset={w.avatar} size={34} />
-                  <div className="flex min-w-0 flex-1 flex-col leading-[1.3]"><b className="truncate text-[14px]">{w.name}</b><span className="truncate text-[12.5px] font-medium text-muted">{w.wants}</span></div>
+                  <div className="flex min-w-0 flex-1 flex-col leading-snug"><b className="truncate text-[14px]">{w.name}</b><span className="truncate text-[12.5px] font-medium text-muted">{w.wants}</span></div>
                   {w.texted ? <Badge variant="soft">Texted</Badge> : (
                     <Button size="xs" variant="secondary" leadingIcon={<MessageSquare size={14} strokeWidth={1.75} />}
                       onClick={() => { setWaitlist((all) => all.map((x) => x.id === w.id ? { ...x, texted: true } : x)); void getRepository().textWaitlist(w.id).catch(() => undefined); }}>Text</Button>
@@ -212,10 +212,10 @@ export function Queue({ data }: { data: QueueData }) {
 
           {/* Online schedule */}
           <Panel>
-            <PanelHeader className="mb-1.5" title="Online schedule" subtitle="River Mobile · rest of today" action={<TextLink href="/partner/incoming">Calendar</TextLink>} />
+            <PanelHeader className="mb-1.5" title="Online schedule" subtitle="Today" action={<TextLink href="/partner/incoming">Calendar</TextLink>} />
             <ul className="flex flex-col">
               {schedule.map((b) => (
-                <li key={b.id} className="flex items-center gap-3 py-[5px]">
+                <li key={b.id} className="flex items-center gap-3 py-2">
                   <span className="w-[66px] font-mono text-[12.5px] font-semibold">{clock(b.arrivingAt)}</span>
                   <span className="flex-1 truncate text-[13.5px] font-bold">{shortName(b.customerName)} · {shortService(b.serviceLabel)}</span>
                   <span className="text-[12px] font-semibold text-muted">{b.status === "here" ? "To verify" : b.status === "verified" ? "Checked in" : b.status === "pending" ? "New" : "Verified"}</span>
@@ -267,7 +267,7 @@ function BookingCard({ b, barber, chairLabel, onScan, onAccept, onDecline }: {
 }) {
   const verified = b.status === "verified";
   const future = b.status === "pending";
-  const steps = future ? ["Accept to confirm the booking", "Scan their code when they arrive"] : ["Scan their River Mobile code to verify", "Accept to add them to the queue"];
+  const steps = future ? ["Accept booking", "Scan when they arrive"] : ["Scan to verify", "Accept into queue"];
   const active = future ? 0 : verified ? 1 : 0;
   return (
     <>
@@ -277,7 +277,7 @@ function BookingCard({ b, barber, chairLabel, onScan, onAccept, onDecline }: {
       </div>
       <div className="mt-3 flex items-center gap-3">
         <Avatar name={b.customerName} preset={b.avatar} size={48} />
-        <span className="flex min-w-0 flex-1 flex-col leading-[1.3]"><b className="text-[16px] tracking-[-0.01em]">{b.customerName}</b><span className="truncate text-[13px] font-medium text-muted">{b.serviceLabel} · {peso(b.price)}</span></span>
+        <span className="flex min-w-0 flex-1 flex-col leading-snug"><b className="text-[16px] tracking-[-0.01em]">{b.customerName}</b><span className="truncate text-[13px] font-medium text-muted">{b.serviceLabel} · {peso(b.price)}</span></span>
         <CodeChip className="px-2.5 py-1.5 text-[12.5px]">{b.referenceId}</CodeChip>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2.5">

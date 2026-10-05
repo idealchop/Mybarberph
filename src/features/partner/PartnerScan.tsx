@@ -9,7 +9,7 @@ export function PartnerScan() {
   const router = useRouter();
   return (
     <>
-      <PageTitle title="Scan to verify" subtitle="Ask for their River Mobile QR" />
+      <PageTitle title="Scan to verify" subtitle="Their River Mobile QR" />
       <div className="mx-4 mt-3 rounded-card bg-surface p-4 shadow-card">
         <ScanVerify tone="phone" barberLabel={(id) => barbers.find((b) => b.id === id)?.nickname} onVerified={addVisit} onDone={() => router.push("/partner")} />
       </div>

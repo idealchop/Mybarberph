@@ -21,7 +21,7 @@ export function NotificationsButton() {
   return (
     <>
       <IconButton variant="surface" label="Notifications" count={unread || undefined} icon={<Bell size={22} strokeWidth={1.75} />} onClick={() => setOpen(true)} />
-      <Dialog open={open} onClose={() => { setOpen(false); markAllRead(); }} title="Notifications" subtitle="River Mobile activity for your shop">
+      <Dialog open={open} onClose={() => { setOpen(false); markAllRead(); }} title="Notifications" subtitle="Recent activity">
         <ul className="flex flex-col">
           {notifications.map((n) => (
             <li key={n.id} className="flex gap-3 border-t border-line py-3 first:border-t-0">
@@ -49,7 +49,7 @@ export function PageTitle({ title, subtitle, back = "/partner", action }: { titl
   return (
     <header className="flex items-center gap-3 px-5 pb-1 pt-2">
       {back ? <a href={back} aria-label="Back" className="inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface shadow-card"><ArrowLeft size={20} strokeWidth={1.75} /></a> : null}
-      <div className="flex min-w-0 flex-1 flex-col leading-[1.2]"><h1 className="truncate text-[22px] font-extrabold tracking-[-0.02em]">{title}</h1>{subtitle ? <span className="text-[13px] font-semibold text-muted">{subtitle}</span> : null}</div>
+      <div className="flex min-w-0 flex-1 flex-col leading-snug gap-0.5"><h1 className="truncate text-[22px] font-extrabold tracking-[-0.02em]">{title}</h1>{subtitle ? <span className="text-[13px] font-semibold text-muted">{subtitle}</span> : null}</div>
       {action}
     </header>
   );

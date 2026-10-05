@@ -13,8 +13,8 @@ function RiverMobilePromo({ newToday }: { newToday: number }) {
   return (
     <div className="relative rounded-[22px] bg-grey-100 px-4 pb-4 pt-[60px]">
       <div className="absolute inset-x-1 -top-[34px] flex justify-center"><BarberChair size={112} /></div>
-      <b className="block text-[14.5px]">River Mobile bookings</b>
-      <small className="mb-3 mt-0.5 block text-[12.5px] font-semibold text-ink/55">Connected · {newToday} new today</small>
+      <b className="block text-[15px] leading-snug">River Mobile</b>
+      <small className="mb-3.5 mt-1 block text-[13px] font-semibold leading-snug text-ink/55">{newToday ? `${newToday} new today` : "Connected"}</small>
       <Button size="sm" fullWidth href="/partner/incoming">View bookings</Button>
     </div>
   );
@@ -44,7 +44,7 @@ export function ShopShell({ children, counts }: { children: ReactNode; counts: S
         sidebar={<Sidebar className="sticky top-0 h-dvh" brand={<Brand />} items={items} activeKey={active}
           footer={<RiverMobilePromo newToday={counts.riverNew} />} secondaryItems={[HELP_ITEM]} />}
         mobileTabBar={<MobileTabBar items={tabs} activeKey={active ?? "dashboard"} />}
-        mainClassName="px-4 pt-5 sm:px-[30px] sm:pt-6 lg:pb-6"
+        mainClassName="px-4 pt-6 sm:px-8 sm:pt-7 lg:pb-8"
       >
         {children}
       </AppShell>

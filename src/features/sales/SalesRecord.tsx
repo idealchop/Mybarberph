@@ -19,7 +19,7 @@ const glow = <i aria-hidden className="pointer-events-none absolute -right-20 -t
 function Kpi({ label, value, caption, aside }: { label: string; value: string; caption: string; aside?: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between rounded-card bg-surface px-5 py-[18px] shadow-card">
-      <div className="flex flex-col leading-tight"><span className="text-[12px] font-semibold text-muted">{label}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{value}</span><span className="mt-1 text-[12px] font-semibold text-muted">{caption}</span></div>
+      <div className="flex flex-col leading-snug"><span className="text-[12px] font-semibold text-muted">{label}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{value}</span><span className="mt-1 text-[12px] font-semibold text-muted">{caption}</span></div>
       {aside}
     </div>
   );
@@ -78,17 +78,17 @@ export function SalesRecord({ data }: { data: SalesData }) {
 
   return (
     <>
-      <PageHeader title="Sales record" subtitle={`${s.dayLabel} · ${s.transactions} transactions · shop closes ${s.closesAt}`} bell={false}
+      <PageHeader title="Sales record" subtitle={`${s.dayLabel} · ${s.transactions} sales`} bell={false}
         actions={<>
           <SegmentedControl<Range> label="Period" value={range} onChange={setRange} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
           <Button variant="secondary" className="hidden lg:inline-flex" leadingIcon={<Calendar size={18} strokeWidth={1.75} />} trailingIcon={<ChevronDown size={16} strokeWidth={1.75} />}>{manilaShort()}</Button>
           <Button leadingIcon={<Download size={18} strokeWidth={1.75} />} onClick={exportCsv}>Export CSV</Button>
         </>} />
 
-      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1.45fr]">
+      <section className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1.45fr]">
         <div className="relative overflow-hidden rounded-card bg-ink px-5 py-[18px] text-on-ink shadow-raised">
           {glow}
-          <div className="relative flex flex-col leading-tight"><span className="text-[12px] font-semibold text-on-ink-muted">Sales {rangeLabel}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{peso(k(s.sales))}</span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">{range === "day" ? s.salesDeltaLabel : range === "week" ? "+9% vs last week" : "+12% vs September"}</span></div>
+          <div className="relative flex flex-col leading-snug"><span className="text-[12px] font-semibold text-on-ink-muted">Sales {rangeLabel}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{peso(k(s.sales))}</span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">{range === "day" ? s.salesDeltaLabel : range === "week" ? "+9% vs last week" : "+12% vs September"}</span></div>
         </div>
         <Kpi label="Tips (separate)" value={peso(k(s.tips))} caption={`${k(s.tippers)} of ${k(s.transactions)} tipped`} aside={<IconTile size={40} style={{ borderRadius: 12 }}><CoinIcon size={28} /></IconTile>} />
         <Kpi label="Transactions" value={String(k(s.transactions))} caption={`${k(s.walkIns)} walk-in · ${k(s.online)} online`} />
@@ -99,15 +99,15 @@ export function SalesRecord({ data }: { data: SalesData }) {
           <div className="mt-3 flex h-3 gap-[3px] overflow-hidden rounded-pill" role="img" aria-label={s.paymentMix.map((m) => `${PAYMENT_LABEL[m.method]} ${peso(k(m.amount))}`).join(", ")}>
             {s.paymentMix.map((m) => <span key={m.method} className={cn("block", MIX_TONE[m.method])} style={{ width: `${(m.amount / mixTotal) * 100}%` }} />)}
           </div>
-          <div className="mt-2.5 grid grid-cols-4 gap-2 text-[12px] font-semibold leading-tight text-muted">
+          <div className="mt-2.5 grid grid-cols-4 gap-2 text-[12px] font-semibold leading-snug text-muted">
             {s.paymentMix.map((m) => <span key={m.method}><i className={cn("mr-1 inline-block size-[7px] rounded-full align-middle", MIX_TONE[m.method])} />{PAYMENT_LABEL[m.method]}<br /><b className="text-[13.5px] text-ink">{peso(k(m.amount))}</b></span>)}
           </div>
         </div>
       </section>
 
-      <section className="mt-[18px] rounded-card bg-surface px-[18px] pb-3 pt-4 shadow-card">
+      <section className="mt-6 rounded-card bg-surface px-5 pb-4 pt-5 shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-col leading-tight"><span className="text-[16px] font-bold">Transactions</span><span className="mt-0.5 text-[12.5px] font-semibold text-muted">Newest first · tips shown apart from sales{range !== "day" ? " · showing today" : ""}</span></div>
+          <div className="flex flex-col leading-snug"><span className="text-[16px] font-bold">Transactions</span><span className="mt-0.5 text-[12.5px] font-semibold text-muted">Tips excluded from sales{range !== "day" ? " · today" : ""}</span></div>
           <div className="flex flex-wrap items-center gap-2">
             <FilterSelect label="Barber" value={barberId} onChange={set(setBarberId)} options={[{ value: "all", label: "All barbers" }, ...data.barbers.map((b) => ({ value: b.id, label: b.nickname }))]} />
             <FilterSelect label="Chair" value={chairId} onChange={set(setChairId)} options={[{ value: "all", label: "All chairs" }, ...data.chairs.map((c) => ({ value: c.id, label: c.label }))]} />
@@ -129,17 +129,17 @@ export function SalesRecord({ data }: { data: SalesData }) {
             <tbody>
               {rows.map((x) => (
                 <tr key={x.id} onClick={() => setOpen(x)} className="cursor-pointer border-t border-line hover:bg-grey-50">
-                  <td className="whitespace-nowrap py-[8px] pl-1 pr-3 text-[13px] font-semibold text-ink-2">{clock(x.completedAt)}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-3"><Ref>{x.referenceId}</Ref></td>
-                  <td className="whitespace-nowrap py-[8px] pr-3"><span className="flex items-center gap-2.5"><Avatar name={x.customerName} preset={x.customerAvatar} size={28} /><b className="text-[14px] tracking-[-0.01em]">{x.customerName}</b>
+                  <td className="whitespace-nowrap py-2.5 pl-1 pr-3 text-[13px] font-semibold text-ink-2">{clock(x.completedAt)}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-3"><Ref>{x.referenceId}</Ref></td>
+                  <td className="whitespace-nowrap py-2.5 pr-3"><span className="flex items-center gap-2.5"><Avatar name={x.customerName} preset={x.customerAvatar} size={28} /><b className="text-[14px] tracking-[-0.01em]">{x.customerName}</b>
                     {x.fromRiverMobile ? <span className="ml-1 inline-flex items-center rounded-pill bg-grey-100 px-2 py-[3px] align-middle text-[10.5px] font-bold leading-none">River Mobile</span> : null}</span></td>
-                  <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-semibold">{x.serviceLabel}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-bold">{barber(x.barberId)?.nickname}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-3 text-[13px] font-semibold text-muted">{chair(x.chairId)?.label}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-3"><PaymentPill method={x.paymentMethod} /></td>
-                  <td className="whitespace-nowrap py-[8px] pr-3 text-right text-[14px] font-extrabold">{peso(x.total)}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-4 text-right">{x.tip ? <span className="text-[13.5px] font-bold text-ink-2">+{peso(x.tip)}</span> : <span className="text-[13.5px] font-semibold text-subtle">—</span>}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-1">{x.rating ? <Stars value={x.rating} /> : <span className="text-[12.5px] font-semibold text-subtle">No rating</span>}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{x.serviceLabel}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-bold">{barber(x.barberId)?.nickname}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13px] font-semibold text-muted">{chair(x.chairId)?.label}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-3"><PaymentPill method={x.paymentMethod} /></td>
+                  <td className="whitespace-nowrap py-2.5 pr-3 text-right text-[14px] font-extrabold">{peso(x.total)}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-4 text-right">{x.tip ? <span className="text-[13.5px] font-bold text-ink-2">+{peso(x.tip)}</span> : <span className="text-[13.5px] font-semibold text-subtle">—</span>}</td>
+                  <td className="whitespace-nowrap py-2.5 pr-1">{x.rating ? <Stars value={x.rating} /> : <span className="text-[12.5px] font-semibold text-subtle">No rating</span>}</td>
                 </tr>
               ))}
               {!rows.length ? <tr><td colSpan={10} className="border-t border-line py-8 text-center text-[13.5px] font-semibold text-muted">No transactions match these filters.</td></tr> : null}

@@ -19,7 +19,7 @@ export function PartnerIncoming() {
   const rest = list.filter((b) => b.status !== "here");
   return (
     <>
-      <PageTitle title="Incoming customers" subtitle="River Mobile bookings and queue tickets" back={null}
+      <PageTitle title="Incoming customers" subtitle="Bookings & tickets" back={null}
         action={<Button size="sm" href="/partner/scan" leadingIcon={<ScanLine size={16} strokeWidth={1.75} />}>Scan</Button>} />
       <div className="px-4 pt-3">
         <SegmentedControl label="When" value={tab} onChange={setTab} className="w-full [&>button]:flex-1"
@@ -31,7 +31,7 @@ export function PartnerIncoming() {
           <ListCard>{rest.map((b, i) => <BookingRow key={b.id} b={b} first={i === 0} onClick={() => setOpen(b)} />)}</ListCard>
         </Section>
       ) : null}
-      {!list.length ? <EmptyState className="mt-10 px-6" illustration={<BarberIcon name="ticket" size={72} />} title="No bookings yet" description="New River Mobile bookings land here and on your notifications." /> : null}
+      {!list.length ? <EmptyState className="mt-10 px-6" illustration={<BarberIcon name="ticket" size={72} />} title="No bookings yet" description="New River Mobile bookings show up here." /> : null}
       <p className="px-6 pt-4 text-center text-[12.5px] font-medium text-muted">Tap a customer to accept, decline or verify.</p>
       <BookingSheet booking={open} onClose={() => setOpen(null)} />
     </>
