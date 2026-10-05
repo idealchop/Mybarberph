@@ -109,12 +109,12 @@ export function Queue({ data }: { data: QueueData }) {
 
   return (
     <>
-      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${waiting.length} waiting · ${avgWait} min avg`}
+      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${waiting.length} waiting`}
         search="Search ticket or name" searchWidth={260} onSearch={setQ}
         actions={<Button variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setWalkIn(true)}>Add walk-in</Button>} />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
-        <div className="flex min-w-0 flex-col gap-5">
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col gap-4">
           {/* chairs */}
           <section aria-label="Chairs" className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {chairs.map((c) => {
@@ -145,7 +145,7 @@ export function Queue({ data }: { data: QueueData }) {
           {/* live queue */}
           <Panel className="pb-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <PanelHeader title="Live queue" subtitle="Live" />
+              <PanelHeader title="Live queue" subtitle="By ticket" />
               <SegmentedControl<Filter> label="Filter queue" value={filter} onChange={setFilter} options={[
                 { value: "all", label: `All ${inChair.length + waiting.length + done.length}` }, { value: "waiting", label: `Waiting ${waiting.length}` },
                 { value: "in_chair", label: `In chair ${inChair.length}` }, { value: "done", label: `Done ${done.length}` }]} />
@@ -161,17 +161,17 @@ export function Queue({ data }: { data: QueueData }) {
                     const b = barber(t.barberId);
                     return (
                       <tr key={t.id} onClick={() => setSelected(t)} className={cn("cursor-pointer border-t border-line hover:bg-grey-50", isDone(t) && "opacity-60")}>
-                        <td className="whitespace-nowrap py-3 pl-1 pr-3"><Ref>{t.referenceId}</Ref></td>
-                        <td className="whitespace-nowrap py-3 pr-3"><span className="flex items-center gap-2.5"><Avatar name={t.customerName} preset={t.customerAvatar} size={30} /><b className="truncate text-[14px] tracking-[-0.01em]">{t.customerName}</b></span></td>
-                        <td className="whitespace-nowrap py-3 pr-3 text-[13.5px] font-semibold">{t.serviceLabel}</td>
-                        <td className="whitespace-nowrap py-3 pr-3"><span className="flex flex-col leading-snug"><b className="text-[13.5px]">{b ? b.nickname : "Any barber"}</b><span className="text-[12px] font-semibold text-muted">{chair(t.chairId)?.label ?? "—"}</span></span></td>
-                        <td className="whitespace-nowrap py-3 pr-3">{t.source === "partner"
+                        <td className="whitespace-nowrap py-2.5 pl-1 pr-3"><Ref>{t.referenceId}</Ref></td>
+                        <td className="whitespace-nowrap py-2.5 pr-3"><span className="flex items-center gap-2.5"><Avatar name={t.customerName} preset={t.customerAvatar} size={30} /><b className="truncate text-[14px] tracking-[-0.01em]">{t.customerName}</b></span></td>
+                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{t.serviceLabel}</td>
+                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{b ? b.nickname : "Any"}{chair(t.chairId) ? ` · ${chair(t.chairId)!.label}` : ""}</td>
+                        <td className="whitespace-nowrap py-2.5 pr-3">{t.source === "partner"
                           ? <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink-2"><Smartphone size={14} strokeWidth={1.75} />River Mobile</span>
                           : <span className="text-[12.5px] font-semibold text-muted">Walk-in</span>}</td>
-                        <td className="whitespace-nowrap py-3 pr-3 text-[13px] font-semibold text-ink-2">
+                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13px] font-semibold text-ink-2">
                           {t.status === "in_service" ? `Since ${clockShort(t.startedAt ?? NOW)}` : isDone(t) ? `Done ${clockShort(t.completedAt ?? NOW)}` : `${t.estimatedWaitMins ?? 0} min`}
                         </td>
-                        <td className="whitespace-nowrap py-3 pr-1 text-right"><StatusPill status={t.status} nextUp={t.nextUp} /></td>
+                        <td className="whitespace-nowrap py-2.5 pr-1 text-right"><StatusPill status={t.status} nextUp={t.nextUp} /></td>
                       </tr>
                     );
                   })}
@@ -182,7 +182,7 @@ export function Queue({ data }: { data: QueueData }) {
           </Panel>
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-4">
           {/* River Mobile booking */}
           <Panel className="p-4">
             {featured ? (
@@ -200,7 +200,7 @@ export function Queue({ data }: { data: QueueData }) {
               {waitlist.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 py-2.5">
                   <Avatar name={w.name} preset={w.avatar} size={34} />
-                  <div className="flex min-w-0 flex-1 flex-col leading-snug"><b className="truncate text-[14px]">{w.name}</b><span className="truncate text-[12.5px] font-medium text-muted">{w.wants}</span></div>
+                  <div className="flex min-w-0 flex-1 flex-col leading-[1.25]"><b className="truncate text-[14px]">{w.name}</b><span className="truncate text-[12.5px] font-medium text-muted">{w.wants}</span></div>
                   {w.texted ? <Badge variant="soft">Texted</Badge> : (
                     <Button size="xs" variant="secondary" leadingIcon={<MessageSquare size={14} strokeWidth={1.75} />}
                       onClick={() => { setWaitlist((all) => all.map((x) => x.id === w.id ? { ...x, texted: true } : x)); void getRepository().textWaitlist(w.id).catch(() => undefined); }}>Text</Button>

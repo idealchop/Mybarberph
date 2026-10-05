@@ -6,7 +6,7 @@ import { PAYMENT_LABEL } from "@/lib/format";
 
 /** White card with the mockups' panel padding (kit Card surface tokens). */
 export function Panel({ children, className, id, as: As = "section" }: { children: ReactNode; className?: string; id?: string; as?: "section" | "div" | "article" }) {
-  return <As id={id} className={cn("rounded-card bg-surface px-5 pb-4 pt-5 shadow-card", className)}>{children}</As>;
+  return <As id={id} className={cn("rounded-card bg-surface px-[18px] pb-2.5 pt-4 shadow-card", className)}>{children}</As>;
 }
 
 /** Kit CardHeader re-export with the mockups' spacing. */

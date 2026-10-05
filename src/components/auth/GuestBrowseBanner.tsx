@@ -9,8 +9,8 @@ export function GuestBrowseBanner({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur",
-        compact ? "py-2" : "py-2.5 sm:px-8",
+        "mb-3 flex items-center justify-between gap-3 rounded-[18px] bg-grey-100 px-3.5 py-2",
+        compact ? "mb-2 py-1.5" : "py-2",
       )}
     >
       <p className="min-w-0 text-[12.5px] font-semibold leading-snug text-muted">

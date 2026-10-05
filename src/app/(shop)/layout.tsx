@@ -20,8 +20,10 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   return (
     <>
       <SyncShopTier tier={shop.tier} />
-      {guest ? <GuestBrowseBanner /> : null}
-      <ShopShell counts={counts}>{children}</ShopShell>
+      <ShopShell counts={counts}>
+        {guest ? <GuestBrowseBanner /> : null}
+        {children}
+      </ShopShell>
     </>
   );
 }

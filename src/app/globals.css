@@ -4,14 +4,13 @@
 /* Let Tailwind see the class names used inside the kit's components (consumed from the submodule source). */
 @source "../../vendor/river-apps-ui-kit/packages/ui/src";
 
-/* Same base layer as the kit docs app — Plus Jakarta Sans via @river-apps/tokens/fonts.css.
-   Slightly taller line-height than kit default so owner screens breathe. */
+/* Match Laundry.ph owner app base (Plus Jakarta Sans via @river-apps/tokens/fonts.css). */
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
   body {
     @apply bg-canvas font-sans text-ink antialiased;
     font-size: 16px;
-    line-height: 1.55;
+    line-height: 1.45;
   }
   b, strong { font-weight: 700; }
   button:not(:disabled) { cursor: pointer; }

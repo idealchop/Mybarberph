@@ -2,8 +2,9 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
-import { AppShell, Button, MobileTabBar, Sidebar, type NavItem } from "@river-apps/ui";
+import { AppShell, Button, MobileTabBar, type NavItem } from "@river-apps/ui";
 import { BarberChair } from "@/components/art";
+import { WideSidebar } from "@/components/kit-extensions/WideSidebar";
 import { useTier } from "@/lib/tier";
 import { Brand } from "./Brand";
 import { ClientNav } from "./ClientNav";
@@ -11,10 +12,12 @@ import { HELP_ITEM, SHOP_NAV } from "./nav";
 
 function RiverMobilePromo({ newToday }: { newToday: number }) {
   return (
-    <div className="relative rounded-[22px] bg-grey-100 px-4 pb-4 pt-[60px]">
-      <div className="absolute inset-x-1 -top-[34px] flex justify-center"><BarberChair size={112} /></div>
-      <b className="block text-[15px] leading-snug">River Mobile</b>
-      <small className="mb-3.5 mt-1 block text-[13px] font-semibold leading-snug text-ink/55">{newToday ? `${newToday} new today` : "Connected"}</small>
+    <div className="relative rounded-[22px] bg-grey-100 px-4 pb-4 pt-[78px]">
+      <div className="absolute inset-x-0 -top-9 flex justify-center"><BarberChair size={150} /></div>
+      <b className="block text-[14.5px]">River Mobile bookings</b>
+      <small className="mb-3 mt-0.5 block text-[12.5px] font-semibold text-ink/55">
+        {newToday ? `${newToday} new today` : "Partner API"}
+      </small>
       <Button size="sm" fullWidth href="/partner/incoming">View bookings</Button>
     </div>
   );
@@ -22,7 +25,7 @@ function RiverMobilePromo({ newToday }: { newToday: number }) {
 
 export interface ShellCounts { queue: number; messages: number; riverNew: number }
 
-/** Paid desktop frame: kit AppShell + Sidebar (lg and up) + MobileTabBar (phones). */
+/** Paid desktop frame — matches Laundry.ph OwnerShell (WideSidebar + AppShell padding). */
 export function ShopShell({ children, counts }: { children: ReactNode; counts: ShellCounts }) {
   const pathname = usePathname();
   const { can } = useTier();
@@ -41,10 +44,18 @@ export function ShopShell({ children, counts }: { children: ReactNode; counts: S
   return (
     <ClientNav>
       <AppShell
-        sidebar={<Sidebar className="sticky top-0 h-dvh" brand={<Brand />} items={items} activeKey={active}
-          footer={<RiverMobilePromo newToday={counts.riverNew} />} secondaryItems={[HELP_ITEM]} />}
+        sidebar={
+          <WideSidebar
+            className="sticky top-0 h-dvh"
+            brand={<Brand />}
+            items={items}
+            activeKey={active}
+            footer={<RiverMobilePromo newToday={counts.riverNew} />}
+            secondaryItems={[HELP_ITEM]}
+          />
+        }
         mobileTabBar={<MobileTabBar items={tabs} activeKey={active ?? "dashboard"} />}
-        mainClassName="px-4 pt-6 sm:px-8 sm:pt-7 lg:pb-8"
+        mainClassName="px-4 pt-4 pb-6 lg:px-[30px] lg:pt-6"
       >
         {children}
       </AppShell>

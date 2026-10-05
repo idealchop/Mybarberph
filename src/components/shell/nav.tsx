@@ -9,10 +9,10 @@ export interface ShopNavDef { key: Feature; label: string; short?: string; href:
 export const SHOP_NAV: ShopNavDef[] = [
   { key: "dashboard", label: "Dashboard", short: "Home", href: "/dashboard", icon: <LayoutGrid {...ic} /> },
   { key: "queue", label: "Queue", href: "/queue", icon: <List {...ic} />, badgeKey: "queue" },
-  { key: "sales", label: "Sales record", short: "Sales", href: "/sales", icon: <ChartColumn {...ic} /> },
+  { key: "sales", label: "Sales", short: "Sales", href: "/sales", icon: <ChartColumn {...ic} /> },
   { key: "customers", label: "Customers", href: "/customers", icon: <Users {...ic} /> },
-  { key: "barbers", label: "Barbers & chairs", href: "/barbers", icon: <Scissors {...ic} /> },
-  { key: "vouchers", label: "Vouchers & referrals", href: "/vouchers", icon: <TicketPercent {...ic} /> },
+  { key: "barbers", label: "Barbers", href: "/barbers", icon: <Scissors {...ic} /> },
+  { key: "vouchers", label: "Vouchers", href: "/vouchers", icon: <TicketPercent {...ic} /> },
   { key: "messages", label: "Messages", href: "/messages", icon: <MessageSquare {...ic} />, badgeKey: "messages" },
   { key: "settings", label: "Settings", href: "/settings", icon: <Settings {...ic} /> },
 ];
