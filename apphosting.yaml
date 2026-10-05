@@ -24,7 +24,7 @@ env:
     value: "mybarberph.firebaseapp.com"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: "mybarberph.firebasestorage.app"
+    value: "mybarberph-shop-photos"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_TELEMETRY_DISABLED
     value: "1"

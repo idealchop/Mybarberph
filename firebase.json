@@ -71,7 +71,10 @@
       }
     }
   },
-  "storage": {
-    "rules": "storage.rules"
-  }
+  "storage": [
+    {
+      "bucket": "mybarberph-shop-photos",
+      "rules": "storage.rules"
+    }
+  ]
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, adminStorage, storageBucketName } from "@/lib/firebase/admin";
@@ -18,9 +19,9 @@ function extFor(type: string) {
   return "jpg";
 }
 
-function publicUrl(bucket: string, path: string) {
+function publicUrl(bucket: string, path: string, token: string) {
   const encoded = encodeURIComponent(path);
-  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media`;
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media&token=${token}`;
 }
 
 function storagePathFromUrl(url: string, shopId: string): string | null {
@@ -71,22 +72,22 @@ export async function POST(req: Request) {
     const bucketName = storageBucketName();
     const bucket = adminStorage().bucket(bucketName);
     const buffer = Buffer.from(await file.arrayBuffer());
+    const token = randomUUID();
     const gcsFile = bucket.file(path);
     await gcsFile.save(buffer, {
       resumable: false,
       metadata: {
         contentType: file.type,
         cacheControl: "public, max-age=31536000",
-        metadata: { shopId: ctx.shopId, uploadedBy: ctx.uid },
+        metadata: {
+          shopId: ctx.shopId,
+          uploadedBy: ctx.uid,
+          firebaseStorageDownloadTokens: token,
+        },
       },
     });
-    try {
-      await gcsFile.makePublic();
-    } catch {
-      // Bucket may use uniform access; download URL with alt=media still works for public rules.
-    }
 
-    const url = publicUrl(bucketName, path);
+    const url = publicUrl(bucketName, path, token);
     photos.push(url);
     const coverPhoto = shop.coverPhoto || url;
     await adminDb().doc(`shops/${ctx.shopId}`).update({ shopPhotos: photos, coverPhoto });

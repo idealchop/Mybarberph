@@ -15,10 +15,11 @@ import { getStorage, type Storage } from "firebase-admin/storage";
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "mybarberph";
 const DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_ID || "barbersdb";
+/** Custom bucket (default Firebase *.firebasestorage.app needs Console Get Started). */
 const STORAGE_BUCKET =
   process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
   process.env.FIREBASE_STORAGE_BUCKET ||
-  `${PROJECT_ID}.firebasestorage.app`;
+  "mybarberph-shop-photos";
 
 let app: App | undefined;
 let db: Firestore | undefined;
