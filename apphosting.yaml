@@ -1,5 +1,6 @@
 # Shared App Hosting config for Barbers.ph (single Firebase project: mybarberph).
-# Per-environment overrides: apphosting.dev.yaml / apphosting.prod.yaml
+# Per-environment values live in apphosting.dev.yaml / apphosting.prod.yaml,
+# selected by each backend's Environment name (dev / prod).
 # FIREBASE_WEBAPP_CONFIG is injected at build for the linked web app.
 
 runConfig:
@@ -21,15 +22,6 @@ env:
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: "mybarberph.firebaseapp.com"
-    availability: [BUILD, RUNTIME]
-  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
-    value: "barbersdb-dev"
-    availability: [BUILD, RUNTIME]
-  - variable: FIRESTORE_DATABASE_ID
-    value: "barbersdb-dev"
-    availability: [BUILD, RUNTIME]
-  - variable: BARBERS_ENV
-    value: "dev"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_TELEMETRY_DISABLED
     value: "1"

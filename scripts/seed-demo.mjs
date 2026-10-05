@@ -6,7 +6,11 @@
  */
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { register as registerLoader } from "node:module";
+import { pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
+
+registerLoader("./scripts/stub-server-only.mjs", pathToFileURL("./"));
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && existsSync(resolve(".secret.user-adc.json"))) {
   process.env.GOOGLE_APPLICATION_CREDENTIALS = resolve(".secret.user-adc.json");
