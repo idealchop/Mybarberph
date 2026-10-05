@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import "@river-apps/tokens/fonts.css";
 import "./globals.css";
+import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { AuthProvider } from "@/lib/firebase/auth-context";
 import { TierProvider } from "@/lib/tier";
 import { parseTier, TIER_COOKIE } from "@/lib/tier-shared";
@@ -19,7 +20,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body>
         <AuthProvider>
-          <TierProvider initialTier={tier}>{children}</TierProvider>
+          <AuthGateProvider>
+            <TierProvider initialTier={tier}>{children}</TierProvider>
+          </AuthGateProvider>
         </AuthProvider>
       </body>
     </html>

@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { LocationPicker } from "@/components/settings/LocationPicker";
 import { getRepository, type BillingPlan, type Shop, type ShopLocation } from "@/data";
 import { PLANS, planLabel } from "@/lib/billing";
+import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { useTier } from "@/lib/tier";
 
 function Row({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -24,6 +25,7 @@ function Row({ title, hint, children }: { title: string; hint?: string; children
 
 export function Settings({ shop: initial }: { shop: Shop }) {
   const { tier, setTier, can, syncFromShop } = useTier();
+  const { requireAuth, isAuthenticated } = useAuthGate();
   const router = useRouter();
   const params = useSearchParams();
   const [shop, setShop] = useState(initial);
@@ -63,6 +65,10 @@ export function Settings({ shop: initial }: { shop: Shop }) {
   }, [params, router, syncFromShop]);
 
   async function saveProfile() {
+    if (!isAuthenticated) {
+      requireAuth(() => void saveProfile(), "Sign in to save your shop profile.");
+      return;
+    }
     const next = await getRepository().updateShopProfile({
       name: shop.name,
       phone: shop.phone,
@@ -76,6 +82,10 @@ export function Settings({ shop: initial }: { shop: Shop }) {
   }
 
   async function selectPlan(plan: BillingPlan) {
+    if (!isAuthenticated) {
+      requireAuth(() => void selectPlan(plan), "Sign in to choose a plan.");
+      return;
+    }
     setPlanMsg(null);
     setPlanBusy(plan);
     try {
@@ -111,6 +121,10 @@ export function Settings({ shop: initial }: { shop: Shop }) {
   }
 
   async function demoActivate(plan: BillingPlan) {
+    if (!isAuthenticated) {
+      requireAuth(() => void demoActivate(plan), "Sign in to activate a plan.");
+      return;
+    }
     setPlanBusy(plan);
     setPlanMsg(null);
     try {

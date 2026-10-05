@@ -18,20 +18,33 @@ const source = () => process.env.NEXT_PUBLIC_DATA_SOURCE ?? "mock";
 let mockInstance: MockBarbersRepository | undefined;
 let clientInstance: BarbersRepository | undefined;
 
+/** When /api/repo returns 401, AuthGateProvider retries the call after sign-in. */
+type AuthRetry = (retry: () => Promise<unknown>) => Promise<unknown>;
+let authRetry: AuthRetry | null = null;
+export function registerAuthRetry(handler: AuthRetry | null) {
+  authRetry = handler;
+}
+
 export function isFirebaseDataSource() {
   return source() === "firebase";
 }
 
 function createClientApiRepository(): BarbersRepository {
   const call = async <T,>(method: string, args: unknown[] = []): Promise<T> => {
-    const res = await fetch("/api/repo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method, args }),
-    });
-    const json = (await res.json().catch(() => ({}))) as { result?: T; error?: string };
-    if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
-    return json.result as T;
+    const once = async (): Promise<T> => {
+      const res = await fetch("/api/repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, args }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { result?: T; error?: string };
+      if (res.status === 401 && authRetry) {
+        return (await authRetry(() => once())) as T;
+      }
+      if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
+      return json.result as T;
+    };
+    return once();
   };
   return new Proxy({} as BarbersRepository, {
     get(_t, prop: string | symbol) {

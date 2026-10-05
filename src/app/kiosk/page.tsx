@@ -1,4 +1,3 @@
-import { RequireAuth } from "@/components/auth/RequireAuth";
 import type { Metadata } from "next";
 import { getServerRepository } from "@/data/server";
 import { Kiosk } from "@/features/kiosk/Kiosk";
@@ -12,10 +11,13 @@ export default async function KioskPage() {
     repo.listBarbers(), repo.listChairs(), repo.listServices(), repo.listTickets(), repo.listVouchers(), repo.getShop(),
   ]);
   return (
-    <RequireAuth>
-      <KioskGate>
-        <Kiosk data={{ barbers, chairs, services, waitingCount: tickets.filter((t) => t.status === "waiting").length, tickets, vouchers, shopName: shop.name }} />
-      </KioskGate>
-    </RequireAuth>
+    <KioskGate>
+      <Kiosk data={{
+        barbers, chairs, services,
+        waitingCount: tickets.filter((t) => t.status === "waiting").length,
+        tickets, vouchers,
+        shopName: shop.name,
+      }} />
+    </KioskGate>
   );
 }

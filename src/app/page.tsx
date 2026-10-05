@@ -88,6 +88,9 @@ export default function WelcomePage() {
         <p className="mt-1.5 text-center text-[12.5px] font-medium text-muted">
           By continuing you agree to our Terms and Privacy Policy.
         </p>
+        <Button href="/dashboard" fullWidth variant="ghost">
+          Browse the dashboard (no sign-in)
+        </Button>
         <p className="text-center text-[12px] font-medium text-muted">
           <a href="/login" className="underline underline-offset-2">Email sign-in</a>
           {" · "}

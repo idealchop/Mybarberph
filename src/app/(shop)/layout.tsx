@@ -1,10 +1,11 @@
-import { RequireAuth } from "@/components/auth/RequireAuth";
 import { ShopShell } from "@/components/shell/ShopShell";
-import { getServerRepository } from "@/data/server";
+import { GuestBrowseBanner } from "@/components/auth/GuestBrowseBanner";
+import { getServerRepository, isGuestSession } from "@/data/server";
 import { SyncShopTier } from "@/lib/tier";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   const repo = await getServerRepository();
+  const guest = await isGuestSession();
   const [tickets, incoming, shop, log] = await Promise.all([
     repo.listTickets(),
     repo.listIncomingBookings(),
@@ -17,9 +18,10 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     riverNew: incoming.filter((b) => b.status === "pending" || b.status === "accepted").length,
   };
   return (
-    <RequireAuth>
+    <>
       <SyncShopTier tier={shop.tier} />
+      {guest ? <GuestBrowseBanner /> : null}
       <ShopShell counts={counts}>{children}</ShopShell>
-    </RequireAuth>
+    </>
   );
 }

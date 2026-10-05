@@ -2,6 +2,9 @@ import "server-only";
 
 /**
  * Server-only data access (Admin SDK). Never import this from client components.
+ *
+ * Guests (no session cookie) get in-memory demo data so Paid screens can be
+ * browsed without signing in. Mutations still hit /api/repo which requires auth.
  */
 import type { BarbersRepository } from "./repository";
 import { MockBarbersRepository } from "./mock/repository";
@@ -15,13 +18,18 @@ export async function getServerRepository(): Promise<BarbersRepository> {
     return mockInstance;
   }
   const { getSessionContext } = await import("@/lib/firebase/session");
-  const { adminDb } = await import("@/lib/firebase/admin");
-  const { FirestoreBarbersRepository } = await import("./firebase/repository");
-  const { redirect } = await import("next/navigation");
   const ctx = await getSessionContext();
   if (!ctx) {
-    redirect("/");
-    throw new Error("unreachable");
+    mockInstance ??= new MockBarbersRepository();
+    return mockInstance;
   }
+  const { adminDb } = await import("@/lib/firebase/admin");
+  const { FirestoreBarbersRepository } = await import("./firebase/repository");
   return new FirestoreBarbersRepository(adminDb(), ctx.shopId);
+}
+
+export async function isGuestSession(): Promise<boolean> {
+  if ((process.env.NEXT_PUBLIC_DATA_SOURCE ?? "mock") !== "firebase") return false;
+  const { getSessionContext } = await import("@/lib/firebase/session");
+  return !(await getSessionContext());
 }
