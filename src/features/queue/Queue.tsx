@@ -18,6 +18,14 @@ const NOW = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Manila", year: "n
   .format(new Date())
   .replace(" ", "T") + "+08:00";
 
+
+function manilaLabel() {
+  const d = new Date();
+  const day = new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" }).format(d);
+  const time = new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }).format(d);
+  return { day, time };
+}
+
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
@@ -101,7 +109,7 @@ export function Queue({ data }: { data: QueueData }) {
 
   return (
     <>
-      <PageHeader title="Queue & schedule" subtitle={`Sunday, Oct 4 · ${chairs.length} chairs · ${waiting.length} waiting · avg wait ${avgWait} min`}
+      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${chairs.length} chairs · ${waiting.length} waiting · avg wait ${avgWait} min`}
         search="Search ticket or name" searchWidth={260} onSearch={setQ}
         actions={<Button variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setWalkIn(true)}>Add walk-in</Button>} />
 

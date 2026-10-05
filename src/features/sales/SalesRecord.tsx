@@ -25,6 +25,10 @@ function Kpi({ label, value, caption, aside }: { label: string; value: string; c
   );
 }
 
+function manilaShort() {
+  return new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric" }).format(new Date());
+}
+
 export function SalesRecord({ data }: { data: SalesData }) {
   const s = data.summary;
   const [range, setRange] = useState<Range>("day");
@@ -77,7 +81,7 @@ export function SalesRecord({ data }: { data: SalesData }) {
       <PageHeader title="Sales record" subtitle={`${s.dayLabel} · ${s.transactions} transactions · shop closes ${s.closesAt}`} bell={false}
         actions={<>
           <SegmentedControl<Range> label="Period" value={range} onChange={setRange} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
-          <Button variant="secondary" className="hidden lg:inline-flex" leadingIcon={<Calendar size={18} strokeWidth={1.75} />} trailingIcon={<ChevronDown size={16} strokeWidth={1.75} />}>Sun, Oct 4</Button>
+          <Button variant="secondary" className="hidden lg:inline-flex" leadingIcon={<Calendar size={18} strokeWidth={1.75} />} trailingIcon={<ChevronDown size={16} strokeWidth={1.75} />}>{manilaShort()}</Button>
           <Button leadingIcon={<Download size={18} strokeWidth={1.75} />} onClick={exportCsv}>Export CSV</Button>
         </>} />
 

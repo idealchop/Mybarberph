@@ -14,7 +14,7 @@ export interface DashboardData {
   sales: Record<7 | 14 | 30, DailySales[]>;
   tickets: Ticket[]; chairs: Chair[]; barbers: Barber[];
   stats: Record<string, { cuts: number; sales: number; tips: number }>;
-  insights: Insight[]; vouchers: Voucher[]; referral: ReferralStats;
+  insights: Insight[]; vouchers: Voucher[]; referral: ReferralStats; shop: import("@/data").Shop;
 }
 
 const glow = <i aria-hidden className="pointer-events-none absolute -right-20 -top-[120px] size-[260px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.16),rgba(255,255,255,0)_65%)]" />;
@@ -33,6 +33,10 @@ function Kpi({ label, value, caption, aside }: { label: React.ReactNode; value: 
   );
 }
 
+function manilaClock() {
+  return new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }).format(new Date());
+}
+
 export function Dashboard({ data }: { data: DashboardData }) {
   const { summary: s, tickets, chairs, barbers } = data;
   const [range, setRange] = useState<"7" | "14" | "30">("14");
@@ -48,7 +52,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <PageHeader title="Hi Jimboy, here’s your growth" subtitle={`${s.dayLabel} · Kanto Kings Barbershop, Marikina · as of 6:40 PM`} search="Search customer or ticket" />
+      <PageHeader title="Hi Jimboy, here’s your growth" subtitle={`${s.dayLabel} · ${data.shop.name}${data.shop.city ? `, ${data.shop.city}` : ""} · as of ${manilaClock()}`} search="Search customer or ticket" />
 
       {/* KPI row */}
       <section className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
