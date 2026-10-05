@@ -5,6 +5,7 @@ import { CoinIcon, SparkleIcon } from "@river-apps/icons";
 import { Avatar, Badge, BarChart, Button, IconTile, ProgressRing, SegmentedControl } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { CodeChip, Panel, PanelHeader, TextLink } from "@/components/common/ui";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { PageHeader } from "@/components/shell/PageHeader";
 import type { Barber, Chair, DailySales, Insight, ReferralStats, SalesSummary, Ticket, Voucher } from "@/data";
 import { avgWaitMins, firstName, peso, shortService } from "@/lib/format";
@@ -53,7 +54,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
   const pct = Math.round((s.sales / target) * 100);
 
   return (
-    <div className="pb-6">
+    <PageColumn wide>
       <PageHeader
         title={`Hi ${data.shop.ownerName || "there"}, here’s today`}
         subtitle={`${s.dayLabel} · ${data.shop.name}${data.shop.city ? `, ${data.shop.city.split(",")[0]}` : ""} · ${manilaClock()}`}
@@ -197,6 +198,6 @@ export function Dashboard({ data }: { data: DashboardData }) {
           </ul>
         </Panel>
       </section>
-    </div>
+    </PageColumn>
   );
 }

@@ -1,18 +1,17 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
-import { Avatar, Button, cn, IconTile, SegmentedControl } from "@river-apps/ui";
+import { Avatar, Button, Card, IconTile, ListItem, SearchInput, SegmentedControl, Topbar } from "@river-apps/ui";
 import { Stars } from "@/components/art";
 import { Dialog } from "@/components/common/Dialog";
-import { FilterSelect, PaymentPill, Pill, Ref } from "@/components/common/ui";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { FilterSelect, PaymentPill, Pill } from "@/components/common/ui";
+import { PageColumn } from "@/components/shell/PageColumn";
 import type { Barber, Chair, DailySales, PaymentMethod, SalesSummary, Transaction } from "@/data";
 import { clock, PAYMENT_LABEL, peso } from "@/lib/format";
 
 export interface SalesData { summary: SalesSummary; transactions: Transaction[]; barbers: Barber[]; chairs: Chair[]; week: DailySales[]; month: DailySales[] }
 type Range = "day" | "week" | "month";
-const MIX_TONE: Record<PaymentMethod, string> = { cash: "bg-ink", gcash: "bg-grey-500", maya: "bg-grey-300", card: "bg-grey-200" };
 const PAGE = 10;
 const glow = <i aria-hidden className="pointer-events-none absolute -right-20 -top-[120px] size-[260px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.16),rgba(255,255,255,0)_65%)]" />;
 
@@ -23,10 +22,6 @@ function Kpi({ label, value, caption, aside }: { label: string; value: string; c
       {aside}
     </div>
   );
-}
-
-function manilaShort() {
-  return new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric" }).format(new Date());
 }
 
 export function SalesRecord({ data }: { data: SalesData }) {
@@ -54,13 +49,10 @@ export function SalesRecord({ data }: { data: SalesData }) {
   // Week / Month KPIs are scaled from the daily series (mock); Day uses the day summary.
   const factor = range === "day" ? 1 : (range === "week" ? data.week : data.month).reduce((a, d) => a + d.sales, 0) / s.sales;
   const k = (n: number) => Math.round(n * factor);
-  const mixTotal = s.paymentMix.reduce((a, m) => a + m.amount, 0);
   const isFiltered = barberId !== "all" || chairId !== "all" || method !== "all" || !!q.trim();
   const tot = isFiltered
     ? { n: filtered.length, sales: filtered.reduce((a, x) => a + x.total, 0), tips: filtered.reduce((a, x) => a + (x.tip ?? 0), 0) }
     : { n: s.transactions, sales: s.sales, tips: s.tips };
-  const rated = filtered.filter((x) => x.rating);
-  const avgRating = isFiltered ? (rated.reduce((a, x) => a + (x.rating ?? 0), 0) / Math.max(1, rated.length)) : s.avgRating;
   const rangeLabel = range === "day" ? "today" : range === "week" ? "this week" : "this month";
 
   function exportCsv() {
@@ -77,91 +69,60 @@ export function SalesRecord({ data }: { data: SalesData }) {
   }
 
   return (
-    <>
-      <PageHeader title="Sales record" subtitle={`${s.dayLabel} · ${s.transactions} sales`} bell={false}
-        actions={<>
-          <SegmentedControl<Range> label="Period" value={range} onChange={setRange} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
-          <Button variant="secondary" className="hidden lg:inline-flex" leadingIcon={<Calendar size={18} strokeWidth={1.75} />} trailingIcon={<ChevronDown size={16} strokeWidth={1.75} />}>{manilaShort()}</Button>
-          <Button leadingIcon={<Download size={18} strokeWidth={1.75} />} onClick={exportCsv}>Export CSV</Button>
-        </>} />
+    <PageColumn>
+      <Topbar
+        className="px-1"
+        title="Sales"
+        subtitle={`${s.dayLabel} · ${s.transactions} sales`}
+        actions={<Button size="md" variant="secondary" leadingIcon={<Download size={18} strokeWidth={1.75} />} onClick={exportCsv}>Export CSV</Button>}
+      />
+      <SegmentedControl<Range> className="mt-4 w-fit" label="Period" value={range} onChange={setRange} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
 
-      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1.45fr]">
-        <div className="relative overflow-hidden rounded-card bg-ink px-5 py-[18px] text-on-ink shadow-raised">
+      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <div className="relative overflow-hidden rounded-card bg-ink px-4 pb-3.5 pt-4 text-on-ink shadow-raised">
           {glow}
-          <div className="relative flex flex-col leading-[1.25]"><span className="text-[12px] font-semibold text-on-ink-muted">Sales {rangeLabel}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{peso(k(s.sales))}</span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">{range === "day" ? s.salesDeltaLabel : range === "week" ? "+9% vs last week" : "+12% vs September"}</span></div>
+          <div className="relative flex flex-col leading-[1.25]"><span className="text-[12px] font-semibold text-on-ink-muted">Sales {rangeLabel}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{peso(k(s.sales))}</span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">{s.salesDeltaLabel}</span></div>
         </div>
-        <Kpi label="Tips (separate)" value={peso(k(s.tips))} caption={`${k(s.tippers)} of ${k(s.transactions)} tipped`} aside={<IconTile size={40} style={{ borderRadius: 12 }}><CoinIcon size={28} /></IconTile>} />
+        <Kpi label="Tips" value={peso(k(s.tips))} caption={`${k(s.tippers)} tippers`} aside={<IconTile size={40} style={{ borderRadius: 12 }}><CoinIcon size={28} /></IconTile>} />
         <Kpi label="Transactions" value={String(k(s.transactions))} caption={`${k(s.walkIns)} walk-in · ${k(s.online)} online`} />
         <Kpi label="Avg ticket" value={peso(s.avgTicket)} caption={s.highestLabel} />
-        <div className="flex flex-col rounded-card bg-surface px-5 py-[18px] shadow-card sm:col-span-2 xl:col-span-1">
-          <div className="flex items-baseline justify-between"><span className="text-[12px] font-semibold text-muted">Payment mix</span>
-            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-muted"><Stars value={5} size={11} /><b className="text-ink">{s.avgRating}</b> · {k(s.ratingsCount)} ratings</span></div>
-          <div className="mt-3 flex h-3 gap-[3px] overflow-hidden rounded-pill" role="img" aria-label={s.paymentMix.map((m) => `${PAYMENT_LABEL[m.method]} ${peso(k(m.amount))}`).join(", ")}>
-            {s.paymentMix.map((m) => <span key={m.method} className={cn("block", MIX_TONE[m.method])} style={{ width: `${(m.amount / mixTotal) * 100}%` }} />)}
-          </div>
-          <div className="mt-2.5 grid grid-cols-4 gap-2 text-[12px] font-semibold leading-[1.25] text-muted">
-            {s.paymentMix.map((m) => <span key={m.method}><i className={cn("mr-1 inline-block size-[7px] rounded-full align-middle", MIX_TONE[m.method])} />{PAYMENT_LABEL[m.method]}<br /><b className="text-[13.5px] text-ink">{peso(k(m.amount))}</b></span>)}
-          </div>
-        </div>
       </section>
 
-      <section className="mt-[18px] rounded-card bg-surface px-[18px] pb-2.5 pt-4 shadow-card">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-col leading-[1.25]"><span className="text-[16px] font-bold">Transactions</span><span className="mt-0.5 text-[12.5px] font-semibold text-muted">Tips excluded from sales{range !== "day" ? " · today" : ""}</span></div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect label="Barber" value={barberId} onChange={set(setBarberId)} options={[{ value: "all", label: "All barbers" }, ...data.barbers.map((b) => ({ value: b.id, label: b.nickname }))]} />
-            <FilterSelect label="Chair" value={chairId} onChange={set(setChairId)} options={[{ value: "all", label: "All chairs" }, ...data.chairs.map((c) => ({ value: c.id, label: c.label }))]} />
-            <FilterSelect<"all" | PaymentMethod> label="Payment" value={method} onChange={set(setMethod)} options={[{ value: "all", label: "All payments" }, ...(["cash", "gcash", "maya", "card"] as const).map((m) => ({ value: m, label: PAYMENT_LABEL[m] }))]} />
-            <label className="flex h-[34px] w-[220px] items-center gap-2 rounded-[12px] bg-canvas px-3 text-subtle focus-within:ring-2 focus-within:ring-ink">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-              <span className="sr-only">Search ticket or customer</span>
-              <input value={q} onChange={(e) => set(setQ)(e.target.value)} placeholder="Search ticket or customer" className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-ink outline-none placeholder:text-subtle" />
-            </label>
-          </div>
-        </div>
-        <div className="-mx-1 mt-3 overflow-x-auto px-1">
-          <table className="w-full min-w-[900px] border-collapse text-left">
-            <thead><tr className="text-[12px] text-muted">
-              <th className="whitespace-nowrap pb-2 pl-1 pr-3 font-semibold">Time</th>
-              {["Ticket", "Customer", "Service", "Barber", "Chair", "Payment"].map((h) => <th key={h} className="whitespace-nowrap pb-2 pr-3 font-semibold">{h}</th>)}
-              <th className="whitespace-nowrap pb-2 pr-3 text-right font-semibold">Amount</th><th className="whitespace-nowrap pb-2 pr-4 text-right font-semibold">Tip</th><th className="whitespace-nowrap pb-2 pr-1 font-semibold">Feedback</th>
-            </tr></thead>
-            <tbody>
-              {rows.map((x) => (
-                <tr key={x.id} onClick={() => setOpen(x)} className="cursor-pointer border-t border-line hover:bg-grey-50">
-                  <td className="whitespace-nowrap py-2.5 pl-1 pr-3 text-[13px] font-semibold text-ink-2">{clock(x.completedAt)}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-3"><Ref>{x.referenceId}</Ref></td>
-                  <td className="whitespace-nowrap py-2.5 pr-3"><span className="flex items-center gap-2.5"><Avatar name={x.customerName} preset={x.customerAvatar} size={28} /><b className="text-[14px] tracking-[-0.01em]">{x.customerName}</b>
-                    {x.fromRiverMobile ? <span className="ml-1 inline-flex items-center rounded-pill bg-grey-100 px-2 py-[3px] align-middle text-[10.5px] font-bold leading-none">River Mobile</span> : null}</span></td>
-                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{x.serviceLabel}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-bold">{barber(x.barberId)?.nickname}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-3 text-[13px] font-semibold text-muted">{chair(x.chairId)?.label}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-3"><PaymentPill method={x.paymentMethod} /></td>
-                  <td className="whitespace-nowrap py-2.5 pr-3 text-right text-[14px] font-extrabold">{peso(x.total)}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-4 text-right">{x.tip ? <span className="text-[13.5px] font-bold text-ink-2">+{peso(x.tip)}</span> : <span className="text-[13.5px] font-semibold text-subtle">—</span>}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-1">{x.rating ? <Stars value={x.rating} /> : <span className="text-[12.5px] font-semibold text-subtle">No rating</span>}</td>
-                </tr>
-              ))}
-              {!rows.length ? <tr><td colSpan={10} className="border-t border-line py-8 text-center text-[13.5px] font-semibold text-muted">No transactions match these filters.</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-grey-100 px-4 py-3">
-          <span className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px] font-semibold text-muted">
-            <b className="text-[14px] text-ink">{isFiltered ? "Filtered totals" : "Daily totals"}</b>
-            <span>{tot.n} transactions</span>
-            <span>Sales <b className="text-[14px] font-extrabold text-ink">{peso(tot.sales)}</b></span>
-            <span>Tips <b className="text-[14px] font-extrabold text-ink">{peso(tot.tips)}</b></span>
-            <span>Total collected <b className="text-[14px] font-extrabold text-ink">{peso(tot.sales + tot.tips)}</b></span>
-            <span>Avg rating <b className="text-[14px] font-extrabold text-ink">{avgRating.toFixed(1)}</b></span>
-          </span>
-          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
-            {filtered.length ? `${(cur - 1) * PAGE + 1}–${Math.min(cur * PAGE, filtered.length)}` : "0"} of {filtered.length}
-            <button type="button" aria-label="Previous page" disabled={cur <= 1} onClick={() => setPage(cur - 1)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile disabled:opacity-40"><ChevronLeft size={16} strokeWidth={1.75} /></button>
-            <button type="button" aria-label="Next page" disabled={cur >= pages} onClick={() => setPage(cur + 1)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile disabled:opacity-40"><ChevronRight size={16} strokeWidth={1.75} /></button>
-          </span>
-        </div>
-      </section>
+      <SearchInput className="mt-4" placeholder="Search ticket or customer" label="Search sales" value={q} onChange={(e) => set(setQ)(e.target.value)} />
+
+      <div className="mt-3 flex flex-wrap gap-2 px-1">
+        <FilterSelect label="Barber" value={barberId} onChange={set(setBarberId)} options={[{ value: "all", label: "All barbers" }, ...data.barbers.map((b) => ({ value: b.id, label: b.nickname }))]} />
+        <FilterSelect<"all" | PaymentMethod> label="Payment" value={method} onChange={set(setMethod)} options={[{ value: "all", label: "All payments" }, ...(["cash", "gcash", "maya", "card"] as const).map((m) => ({ value: m, label: PAYMENT_LABEL[m] }))]} />
+      </div>
+
+      <Card padding="none" className="mt-4 px-4 py-1.5">
+        <ul aria-label="Transactions">
+          {rows.map((x) => (
+            <li key={x.id} className="border-b border-line last:border-b-0">
+              <button type="button" className="block w-full text-left" onClick={() => setOpen(x)}>
+                <ListItem
+                  variant="row"
+                  className="py-2.5"
+                  leading={<Avatar name={x.customerName} preset={x.customerAvatar} size={40} />}
+                  title={<>{x.customerName} <span className="ml-1 font-mono text-[12.5px] font-semibold text-muted">{x.referenceId}</span></>}
+                  subtitle={`${clock(x.completedAt)} · ${x.serviceLabel} · ${barber(x.barberId)?.nickname ?? "—"} · ${PAYMENT_LABEL[x.paymentMethod]}`}
+                  trailing={<span className="flex flex-col items-end leading-[1.3]"><b className="text-[14px] font-extrabold">{peso(x.total)}</b><small className="text-[12px] font-medium text-muted">{x.tip ? `+${peso(x.tip)} tip` : "no tip"}</small></span>}
+                />
+              </button>
+            </li>
+          ))}
+          {!rows.length ? <li className="py-8 text-center text-[13.5px] font-semibold text-muted">No transactions match.</li> : null}
+        </ul>
+      </Card>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1 text-[13px] font-semibold text-muted">
+        <span>{tot.n} sales · <b className="text-ink">{peso(tot.sales)}</b> · tips <b className="text-ink">{peso(tot.tips)}</b></span>
+        <span className="flex items-center gap-2">
+          {filtered.length ? `${(cur - 1) * PAGE + 1}–${Math.min(cur * PAGE, filtered.length)}` : "0"} of {filtered.length}
+          <button type="button" aria-label="Previous page" disabled={cur <= 1} onClick={() => setPage(cur - 1)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile disabled:opacity-40"><ChevronLeft size={16} strokeWidth={1.75} /></button>
+          <button type="button" aria-label="Next page" disabled={cur >= pages} onClick={() => setPage(cur + 1)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile disabled:opacity-40"><ChevronRight size={16} strokeWidth={1.75} /></button>
+        </span>
+      </div>
 
       <Dialog open={!!open} onClose={() => setOpen(null)} title={open ? `${open.referenceId} · ${open.customerName}` : ""} subtitle={open ? `${clock(open.completedAt)} · ${barber(open.barberId)?.nickname} · ${chair(open.chairId)?.label}` : undefined}>
         {open ? (
@@ -177,6 +138,6 @@ export function SalesRecord({ data }: { data: SalesData }) {
           </div>
         ) : null}
       </Dialog>
-    </>
+    </PageColumn>
   );
 }

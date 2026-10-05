@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import { Check, Copy, Plus, Smartphone } from "lucide-react";
-import { Avatar, Badge, Button, cn, IconTile, Input, ProgressRing, SegmentedControl } from "@river-apps/ui";
+import { Check, Copy, Plus } from "lucide-react";
+import { Avatar, Badge, Button, Card, cn, IconTile, Input, ListItem, ProgressRing, SegmentedControl, Topbar } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { Dialog, Toggle } from "@/components/common/Dialog";
 import { QrCode } from "@/components/common/QrCode";
-import { Panel, PanelHeader, Pill } from "@/components/common/ui";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { Panel, PanelHeader } from "@/components/common/ui";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { getRepository, type Customer, type ReferralStats, type Voucher } from "@/data";
 import { peso } from "@/lib/format";
 
@@ -26,11 +26,15 @@ export function Vouchers({ data }: { data: VouchersData }) {
   const copy = (code: string) => { void navigator.clipboard?.writeText(code).catch(() => undefined); setCopied(code); setTimeout(() => setCopied(null), 1500); };
 
   return (
-    <>
-      <PageHeader title="Vouchers & referrals" subtitle={`${r.month} · ${r.redeemedToday} redeemed today · ${r.referrals} of ${r.referralGoal} referrals`}
-        actions={<Button leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setCreating(true)}>Create voucher</Button>} />
+    <PageColumn>
+      <Topbar
+        className="px-1"
+        title="Vouchers & referrals"
+        subtitle={`${r.month} · ${r.redeemedToday} redeemed today · ${r.referrals} of ${r.referralGoal} referrals`}
+        actions={<Button size="md" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setCreating(true)}>Create voucher</Button>}
+      />
 
-      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <div className="relative flex items-center justify-between overflow-hidden rounded-card bg-ink px-5 py-[18px] text-on-ink shadow-raised">
           <i aria-hidden className="pointer-events-none absolute -right-20 -top-[120px] size-[260px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.16),rgba(255,255,255,0)_65%)]" />
           <div className="relative flex flex-col leading-tight"><span className="text-[12px] font-semibold text-on-ink-muted">Referrals this month</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{r.referrals}<span className="text-[15px] text-on-ink-muted"> / {r.referralGoal}</span></span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">Goal: {r.referralGoal} new customers</span></div>
@@ -42,32 +46,36 @@ export function Vouchers({ data }: { data: VouchersData }) {
       </section>
 
       <div className="mt-[18px] grid gap-5 xl:grid-cols-[1fr_360px]">
-        <Panel className="min-w-0 pb-4">
-          <PanelHeader className="mb-3" title="Codes" subtitle="Customers show the code at payment or the kiosk asks for it" />
-          <ul className="grid gap-3 md:grid-cols-2">
+        <Card padding="none" className="min-w-0 px-4 py-1.5">
+          <div className="px-1 pb-2 pt-3">
+            <PanelHeader title="Codes" subtitle="Show at payment or on the kiosk" />
+          </div>
+          <ul aria-label="Voucher codes">
             {vouchers.map((v) => (
-              <li key={v.id} className={cn("relative flex flex-col overflow-hidden rounded-[22px] p-4", v.active ? "bg-grey-100" : "bg-surface ring-1 ring-inset ring-grey-200")}>
-                {/* ticket notches */}
-                <i aria-hidden className="absolute -left-3 top-1/2 size-6 -translate-y-1/2 rounded-full bg-surface" /><i aria-hidden className="absolute -right-3 top-1/2 size-6 -translate-y-1/2 rounded-full bg-surface" />
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("rounded-sm px-2.5 py-1.5 font-mono text-[15px] font-bold tracking-[0.06em]", v.active ? "bg-ink text-on-ink" : "bg-grey-100 text-muted")}>{v.code}</span>
-                    <button type="button" aria-label={`Copy ${v.code}`} onClick={() => copy(v.code)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile">
-                      {copied === v.code ? <Check size={15} strokeWidth={2} /> : <Copy size={15} strokeWidth={1.75} />}</button>
-                  </div>
-                  <Toggle label={`${v.code} active`} checked={v.active} onChange={(on) => { const next = { ...v, active: on }; setVouchers((all) => all.map((x) => x.id === v.id ? next : x)); void getRepository().saveVoucher(next).catch(() => undefined); }} />
-                </div>
-                <b className="mt-3 text-[20px] font-extrabold tracking-[-0.02em]">{valueLabel(v)}</b>
-                <span className="text-[13px] font-semibold text-muted">{v.description}</span>
-                <div className="mt-3 flex flex-wrap gap-1.5"><Pill tone="outline">{KIND[v.kind]}</Pill>{v.partnerRedeemable ? <Pill tone="outline"><Smartphone size={12} strokeWidth={1.75} />River Mobile</Pill> : null}{v.validUntil ? <Pill tone="outline">Until {v.validUntil}</Pill> : <Pill tone="outline">No end date</Pill>}</div>
-                <div className="mt-3">
-                  <div className="flex justify-between text-[12px] font-semibold text-muted"><span>{v.redemptionCount} redeemed{v.maxRedemptions ? ` of ${v.maxRedemptions}` : ""}</span><b className="text-ink">{v.usedThisMonth} this month</b></div>
-                  {v.maxRedemptions ? <span className="mt-1.5 block h-1.5 rounded-pill bg-grey-200"><span className="block h-1.5 rounded-pill bg-ink" style={{ width: `${Math.min(100, (v.redemptionCount / v.maxRedemptions) * 100)}%` }} /></span> : null}
-                </div>
+              <li key={v.id} className="border-b border-line last:border-b-0">
+                <ListItem
+                  variant="row"
+                  className="py-2.5"
+                  leading={
+                    <span className={cn("inline-flex min-w-[72px] items-center justify-center rounded-sm px-2 py-1.5 font-mono text-[13px] font-bold tracking-[0.04em]", v.active ? "bg-ink text-on-ink" : "bg-grey-100 text-muted")}>
+                      {v.code}
+                    </span>
+                  }
+                  title={<>{valueLabel(v)} <span className="ml-1 text-[12.5px] font-semibold text-muted">{KIND[v.kind]}</span></>}
+                  subtitle={`${v.description} · ${v.redemptionCount} redeemed${v.maxRedemptions ? ` of ${v.maxRedemptions}` : ""} · ${v.usedThisMonth} this month${v.partnerRedeemable ? " · River Mobile" : ""}${v.validUntil ? ` · until ${v.validUntil}` : ""}`}
+                  trailing={
+                    <span className="flex items-center gap-2">
+                      <button type="button" aria-label={`Copy ${v.code}`} onClick={() => copy(v.code)} className="inline-flex size-8 items-center justify-center rounded-full bg-grey-100 text-ink">
+                        {copied === v.code ? <Check size={15} strokeWidth={2} /> : <Copy size={15} strokeWidth={1.75} />}
+                      </button>
+                      <Toggle label={`${v.code} active`} checked={v.active} onChange={(on) => { const next = { ...v, active: on }; setVouchers((all) => all.map((x) => x.id === v.id ? next : x)); void getRepository().saveVoucher(next).catch(() => undefined); }} />
+                    </span>
+                  }
+                />
               </li>
             ))}
           </ul>
-        </Panel>
+        </Card>
 
         <div className="flex flex-col gap-[18px]">
           <Panel className="pb-4">
@@ -94,7 +102,7 @@ export function Vouchers({ data }: { data: VouchersData }) {
       </div>
 
       {creating ? <CreateVoucher onClose={() => setCreating(false)} onSave={(v) => { setVouchers((all) => [v, ...all]); setCreating(false); void getRepository().saveVoucher(v).catch(() => undefined); }} /> : null}
-    </>
+    </PageColumn>
   );
 }
 

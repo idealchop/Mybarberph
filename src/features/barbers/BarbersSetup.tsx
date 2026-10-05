@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
 import { Camera, Pencil, Plus, Star as StarIcon } from "lucide-react";
-import { Badge, Button, cn, IconTile, Input } from "@river-apps/ui";
+import { Avatar, Badge, Button, Card, cn, IconTile, Input, ListItem, Topbar } from "@river-apps/ui";
 import { BarberIcon, HaircutArt, Portrait } from "@/components/art";
 import { Dialog, SelectField, Toggle } from "@/components/common/Dialog";
-import { Panel, PanelHeader, Pill } from "@/components/common/ui";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { Panel, PanelHeader } from "@/components/common/ui";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { getRepository, type Barber, Chair, HaircutStyle, Service } from "@/data";
 import { peso } from "@/lib/format";
 
@@ -30,74 +30,67 @@ export function BarbersSetup({ data }: { data: BarbersData }) {
   }
 
   return (
-    <>
-      <PageHeader title="Barbers & chairs" subtitle={`${barbers.length} barbers · ${chairs.length} chairs · ${menu.length} services · ${addons.length} add-ons`}
-        actions={<Button variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setEditing({ id: `b-new-${Date.now()}`, name: "", nickname: "", avatar: "peach", specialty: "", serviceIds: menu.map((s) => s.id), recommendedServiceIds: [], rating: { avg: 0, count: 0 }, cutsLabel: "New", status: "available", active: true })}>Add barber</Button>} />
+    <PageColumn wide>
+      <Topbar
+        className="px-1"
+        title="Barbers & chairs"
+        subtitle={`${barbers.length} barbers · ${chairs.length} chairs · ${menu.length} services · ${addons.length} add-ons`}
+        actions={<Button size="md" variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setEditing({ id: `b-new-${Date.now()}`, name: "", nickname: "", avatar: "peach", specialty: "", serviceIds: menu.map((s) => s.id), recommendedServiceIds: [], rating: { avg: 0, count: 0 }, cutsLabel: "New", status: "available", active: true })}>Add barber</Button>}
+      />
 
-      {/* barbers */}
-      <section aria-label="Barbers" className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {barbers.map((b) => {
-          const chair = chairs.find((c) => c.id === b.defaultChairId);
-          const st = data.stats[b.id];
-          return (
-            <article key={b.id} className="flex flex-col overflow-hidden rounded-card bg-surface shadow-card">
-              <div className="relative">
-                <div className="aspect-[4/3] w-full overflow-hidden [&>svg]:size-full"><Portrait preset={b.avatar} size={400} /></div>
-                <span className="absolute left-3 top-3"><Pill tone={b.status === "in_chair" ? "solid" : "outline"}>{b.status === "in_chair" ? <i aria-hidden className="block size-[6px] rounded-full bg-on-ink" /> : null}{STATUS[b.status]}</Pill></span>
-                <Button size="xs" variant="white" className="absolute bottom-3 right-3" leadingIcon={<Camera size={14} strokeWidth={1.75} />}>Photo</Button>
-              </div>
-              <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-col leading-tight"><b className="truncate text-[16px] tracking-[-0.01em]">{b.name}</b><span className="mt-0.5 truncate text-[12.5px] font-semibold text-muted">{b.specialty}</span></div>
-                  <span className="inline-flex items-center gap-1 text-[13px] font-extrabold"><StarIcon size={13} fill="currentColor" strokeWidth={0} />{b.rating.avg.toFixed(1)}</span>
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  {[["Today", `${st?.cuts ?? 0} cuts`], ["Sales", peso(st?.sales ?? 0)], ["All-time", b.cutsLabel]].map(([k, v]) => (
-                    <div key={k} className="rounded-tile bg-grey-100 px-1 py-2 leading-tight"><small className="block text-[11px] font-semibold text-muted">{k}</small><b className="text-[13px]">{v}</b></div>
-                  ))}
-                </div>
-                <p className="mb-1.5 mt-3 text-[12px] font-semibold text-muted">Recommended on the kiosk</p>
-                <div className="flex gap-1.5">
-                  {b.recommendedServiceIds.slice(0, 5).map((id) => { const s = svc(id); return s ? <span key={id} title={s.name} className="overflow-hidden rounded-[10px]"><HaircutArt kind={s.kind} size={40} preset={b.avatar} /></span> : null; })}
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
-                  <span className="text-[12.5px] font-semibold text-muted">{chair ? <>Default <b className="text-ink">{chair.label}</b></> : "No default chair"} · {b.serviceIds.length} services</span>
-                  <Button size="xs" variant="secondary" leadingIcon={<Pencil size={13} strokeWidth={1.75} />} onClick={() => setEditing(b)}>Edit</Button>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+      <Card padding="none" className="mt-4 px-4 py-1.5">
+        <ul aria-label="Barbers">
+          {barbers.map((b) => {
+            const chair = chairs.find((c) => c.id === b.defaultChairId);
+            const st = data.stats[b.id];
+            return (
+              <li key={b.id} className="border-b border-line last:border-b-0">
+                <ListItem
+                  variant="row"
+                  className="py-2.5"
+                  leading={<Avatar name={b.name} preset={b.avatar} size={40} />}
+                  title={<>{b.name} <Badge variant={b.status === "in_chair" ? "solid" : "soft"} size="sm" className="ml-1 align-[1px]">{STATUS[b.status]}</Badge></>}
+                  subtitle={`${b.specialty || "Barber"} · ${chair ? chair.label : "No default chair"} · ${st?.cuts ?? 0} cuts today · ${b.serviceIds.length} services`}
+                  trailing={
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[13px] font-extrabold"><StarIcon size={13} fill="currentColor" strokeWidth={0} />{b.rating.avg.toFixed(1)}</span>
+                      <Button size="xs" variant="secondary" leadingIcon={<Pencil size={13} strokeWidth={1.75} />} onClick={() => setEditing(b)}>Edit</Button>
+                    </span>
+                  }
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
 
-      <div className="mt-[18px] grid gap-5 xl:grid-cols-[1fr_380px]">
-        {/* services */}
-        <Panel className="min-w-0 pb-2">
-          <PanelHeader title="Services & prices" subtitle="What the kiosk, partner apps and staff can sell" action={<Button size="sm" variant="secondary" leadingIcon={<Plus size={16} strokeWidth={1.75} />}
-            onClick={() => setSvcEdit({ id: `sv-new-${Date.now()}`, name: "", kind: "crew", category: "haircut", price: 20000, durationMins: 30, showInKiosk: true, showInPartnerApps: true, isDefault: false, active: true })}>Add service</Button>} />
-          <div className="-mx-1 mt-3 overflow-x-auto px-1">
-            <table className="w-full min-w-[640px] border-collapse text-left">
-              <thead><tr className="text-[12px] text-muted">
-                <th className="pb-2 pl-1 pr-3 font-semibold">Service</th><th className="pb-2 pr-3 font-semibold">Type</th><th className="pb-2 pr-3 text-right font-semibold">Time</th><th className="pb-2 pr-3 text-right font-semibold">Price</th>
-                <th className="pb-2 pr-3 text-center font-semibold">Kiosk</th><th className="pb-2 pr-3 text-center font-semibold">River Mobile</th><th className="pb-2 pr-1 text-right font-semibold" />
-              </tr></thead>
-              <tbody>
-                {[...menu, ...addons].map((s) => (
-                  <tr key={s.id} className={cn("border-t border-line", !s.active && "opacity-50")}>
-                    <td className="py-[7px] pl-1 pr-3"><span className="flex items-center gap-2.5"><span className="overflow-hidden rounded-[10px]"><HaircutArt kind={s.kind} size={34} /></span>
-                      <span className="flex flex-col leading-tight"><b className="text-[14px]">{s.name}</b>{s.badge ? <span className="text-[11.5px] font-semibold text-muted">{s.badge}</span> : s.isDefault ? <span className="text-[11.5px] font-semibold text-muted">From default catalog</span> : null}</span></span></td>
-                    <td className="whitespace-nowrap py-[7px] pr-3"><Pill tone={s.category === "addon" ? "outline" : "soft"}>{CATEGORY[s.category]}</Pill></td>
-                    <td className="whitespace-nowrap py-[7px] pr-3 text-right text-[13px] font-semibold text-ink-2">{s.durationMins} min</td>
-                    <td className="whitespace-nowrap py-[7px] pr-3 text-right text-[14px] font-extrabold">{peso(s.price)}</td>
-                    <td className="py-[7px] pr-3 text-center"><Toggle label={`${s.name} on kiosk`} checked={s.showInKiosk} onChange={(v) => patchService(s.id, { showInKiosk: v })} /></td>
-                    <td className="py-[7px] pr-3 text-center"><Toggle label={`${s.name} on River Mobile`} checked={s.showInPartnerApps} onChange={(v) => patchService(s.id, { showInPartnerApps: v })} /></td>
-                    <td className="py-[7px] pr-1 text-right"><Button size="xs" variant="ghost" onClick={() => setSvcEdit(s)}>Edit</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="mt-4 grid gap-5 xl:grid-cols-[1fr_380px]">
+        <Card padding="none" className="min-w-0 px-4 py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-3 px-1 pb-2 pt-3">
+            <PanelHeader title="Services & prices" subtitle="Kiosk, River Mobile, and counter" />
+            <Button size="sm" variant="secondary" leadingIcon={<Plus size={16} strokeWidth={1.75} />}
+              onClick={() => setSvcEdit({ id: `sv-new-${Date.now()}`, name: "", kind: "crew", category: "haircut", price: 20000, durationMins: 30, showInKiosk: true, showInPartnerApps: true, isDefault: false, active: true })}>Add service</Button>
           </div>
-        </Panel>
+          <ul aria-label="Services">
+            {[...menu, ...addons].map((s) => (
+              <li key={s.id} className={cn("border-b border-line last:border-b-0", !s.active && "opacity-50")}>
+                <ListItem
+                  variant="row"
+                  className="py-2.5"
+                  leading={<span className="overflow-hidden rounded-[10px]"><HaircutArt kind={s.kind} size={40} /></span>}
+                  title={<>{s.name} <Badge variant="soft" size="sm" className="ml-1 align-[1px]">{CATEGORY[s.category]}</Badge></>}
+                  subtitle={`${s.durationMins} min · ${s.showInKiosk ? "Kiosk" : "No kiosk"} · ${s.showInPartnerApps ? "River Mobile" : "Shop only"}${s.badge ? ` · ${s.badge}` : ""}`}
+                  trailing={
+                    <span className="flex flex-col items-end gap-1 leading-[1.3]">
+                      <b className="text-[14px] font-extrabold">{peso(s.price)}</b>
+                      <Button size="xs" variant="ghost" onClick={() => setSvcEdit(s)}>Edit</Button>
+                    </span>
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
 
         <div className="flex flex-col gap-[18px]">
           {/* chairs */}
@@ -148,7 +141,7 @@ export function BarbersSetup({ data }: { data: BarbersData }) {
         onSave={(b) => { setBarbers((all) => all.some((x) => x.id === b.id) ? all.map((x) => x.id === b.id ? b : x) : [...all, b]); if (b.defaultChairId) assignChair(b.defaultChairId, b.id); setEditing(null); void getRepository().saveBarber(b).catch(() => undefined); }} /> : null}
       {svcEdit ? <ServiceDialog service={svcEdit} onClose={() => setSvcEdit(null)}
         onSave={(svc) => { setServices((all) => all.some((x) => x.id === svc.id) ? all.map((x) => x.id === svc.id ? svc : x) : [...all, svc]); setSvcEdit(null); void getRepository().saveService(svc).catch(() => undefined); }} /> : null}
-    </>
+    </PageColumn>
   );
 }
 

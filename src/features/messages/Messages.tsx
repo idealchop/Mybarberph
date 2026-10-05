@@ -1,10 +1,10 @@
 "use client";
 import { useRef, useState } from "react";
 import { Check, Plus, RotateCcw, Send, X } from "lucide-react";
-import { Badge, Button, cn, Input } from "@river-apps/ui";
+import { Badge, Button, Card, cn, Input, ListItem, Topbar } from "@river-apps/ui";
 import { SelectField, Toggle } from "@/components/common/Dialog";
 import { Panel, PanelHeader, Pill } from "@/components/common/ui";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { getRepository, type MessageLog, type MessageTemplate } from "@/data";
 
 export interface MessagesData { templates: MessageTemplate[]; log: MessageLog[] }
@@ -60,11 +60,15 @@ export function Messages({ data }: { data: MessagesData }) {
   }
 
   return (
-    <>
-      <PageHeader title="Messages" subtitle={`SMS · ${sent.toLocaleString("en-PH")} sent this month · default texts plus your own`}
-        actions={<Button leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={addTemplate}>New template</Button>} />
+    <PageColumn wide>
+      <Topbar
+        className="px-1"
+        title="Messages"
+        subtitle={`SMS · ${sent.toLocaleString("en-PH")} sent this month · default texts plus your own`}
+        actions={<Button size="md" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={addTemplate}>New template</Button>}
+      />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[360px_1fr]">
+      <div className="mt-4 grid gap-5 xl:grid-cols-[360px_1fr]">
         <Panel className="pb-3">
           <PanelHeader className="mb-2" title="Templates" subtitle="Default texts send automatically" />
           <ul className="flex flex-col gap-1.5">
@@ -148,25 +152,26 @@ export function Messages({ data }: { data: MessagesData }) {
             </div>
           </Panel>
 
-          <Panel className="pb-2">
-            <PanelHeader title="Recent sends" subtitle="Numbers are masked" />
-            <div className="-mx-1 mt-3 overflow-x-auto px-1">
-              <table className="w-full min-w-[560px] border-collapse text-left">
-                <thead><tr className="text-[12px] text-muted"><th className="pb-2 pl-1 pr-3 font-semibold">Time</th><th className="pb-2 pr-3 font-semibold">Template</th><th className="pb-2 pr-3 font-semibold">Customer</th><th className="pb-2 pr-3 font-semibold">To</th><th className="pb-2 pr-1 text-right font-semibold">Status</th></tr></thead>
-                <tbody>{log.map((m) => (
-                  <tr key={m.id} className="border-t border-line">
-                    <td className="whitespace-nowrap py-[8px] pl-1 pr-3 text-[13px] font-semibold text-ink-2">{m.at}</td>
-                    <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-bold">{m.templateName}</td>
-                    <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-semibold">{m.customerName}</td>
-                    <td className="whitespace-nowrap py-[8px] pr-3 font-mono text-[12.5px] font-medium text-muted">{m.toMasked}</td>
-                    <td className="whitespace-nowrap py-[8px] pr-1 text-right">{m.status === "failed" ? <Pill tone="solid"><X size={12} strokeWidth={2.4} />Failed · retry</Pill> : <Pill tone="outline"><Check size={12} strokeWidth={2.4} />{m.status === "delivered" ? "Delivered" : "Sent"}</Pill>}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
+          <Card padding="none" className="px-4 py-1.5">
+            <div className="px-1 pb-2 pt-3">
+              <PanelHeader title="Recent sends" subtitle="Numbers are masked" />
             </div>
-          </Panel>
+            <ul aria-label="Recent sends">
+              {log.map((m) => (
+                <li key={m.id} className="border-b border-line last:border-b-0">
+                  <ListItem
+                    variant="row"
+                    className="py-2.5"
+                    title={m.customerName}
+                    subtitle={`${m.at} · ${m.templateName} · ${m.toMasked}`}
+                    trailing={m.status === "failed" ? <Pill tone="solid"><X size={12} strokeWidth={2.4} />Failed</Pill> : <Pill tone="outline"><Check size={12} strokeWidth={2.4} />{m.status === "delivered" ? "Delivered" : "Sent"}</Pill>}
+                  />
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       </div>
-    </>
+    </PageColumn>
   );
 }

@@ -7,6 +7,7 @@ import { BarberIcon } from "@/components/art";
 import { SelectField, Toggle } from "@/components/common/Dialog";
 import { QrCode } from "@/components/common/QrCode";
 import { Panel, PanelHeader } from "@/components/common/ui";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LocationPicker } from "@/components/settings/LocationPicker";
 import { getRepository, type BillingPlan, type Shop, type ShopLocation } from "@/data";
@@ -147,7 +148,7 @@ export function Settings({ shop: initial }: { shop: Shop }) {
   }
 
   return (
-    <>
+    <PageColumn wide>
       <PageHeader
         title="Settings"
         subtitle={`${shop.name} · ${planLabel(currentPlan)}${shop.billingStatus === "pending" ? " · payment pending" : ""}`}
@@ -274,6 +275,6 @@ export function Settings({ shop: initial }: { shop: Shop }) {
           </Panel>
         </div>
       </div>
-    </>
+    </PageColumn>
   );
 }

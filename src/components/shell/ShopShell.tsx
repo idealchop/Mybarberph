@@ -25,7 +25,7 @@ function RiverMobilePromo({ newToday }: { newToday: number }) {
 
 export interface ShellCounts { queue: number; messages: number; riverNew: number }
 
-/** Paid desktop frame — matches Laundry.ph OwnerShell (WideSidebar + AppShell padding). */
+/** Paid frame — pages supply their own max-width column (Laundry.ph OwnerShell pattern). */
 export function ShopShell({ children, counts }: { children: ReactNode; counts: ShellCounts }) {
   const pathname = usePathname();
   const { can } = useTier();
@@ -55,7 +55,6 @@ export function ShopShell({ children, counts }: { children: ReactNode; counts: S
           />
         }
         mobileTabBar={<MobileTabBar items={tabs} activeKey={active ?? "dashboard"} />}
-        mainClassName="px-4 pt-4 pb-6 lg:px-[30px] lg:pt-6"
       >
         {children}
       </AppShell>

@@ -1,11 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { ArrowRight, Check, MessageSquare, Plus, ScanLine, Smartphone, X } from "lucide-react";
-import { Avatar, Badge, Button, cn, EmptyState, IconTile, Input, ResourceCard, SegmentedControl } from "@river-apps/ui";
+import { Avatar, Badge, Button, Card, cn, EmptyState, IconTile, Input, ListItem, ResourceCard, SearchInput, SegmentedControl, Topbar } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { Dialog, SelectField } from "@/components/common/Dialog";
 import { CodeChip, Panel, PanelHeader, Ref, StatusPill, TextLink } from "@/components/common/ui";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { PageColumn } from "@/components/shell/PageColumn";
 import { getRepository, type Barber, type Chair, type IncomingBooking, type Service, type Ticket, type WaitlistEntry } from "@/data";
 import { ScanVerify } from "@/features/scan/ScanVerify";
 import { avgWaitMins, clock, clockShort, firstName, peso, shortName, shortService } from "@/lib/format";
@@ -108,12 +108,15 @@ export function Queue({ data }: { data: QueueData }) {
   const nextUp = waiting[0];
 
   return (
-    <>
-      <PageHeader title="Queue & schedule" subtitle={`${manilaLabel().day} · ${waiting.length} waiting`}
-        search="Search ticket or name" searchWidth={260} onSearch={setQ}
-        actions={<Button variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setWalkIn(true)}>Add walk-in</Button>} />
+    <PageColumn wide>
+      <Topbar
+        className="px-1"
+        title="Queue"
+        subtitle={`${manilaLabel().day} · ${waiting.length} waiting`}
+        actions={<Button size="md" variant="secondary" leadingIcon={<Plus size={18} strokeWidth={1.75} />} onClick={() => setWalkIn(true)}>Add walk-in</Button>}
+      />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_320px]">
+      <div className="mt-4 grid gap-5 xl:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* chairs */}
           <section aria-label="Chairs" className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -142,44 +145,36 @@ export function Queue({ data }: { data: QueueData }) {
             })}
           </section>
 
-          {/* live queue */}
-          <Panel className="pb-2">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          {/* live queue — Laundry card list */}
+          <Card padding="none" className="px-4 py-1.5">
+            <div className="flex flex-wrap items-start justify-between gap-3 px-1 pb-2 pt-3">
               <PanelHeader title="Live queue" subtitle="By ticket" />
               <SegmentedControl<Filter> label="Filter queue" value={filter} onChange={setFilter} options={[
                 { value: "all", label: `All ${inChair.length + waiting.length + done.length}` }, { value: "waiting", label: `Waiting ${waiting.length}` },
                 { value: "in_chair", label: `In chair ${inChair.length}` }, { value: "done", label: `Done ${done.length}` }]} />
             </div>
-            <div className="-mx-1 mt-3 overflow-x-auto px-1">
-              <table className="w-full min-w-[640px] border-collapse text-left">
-                <thead><tr className="text-[12px] font-semibold text-muted">
-                  {["Ticket", "Customer", "Service", "Barber / Chair", "Source", "Wait / time"].map((h, i) => <th key={h} className={cn("whitespace-nowrap pb-2 pr-3 font-semibold", i === 0 && "pl-1")}>{h}</th>)}
-                  <th className="whitespace-nowrap pb-2 pr-1 text-right font-semibold">Status</th>
-                </tr></thead>
-                <tbody>
-                  {rows.map((t) => {
-                    const b = barber(t.barberId);
-                    return (
-                      <tr key={t.id} onClick={() => setSelected(t)} className={cn("cursor-pointer border-t border-line hover:bg-grey-50", isDone(t) && "opacity-60")}>
-                        <td className="whitespace-nowrap py-2.5 pl-1 pr-3"><Ref>{t.referenceId}</Ref></td>
-                        <td className="whitespace-nowrap py-2.5 pr-3"><span className="flex items-center gap-2.5"><Avatar name={t.customerName} preset={t.customerAvatar} size={30} /><b className="truncate text-[14px] tracking-[-0.01em]">{t.customerName}</b></span></td>
-                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{t.serviceLabel}</td>
-                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13.5px] font-semibold">{b ? b.nickname : "Any"}{chair(t.chairId) ? ` · ${chair(t.chairId)!.label}` : ""}</td>
-                        <td className="whitespace-nowrap py-2.5 pr-3">{t.source === "partner"
-                          ? <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink-2"><Smartphone size={14} strokeWidth={1.75} />River Mobile</span>
-                          : <span className="text-[12.5px] font-semibold text-muted">Walk-in</span>}</td>
-                        <td className="whitespace-nowrap py-2.5 pr-3 text-[13px] font-semibold text-ink-2">
-                          {t.status === "in_service" ? `Since ${clockShort(t.startedAt ?? NOW)}` : isDone(t) ? `Done ${clockShort(t.completedAt ?? NOW)}` : `${t.estimatedWaitMins ?? 0} min`}
-                        </td>
-                        <td className="whitespace-nowrap py-2.5 pr-1 text-right"><StatusPill status={t.status} nextUp={t.nextUp} /></td>
-                      </tr>
-                    );
-                  })}
-                  {!rows.length ? <tr><td colSpan={7} className="border-t border-line py-8 text-center text-[13.5px] font-semibold text-muted">No tickets match.</td></tr> : null}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
+            <SearchInput className="mb-2" placeholder="Search ticket or name" label="Search queue" value={q} onChange={(e) => setQ(e.target.value)} />
+            <ul aria-label="Queue tickets">
+              {rows.map((t) => {
+                const b = barber(t.barberId);
+                return (
+                  <li key={t.id} className="border-b border-line last:border-b-0">
+                    <button type="button" className="block w-full text-left" onClick={() => setSelected(t)}>
+                      <ListItem
+                        variant="row"
+                        className={cn("py-2.5", isDone(t) && "opacity-60")}
+                        leading={<Avatar name={t.customerName} preset={t.customerAvatar} size={40} />}
+                        title={<>{t.customerName} <span className="ml-1 font-mono text-[12.5px] font-semibold text-muted">{t.referenceId}</span></>}
+                        subtitle={`${t.serviceLabel} · ${b ? b.nickname : "Any barber"}${chair(t.chairId) ? ` · ${chair(t.chairId)!.label}` : ""} · ${t.source === "partner" ? "River Mobile" : "Walk-in"}`}
+                        trailing={<StatusPill status={t.status} nextUp={t.nextUp} />}
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+              {!rows.length ? <li className="py-8 text-center text-[13.5px] font-semibold text-muted">No tickets match.</li> : null}
+            </ul>
+          </Card>
         </div>
 
         <aside className="flex flex-col gap-4">
@@ -258,7 +253,7 @@ export function Queue({ data }: { data: QueueData }) {
           </div>
         ) : null}
       </Dialog>
-    </>
+    </PageColumn>
   );
 }
 
