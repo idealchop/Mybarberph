@@ -70,5 +70,8 @@
         "supportEmail": "jimboy@smartrefill.io"
       }
     }
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

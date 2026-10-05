@@ -51,7 +51,7 @@ export class FirestoreBarbersRepository implements BarbersRepository {
     return this.getShop();
   }
 
-  async updateShopProfile(patch: Partial<Pick<Shop, "name" | "phone" | "address" | "city" | "hours" | "location">>): Promise<Shop> {
+  async updateShopProfile(patch: Partial<Pick<Shop, "name" | "phone" | "address" | "city" | "hours" | "location" | "shopPhotos" | "coverPhoto">>): Promise<Shop> {
     const clean: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(patch)) {
       if (v !== undefined) clean[k] = v;

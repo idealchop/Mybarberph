@@ -1,0 +1,10 @@
+rules_version = '2';
+// Shop photos for River Mobile. Writes go through Admin (/api/shop-photos).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /shops/{shopId}/photos/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

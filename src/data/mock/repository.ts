@@ -29,7 +29,7 @@ export class MockBarbersRepository implements BarbersRepository {
     this.db.shop.billingStatus = "active";
     return clone(this.db.shop);
   }
-  async updateShopProfile(patch: Partial<Pick<import("../types").Shop, "name" | "phone" | "address" | "city" | "hours" | "location">>) {
+  async updateShopProfile(patch: Partial<Pick<import("../types").Shop, "name" | "phone" | "address" | "city" | "hours" | "location" | "shopPhotos" | "coverPhoto">>) {
     Object.assign(this.db.shop, patch);
     return clone(this.db.shop);
   }

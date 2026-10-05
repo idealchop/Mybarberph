@@ -11,17 +11,27 @@ import "server-only";
 import { applicationDefault, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getStorage, type Storage } from "firebase-admin/storage";
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "mybarberph";
 const DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_ID || "barbersdb";
+const STORAGE_BUCKET =
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  `${PROJECT_ID}.firebasestorage.app`;
 
 let app: App | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
+let storage: Storage | undefined;
 
 function getApp(): App {
   if (app) return app;
-  app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID, credential: applicationDefault() });
+  app = getApps()[0] ?? initializeApp({
+    projectId: PROJECT_ID,
+    credential: applicationDefault(),
+    storageBucket: STORAGE_BUCKET,
+  });
   return app;
 }
 
@@ -36,6 +46,16 @@ export function adminAuth(): Auth {
   if (auth) return auth;
   auth = getAuth(getApp());
   return auth;
+}
+
+export function adminStorage(): Storage {
+  if (storage) return storage;
+  storage = getStorage(getApp());
+  return storage;
+}
+
+export function storageBucketName() {
+  return STORAGE_BUCKET;
 }
 
 export const firebaseProjectId = PROJECT_ID;

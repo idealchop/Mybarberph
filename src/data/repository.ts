@@ -32,7 +32,7 @@ export interface BarbersRepository {
   getShop(): Promise<Shop>;
   updateShopSettings(patch: Partial<Shop["settings"]>): Promise<Shop>;
   updateShopTier(tier: import("./types").Tier): Promise<Shop>;
-  updateShopProfile(patch: Partial<Pick<Shop, "name" | "phone" | "address" | "city" | "hours" | "location">>): Promise<Shop>;
+  updateShopProfile(patch: Partial<Pick<Shop, "name" | "phone" | "address" | "city" | "hours" | "location" | "shopPhotos" | "coverPhoto">>): Promise<Shop>;
   updateShopBilling(input: { billingPlan: import("./types").BillingPlan; billingStatus?: import("./types").BillingStatus }): Promise<Shop>;
   listBarbers(): Promise<Barber[]>;
   getBarber(id: string): Promise<Barber | undefined>;

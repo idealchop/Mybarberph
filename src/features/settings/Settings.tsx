@@ -10,6 +10,7 @@ import { Panel, PanelHeader } from "@/components/common/ui";
 import { PageColumn } from "@/components/shell/PageColumn";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LocationPicker } from "@/components/settings/LocationPicker";
+import { ShopPhotosGallery } from "@/components/settings/ShopPhotosGallery";
 import { getRepository, type BillingPlan, type Shop, type ShopLocation } from "@/data";
 import { PLANS, planLabel } from "@/lib/billing";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
@@ -172,6 +173,7 @@ export function Settings({ shop: initial }: { shop: Shop }) {
                 onAddressChange={(address) => { setShop((x) => ({ ...x, address })); setSaved(false); }}
                 onLocationChange={(location: ShopLocation) => { setShop((x) => ({ ...x, location, address: location.formattedAddress || x.address })); setSaved(false); }}
               />
+              <ShopPhotosGallery shop={shop} onChange={(next) => { setShop(next); setSaved(false); }} />
             </div>
             <Button className="mt-5" leadingIcon={saved ? <Check size={17} strokeWidth={2} /> : undefined} onClick={() => void saveProfile()}>{saved ? "Saved" : "Save profile & location"}</Button>
           </Panel>

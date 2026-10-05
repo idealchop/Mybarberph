@@ -29,6 +29,10 @@ export interface Shop {
   address: string;
   /** Map pin for River Mobile proximity. Optional until the owner sets it in Settings. */
   location?: ShopLocation;
+  /** Public gallery URLs (Firebase Storage). First or coverPhoto is featured on River Mobile. */
+  shopPhotos?: string[];
+  /** Featured shop image on River Mobile. Should be one of shopPhotos when set. */
+  coverPhoto?: string;
   phone: string;
   hours: { day: string; open: string; close: string }[];
   timezone: "Asia/Manila";
