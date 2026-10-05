@@ -22,6 +22,15 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: "mybarberph.firebaseapp.com"
     availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+    availability: [BUILD, RUNTIME]
+  - variable: FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+    availability: [BUILD, RUNTIME]
+  - variable: BARBERS_ENV
+    value: "dev"
+    availability: [BUILD, RUNTIME]
   - variable: NEXT_TELEMETRY_DISABLED
     value: "1"
     availability: [BUILD, RUNTIME]
