@@ -7,7 +7,7 @@ import { Stars } from "@/components/art";
 import { Dialog, SelectField, Toggle } from "@/components/common/Dialog";
 import { CodeChip, Panel, PanelHeader, PaymentPill, Pill } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { Barber, Customer, CustomerVisit, Membership, MembershipPlan, PaymentMethod, Voucher } from "@/data";
+import { getRepository, type Barber, type Customer, CustomerVisit, Membership, MembershipPlan, PaymentMethod, Voucher } from "@/data";
 import { PAYMENT_LABEL, peso } from "@/lib/format";
 import { lastVisitLabel, maskPhone, SOURCE_LABEL, TypePill } from "./Customers";
 import { QueueQrDialog } from "./QueueQrDialog";
@@ -56,9 +56,9 @@ export function CustomerDetail({ data }: { data: CustomerDetailData }) {
               <ul className="mt-4 flex flex-col gap-2.5 text-[13.5px] font-semibold">
                 <li className="flex items-center gap-2.5"><Phone size={16} strokeWidth={1.75} className="text-muted" /><span className="font-mono">{c.phone ?? "No number"}</span></li>
                 <li className="flex items-center justify-between gap-2.5"><span className="flex items-center gap-2.5"><MessageSquare size={16} strokeWidth={1.75} className="text-muted" />Queue texts (SMS)</span>
-                  <Toggle label="SMS consent" checked={c.consent.sms} onChange={(v) => setC({ ...c, consent: { ...c.consent, sms: v } })} disabled={!c.phone} /></li>
+                  <Toggle label="SMS consent" checked={c.consent.sms} onChange={(v) => { const next = { ...c, consent: { ...c.consent, sms: v } }; setC(next); void getRepository().saveCustomer(next).catch(() => undefined); }} disabled={!c.phone} /></li>
                 <li className="flex items-center justify-between gap-2.5"><span className="flex items-center gap-2.5"><MessageSquare size={16} strokeWidth={1.75} className="text-muted" />Promos and vouchers</span>
-                  <Toggle label="Marketing consent" checked={c.consent.marketing} onChange={(v) => setC({ ...c, consent: { ...c.consent, marketing: v } })} disabled={!c.phone} /></li>
+                  <Toggle label="Marketing consent" checked={c.consent.marketing} onChange={(v) => { const next = { ...c, consent: { ...c.consent, marketing: v } }; setC(next); void getRepository().saveCustomer(next).catch(() => undefined); }} disabled={!c.phone} /></li>
               </ul>
             ) : (
               <div className="mt-4 rounded-[18px] bg-grey-100 p-3.5">
@@ -156,7 +156,7 @@ export function CustomerDetail({ data }: { data: CustomerDetailData }) {
       <QueueQrDialog open={qr} onClose={() => setQr(false)} customer={c} />
 
       <ConvertDialog open={convert} onClose={() => setConvert(false)} name={c.name}
-        onSave={(name, phone) => { setC({ ...c, name, phone, kind: "personal", type: "regular", consent: { sms: true, marketing: false } }); setConvert(false); }} />
+        onSave={(name, phone) => { const next = { ...c, name, phone, kind: "personal" as const, type: "regular" as const, consent: { sms: true, marketing: false } }; setC(next); setConvert(false); void getRepository().saveCustomer(next).catch(() => undefined); }} />
 
       <Dialog open={memberDialog} onClose={() => setMemberDialog(false)} title="Add membership" subtitle={`Collect the first payment at the counter for ${c.name}.`}>
         <ul className="flex flex-col gap-2.5">

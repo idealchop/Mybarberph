@@ -7,7 +7,7 @@ import { Dialog, Toggle } from "@/components/common/Dialog";
 import { QrCode } from "@/components/common/QrCode";
 import { Panel, PanelHeader, Pill } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { Customer, ReferralStats, Voucher } from "@/data";
+import { getRepository, type Customer, type ReferralStats, type Voucher } from "@/data";
 import { peso } from "@/lib/format";
 
 export interface VouchersData { vouchers: Voucher[]; referral: ReferralStats; customers: Customer[] }
@@ -55,7 +55,7 @@ export function Vouchers({ data }: { data: VouchersData }) {
                     <button type="button" aria-label={`Copy ${v.code}`} onClick={() => copy(v.code)} className="inline-flex size-8 items-center justify-center rounded-full bg-surface text-ink shadow-tile">
                       {copied === v.code ? <Check size={15} strokeWidth={2} /> : <Copy size={15} strokeWidth={1.75} />}</button>
                   </div>
-                  <Toggle label={`${v.code} active`} checked={v.active} onChange={(on) => setVouchers((all) => all.map((x) => x.id === v.id ? { ...x, active: on } : x))} />
+                  <Toggle label={`${v.code} active`} checked={v.active} onChange={(on) => { const next = { ...v, active: on }; setVouchers((all) => all.map((x) => x.id === v.id ? next : x)); void getRepository().saveVoucher(next).catch(() => undefined); }} />
                 </div>
                 <b className="mt-3 text-[20px] font-extrabold tracking-[-0.02em]">{valueLabel(v)}</b>
                 <span className="text-[13px] font-semibold text-muted">{v.description}</span>
@@ -93,7 +93,7 @@ export function Vouchers({ data }: { data: VouchersData }) {
         </div>
       </div>
 
-      {creating ? <CreateVoucher onClose={() => setCreating(false)} onSave={(v) => { setVouchers((all) => [v, ...all]); setCreating(false); }} /> : null}
+      {creating ? <CreateVoucher onClose={() => setCreating(false)} onSave={(v) => { setVouchers((all) => [v, ...all]); setCreating(false); void getRepository().saveVoucher(v).catch(() => undefined); }} /> : null}
     </>
   );
 }

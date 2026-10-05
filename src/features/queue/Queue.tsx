@@ -14,7 +14,13 @@ export interface QueueData { tickets: Ticket[]; chairs: Chair[]; barbers: Barber
 type Filter = "all" | "waiting" | "in_chair" | "done";
 
 const isDone = (t: Ticket) => t.status === "completed" || t.status === "paid" || t.status === "awaiting_confirmation";
-const NOW = "2026-10-04T18:40:00+08:00";
+const NOW = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+  .format(new Date())
+  .replace(" ", "T") + "+08:00";
+
+function todayKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
 
 export function Queue({ data }: { data: QueueData }) {
   const [tickets, setTickets] = useState(data.tickets);
@@ -41,7 +47,7 @@ export function Queue({ data }: { data: QueueData }) {
     return s ? base.filter((t) => t.customerName.toLowerCase().includes(s) || t.referenceId.toLowerCase().includes(s)) : base;
   }, [filter, waiting, inChair, done, q]);
 
-  /* ---- queue actions (mock; a Firebase adapter would call the same repository methods) ---- */
+  /* ---- queue actions (optimistic UI + Firestore via repository) ---- */
   function startInChair(t: Ticket, c: Chair) {
     setTickets((all) => {
       const next = all.map((x) => x.id === t.id ? { ...x, status: "in_service" as const, chairId: c.id, barberId: x.barberId ?? c.barberId, startedAt: NOW, progressPct: 5, minsLeft: 30, nextUp: false } : x);
@@ -53,12 +59,14 @@ export function Queue({ data }: { data: QueueData }) {
     setSelected(null);
   }
   function markDone(t: Ticket) {
-    setTickets((all) => all.map((x) => x.id === t.id ? { ...x, status: "completed", completedAt: NOW, progressPct: 100 } : x));
+    setTickets((all) => all.map((x) => x.id === t.id ? { ...x, status: "awaiting_confirmation", completedAt: NOW, progressPct: 100 } : x));
     setChairs((all) => all.map((x) => x.currentTicketId === t.id ? { ...x, status: "free", currentTicketId: undefined } : x));
+    void getRepository().finishTicket(t.id).catch(() => undefined);
     setSelected(null);
   }
   function cancel(t: Ticket) {
     setTickets((all) => all.map((x) => x.id === t.id ? { ...x, status: "cancelled", nextUp: false } : x));
+    
     setSelected(null);
   }
   async function addWalkIn(input: { customerName: string; serviceId: string; barberId?: string }) {
@@ -87,7 +95,7 @@ export function Queue({ data }: { data: QueueData }) {
   }
 
   const featured = incoming.find((b) => (b.status === "here" || b.status === "verified") && !queued.has(b.id)) ?? incoming.find((b) => b.status === "pending");
-  const schedule = incoming.filter((b) => b.status !== "declined" && b.arrivingAt.startsWith("2026-10-04"));
+  const schedule = incoming.filter((b) => b.status !== "declined" && b.arrivingAt.startsWith(todayKey()));
   const freeChairs = chairs.filter((c) => c.status === "free");
   const nextUp = waiting[0];
 

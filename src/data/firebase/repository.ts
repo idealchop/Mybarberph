@@ -40,6 +40,12 @@ export class FirestoreBarbersRepository implements BarbersRepository {
     return { ...shop, settings };
   }
 
+  async updateShopTier(tier: import("../types").Tier): Promise<Shop> {
+    await this.shopRef().update({ tier });
+    const shop = await this.getShop();
+    return { ...shop, tier };
+  }
+
   private async listCol<T extends { id: string }>(name: string): Promise<T[]> {
     const snap = await this.col(name).get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T);
@@ -102,7 +108,7 @@ export class FirestoreBarbersRepository implements BarbersRepository {
   }
 
   async finishTicket(ticketId: string): Promise<Ticket> {
-    return this.patchTicket(ticketId, { status: "awaiting_confirmation", progressPct: 100 });
+    return this.patchTicket(ticketId, { status: "awaiting_confirmation", completedAt: manilaNow(), progressPct: 100 });
   }
 
   async listWaitlist() { return this.listCol<WaitlistEntry>("waitlist"); }
@@ -287,11 +293,42 @@ export class FirestoreBarbersRepository implements BarbersRepository {
     return out;
   }
 
-  async listInsights() { return this.listCol<Insight>("insights"); }
+  async listInsights(): Promise<Insight[]> {
+    const stored = await this.listCol<Insight>("insights");
+    if (stored.length) return stored;
+    // Rule-based insights when nothing is stored (no Gemini key required).
+    const txns = await this.listCol<Transaction>("transactions");
+    const tickets = await this.listTickets();
+    const services = await this.listServices();
+    const out: Insight[] = [];
+    const waiting = tickets.filter((t) => t.status === "waiting").length;
+    if (waiting >= 4) {
+      out.push({ id: "ins-wait", title: "Queue is building", body: `${waiting} customers are waiting. Open another chair or text the waitlist.`, emphasis: "high", action: { label: "Open queue", kind: "open_chair" } });
+    }
+    const byService = new Map<string, number>();
+    for (const t of txns.slice(0, 40)) byService.set(t.serviceLabel, (byService.get(t.serviceLabel) ?? 0) + 1);
+    const top = [...byService.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) {
+      out.push({ id: "ins-svc", title: `${top[0]} is your top cut`, body: `It showed up ${top[1]} times in recent sales. Keep it featured on the kiosk.`, emphasis: "medium" });
+    }
+    const tipShare = txns.filter((t) => (t.tip ?? 0) > 0).length;
+    if (txns.length >= 5 && tipShare / txns.length < 0.25) {
+      out.push({ id: "ins-tip", title: "Tips are low", body: "Fewer than 1 in 4 tickets left a tip. Prompt for tips at payment on the kiosk.", emphasis: "low" });
+    }
+    if (!out.length && services.length) {
+      out.push({ id: "ins-welcome", title: "Your shop is live", body: "Complete a few walk-ins today — the dashboard fills in from real tickets and sales.", emphasis: "medium" });
+    }
+    return out;
+  }
   async listCustomers() { return this.listCol<Customer>("customers"); }
   async getCustomer(id: string) {
     const snap = await this.col("customers").doc(id).get();
     return snap.exists ? ({ id: snap.id, ...snap.data() } as Customer) : undefined;
+  }
+  async saveCustomer(customer: Customer): Promise<Customer> {
+    const { id, ...data } = customer;
+    await this.col("customers").doc(id).set(data, { merge: true });
+    return customer;
   }
   async listCustomerVisits(customerId: string): Promise<CustomerVisit[]> {
     const snap = await this.col("customer_visits").where("customerId", "==", customerId).get();
@@ -323,6 +360,22 @@ export class FirestoreBarbersRepository implements BarbersRepository {
     return template;
   }
   async listMessageLog() { return this.listCol<MessageLog>("message_log"); }
+
+  async sendMessage(input: { templateId?: string; to: string; customerName: string; body: string; ticketId?: string }): Promise<MessageLog> {
+    const { sendSms } = await import("@/lib/sms");
+    const result = await sendSms({ to: input.to, body: input.body });
+    const log: MessageLog = {
+      id: `ml-${Date.now()}`,
+      templateName: input.templateId ?? "custom",
+      toMasked: input.to.replace(/(\d{2})\d+(\d{2})/, "$1••••$2"),
+      customerName: input.customerName,
+      at: manilaNow(),
+      status: result.ok ? "sent" : "failed",
+    };
+    const { id, ...data } = log;
+    await this.col("message_log").doc(id).set({ ...data, ticketId: input.ticketId, body: input.body, provider: result.provider, error: result.error });
+    return log;
+  }
 
   private async patchTicket(id: string, patch: Partial<Ticket>): Promise<Ticket> {
     const ref = this.col("tickets").doc(id);

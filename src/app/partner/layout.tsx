@@ -2,6 +2,7 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import type { Metadata } from "next";
 import { getServerRepository } from "@/data/server";
 import { PartnerShell } from "@/features/partner/PartnerShell";
+import { SyncShopTier } from "@/lib/tier";
 
 export const metadata: Metadata = { title: { default: "Partner app", template: "%s · Barbers.ph Partner" } };
 
@@ -13,6 +14,7 @@ export default async function PartnerLayout({ children }: { children: React.Reac
   ]);
   return (
     <RequireAuth>
+      <SyncShopTier tier={shop.tier} />
       <PartnerShell initial={{ incoming, visits, notifications, barbers, shop }}>{children}</PartnerShell>
     </RequireAuth>
   );

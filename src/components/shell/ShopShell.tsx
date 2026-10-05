@@ -7,7 +7,6 @@ import { BarberChair } from "@/components/art";
 import { useTier } from "@/lib/tier";
 import { Brand } from "./Brand";
 import { ClientNav } from "./ClientNav";
-import { DemoTierSwitch } from "./DemoTierSwitch";
 import { HELP_ITEM, SHOP_NAV } from "./nav";
 
 function RiverMobilePromo({ newToday }: { newToday: number }) {
@@ -49,7 +48,6 @@ export function ShopShell({ children, counts }: { children: ReactNode; counts: S
       >
         {children}
       </AppShell>
-      <DemoTierSwitch />
     </ClientNav>
   );
 }

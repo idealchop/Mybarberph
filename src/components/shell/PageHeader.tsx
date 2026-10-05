@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Avatar, IconButton, SampleDataTag, SearchInput, Topbar } from "@river-apps/ui";
+import { Avatar, IconButton, SearchInput, Topbar } from "@river-apps/ui";
 import { signOut, useAuth } from "@/lib/firebase/auth-context";
 import { ic } from "./nav";
 
@@ -22,7 +22,7 @@ export function PageHeader({ title, subtitle, search, searchWidth = 300 as 220 |
   return (
     <Topbar
       title={title}
-      subtitle={<>{subtitle} <SampleDataTag className="ml-1 align-middle" /></>}
+      subtitle={subtitle}
       actions={<>
         {search ? <SearchInput className={`hidden xl:flex ${searchWidth === 260 ? "w-[260px]" : searchWidth === 220 ? "w-[220px]" : "w-[300px]"}`} placeholder={search} label={search} onChange={onSearch ? (e) => onSearch(e.target.value) : undefined} /> : null}
         {actions}

@@ -6,7 +6,7 @@ import { BarberIcon, HaircutArt, Portrait } from "@/components/art";
 import { Dialog, SelectField, Toggle } from "@/components/common/Dialog";
 import { Panel, PanelHeader, Pill } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { Barber, Chair, HaircutStyle, Service } from "@/data";
+import { getRepository, type Barber, Chair, HaircutStyle, Service } from "@/data";
 import { peso } from "@/lib/format";
 
 export interface BarbersData { barbers: Barber[]; chairs: Chair[]; services: Service[]; styles: HaircutStyle[]; stats: Record<string, { cuts: number; sales: number; tips: number }> }
@@ -145,9 +145,9 @@ export function BarbersSetup({ data }: { data: BarbersData }) {
       </div>
 
       {editing ? <BarberDialog barber={editing} services={menu} chairs={chairs} onClose={() => setEditing(null)}
-        onSave={(b) => { setBarbers((all) => all.some((x) => x.id === b.id) ? all.map((x) => x.id === b.id ? b : x) : [...all, b]); if (b.defaultChairId) assignChair(b.defaultChairId, b.id); setEditing(null); }} /> : null}
+        onSave={(b) => { setBarbers((all) => all.some((x) => x.id === b.id) ? all.map((x) => x.id === b.id ? b : x) : [...all, b]); if (b.defaultChairId) assignChair(b.defaultChairId, b.id); setEditing(null); void getRepository().saveBarber(b).catch(() => undefined); }} /> : null}
       {svcEdit ? <ServiceDialog service={svcEdit} onClose={() => setSvcEdit(null)}
-        onSave={(s) => { setServices((all) => all.some((x) => x.id === s.id) ? all.map((x) => x.id === s.id ? s : x) : [...all, s]); setSvcEdit(null); }} /> : null}
+        onSave={(svc) => { setServices((all) => all.some((x) => x.id === svc.id) ? all.map((x) => x.id === svc.id ? svc : x) : [...all, svc]); setSvcEdit(null); void getRepository().saveService(svc).catch(() => undefined); }} /> : null}
     </>
   );
 }

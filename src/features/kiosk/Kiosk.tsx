@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Banknote, Check, CreditCard, Shuffle, Smartphone, Wallet } from "lucide-react";
-import { Avatar, Button, cn, Input, PhoneInput, ProgressRing, SampleDataTag, SegmentedControl, SuccessState } from "@river-apps/ui";
+import { Avatar, Button, cn, Input, PhoneInput, ProgressRing, SegmentedControl, SuccessState } from "@river-apps/ui";
 import { BarberIcon, HaircutArt, Portrait, Star } from "@/components/art";
 import { Toggle } from "@/components/common/Dialog";
 import { QrCode } from "@/components/common/QrCode";
@@ -138,8 +138,7 @@ export function Kiosk({ data }: { data: KioskData }) {
           ))}
         </ol>
         <div className="flex items-center gap-3">
-          <SampleDataTag className="hidden sm:inline-flex" />
-          <SegmentedControl<Lang> label="Language" value={lang} onChange={setLang} options={[{ value: "en", label: "English" }, { value: "fil", label: "Filipino" }]} />
+                    <SegmentedControl<Lang> label="Language" value={lang} onChange={setLang} options={[{ value: "en", label: "English" }, { value: "fil", label: "Filipino" }]} />
         </div>
       </header>
 

@@ -5,6 +5,7 @@ import { Check, Lock, MapPin, Phone } from "lucide-react";
 import { Button, HeroBanner } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { Toggle } from "@/components/common/Dialog";
+import { getRepository } from "@/data";
 import { useTier } from "@/lib/tier";
 import { usePartner } from "./PartnerShell";
 import { ListCard, PageTitle, Section } from "./parts";
@@ -31,7 +32,7 @@ export function PartnerShop() {
 
       <Section title="River Mobile">
         <ListCard>
-          <div className="flex items-center justify-between gap-3 py-2.5"><span className="flex flex-col leading-tight"><b className="text-[14px]">Accept new customers</b><span className="text-[12px] font-medium text-muted">Show my shop in River Mobile</span></span><Toggle label="Accept new customers" checked={accepting} onChange={setAccepting} /></div>
+          <div className="flex items-center justify-between gap-3 py-2.5"><span className="flex flex-col leading-tight"><b className="text-[14px]">Accept new customers</b><span className="text-[12px] font-medium text-muted">Show my shop in River Mobile</span></span><Toggle label="Accept new customers" checked={accepting} onChange={(v) => { setAccepting(v); void getRepository().updateShopSettings({ acceptingRiverMobile: v }).catch(() => undefined); }} /></div>
           <div className="flex items-center justify-between gap-3 border-t border-line py-2.5"><span className="flex flex-col leading-tight"><b className="text-[14px]">Booking notifications</b><span className="text-[12px] font-medium text-muted">Push and email</span></span><Toggle label="Booking notifications" checked={notify} onChange={setNotify} /></div>
         </ListCard>
       </Section>

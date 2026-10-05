@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Input, SampleDataTag, cn } from "@river-apps/ui";
+import { Button, Input, cn } from "@river-apps/ui";
 import { Brand } from "@/components/shell/Brand";
 import { authErrorMessage, signInEmail, signUpEmail } from "@/lib/firebase/auth-context";
 import { ensureShopAndRedirect } from "@/lib/post-login";
@@ -34,8 +34,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
       <div className="mb-6 flex items-center justify-between gap-3">
         <Brand />
-        <SampleDataTag />
-      </div>
+</div>
       <h1 className="text-[26px] font-extrabold tracking-[-0.03em]">{mode === "login" ? "Sign in" : "Create your shop"}</h1>
       <p className="mt-1.5 text-[14px] font-semibold text-muted">
         {mode === "login" ? "Owner and staff access for Barbers.ph." : "Starts you on the Paid plan with demo queue, sales and River Mobile bookings."}

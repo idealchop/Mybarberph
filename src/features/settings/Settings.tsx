@@ -98,7 +98,7 @@ export function Settings({ shop: initial }: { shop: Shop }) {
               {(tier === "paid" ? PAID : PARTNER).map((f) => <li key={f} className="flex items-center gap-2"><Check size={15} strokeWidth={2.2} />{f}</li>)}
               {tier === "partner" ? PAID.slice(1).map((f) => <li key={f} className="flex items-center gap-2 text-subtle"><Lock size={13} strokeWidth={2} />{f}</li>) : null}
             </ul>
-            <p className="mt-4 rounded-tile bg-grey-100 px-3 py-2.5 text-[12px] font-semibold text-muted">Demo only: tap a plan (or use the Demo tier switch) to preview what each tier unlocks. Real plans are billed through River Apps.</p>
+            <p className="mt-4 rounded-tile bg-grey-100 px-3 py-2.5 text-[12px] font-semibold text-muted">Changing plan updates this shop in Firestore. Card billing through River Apps / PayMongo is not wired yet — use this to switch Partner ↔ Paid while building.</p>
           </Panel>
 
           {/* kiosk pairing */}

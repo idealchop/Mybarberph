@@ -8,10 +8,14 @@ import { BookingSheet } from "./BookingSheet";
 import { usePartner } from "./PartnerShell";
 import { BookingRow, GreetingHeader, ListCard, Section, VisitRow } from "./parts";
 
+function todayKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
 export function PartnerHome() {
   const { incoming, visits } = usePartner();
   const [open, setOpen] = useState<IncomingBooking | null>(null);
-  const today = incoming.filter((b) => b.arrivingAt.startsWith("2026-10-04") && b.status !== "declined");
+  const today = incoming.filter((b) => b.arrivingAt.startsWith(todayKey()) && b.status !== "declined");
   const coming = today.filter((b) => b.status !== "verified").length;
   const week = visits.filter((v) => v.status !== "no_show");
   return (

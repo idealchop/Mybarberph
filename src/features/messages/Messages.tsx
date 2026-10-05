@@ -5,7 +5,7 @@ import { Badge, Button, cn, Input } from "@river-apps/ui";
 import { SelectField, Toggle } from "@/components/common/Dialog";
 import { Panel, PanelHeader, Pill } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { MessageLog, MessageTemplate } from "@/data";
+import { getRepository, type MessageLog, type MessageTemplate } from "@/data";
 
 export interface MessagesData { templates: MessageTemplate[]; log: MessageLog[] }
 
@@ -28,10 +28,13 @@ export function smsParts(text: string) { return text.length <= 160 ? 1 : Math.ce
 
 export function Messages({ data }: { data: MessagesData }) {
   const [templates, setTemplates] = useState(data.templates);
-  const [selectedId, setSelectedId] = useState(data.templates[0]!.id);
-  const [draft, setDraft] = useState<MessageTemplate>(data.templates[0]!);
+  const emptyTpl: MessageTemplate = { id: "mt-empty", key: "custom_empty", name: "New template", channel: "sms", body: "Hi {{customerName}}!", trigger: "Manual send only", enabled: false, isDefault: false, sentThisMonth: 0 };
+  const [selectedId, setSelectedId] = useState(data.templates[0]?.id ?? emptyTpl.id);
+  const [draft, setDraft] = useState<MessageTemplate>(data.templates[0] ?? emptyTpl);
   const [saved, setSaved] = useState(false);
   const [tested, setTested] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [log, setLog] = useState(data.log);
   const ta = useRef<HTMLTextAreaElement>(null);
   const [defaults] = useState<Record<string, string>>(() => Object.fromEntries(data.templates.map((t) => [t.id, t.body])));
 
@@ -46,9 +49,10 @@ export function Messages({ data }: { data: MessagesData }) {
     setDraft({ ...draft, body: draft.body.slice(0, start) + token + draft.body.slice(end) });
     requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(start + token.length, start + token.length); });
   }
-  function save() {
+  async function save() {
     setTemplates((all) => all.some((t) => t.id === draft.id) ? all.map((t) => t.id === draft.id ? draft : t) : [...all, draft]);
     setSaved(true);
+    await getRepository().saveMessageTemplate(draft).catch(() => undefined);
   }
   function addTemplate() {
     const t: MessageTemplate = { id: `mt-custom-${Date.now()}`, key: `custom_${Date.now()}`, name: "New template", channel: "sms", trigger: "Manual send only", enabled: false, isDefault: false, sentThisMonth: 0, body: "Hi {{customerName}}! " };
@@ -71,7 +75,7 @@ export function Messages({ data }: { data: MessagesData }) {
                     <span className="flex items-center gap-1.5"><b className="truncate text-[14.5px]">{t.name}</b>{t.isDefault ? <Badge variant={t.id === selectedId ? "on-ink" : "soft"} size="sm" className={t.id === selectedId ? "" : "bg-surface"}>Default</Badge> : null}</span>
                     <span className={cn("mt-1 truncate text-[12px] font-semibold", t.id === selectedId ? "text-on-ink-muted" : "text-muted")}>{t.trigger} · {t.sentThisMonth} sent</span>
                   </button>
-                  <span className={cn(t.id === selectedId && "[&>button]:ring-1 [&>button]:ring-on-ink-line")}><Toggle label={`${t.name} enabled`} checked={t.enabled} onChange={(v) => { setTemplates((all) => all.map((x) => x.id === t.id ? { ...x, enabled: v } : x)); if (t.id === selectedId) setDraft((d) => ({ ...d, enabled: v })); }} /></span>
+                  <span className={cn(t.id === selectedId && "[&>button]:ring-1 [&>button]:ring-on-ink-line")}><Toggle label={`${t.name} enabled`} checked={t.enabled} onChange={(v) => { const next = { ...t, enabled: v }; setTemplates((all) => all.map((x) => x.id === t.id ? next : x)); if (t.id === selectedId) setDraft((d) => ({ ...d, enabled: v })); void getRepository().saveMessageTemplate(next).catch(() => undefined); }} /></span>
                 </div>
               </li>
             ))}
@@ -108,9 +112,25 @@ export function Messages({ data }: { data: MessagesData }) {
                 </div>
                 <div className="flex flex-wrap gap-2 border-t border-line pt-4">
                   <Button disabled={!dirty} leadingIcon={saved && !dirty ? <Check size={17} strokeWidth={2} /> : undefined} onClick={save}>{saved && !dirty ? "Saved" : "Save template"}</Button>
-                  <Button variant="secondary" leadingIcon={tested ? <Check size={17} strokeWidth={2} /> : <Send size={16} strokeWidth={1.75} />} onClick={() => setTested(true)}>{tested ? "Test sent to +63 9•• ••• 0142" : "Send test to me"}</Button>
+                  <Button variant="secondary" leadingIcon={tested ? <Check size={17} strokeWidth={2} /> : <Send size={16} strokeWidth={1.75} />} onClick={() => void (async () => {
+                    setTestError(null);
+                    try {
+                      const entry = await getRepository().sendMessage({
+                        templateId: draft.id,
+                        to: "+639175550142",
+                        customerName: "You (test)",
+                        body: preview,
+                      });
+                      setLog((prev) => [entry, ...prev]);
+                      setTested(true);
+                      if (entry.status === "failed") setTestError("Logged outbound — SMS provider not configured yet. Add BREVO_SMS_API_KEY to send for real.");
+                    } catch (e) {
+                      setTestError(e instanceof Error ? e.message : "Send failed");
+                    }
+                  })()}>{tested ? "Test logged" : "Send test to me"}</Button>
                   {draft.isDefault && draft.body !== defaults[draft.id] ? <Button variant="ghost" leadingIcon={<RotateCcw size={16} strokeWidth={1.75} />} onClick={() => setDraft({ ...draft, body: defaults[draft.id]! })}>Reset to default</Button> : null}
                 </div>
+                {testError ? <p className="text-[12.5px] font-semibold text-muted">{testError}</p> : null}
               </div>
 
               {/* phone preview */}
@@ -133,7 +153,7 @@ export function Messages({ data }: { data: MessagesData }) {
             <div className="-mx-1 mt-3 overflow-x-auto px-1">
               <table className="w-full min-w-[560px] border-collapse text-left">
                 <thead><tr className="text-[12px] text-muted"><th className="pb-2 pl-1 pr-3 font-semibold">Time</th><th className="pb-2 pr-3 font-semibold">Template</th><th className="pb-2 pr-3 font-semibold">Customer</th><th className="pb-2 pr-3 font-semibold">To</th><th className="pb-2 pr-1 text-right font-semibold">Status</th></tr></thead>
-                <tbody>{data.log.map((m) => (
+                <tbody>{log.map((m) => (
                   <tr key={m.id} className="border-t border-line">
                     <td className="whitespace-nowrap py-[8px] pl-1 pr-3 text-[13px] font-semibold text-ink-2">{m.at}</td>
                     <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-bold">{m.templateName}</td>

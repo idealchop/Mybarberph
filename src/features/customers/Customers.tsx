@@ -6,14 +6,14 @@ import { BarberIcon } from "@/components/art";
 import { Dialog, SelectField, Toggle } from "@/components/common/Dialog";
 import { FilterSelect, Panel, PanelHeader, Pill } from "@/components/common/ui";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { Barber, Customer, CustomerType, Membership, MembershipPlan } from "@/data";
+import { getRepository, type Barber, type Customer, CustomerType, Membership, MembershipPlan } from "@/data";
 import { peso } from "@/lib/format";
 import { QueueQrDialog } from "./QueueQrDialog";
 
 export interface CustomersData { customers: Customer[]; barbers: Barber[]; plans: MembershipPlan[]; memberships: Membership[] }
 export const TYPE_LABEL: Record<CustomerType, string> = { walk_in: "Walk-in", regular: "Regular", member: "Member", vip: "VIP" };
 export const SOURCE_LABEL: Record<Customer["source"], string> = { kiosk: "Kiosk", staff: "Added by staff", web: "Web", "partner:river-mobile": "River Mobile" };
-const NOW = Date.parse("2026-10-04T18:40:00+08:00");
+const NOW = Date.now();
 
 export function lastVisitLabel(iso?: string) {
   if (!iso) return "—";
@@ -140,7 +140,7 @@ export function Customers({ data }: { data: CustomersData }) {
 
       <QueueQrDialog open={qr} onClose={() => setQr(false)} />
       <AddCustomerDialog open={adding} onClose={() => setAdding(false)} barbers={data.barbers}
-        onAdd={(c) => { setCustomers((all) => [c, ...all]); setAdding(false); }} />
+        onAdd={(c) => { setCustomers((all) => [c, ...all]); setAdding(false); void getRepository().saveCustomer(c).catch(() => undefined); }} />
     </>
   );
 }

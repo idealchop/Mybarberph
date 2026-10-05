@@ -23,6 +23,10 @@ export class MockBarbersRepository implements BarbersRepository {
     this.db.shop.settings = { ...this.db.shop.settings, ...patch };
     return clone(this.db.shop);
   }
+  async updateShopTier(tier: import("../types").Tier) {
+    this.db.shop.tier = tier;
+    return clone(this.db.shop);
+  }
   async listBarbers() { return clone(this.db.barbers); }
   async getBarber(id: string) { return clone(this.db.barbers.find((b) => b.id === id)); }
   async saveBarber(barber: Barber) { return this.upsert(this.db.barbers, barber); }
@@ -128,6 +132,7 @@ export class MockBarbersRepository implements BarbersRepository {
   async listInsights() { return clone(seed.insights); }
 
   async listCustomers() { return clone(this.db.customers); }
+  async saveCustomer(customer: import("../types").Customer) { return this.upsert(this.db.customers, customer); }
   async getCustomer(id: string) { return clone(this.db.customers.find((c) => c.id === id)); }
   async listCustomerVisits(customerId: string) {
     const known = this.db.customerVisits[customerId];
@@ -150,6 +155,14 @@ export class MockBarbersRepository implements BarbersRepository {
   async listMessageTemplates() { return clone(this.db.templates); }
   async saveMessageTemplate(template: MessageTemplate) { return this.upsert(this.db.templates, template); }
   async listMessageLog() { return clone(this.db.messageLog); }
+  async sendMessage(input: { templateId?: string; to: string; customerName: string; body: string; ticketId?: string }) {
+    const log = {
+      id: `ml-${Date.now()}`, templateName: input.templateId ?? "custom",
+      toMasked: input.to, customerName: input.customerName, at: seed.DEMO_NOW, status: "sent" as const,
+    };
+    this.db.messageLog.unshift(log);
+    return clone(log);
+  }
 
   private upsert<V extends { id: string }>(list: V[], item: V): V {
     const i = list.findIndex((x) => x.id === item.id);

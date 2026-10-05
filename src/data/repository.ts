@@ -31,6 +31,7 @@ export interface BarbersRepository {
   /* shop & setup */
   getShop(): Promise<Shop>;
   updateShopSettings(patch: Partial<Shop["settings"]>): Promise<Shop>;
+  updateShopTier(tier: import("./types").Tier): Promise<Shop>;
   listBarbers(): Promise<Barber[]>;
   getBarber(id: string): Promise<Barber | undefined>;
   saveBarber(barber: Barber): Promise<Barber>;
@@ -71,6 +72,7 @@ export interface BarbersRepository {
   /* customers */
   listCustomers(): Promise<Customer[]>;
   getCustomer(id: string): Promise<Customer | undefined>;
+  saveCustomer(customer: Customer): Promise<Customer>;
   listCustomerVisits(customerId: string): Promise<CustomerVisit[]>;
   listMembershipPlans(): Promise<MembershipPlan[]>;
   listMemberships(): Promise<Membership[]>;
@@ -82,4 +84,5 @@ export interface BarbersRepository {
   listMessageTemplates(): Promise<MessageTemplate[]>;
   saveMessageTemplate(template: MessageTemplate): Promise<MessageTemplate>;
   listMessageLog(): Promise<MessageLog[]>;
+  sendMessage(input: { templateId?: string; to: string; customerName: string; body: string; ticketId?: string }): Promise<MessageLog>;
 }
