@@ -1,11 +1,25 @@
-# Firebase adapter (not implemented yet)
+# Firebase adapter
 
-Implement `BarbersRepository` (`../repository.ts`) here against the Barbers.ph Firebase project
-(its own project, DB and auth; Firestore paths per the plan §3.3, money in centavos, Asia/Manila day keys):
+Implements `BarbersRepository` against the **single** Barbers.ph Firebase project
+[`mybarberph`](https://console.firebase.google.com/project/mybarberph/overview).
 
-- reads from `shops/{shopId}/…` collections; writes through the `barbersApi` Cloud Functions;
-- Partner features (incoming River Mobile bookings, scan to verify) go through the Partner API endpoints (§4);
-- tier gating must also be enforced server-side (`403 PLAN_FEATURE_LOCKED`);
-- then set `NEXT_PUBLIC_DATA_SOURCE=firebase` and return the new class from `getRepository()` in `../index.ts`.
+| | |
+| --- | --- |
+| Project | `mybarberph` (one GCP/Firebase project — not aquaflow / riverdb) |
+| Auth | Shared email/password (Google optional once an OAuth client is added) |
+| Dev database | `barbersdb-dev` |
+| Prod database | `barbersdb` |
+| App Hosting | `barbers-ph-dev` → dev DB · `barbers-ph` → prod DB |
 
-No UI code needs to change: pages and components only import from `@/data`.
+## How it is wired
+
+- **Server pages** call `getServerRepository()` → Admin SDK, scoped to the shop from the session cookie. Membership is checked (`shops/{shopId}/members/{uid}`).
+- **Client mutations** call `getRepository()` → `POST /api/repo` with the same session. The API re-checks membership before every method.
+- **Rules** (`firestore.rules`): members may read shop data; all writes are denied to clients (Admin SDK / API only). This closes the River Kit tenancy hole.
+- Set `NEXT_PUBLIC_DATA_SOURCE=firebase` (and the matching `FIRESTORE_DATABASE_ID`) to use this adapter. Default remains `mock` for demos without credentials.
+
+## Seed
+
+```bash
+npm run seed   # writes Kanto Kings into barbersdb-dev; demo login owner@kantokings.ph
+```

@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Barbers.ph Firestore rules (database: barbersdb).
+//
+// Tenancy (fixes the River Kit hole): every shop-scoped document is only
+// readable/writable when the signed-in user has an active membership under
+// shops/{shopId}/members/{uid}. Writes preferably go through the Next.js API
+// (Admin SDK bypasses rules); these rules still protect direct client access.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(shopId) {
+      return /databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid);
+    }
+
+    function isMember(shopId) {
+      return signedIn()
+        && exists(memberPath(shopId))
+        && get(memberPath(shopId)).data.status == 'active'
+        && get(memberPath(shopId)).data.shopId == shopId;
+    }
+
+    function isOwner(shopId) {
+      return isMember(shopId) && get(memberPath(shopId)).data.role == 'owner';
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /shops/{shopId} {
+      allow read: if isMember(shopId);
+      allow write: if false;
+
+      match /members/{uid} {
+        allow read: if isMember(shopId) || (signedIn() && request.auth.uid == uid);
+        allow write: if false;
+      }
+
+      match /counters/{id} {
+        allow read, write: if false;
+      }
+
+      match /audit_logs/{id} {
+        allow read: if isOwner(shopId);
+        allow write: if false;
+      }
+
+      // Operational collections: members can read; writes stay server-side.
+      match /{collection}/{docId} {
+        allow read: if isMember(shopId)
+          && collection in [
+            'barbers', 'chairs', 'services', 'haircut_styles', 'customers',
+            'tickets', 'waitlist', 'incoming_bookings', 'verified_visits',
+            'partner_notifications', 'transactions', 'customer_visits',
+            'vouchers', 'message_templates', 'message_log', 'feedback',
+            'membership_plans', 'memberships', 'insights', 'daily_sales'
+          ];
+        allow write: if false;
+      }
+    }
+
+    // Collection-group: a user can list their own memberships.
+    match /{path=**}/members/{uid} {
+      allow read: if signedIn()
+        && request.auth.uid == uid
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

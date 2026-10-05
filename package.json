@@ -2,7 +2,7 @@
   "name": "mybarberph",
   "version": "0.1.0",
   "private": true,
-  "description": "Barbers.ph by River Apps: barbershop queue, sales record, kiosk and River Mobile partner app (front-end, sample data, Firebase-ready data layer).",
+  "description": "Barbers.ph by River Apps: barbershop queue, sales, kiosk and Partner app. Firebase-backed (project mybarberph; DBs barbersdb-dev / barbersdb).",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
@@ -15,14 +15,20 @@
     "start": "next start -p 3300",
     "lint": "eslint .",
     "typecheck": "npm run kit:build && tsc --noEmit",
-    "screenshots": "python3 scripts/screenshots.py"
+    "screenshots": "python3 scripts/screenshots.py",
+    "seed": "node --env-file=.env.local scripts/seed-demo.mjs",
+    "firebase:rules": "firebase deploy --only firestore:rules --project mybarberph"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "1.51.0",
     "next": "16.3.8",
     "qrcode-generator": "^1.5.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
@@ -33,6 +39,7 @@
     "eslint": "^9.39.0",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3"
   }
 }

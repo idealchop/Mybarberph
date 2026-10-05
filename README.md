@@ -1,6 +1,8 @@
 # Mybarberph: Barbers.ph front-end (UI MVP)
 
-The **Barbers.ph** barbershop app from River Apps, built as a front-end only. It has three parts: the owner desktop, a walk-in kiosk (POS 2) and the free Partner phone app. There is **no backend yet**. **All data is sample data** held in memory behind a repository interface, so Firebase can be swapped in later without touching the screens. Every screen shows a `Sample data` tag.
+The **Barbers.ph** barbershop app from River Apps. It has three parts: the owner desktop, a walk-in kiosk (POS 2) and the free Partner phone app.
+
+It runs against a **standalone Firebase project** (`mybarberph`) with two named Firestore databases (`barbersdb-dev` / `barbersdb`). Set `NEXT_PUBLIC_DATA_SOURCE=mock` to use the in-memory demo instead. Every screen still shows a `Sample data` tag when useful.
 
 ![Demo launcher](docs/screenshots/00-launcher.png)
 
@@ -36,6 +38,46 @@ npm run dev        # builds the kit tokens, then http://localhost:3300
 | `npm run screenshots -- <baseUrl> <outDir> [filter]` | Playwright screenshots of every screen at the mockup sizes. Needs `pip install playwright && playwright install chromium`. |
 
 Open **http://localhost:3300/**. It is a launcher that links to every screen and has the tier switch.
+
+
+## Firebase (standalone project)
+
+Barbers.ph does **not** use `aquaflow-management-suite` / `riverdb`. One Firebase/GCP project, two databases, two App Hosting backends, one Auth:
+
+| | Dev | Prod |
+| --- | --- | --- |
+| Project | `mybarberph` | `mybarberph` (same) |
+| Firestore | `barbersdb-dev` | `barbersdb` |
+| App Hosting | `barbers-ph-dev` | `barbers-ph` |
+| Auth | Email/password (shared) | same |
+
+### Local setup against Firebase
+
+1. Copy `.env.example` → `.env.local` and fill in the web app keys from  
+   [Project settings → Your apps](https://console.firebase.google.com/project/mybarberph/settings/general)  
+   (or keep the values already used for the "Barbers.ph Web" app).
+2. Point `FIRESTORE_DATABASE_ID` / `NEXT_PUBLIC_FIRESTORE_DATABASE_ID` at **`barbersdb-dev`**.
+3. Provide Application Default Credentials for the Admin SDK (App Hosting injects these in production). Locally, a user ADC file works; never commit it (`.secret*` is gitignored).
+4. Deploy rules (both databases share `firestore.rules`):
+
+```bash
+npm run firebase:rules
+npm run seed          # creates owner@kantokings.ph / BarbersPh!demo and seeds Kanto Kings into barbersdb-dev
+npm run dev
+```
+
+5. Open http://localhost:3300/login and sign in with the demo owner, or http://localhost:3300/signup to create a new shop (also seeded).
+
+### Security model
+
+- Session cookie (`bp_session`) from Firebase Auth ID token.
+- Every shop-scoped read/write goes through membership: `shops/{shopId}/members/{uid}` must exist, be `active`, and match that `shopId` (SmartRefill-style; fixes the River Kit hole).
+- Firestore rules: members can **read** operational collections; **writes are server-only** (Admin SDK via `/api/repo` and server pages).
+- Tips are stored on transactions but **excluded from sales totals** (`total` = service subtotal only).
+
+### Mock fallback
+
+`NEXT_PUBLIC_DATA_SOURCE=mock` (the default if unset) keeps the original in-memory repository for UI demos without Firebase credentials.
 
 ## Routes
 
@@ -135,7 +177,7 @@ This follows the same approach as the other kit-based apps (Mygymph, Laundry.ph)
 - Queue and ticket QR codes are real and scannable (`qrcode-generator`) and encode the ticket or customer code.
 - The kiosk's Filipino translation covers the main headings and buttons only.
 - Photo upload and receipt printing are stubs. CSV export builds the file in the browser from the sample transactions.
-- State is held in memory, so a full page reload resets the sample data.
+- With `NEXT_PUBLIC_DATA_SOURCE=mock`, state is held in memory and a full page reload resets it. With `firebase`, data lives in Firestore (`barbersdb-dev` or `barbersdb`).
 
 ## Screenshots
 

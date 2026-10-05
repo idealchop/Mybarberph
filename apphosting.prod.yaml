@@ -1,0 +1,11 @@
+# Prod App Hosting backend: barbers-ph → Firestore barbersdb
+env:
+  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
+    value: "barbersdb"
+    availability: [BUILD, RUNTIME]
+  - variable: FIRESTORE_DATABASE_ID
+    value: "barbersdb"
+    availability: [BUILD, RUNTIME]
+  - variable: BARBERS_ENV
+    value: "prod"
+    availability: [BUILD, RUNTIME]

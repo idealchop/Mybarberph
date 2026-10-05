@@ -1,0 +1,56 @@
+{
+  "firestore": [
+    {
+      "database": "barbersdb-dev",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    },
+    {
+      "database": "barbersdb",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ],
+  "apphosting": [
+    {
+      "backendId": "barbers-ph-dev",
+      "rootDir": ".",
+      "ignore": [
+        "**/node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "**/.next",
+        "docs/screenshots",
+        "**/.env",
+        "**/.env.*.local",
+        "**/.secret*",
+        "vendor/river-apps-ui-kit/apps",
+        "vendor/river-apps-ui-kit/node_modules"
+      ]
+    },
+    {
+      "backendId": "barbers-ph",
+      "rootDir": ".",
+      "ignore": [
+        "**/node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "**/.next",
+        "docs/screenshots",
+        "**/.env",
+        "**/.env.*.local",
+        "**/.secret*",
+        "vendor/river-apps-ui-kit/apps",
+        "vendor/river-apps-ui-kit/node_modules"
+      ]
+    }
+  ],
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "ui": { "enabled": true, "host": "127.0.0.1", "port": 4000 },
+    "singleProjectMode": true
+  }
+}

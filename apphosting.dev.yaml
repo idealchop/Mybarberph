@@ -1,0 +1,11 @@
+# Dev App Hosting backend: barbers-ph-dev → Firestore barbersdb-dev
+env:
+  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+    availability: [BUILD, RUNTIME]
+  - variable: FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+    availability: [BUILD, RUNTIME]
+  - variable: BARBERS_ENV
+    value: "dev"
+    availability: [BUILD, RUNTIME]
