@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { ArrowRight, ChartColumn, LayoutGrid, List, Lock, MessageSquare, MonitorSmartphone, Scissors, Settings, Smartphone, TicketPercent, Users } from "lucide-react";
-import { Badge, HeroBanner, IconTile, SampleDataTag, cn } from "@river-apps/ui";
+import { Badge, HeroBanner, IconTile, cn } from "@river-apps/ui";
 import { BarberChair, BarberIcon } from "@/components/art";
 import { Brand } from "@/components/shell/Brand";
 import { ClientNav } from "@/components/shell/ClientNav";
@@ -35,7 +35,7 @@ export function Launcher() {
   const { tier, can } = useTier();
   return (
     <ClientNav className="mx-auto min-h-dvh max-w-[1180px] px-5 pb-16 pt-6 sm:px-8">
-      <header className="flex items-center justify-between gap-3"><Brand /><span className="flex items-center gap-3"><SampleDataTag /><DemoTierSwitch floating={false} /></span></header>
+      <header className="flex items-center justify-between gap-3"><Brand /><DemoTierSwitch floating={false} /></header>
 
       <HeroBanner className="mt-6" size="lg" eyebrow="Kanto Kings Barbershop · Marikina" titleSize="lg" contentWidth={560}
         title="Barbers.ph front-end demo"
@@ -60,7 +60,6 @@ export function Launcher() {
           </div>
         </div>
       </section>
-      <p className="mt-10 text-center text-[12.5px] font-medium text-muted">All data is sample data held in memory. Refreshing the page resets it.</p>
     </ClientNav>
   );
 }

@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
-import { Gate } from "@/components/common/LockedFeature";
-import { getRepository } from "@/data";
-import { Queue } from "@/features/queue/Queue";
+import { Suspense } from "react";
+import { QueueBoard } from "@/features/queue/QueueBoard";
 
-export const metadata: Metadata = { title: "Queue & schedule" };
+export const metadata: Metadata = { title: "Queue" };
 
-export default async function QueuePage() {
-  const repo = getRepository();
-  const [tickets, chairs, barbers, services, incoming, waitlist] = await Promise.all([
-    repo.listTickets(), repo.listChairs(), repo.listBarbers(), repo.listServices(), repo.listIncomingBookings(), repo.listWaitlist(),
-  ]);
+export default function QueuePage() {
   return (
-    <Gate feature="queue">
-      <Queue data={{ tickets, chairs, barbers, services, incoming, waitlist }} />
-    </Gate>
+    <Suspense fallback={null}>
+      <QueueBoard />
+    </Suspense>
   );
 }

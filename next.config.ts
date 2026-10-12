@@ -8,6 +8,22 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   agentRules: false,
   devIndicators: false,
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/home", permanent: false },
+      { source: "/customers", destination: "/queue", permanent: false },
+      { source: "/customers/:id", destination: "/queue", permanent: false },
+      { source: "/barbers", destination: "/settings", permanent: false },
+      { source: "/vouchers", destination: "/home", permanent: false },
+      { source: "/messages", destination: "/community", permanent: false },
+      { source: "/kiosk", destination: "/queue/new", permanent: false },
+      { source: "/partner", destination: "/home", permanent: false },
+      { source: "/partner/incoming", destination: "/queue?channel=online", permanent: false },
+      { source: "/partner/history", destination: "/queue", permanent: false },
+      { source: "/partner/scan", destination: "/queue", permanent: false },
+      { source: "/partner/shop", destination: "/settings", permanent: false },
+    ];
+  },
   turbopack: {
     resolveAlias: {
       "@river-apps/ui": `${kit}/ui/src/index.ts`,

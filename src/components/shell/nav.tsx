@@ -1,20 +1,28 @@
-import { ChartColumn, CircleHelp, LayoutGrid, List, MessageSquare, Scissors, Settings, TicketPercent, Users } from "lucide-react";
-import type { Feature } from "@/lib/tier";
+import { House, List, MessagesSquare } from "lucide-react";
+import type { NavItem } from "@river-apps/ui";
 
-/** Lucide at stroke 1.75 / 20px, as in the kit demo. */
+/** Lucide stroke used by older screen headers that are no longer in the nav. */
 export const ic = { size: 20, strokeWidth: 1.75 } as const;
 
-export interface ShopNavDef { key: Feature; label: string; short?: string; href: string; icon: React.ReactNode; badgeKey?: "queue" | "messages" }
+const side = { size: 20, strokeWidth: 1.75 } as const;
+const tab = { size: 22, strokeWidth: 1.75 } as const;
 
-export const SHOP_NAV: ShopNavDef[] = [
-  { key: "dashboard", label: "Dashboard", short: "Home", href: "/dashboard", icon: <LayoutGrid {...ic} /> },
-  { key: "queue", label: "Queue", href: "/queue", icon: <List {...ic} />, badgeKey: "queue" },
-  { key: "sales", label: "Sales record", short: "Sales", href: "/sales", icon: <ChartColumn {...ic} /> },
-  { key: "customers", label: "Customers", href: "/customers", icon: <Users {...ic} /> },
-  { key: "barbers", label: "Barbers & chairs", href: "/barbers", icon: <Scissors {...ic} /> },
-  { key: "vouchers", label: "Vouchers & referrals", href: "/vouchers", icon: <TicketPercent {...ic} /> },
-  { key: "messages", label: "Messages", href: "/messages", icon: <MessageSquare {...ic} />, badgeKey: "messages" },
-  { key: "settings", label: "Settings", href: "/settings", icon: <Settings {...ic} /> },
+/** Paid and Partner share the same three places. Account and the shop QR sit outside this list. */
+export const APP_NAV: NavItem[] = [
+  { key: "home", label: "Home", href: "/home", icon: <House {...side} /> },
+  { key: "queue", label: "Queue", href: "/queue", icon: <List {...side} /> },
+  { key: "community", label: "Community", href: "/community", icon: <MessagesSquare {...side} /> },
 ];
 
-export const HELP_ITEM = { key: "help", label: "Help", href: "/", icon: <CircleHelp {...ic} /> };
+export const APP_TABS: NavItem[] = [
+  { key: "home", label: "Home", href: "/home", icon: <House {...tab} /> },
+  { key: "queue", label: "Queue", href: "/queue", icon: <List {...tab} /> },
+  { key: "community", label: "Community", href: "/community", icon: <MessagesSquare {...tab} /> },
+];
+
+export function activeKeyFor(pathname: string): string | undefined {
+  if (pathname === "/queue" || pathname.startsWith("/queue/")) return "queue";
+  if (pathname === "/community" || pathname.startsWith("/community/")) return "community";
+  if (pathname === "/home" || pathname === "/") return "home";
+  return undefined;
+}

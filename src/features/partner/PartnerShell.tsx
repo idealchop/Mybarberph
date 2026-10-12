@@ -3,7 +3,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { History, House, Smartphone, Store } from "lucide-react";
-import { MobileTabBar, SampleDataTag, type NavItem } from "@river-apps/ui";
+import { MobileTabBar, type NavItem } from "@river-apps/ui";
 import { ClientNav } from "@/components/shell/ClientNav";
 import { DemoTierSwitch } from "@/components/shell/DemoTierSwitch";
 import type { Barber, IncomingBooking, PartnerNotification, Shop, VerifiedVisit } from "@/data";
@@ -30,7 +30,7 @@ function StatusBar() {
   return (
     <div className="relative z-50 flex h-[50px] flex-none items-center justify-between pl-9 pr-[26px] pt-1">
       <span className="w-[60px] text-[16px] font-bold">9:41</span>
-      <SampleDataTag />
+      <span />
       <span className="flex items-center gap-1.5 text-ink" aria-hidden>
         <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
         <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.2-1.3A10.2 10.2 0 0 0 8 .8 10.2 10.2 0 0 0 .8 3.7L2 5c1.6-1.5 3.7-2.4 6-2.4zm0 3.6c1.3 0 2.5.5 3.4 1.3l1.3-1.3A6.6 6.6 0 0 0 8 4.4c-1.8 0-3.4.7-4.7 1.8l1.3 1.3c.9-.8 2.1-1.3 3.4-1.3zM8 9.6l2-2a2.9 2.9 0 0 0-4 0z" /></svg>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Launcher } from "@/features/launcher/Launcher";
+import { Welcome } from "@/features/welcome/Welcome";
 
-export const metadata: Metadata = { title: "Barbers.ph demo" };
+export const metadata: Metadata = { title: "Barbers.ph" };
 
-export default function Home() {
-  return <Launcher />;
+export default function Page() {
+  return <Welcome />;
 }

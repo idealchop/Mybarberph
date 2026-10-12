@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { KitDefs, ref, usePrefix } from "./defs";
 
-export type BarberIconName = "scissors" | "clipper" | "pole" | "ticket" | "gift" | "qr";
+export type BarberIconName = "scissors" | "clipper" | "pole" | "razor" | "towel" | "ticket" | "gift" | "qr";
 
 const shapes: Record<BarberIconName, (p: string) => ReactNode> = {
   scissors: (p) => (
@@ -40,6 +40,21 @@ const shapes: Record<BarberIconName, (p: string) => ReactNode> = {
         <path d="M27 19 L27 44" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".8" />
       </g>
     </>
+  ),
+  razor: (p) => (
+    <g filter={ref(p, "sh")}>
+      <path d="M14 50 L40 14" stroke={ref(p, "chrome")} strokeWidth="7" strokeLinecap="round" />
+      <path d="M16 48 L38 18" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" opacity=".8" />
+      <path d="M38 12 L52 22 L44 28 Z" fill={ref(p, "rim")} />
+      <circle cx="18" cy="50" r="6" fill={ref(p, "peach")} />
+    </g>
+  ),
+  towel: (p) => (
+    <g filter={ref(p, "sh")}>
+      <path d="M12 18 H52 V46 C52 50 48 54 44 54 H20 C16 54 12 50 12 46 Z" fill={ref(p, "sky")} />
+      <path d="M12 18 C12 12 18 10 32 10 C46 10 52 12 52 18 Z" fill={ref(p, "mint")} />
+      <path d="M22 28 H42 M22 36 H42 M22 44 H36" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity=".75" />
+    </g>
   ),
   ticket: (p) => (
     <g filter={ref(p, "sh")}>

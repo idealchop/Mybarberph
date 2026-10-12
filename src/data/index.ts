@@ -7,7 +7,7 @@ import { MockBarbersRepository } from "./mock/repository";
 
 export type * from "./types";
 export type { BarbersRepository, Page, ScanResult, TransactionQuery } from "./repository";
-export { DEMO_NOW } from "./mock/seed";
+export { DEMO_NOW, shop, services, chairs, barbers, tickets, incomingBookings, salesSummary, transactions } from "./mock/seed";
 
 let instance: BarbersRepository | undefined;
 

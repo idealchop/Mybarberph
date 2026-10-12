@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "../../vendor/river-apps-ui-kit/packages/tokens/dist/theme.css";
 
+/* Phone layout: 402 px frame, 16 px margins, 12 px cards, 16 px banners. */
+:root {
+  --radius-card: 12px;
+  --radius-tile: 12px;
+  --radius-panel: 16px;
+  --radius-banner: 16px;
+}
+
 /* Let Tailwind see the class names used inside the kit's components (consumed from the submodule source). */
 @source "../../vendor/river-apps-ui-kit/packages/ui/src";
 
