@@ -1,0 +1,19 @@
+runConfig:
+  minInstances: 0
+env:
+  - variable: NEXT_PUBLIC_DATA_SOURCE
+    value: "firebase"
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyBfc1wzzhz8aGXFS4MZClYYEfebnIAZBoM"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "mybarberph.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "mybarberph"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:176603886105:web:dbc86470780f9a6b2cb088"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "176603886105"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "mybarberph-shop-photos"
+  - variable: SESSION_COOKIE_NAME
+    value: "bp_session"

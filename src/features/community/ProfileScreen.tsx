@@ -60,7 +60,7 @@ export function ProfileScreen() {
             </p>
             <p className="mt-2 text-[15px] text-muted"><b className="font-bold text-ink">{(profile.followers + (following ? 1 : 0)).toLocaleString("en-PH")}</b> followers</p>
             {isMe ? null : (
-              <button type="button" aria-pressed={following} onClick={() => feed.toggleFollow(profile.handle)} className={cn("mt-4 h-11 w-full rounded-pill text-[15px] font-bold sm:w-auto sm:min-w-[140px] sm:px-8", following ? "bg-grey-100" : "bg-ink text-on-ink")}>
+              <button type="button" aria-pressed={following} data-auth="action" onClick={() => feed.toggleFollow(profile.handle)} className={cn("mt-4 h-11 w-full rounded-pill text-[15px] font-bold sm:w-auto sm:min-w-[140px] sm:px-8", following ? "bg-grey-100" : "bg-ink text-on-ink")}>
                 {following ? "Following" : "Follow"}
               </button>
             )}

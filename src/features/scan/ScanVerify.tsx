@@ -79,13 +79,13 @@ export function ScanVerify({ onVerified, onDone, tone = "light", barberLabel }: 
       ) : null}
 
       <div className="mt-4 flex flex-col gap-2">
-        <Button size="lg" fullWidth disabled={state === "scanning"} leadingIcon={<ScanLine size={20} strokeWidth={1.75} />} onClick={() => scan("")}>
+        <Button size="lg" fullWidth disabled={state === "scanning"} leadingIcon={<ScanLine size={20} strokeWidth={1.75} />} data-auth="action" onClick={() => scan("")}>
           {state === "scanning" ? "Scanning…" : "Simulate scan"}
         </Button>
         {manual ? (
           <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (code.trim()) scan(code); }}>
             <Input size="md" label="Reference code" placeholder="RM-48213" value={code} onChange={(e) => setCode(e.target.value)} containerClassName="flex-1" className="font-mono uppercase" autoFocus />
-            <Button type="submit" variant="secondary" disabled={!code.trim() || state === "scanning"}>Verify</Button>
+            <Button data-auth="action" type="submit" variant="secondary" disabled={!code.trim() || state === "scanning"}>Verify</Button>
           </form>
         ) : (
           <Button variant="ghost" fullWidth leadingIcon={<Keyboard size={18} strokeWidth={1.75} />} onClick={() => setManual(true)}>Type the code instead</Button>

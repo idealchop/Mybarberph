@@ -107,13 +107,13 @@ export function ShopsScreen() {
                     {editing === branch.id ? "Close" : "Edit pin"}
                   </Button>
                   {branch.id === HOME_LOCATION_ID ? null : (
-                    <Button size="sm" variant="secondary" onClick={() => onRemove(branch)}>Remove</Button>
+                    <Button size="sm" variant="secondary" data-auth="action" onClick={() => onRemove(branch)}>Remove</Button>
                   )}
                 </div>
                 {editing === branch.id ? (
                   <div className="mt-3">
                     <LocationPicker value={editPin} onChange={setEditPin} disabled={busy} />
-                    <Button className="mt-3" size="sm" disabled={busy || !editPin} onClick={() => void savePin(branch)}>Save pin</Button>
+                    <Button className="mt-3" size="sm" disabled={busy || !editPin} data-auth="action" onClick={() => void savePin(branch)}>Save pin</Button>
                   </div>
                 ) : null}
               </li>
@@ -125,7 +125,7 @@ export function ShopsScreen() {
             <div className="mt-2 flex flex-col gap-3 rounded-card bg-surface px-3.5 py-3.5 shadow-card">
               <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
               <LocationPicker value={pin} onChange={setPin} disabled={busy} />
-              <Button fullWidth disabled={busy || name.trim().length < 2} onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
+              <Button fullWidth disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
             </div>
           </section>
 
@@ -142,7 +142,7 @@ export function ShopsScreen() {
         <div className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
           <b className="block text-[16px]">One shop</b>
           <p className="mt-1 text-[13.5px] font-medium text-muted">Turn this on when you run more than one shop. The shop you have now becomes the first one.</p>
-          <Button className="mt-4" fullWidth disabled={!profileReady} onClick={() => { enable(profile); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
+          <Button className="mt-4" fullWidth disabled={!profileReady} data-auth="action" onClick={() => { enable(profile); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
         </div>
       )}
     </div>

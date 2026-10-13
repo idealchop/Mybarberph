@@ -108,7 +108,7 @@ export function WalkInScreen() {
         <Input label="Name" placeholder="Optional" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
-      <Button className="mt-5" fullWidth onClick={save}>Seat them</Button>
+      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>Seat them</Button>
       </>
       )}
     </main>

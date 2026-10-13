@@ -176,7 +176,7 @@ export function SettingsScreen() {
 
         <button
           type="button"
-          onClick={() => { signOut(); router.push("/"); }}
+          onClick={() => { signOut(); router.push("/home"); }}
           className="flex min-h-14 items-center gap-3 rounded-card bg-surface px-4 py-3 text-left shadow-card"
         >
           <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><LogOut size={18} strokeWidth={1.75} /></span>
@@ -255,7 +255,7 @@ function CreditsView({ onBack }: { onBack: () => void }) {
             </div>
           </div>
           <p className="mt-3 text-[13px] font-medium text-muted">Pending {peso(pending)} · Withdrawn {peso(withdrawn)}</p>
-          <Button className="mt-4" fullWidth disabled={availableSum <= 0} onClick={() => {
+          <Button className="mt-4" fullWidth data-auth="action" disabled={availableSum <= 0} onClick={() => {
             setLines((prev) => prev.map((l) => l.status === "available" ? { ...l, status: "withdrawn" as const } : l));
             setNote(`Withdrawal of ${peso(availableSum)} recorded. Payouts to GCash are not charged in this demo.`);
           }}>Withdraw</Button>

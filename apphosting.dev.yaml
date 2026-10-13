@@ -1,0 +1,7 @@
+env:
+  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+  - variable: FIRESTORE_DATABASE_ID
+    value: "barbersdb-dev"
+  - variable: BARBERS_ENV
+    value: "dev"

@@ -32,8 +32,8 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
   if (row.status === "requested" || row.status === "accepted") {
     return (
       <div className="mt-3 flex gap-2 border-t border-dashed border-[#E8E8EC] pt-3">
-        <Button size="sm" variant="secondary" className="flex-1" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
-        <Button size="sm" className="flex-1" onClick={() => {
+        <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
+        <Button data-auth="action" size="sm" className="flex-1" onClick={() => {
           const chair = markInChair(row.id);
           onFull(chair ? "" : "Every chair is taken, or none have been added in Services yet.");
         }}>Accept</Button>
@@ -43,7 +43,7 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
   if (row.status === "in_chair") {
     return (
       <div className="mt-3 border-t border-dashed border-[#E8E8EC] pt-3">
-        <Button size="sm" fullWidth onClick={() => markDone(row.id)}>Done</Button>
+        <Button size="sm" fullWidth data-auth="action" onClick={() => markDone(row.id)}>Done</Button>
       </div>
     );
   }

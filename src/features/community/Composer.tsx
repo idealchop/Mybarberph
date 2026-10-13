@@ -107,7 +107,7 @@ export function Composer({ me, onPost }: { me: PostAuthor; onPost: (body: string
             {body.length > MAX_CHARS - 150 ? (
               <span className={cn("text-[12.5px] font-bold tabular-nums", body.length > MAX_CHARS ? "text-[#E5484D]" : "text-muted")}>{MAX_CHARS - body.length}</span>
             ) : null}
-            <Button size="sm" pill onClick={submit} disabled={!canPost}>Post</Button>
+            <Button size="sm" pill data-auth="action" onClick={submit} disabled={!canPost}>Post</Button>
           </span>
         </div>
       </div>

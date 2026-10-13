@@ -41,8 +41,8 @@ function BookingCard({ row, place }: { row: ChairRequest; place?: string }) {
       </div>
       <p className="mt-2 text-[13px] font-semibold text-muted">{row.price ? `${row.ref} · ${peso(row.price)}` : row.ref}</p>
       <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="secondary" className="flex-1" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
-        <Button size="sm" className="flex-1" onClick={() => {
+        <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
+        <Button data-auth="action" size="sm" className="flex-1" onClick={() => {
           const chair = markInChair(row.id);
           setNote(chair ? "" : "Every chair is taken, or none have been added in Services yet.");
         }}>Accept</Button>

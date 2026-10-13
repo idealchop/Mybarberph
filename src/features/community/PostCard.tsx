@@ -95,7 +95,7 @@ export function PostCard({
 
 function Action({ label, onClick, count, pressed, children }: { label: string; onClick: () => void; count?: number; pressed?: boolean; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} aria-label={count ? `${label} (${count})` : label} aria-pressed={pressed} className="inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-pill px-2 text-[13.5px] font-semibold text-ink-2 hover:bg-grey-100">
+    <button type="button" data-auth={label === "Share" || label === "Reply" ? undefined : "action"} onClick={onClick} aria-label={count ? `${label} (${count})` : label} aria-pressed={pressed} className="inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-pill px-2 text-[13.5px] font-semibold text-ink-2 hover:bg-grey-100">
       {children}
       {count ? <span className="tabular-nums">{compact(count)}</span> : null}
     </button>
@@ -128,7 +128,7 @@ function Replies({ post, now, me, replyRef, onReply }: { post: CommunityPost; no
         ))}
       </ul>
       {post.moreReplies ? <p className="mt-2 text-[13px] font-semibold text-muted">+ {post.moreReplies} more {post.moreReplies === 1 ? "reply" : "replies"}</p> : null}
-      <form className="mt-3 flex items-end gap-2.5" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <form data-auth="action" className="mt-3 flex items-end gap-2.5" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <Avatar name={me.name} preset={me.avatar} size={32} />
         <label htmlFor={id} className="sr-only">Reply to {post.author.name}</label>
         <textarea id={id} ref={replyRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} placeholder={`Reply to ${post.author.name}…`} className="max-h-32 min-h-10 flex-1 resize-none rounded-[20px] bg-grey-100 px-4 py-2.5 text-[14.5px] font-medium outline-none placeholder:text-muted" />

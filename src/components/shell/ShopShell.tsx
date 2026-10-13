@@ -1,12 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { AppShell, Button, Sidebar } from "@river-apps/ui";
-import { AuthGateSheet } from "@/components/auth/AuthGateSheet";
+import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { BarberChair } from "@/components/art";
 import { useChairRequests } from "@/lib/chair-bookings";
-import { hydrateSession, useSession } from "@/lib/session";
 import { useTier } from "@/lib/tier";
 import { Brand } from "./Brand";
 import { ClientNav } from "./ClientNav";
@@ -42,9 +41,6 @@ const FOCUS = ["/queue/new", "/settings/edit"];
 export function ShopShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const { tier } = useTier();
-  const { user, ready } = useSession();
-  const [gate, setGate] = useState(false);
-  const asked = useRef(false);
   const paid = tier === "paid";
   const waiting = useChairRequests().rows.filter((r) => r.channel === "online" && r.status === "requested").length;
   const focus = FOCUS.some((r) => pathname === r || pathname.startsWith(`${r}/`));
@@ -52,14 +48,9 @@ export function ShopShell({ children }: { children: ReactNode }) {
   const items = APP_NAV.map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
   const tabs = APP_TABS.map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
 
-  useEffect(() => { hydrateSession(); }, []);
-  useEffect(() => {
-    if (!ready || user || asked.current) return;
-    asked.current = true;
-    setGate(true);
-  }, [ready, user]);
 
   return (
+    <AuthGateProvider>
     <ClientNav>
       <AppShell
         sidebar={
@@ -76,7 +67,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
       >
         {children}
       </AppShell>
-      <AuthGateSheet open={gate} onClose={() => setGate(false)} />
     </ClientNav>
+    </AuthGateProvider>
   );
 }

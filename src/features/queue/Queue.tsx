@@ -227,7 +227,7 @@ export function Queue({ data }: { data: QueueData }) {
             {selected.status === "waiting" ? (
               <>
                 <p className="text-[13.5px] font-bold">Start in a free chair</p>
-                {freeChairs.length ? <div className="flex flex-wrap gap-2">{freeChairs.map((c) => <Button key={c.id} onClick={() => startInChair(selected, c)} leadingIcon={<BarberIcon name={c.art} size={22} />}>{c.label} · {barber(c.barberId)?.nickname}</Button>)}</div>
+                {freeChairs.length ? <div className="flex flex-wrap gap-2">{freeChairs.map((c) => <Button key={c.id} data-auth="action" onClick={() => startInChair(selected, c)} leadingIcon={<BarberIcon name={c.art} size={22} />}>{c.label} · {barber(c.barberId)?.nickname}</Button>)}</div>
                   : <p className="text-[13px] font-medium text-muted">All chairs are busy. They’ll get a “You’re next” text when one frees up.</p>}
                 <div className="flex gap-2 border-t border-line pt-3">
                   <Button variant="secondary" size="sm" leadingIcon={<MessageSquare size={15} strokeWidth={1.75} />}>Text “You’re next”</Button>
@@ -301,7 +301,7 @@ function WalkInDialog({ open, onClose, barbers, services, onSubmit }: {
   const svc = services.filter((s) => s.active && s.category !== "addon");
   return (
     <Dialog open={open} onClose={onClose} title="Add walk-in" subtitle="Gets the next ticket number and an “On queue” text if they share a number."
-      footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={() => { onSubmit({ customerName: name.trim(), serviceId, barberId: barberId === "any" ? undefined : barberId }); setName(""); }}>Add to queue</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button data-auth="action" onClick={() => { onSubmit({ customerName: name.trim(), serviceId, barberId: barberId === "any" ? undefined : barberId }); setName(""); }}>Add to queue</Button></>}>
       <div className="flex flex-col gap-4">
         <Input size="md" label="Customer name (optional)" placeholder="Walk-in" value={name} onChange={(e) => setName(e.target.value)} />
         <SelectField label="Service" value={serviceId} onChange={setServiceId} options={svc.map((s) => ({ value: s.id, label: `${s.name} · ${peso(s.price)}` }))} />

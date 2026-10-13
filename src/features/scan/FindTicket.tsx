@@ -34,11 +34,11 @@ export function FindTicket() {
           <div className="mt-4 flex gap-2">
             {match.status === "requested" || match.status === "accepted" ? (
               <>
-                <Button size="sm" variant="secondary" className="flex-1" onClick={() => setRequestStatus(match.id, "declined")}>Decline</Button>
-                <Button size="sm" className="flex-1" onClick={() => setNote(markInChair(match.id) ? "" : "Every chair is taken, or none have been added in Services yet.")}>Accept</Button>
+                <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(match.id, "declined")}>Decline</Button>
+                <Button size="sm" className="flex-1" data-auth="action" onClick={() => setNote(markInChair(match.id) ? "" : "Every chair is taken, or none have been added in Services yet.")}>Accept</Button>
               </>
             ) : null}
-            {match.status === "in_chair" ? <Button size="sm" fullWidth onClick={() => markDone(match.id)}>Done</Button> : null}
+            {match.status === "in_chair" ? <Button size="sm" fullWidth data-auth="action" onClick={() => markDone(match.id)}>Done</Button> : null}
           </div>
           {note ? <p className="mt-3 text-[13.5px] font-semibold">{note}</p> : null}
         </article>

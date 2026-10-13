@@ -1,0 +1,4 @@
+{"apphosting":[
+ {"backendId":"barbers-ph-dev","rootDir":".","ignore":["node_modules",".git","tmp",".secret*",".env*",".next","firebase-debug.log"]},
+ {"backendId":"barbers-ph","rootDir":".","ignore":["node_modules",".git","tmp",".secret*",".env*",".next","firebase-debug.log"]}
+]}

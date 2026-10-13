@@ -33,7 +33,7 @@ function EditorBar({ dirty, busy, hold, onBack }: { dirty: boolean; busy: boolea
           <ChevronLeft size={22} strokeWidth={1.75} />
         </button>
         <span className="truncate text-[15px] font-bold">Update shop</span>
-        <Button type="submit" form="edit-shop-form" size="sm" className="min-w-[4.5rem]" disabled={busy || !dirty}>
+        <Button data-auth="action" type="submit" form="edit-shop-form" size="sm" className="min-w-[4.5rem]" disabled={busy || !dirty}>
           {busy ? "Saving…" : "Save"}
         </Button>
       </div>

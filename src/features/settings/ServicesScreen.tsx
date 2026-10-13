@@ -125,7 +125,7 @@ export function ServicesScreen() {
             <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Chairs</h2>
             <p className="mt-1 text-[13px] font-medium text-ink-2">Seats you create, each with a barber. The barber link expires each month.</p>
           </div>
-          <Button size="sm" onClick={() => {
+          <Button data-auth="action" size="sm" onClick={() => {
             const locationId = shops.scopeId ?? HOME_LOCATION_ID;
             const number = nextChairNumber(locationId);
             setEditing({
@@ -225,7 +225,7 @@ export function ServicesScreen() {
 function CopyChairLink({ id }: { id: string }) {
   const [label, setLabel] = useState("Copy link");
   return (
-    <Button size="sm" variant="secondary" onClick={() => {
+    <Button data-auth="action" size="sm" variant="secondary" onClick={() => {
       const path = ensureChairLink(id);
       const url = `${window.location.origin}${path}`;
       navigator.clipboard?.writeText(url).then(
@@ -352,11 +352,11 @@ function ChairEditor({
           </p>
         </div>
       )}
-      <Button className="mt-6" fullWidth disabled={busy} onClick={() => {
+      <Button data-auth="action" className="mt-6" fullWidth disabled={busy} onClick={() => {
         const error = onSave({ ...chair, label: label.trim() || chair.label, barberName: name.trim(), photoUrl: photo || undefined });
         if (error) setError(error);
       }}>Save</Button>
-      {fresh ? null : <Button className="mt-2" fullWidth variant="secondary" onClick={() => {
+      {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={() => {
         const error = onRemove();
         if (error) setError(error);
       }}>Remove chair</Button>}
@@ -378,7 +378,7 @@ function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBa
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
       </div>
-      <Button className="mt-6" fullWidth onClick={() => {
+      <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         const durationMins = Math.round(Number(mins));
         if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
         onSave({ ...draft, name: draft.name.trim(), durationMins });
@@ -409,12 +409,12 @@ function TreatmentEditor({
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
       </div>
-      <Button className="mt-6" fullWidth onClick={() => {
+      <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         const durationMins = Math.round(Number(mins));
         if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
         onSave({ ...draft, name: draft.name.trim(), durationMins });
       }}>Save</Button>
-      {fresh ? null : <Button className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
+      {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
     </div>
   );
 }

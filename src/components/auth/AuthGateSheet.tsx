@@ -12,9 +12,9 @@ import { signIn } from "@/lib/session";
 
 type Step = "methods" | "phone" | "code";
 
-export function AuthGateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AuthGateSheet({ open, onClose, onAuthenticated }: { open: boolean; onClose: () => void; onAuthenticated?: () => void }) {
   if (!open) return null;
-  return <Sheet onClose={onClose} />;
+  return <Sheet onClose={onClose} onAuthenticated={onAuthenticated ?? onClose} />;
 }
 
 function GoogleMark() {
@@ -28,7 +28,7 @@ function GoogleMark() {
   );
 }
 
-function Sheet({ onClose }: { onClose: () => void }) {
+function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: () => void }) {
   const [step, setStep] = useState<Step>("methods");
   const [formatted, setFormatted] = useState("");
   const [e164, setE164] = useState<string | null>(null);
@@ -37,7 +37,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
 
   function finish(phone?: string) {
     signIn({ name: "Jimboy", phone });
-    onClose();
+    onAuthenticated();
   }
 
   function sendCode(e?: FormEvent) {
@@ -79,7 +79,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
               ? "We’ll text you a 6-digit code to sign in."
               : step === "code"
                 ? `Code sent to +63 ${national}.`
-                : "Sign in to sync your shop and save changes."}
+                : "Sign in to continue. You can keep browsing without an account."}
           </p>
 
           {step === "methods" ? (

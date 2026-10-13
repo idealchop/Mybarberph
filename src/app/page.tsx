@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { Welcome } from "@/features/welcome/Welcome";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Barbers.ph" };
-
+/** The app opens straight on Home; guests can browse without an account. */
 export default function Page() {
-  return <Welcome />;
+  redirect("/home");
 }
