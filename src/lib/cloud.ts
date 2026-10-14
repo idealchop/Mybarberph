@@ -133,9 +133,13 @@ export const cloudStorage = {
   setItem(key: string, value: string) {
     if (!mode) return;
     set({ values: { ...snap.values, [key]: value } });
-    window.clearTimeout(timers.get(key));
-    pending++;
+    // One pending count per key: a re-edit inside the debounce window must not leak a count,
+    // or polling stops forever and new online bookings never show up until a reload.
+    const prev = timers.get(key);
+    if (prev !== undefined) window.clearTimeout(prev);
+    else pending++;
     timers.set(key, window.setTimeout(() => {
+      timers.delete(key);
       pending--;
       void track(api(`${base()}/state/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ value: snap.values[key] }) })).then(() => {
         if (key === "barbers.shop-profile" || key === "barbers.shop-menu") void load(true);

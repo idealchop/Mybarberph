@@ -113,6 +113,11 @@ export async function putState(shopId: string, key: string, raw: string) {
       photoUrls: urls(parsed.photoUrls), logoUrl: urls([parsed.logoUrl])[0] ?? "",
       listed: Boolean(name), updatedAt: now,
     }, { merge: true });
+    // The app always shows a Haircut service; publish it until the owner edits the menu.
+    const cur = (await shopRef(shopId).get()).data() as ShopDoc | undefined;
+    if (!cur?.menu?.length) {
+      batch.set(shopRef(shopId), { menu: [{ id: "haircut", name: "Haircut", durationMins: 30, price: 0, kind: "haircut" }] }, { merge: true });
+    }
   }
   if (docId === "menu") {
     const h = (parsed.haircut ?? {}) as Record<string, unknown>;

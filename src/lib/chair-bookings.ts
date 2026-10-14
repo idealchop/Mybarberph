@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ChairRequest, ChairStatus } from "@/lib/booking-types";
 import { cloudBookings, removeBooking, saveBooking, useCloud } from "@/lib/cloud";
-import { occupyChair, occupyNextChair, vacateChair } from "@/lib/shop-chairs";
+import { chairLocation, loadChairs, occupyChair, occupyNextChair, vacateChair } from "@/lib/shop-chairs";
 import { ALL_LOCATIONS, HOME_LOCATION_ID, inLocation, readLocationStore, useShopLocations } from "@/lib/shop-locations";
 
 export type { ChairRequest, ChairStatus, Channel, PayWhere } from "@/lib/booking-types";
@@ -87,6 +87,11 @@ export function markInChair(id: string): string | null {
   const row = mergeRequests().find((item) => item.id === id);
   const loc = locationForNew(row);
   const at = Date.now();
+  // A shop without chairs set up (common for new Partner shops) can still serve the customer.
+  if (!loadChairs().some((chair) => chairLocation(chair) === loc)) {
+    patchRequest(id, { status: "in_chair", startedAt: at, locationId: loc });
+    return "Chair";
+  }
   const label = occupyNextChair(id, usedChairs(loc), at, loc);
   if (!label) return null;
   patchRequest(id, { status: "in_chair", chairLabel: label, seatLabel: label, startedAt: at, locationId: loc });

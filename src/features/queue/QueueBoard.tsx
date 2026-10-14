@@ -34,7 +34,7 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
         <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
         <Button data-auth="action" size="sm" className="flex-1" onClick={() => {
           const chair = markInChair(row.id);
-          onFull(chair ? "" : "Every chair is taken, or none have been added in Services yet.");
+          onFull(chair ? "" : "Every chair is taken. Finish a cut first.");
         }}>Accept</Button>
       </div>
     );
