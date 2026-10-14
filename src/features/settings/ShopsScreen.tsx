@@ -10,6 +10,8 @@ import {
   type ShopBranch,
 } from "@/lib/shop-locations";
 import { copyMenuToLocation } from "@/lib/shop-services";
+import { useCloud } from "@/lib/cloud";
+import { bookingUrl } from "@/lib/chair-bookings";
 import { useShopProfile, type ShopLocation } from "@/lib/shop-profile";
 import { maxLocations, planForLocations, planInfo } from "@/lib/plans";
 import { useTier } from "@/lib/tier";
@@ -20,7 +22,7 @@ export function ShopsScreen() {
   const { profile, ready: profileReady } = useShopProfile();
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
-  const { plan } = useTier();
+  const { plan, tier } = useTier();
   const limit = maxLocations(plan);
   const atLimit = branches.length >= limit;
   const next = planForLocations(branches.length + 1);
@@ -112,10 +114,12 @@ export function ShopsScreen() {
                   <Button size="sm" variant="secondary" onClick={() => { setEditing(editing === branch.id ? null : branch.id); setEditPin(branch.location); }}>
                     {editing === branch.id ? "Close" : "Edit pin"}
                   </Button>
+                  <Button size="sm" variant="secondary" href={`/sales/performance?loc=${encodeURIComponent(branch.id)}`}>Performance</Button>
                   {branch.id === HOME_LOCATION_ID ? null : (
                     <Button size="sm" variant="secondary" data-auth="action" onClick={() => onRemove(branch)}>Remove</Button>
                   )}
                 </div>
+                <ShareBranch branchId={branch.id} name={branch.name} paid={tier === "paid"} />
                 {editing === branch.id ? (
                   <div className="mt-3">
                     <LocationPicker value={editPin} onChange={setEditPin} disabled={busy} />
@@ -159,6 +163,24 @@ export function ShopsScreen() {
           <Button className="mt-4" fullWidth disabled={!profileReady} data-auth="action" onClick={() => { enable(profile); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Each shop has its own public booking link and QR (Pro and Lifetime, like the shop QR). */
+function ShareBranch({ branchId, name, paid }: { branchId: string; name: string; paid: boolean }) {
+  const cloud = useCloud();
+  const [done, setDone] = useState("");
+  if (!paid) return <p className="mt-2 text-[12.5px] font-semibold text-muted">Booking link and QR for this shop are on Pro. <a href="/settings/billing" className="font-bold underline underline-offset-[3px]">See plans</a></p>;
+  const url = cloud.shopId && typeof window !== "undefined" ? bookingUrl(window.location.origin, cloud.shopId, branchId) : "";
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <Button size="sm" variant="secondary" disabled={!url} data-auth="action" onClick={() => {
+        const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
+        if (share) { void share.call(navigator, { title: `Book at ${name}`, url }).catch(() => undefined); return; }
+        void navigator.clipboard?.writeText(url).then(() => { setDone("Link copied"); window.setTimeout(() => setDone(""), 1800); });
+      }}>{done || "Share"}</Button>
+      <Button size="sm" variant="secondary" href={`/qr?loc=${encodeURIComponent(branchId)}`}>QR</Button>
     </div>
   );
 }

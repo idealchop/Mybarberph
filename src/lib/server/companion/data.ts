@@ -163,3 +163,39 @@ export function goalProgress(d: ShopData, goals: Goal[]) {
       : g.kind === "weekly_cuts" && g.targetCount ? { ...g, progressPct: Math.round((week.cuts / g.targetCount) * 100), cutsThisWeek: week.cuts } : g),
   };
 }
+
+/**
+ * Per chair (and its barber) at one location or all: revenue, cuts, average ticket,
+ * utilization (minutes seated / 10-hour days worked) and rebooking rate. Done visits from `from` on.
+ */
+export function chairPerformance(d: ShopData, from: number, locationId?: string) {
+  const all = scope(d, locationId);
+  const rows = doneIn(all, from);
+  const key = (b: ChairRequest) => `${b.locationId || HOME}::${b.seatLabel || b.chairLabel || "No chair"}`;
+  const m = new Map<string, { chair: string; locationId: string; barber: string; cuts: number; sales: number; minutes: number; days: Set<string>; customers: Set<string>; returned: Set<string> }>();
+  for (const b of rows) {
+    const k = key(b);
+    const r = m.get(k) ?? { chair: b.seatLabel || b.chairLabel || "No chair", locationId: b.locationId || HOME, barber: barberOf(d, b), cuts: 0, sales: 0, minutes: 0, days: new Set(), customers: new Set(), returned: new Set() };
+    r.cuts++; r.sales += b.price || 0;
+    if (b.startedAt && b.completedAt && b.completedAt > b.startedAt) r.minutes += Math.min(180, (b.completedAt - b.startedAt) / 60_000);
+    r.days.add(manilaDay(b.completedAt ?? b.updatedAt));
+    const c = who(b);
+    if (c) { r.customers.add(c); if (all.some((o) => o !== b && who(o) === c && o.createdAt > b.createdAt && o.status !== "declined")) r.returned.add(c); }
+    m.set(k, r);
+  }
+  // Chairs with no visits in the window still show (zeros), so idle chairs are visible.
+  for (const c of d.chairs) {
+    if (locationId && locationId !== "all" && c.locationId !== locationId) continue;
+    const k = `${c.locationId}::${c.label}`;
+    if (!m.has(k)) m.set(k, { chair: c.label, locationId: c.locationId, barber: c.barberName, cuts: 0, sales: 0, minutes: 0, days: new Set(), customers: new Set(), returned: new Set() });
+  }
+  const branchName = (id: string) => d.branches.find((b) => b.id === id)?.name ?? "";
+  const chairs = [...m.values()].map((r) => ({
+    chair: r.chair, barber: r.barber, locationId: r.locationId, location: branchName(r.locationId),
+    cuts: r.cuts, salesCentavos: r.sales, avgTicketCentavos: r.cuts ? Math.round(r.sales / r.cuts) : 0,
+    utilizationPct: r.days.size ? Math.round((r.minutes / (r.days.size * 600)) * 100) : null,
+    rebookingPct: r.customers.size ? Math.round((r.returned.size / r.customers.size) * 100) : null,
+  })).sort((a, b) => b.salesCentavos - a.salesCentavos || a.chair.localeCompare(b.chair));
+  const sales = chairs.reduce((s, c) => s + c.salesCentavos, 0), cuts = chairs.reduce((s, c) => s + c.cuts, 0);
+  return { chairs, totals: { salesCentavos: sales, cuts, avgTicketCentavos: cuts ? Math.round(sales / cuts) : 0 }, branches: d.branches };
+}

@@ -26,7 +26,9 @@ type Editor =
 /** Haircut, the treatments the shop adds, and the chairs it has created. */
 export function ServicesScreen() {
   const shops = useShopLocations();
-  const { haircut, treatments, saveHaircut, saveTreatments } = useShopMenu();
+  const menu = useShopMenu();
+  const { haircut, services, saveHaircut, saveTreatment, removeTreatment, setEnabled, resetHaircut, resetTreatment, atLocation } = menu;
+  const sharedSetup = shops.enabled && shops.viewingAll;
   const { chairs } = useShopChairs();
   const place = shops.enabled ? shops.branch?.name : undefined;
   const { rows } = useChairRequests();
@@ -91,13 +93,12 @@ export function ServicesScreen() {
         fresh={editing.fresh}
         onBack={() => setEditing(null)}
         onSave={(next) => {
-          const exists = treatments.some((t) => t.id === next.id);
-          saveTreatments(exists ? treatments.map((t) => t.id === next.id ? next : t) : [...treatments, next]);
+          saveTreatment(next);
           setNote("Saved. The queue can add this service.");
           setEditing(null);
         }}
         onRemove={() => {
-          saveTreatments(treatments.filter((t) => t.id !== editing.treatment.id));
+          removeTreatment(editing.treatment.id);
           setNote("Saved.");
           setEditing(null);
         }}
@@ -105,21 +106,14 @@ export function ServicesScreen() {
     );
   }
 
-  if (shops.viewingAll) {
-    return (
-      <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
-        <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Services" subtitle="Open one shop in Settings → Shops to edit its haircut, other services, and chairs." />
-        <Button className="mt-4" href="/settings/shops">Shops</Button>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
-      <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Services" subtitle={place ? `Haircut, other services, and chairs for ${place}.` : "One haircut, the other services you add, and the chairs you create."} />
+      <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title={sharedSetup ? "Shared setup" : "Services"} subtitle={sharedSetup ? "Defined once for every shop. Each shop uses these unless you change them there." : place ? `${place}: uses the shared setup. Turn items off, change a price, or add services only this shop sells.` : "One haircut, the other services you add, and the chairs you create."} />
       {note ? <p className="mt-3 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
 
-      <section className="mt-5">
+      {sharedSetup ? <p className="mt-3 px-1 text-[13px] font-semibold text-muted">Chairs belong to each shop. Open a shop in Settings → Shops to set its chairs.</p> : null}
+      {sharedSetup ? null : <section className="mt-5">
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
             <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Chairs</h2>
@@ -179,7 +173,7 @@ export function ServicesScreen() {
             })}
           </ul>
         )}
-      </section>
+      </section>}
 
       <section className="mt-6">
         <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Haircut</h2>
@@ -187,8 +181,9 @@ export function ServicesScreen() {
           <BarberIcon name={haircut.icon} size={44} title={haircut.name} />
           <span className="min-w-0 flex-1">
             <b className="block text-[15.5px]">{haircut.name}</b>
-            <small className="text-[12.5px] font-semibold text-muted">{haircut.durationMins} min{haircut.price ? ` · ₱${haircut.price}` : ""}</small>
+            <small className="text-[12.5px] font-semibold text-muted">{haircut.price ? `₱${haircut.price}` : "Set a price"}{atLocation ? ` · ${SOURCE[haircut.source]}` : ""}</small>
           </span>
+          {atLocation && haircut.source === "changed" ? <Button data-auth="action" size="sm" variant="secondary" onClick={resetHaircut}>Use shared</Button> : null}
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "haircut" })}>Edit</Button>
         </div>
       </section>
@@ -201,18 +196,29 @@ export function ServicesScreen() {
           </div>
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment: blankTreatment(), fresh: true })}>Add</Button>
         </div>
-        {treatments.length === 0 ? (
+        {services.length === 0 ? (
           <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No other services yet.</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
-            {treatments.map((treatment) => (
-              <li key={treatment.id} className="flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
+            {services.map((treatment) => (
+              <li key={treatment.id} className={`flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card ${treatment.enabled ? "" : "opacity-60"}`}>
                 <BarberIcon name={treatment.icon} size={44} title={treatment.name} />
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15.5px]">{treatment.name}</b>
-                  <small className="text-[12.5px] font-semibold text-muted">{treatment.durationMins} min{treatment.price ? ` · ₱${treatment.price}` : ""}</small>
+                  <small className="text-[12.5px] font-semibold text-muted">{treatment.price ? `₱${treatment.price}` : "Set a price"}{atLocation ? ` · ${treatment.enabled ? SOURCE[treatment.source] : "Off here"}` : ""}</small>
                 </span>
-                <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment, fresh: false })}>Edit</Button>
+                <span className="flex flex-none flex-col items-end gap-2">
+                  {atLocation && treatment.source !== "local" ? (
+                    <button type="button" data-auth="action" role="switch" aria-checked={treatment.enabled} aria-label={`${treatment.name} at this shop`} onClick={() => setEnabled(treatment.id, !treatment.enabled)}
+                      className={`relative h-7 w-12 rounded-full transition-colors ${treatment.enabled ? "bg-ink" : "bg-grey-200"}`}>
+                      <span className={`absolute top-0.5 size-6 rounded-full bg-surface shadow transition-all ${treatment.enabled ? "left-[22px]" : "left-0.5"}`} />
+                    </button>
+                  ) : null}
+                  <span className="flex gap-2">
+                    {atLocation && treatment.source === "changed" ? <Button data-auth="action" size="sm" variant="secondary" onClick={() => resetTreatment(treatment.id)}>Use shared</Button> : null}
+                    <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment, fresh: false })}>Edit</Button>
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
@@ -221,6 +227,8 @@ export function ServicesScreen() {
     </div>
   );
 }
+
+const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop only" } as const;
 
 function CopyChairLink({ id }: { id: string }) {
   const [label, setLabel] = useState("Copy link");
@@ -366,7 +374,6 @@ function ChairEditor({
 
 function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void }) {
   const [draft, setDraft] = useState(haircut);
-  const [mins, setMins] = useState(String(haircut.durationMins));
   const [price, setPrice] = useState(haircut.price ? String(haircut.price) : "");
 
   return (
@@ -377,13 +384,12 @@ function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBa
       <IconPick icons={HAIRCUT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
         <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
-        const durationMins = Math.round(Number(mins));
-        if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
-        onSave({ ...draft, name: draft.name.trim(), durationMins, price: Math.max(0, Math.round(Number(price) || 0)) });
+        if (!draft.name.trim()) return;
+        // Duration isn't asked; the internal default keeps time slots working.
+        onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
     </div>
   );
@@ -399,7 +405,6 @@ function TreatmentEditor({
   onRemove: () => void;
 }) {
   const [draft, setDraft] = useState(treatment);
-  const [mins, setMins] = useState(String(treatment.durationMins));
   const [price, setPrice] = useState(treatment.price ? String(treatment.price) : "");
 
   return (
@@ -410,13 +415,12 @@ function TreatmentEditor({
       <IconPick icons={TREATMENT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
         <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
-        const durationMins = Math.round(Number(mins));
-        if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
-        onSave({ ...draft, name: draft.name.trim(), durationMins, price: Math.max(0, Math.round(Number(price) || 0)) });
+        if (!draft.name.trim()) return;
+        // Duration isn't asked; the internal default keeps time slots working.
+        onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
     </div>

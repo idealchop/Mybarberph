@@ -4,6 +4,9 @@ import { cloudStorage } from "@/lib/cloud";
 import { useEffect, useState } from "react";
 import type { BarberIconName } from "@/components/art";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { allOverrides, effectiveMenu, type EffectiveService, type ItemOverride, type LocationOverride, type MenuFile as ModelFile, type ServiceSource } from "@/lib/menu-model";
+
+type MenuFile = Omit<ModelFile, "haircut" | "treatments"> & { haircut: ShopHaircut; treatments: ShopTreatment[] };
 
 /** The shop's one haircut. Styles are not priced one by one. */
 export interface ShopHaircut {
@@ -37,10 +40,6 @@ interface Menu {
   treatments: ShopTreatment[];
 }
 
-interface MenuFile extends Menu {
-  byLocation?: Record<string, Menu>;
-}
-
 function menuFrom(parsed: Partial<Menu> | undefined): Menu {
   const haircut = parsed?.haircut?.name
     ? { ...defaultHaircut, ...parsed.haircut, name: parsed.haircut.name.trim() || defaultHaircut.name }
@@ -51,51 +50,51 @@ function menuFrom(parsed: Partial<Menu> | undefined): Menu {
   return { haircut, treatments };
 }
 
+/** The master list plus per-location overrides (legacy per-location copies migrated). */
 function readFile(): MenuFile {
   try {
     const raw = cloudStorage.getItem(KEY);
-    if (!raw) return { haircut: defaultHaircut, treatments: [] };
+    if (!raw) return { haircut: defaultHaircut, treatments: [], overrides: {} };
     const parsed = JSON.parse(raw) as Partial<MenuFile>;
-    const byLocation: Record<string, Menu> = {};
+    const base = menuFrom(parsed as Partial<Menu>);
+    const legacy: MenuFile["byLocation"] = {};
     if (parsed.byLocation && typeof parsed.byLocation === "object") {
-      for (const [id, menu] of Object.entries(parsed.byLocation)) {
-        if (menu) byLocation[id] = menuFrom(menu);
-      }
+      for (const [id, menu] of Object.entries(parsed.byLocation)) if (menu) legacy[id] = menuFrom(menu as Partial<Menu>);
     }
-    return { ...menuFrom(parsed), byLocation };
+    const file: MenuFile = { ...base, overrides: parsed.overrides && typeof parsed.overrides === "object" ? parsed.overrides : {}, byLocation: legacy };
+    return { haircut: file.haircut as ShopHaircut, treatments: file.treatments as ShopTreatment[], overrides: allOverrides(file) };
   } catch {
-    return { haircut: defaultHaircut, treatments: [] };
+    return { haircut: defaultHaircut, treatments: [], overrides: {} };
   }
 }
 
-function read(locationId = HOME_LOCATION_ID): Menu {
-  const file = readFile();
-  if (!locationId || locationId === HOME_LOCATION_ID) return { haircut: file.haircut, treatments: file.treatments };
-  return file.byLocation?.[locationId] ?? { haircut: defaultHaircut, treatments: [] };
-}
-
 function write(next: MenuFile) {
-  cloudStorage.setItem(KEY, JSON.stringify(next));
+  // Overrides replace the old per-location copies for good.
+  const { byLocation: _drop, ...rest } = next;
+  void _drop;
+  cloudStorage.setItem(KEY, JSON.stringify(rest));
   window.dispatchEvent(new Event(EVENT));
 }
 
-/** New shops start with the same haircut and other services as the first shop. */
+/** New locations inherit the master list; nothing to copy. Kept for callers. */
 export function copyMenuToLocation(locationId: string) {
-  if (!locationId || locationId === HOME_LOCATION_ID) return;
-  const file = readFile();
-  const copy: Menu = {
-    haircut: { ...file.haircut },
-    treatments: file.treatments.map((t) => ({ ...t })),
-  };
-  write({ ...file, byLocation: { ...file.byLocation, [locationId]: copy } });
+  void locationId;
 }
 
-export function useShopMenu(explicitId?: string) {
+export type MenuScope = "master" | string;
+
+/**
+ * Menu for a location (or the master list). Selling screens read `haircut` + `treatments`
+ * (enabled only). The Services editor uses `services` (with source) and the actions below,
+ * which write overrides at a location and the master list otherwise.
+ */
+export function useShopMenu(explicitId?: MenuScope) {
   const loc = useShopLocations();
-  const scope = explicitId || (loc.enabled && loc.scopeId ? loc.scopeId : HOME_LOCATION_ID);
-  const [menu, setMenu] = useState<Menu>({ haircut: defaultHaircut, treatments: [] });
+  const scope = explicitId || (loc.enabled ? (loc.viewingAll ? "master" : loc.scopeId || HOME_LOCATION_ID) : "master");
+  const atLocation = scope !== "master" && loc.enabled;
+  const [file, setFile] = useState<MenuFile>({ haircut: defaultHaircut, treatments: [], overrides: {} });
   useEffect(() => {
-    const pull = () => setMenu(read(scope));
+    const pull = () => setFile(readFile());
     pull();
     window.addEventListener(EVENT, pull);
     window.addEventListener("storage", pull);
@@ -104,36 +103,61 @@ export function useShopMenu(explicitId?: string) {
       window.removeEventListener("storage", pull);
     };
   }, [scope]);
+  const eff = effectiveMenu(file, atLocation ? scope : null);
+  const haircut = eff.haircut as ShopHaircut & { source: ServiceSource };
+  const services = eff.services as (ShopTreatment & EffectiveService)[];
+  const treatments = eff.treatments as ShopTreatment[];
 
-  const saveHaircut = (haircut: ShopHaircut) => {
-    const file = readFile();
-    if (!scope || scope === HOME_LOCATION_ID) {
-      const next = { ...file, haircut };
-      setMenu({ haircut, treatments: file.treatments });
-      write(next);
-      return;
+  const commit = (fn: (f: MenuFile) => MenuFile) => { const next = fn(readFile()); setFile(next); write(next); };
+  const ov = (f: MenuFile): LocationOverride => ({ ...(f.overrides?.[scope] ?? {}) });
+  const putOv = (f: MenuFile, o: LocationOverride): MenuFile => ({ ...f, overrides: { ...(f.overrides ?? {}), [scope]: o } });
+
+  const saveHaircut = (next: ShopHaircut) => commit((f) => {
+    if (!atLocation) return { ...f, haircut: next };
+    const d: LocationOverride["haircut"] = {};
+    if (next.name !== f.haircut.name) d.name = next.name;
+    if ((next.price ?? 0) !== (f.haircut.price ?? 0)) d.price = next.price ?? 0;
+    if (next.icon !== f.haircut.icon) d.icon = next.icon;
+    const o = ov(f); if (Object.keys(d).length) o.haircut = d; else delete o.haircut;
+    return putOv(f, o);
+  });
+  const resetHaircut = () => commit((f) => { const o = ov(f); delete o.haircut; return putOv(f, o); });
+
+  /** Add or edit a service. At a location: shared items get an override, others are location-only. */
+  const saveTreatment = (next: ShopTreatment) => commit((f) => {
+    if (!atLocation) {
+      const exists = f.treatments.some((t) => t.id === next.id);
+      return { ...f, treatments: exists ? f.treatments.map((t) => t.id === next.id ? next : t) : [...f.treatments, next] };
     }
-    const current = file.byLocation?.[scope] ?? { haircut: defaultHaircut, treatments: [] };
-    const saved = { ...current, haircut };
-    setMenu(saved);
-    write({ ...file, byLocation: { ...file.byLocation, [scope]: saved } });
-  };
-
-  const saveTreatments = (treatments: ShopTreatment[]) => {
-    const file = readFile();
-    if (!scope || scope === HOME_LOCATION_ID) {
-      const next = { ...file, treatments };
-      setMenu({ haircut: file.haircut, treatments });
-      write(next);
-      return;
+    const o = ov(f);
+    const m = f.treatments.find((t) => t.id === next.id);
+    if (m) {
+      const d: ItemOverride = { ...(o.items?.[m.id] ?? {}) };
+      delete d.name; delete d.price;
+      if (next.name !== m.name) d.name = next.name;
+      if ((next.price ?? 0) !== (m.price ?? 0)) d.price = next.price ?? 0;
+      o.items = { ...(o.items ?? {}), [m.id]: d };
+    } else {
+      const extra = o.extra ?? [];
+      o.extra = extra.some((t) => t.id === next.id) ? extra.map((t) => t.id === next.id ? next : t) : [...extra, next];
     }
-    const current = file.byLocation?.[scope] ?? { haircut: defaultHaircut, treatments: [] };
-    const saved = { ...current, treatments };
-    setMenu(saved);
-    write({ ...file, byLocation: { ...file.byLocation, [scope]: saved } });
-  };
+    return putOv(f, o);
+  });
+  const resetTreatment = (id: string) => commit((f) => { const o = ov(f); if (o.items?.[id]) { const it = { ...o.items }; const keep = it[id]?.enabled === false ? { enabled: false } : undefined; if (keep) it[id] = keep; else delete it[id]; o.items = it; } return putOv(f, o); });
+  const setEnabled = (id: string, on: boolean) => commit((f) => { const o = ov(f); const d = { ...(o.items?.[id] ?? {}) }; if (on) delete d.enabled; else d.enabled = false; o.items = { ...(o.items ?? {}), [id]: d }; return putOv(f, o); });
+  /** Master: removes it everywhere. Location: hides a shared item, deletes a location-only one. */
+  const removeTreatment = (id: string) => commit((f) => {
+    if (!atLocation) {
+      const overrides = Object.fromEntries(Object.entries(f.overrides ?? {}).map(([k, o]) => { const items = { ...(o.items ?? {}) }; delete items[id]; return [k, { ...o, items }]; }));
+      return { ...f, treatments: f.treatments.filter((t) => t.id !== id), overrides };
+    }
+    const o = ov(f);
+    if (f.treatments.some((t) => t.id === id)) { o.items = { ...(o.items ?? {}), [id]: { ...(o.items?.[id] ?? {}), enabled: false } }; }
+    else o.extra = (o.extra ?? []).filter((t) => t.id !== id);
+    return putOv(f, o);
+  });
 
-  return { haircut: menu.haircut, treatments: menu.treatments, saveHaircut, saveTreatments };
+  return { scope, atLocation, haircut, treatments, services, master: { haircut: file.haircut, treatments: file.treatments }, saveHaircut, resetHaircut, saveTreatment, resetTreatment, setEnabled, removeTreatment };
 }
 
 export function blankTreatment(): ShopTreatment {

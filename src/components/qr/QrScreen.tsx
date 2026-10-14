@@ -19,11 +19,13 @@ export function QrScreen() {
   const shopId = cloud.shopId;
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
-  useEffect(() => setOrigin(window.location.origin), []);
-  const locationId = shops.enabled && shops.scopeId ? shops.scopeId : undefined;
+  const [urlLoc, setUrlLoc] = useState<string | null>(null);
+  useEffect(() => { setOrigin(window.location.origin); setUrlLoc(new URLSearchParams(window.location.search).get("loc")); }, []);
+  const fromUrl = urlLoc && shops.branches.find((b) => b.id === urlLoc);
+  const locationId = shops.enabled && fromUrl ? fromUrl.id : shops.enabled && shops.scopeId ? shops.scopeId : undefined;
   const listed = Boolean(profile.name && cloud.shop?.services.length);
-  const url = origin && shopId && listed && !shops.viewingAll ? bookingUrl(origin, shopId, locationId) : "";
-  const who = shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name || "your shop";
+  const url = origin && shopId && listed && (!shops.viewingAll || fromUrl) ? bookingUrl(origin, shopId, locationId) : "";
+  const who = fromUrl ? `${profile.name} · ${fromUrl.name}` : shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name || "your shop";
 
   if (tier !== "paid") {
     return (
@@ -32,7 +34,7 @@ export function QrScreen() {
           <PageBack fallback="/home" />
           <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Shop QR</h1>
         </div>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">The booking QR is part of Pro, with walk-ins.</p>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">The booking QR is part of Pro and Lifetime.</p>
         <Button className="mt-5" onClick={() => setTier("paid")}>See Pro</Button>
       </div>
     );
