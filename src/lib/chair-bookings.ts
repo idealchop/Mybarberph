@@ -109,13 +109,18 @@ export function acceptOnChair(id: string, chairLabel: string, locationId?: strin
   return chairLabel;
 }
 
-/** Finishes the visit. Cash is collected here. An online payment stays as the customer left it. */
-export function markDone(id: string) {
+export type DonePayment = { price: number; paid: boolean; method: "cash" | "gcash" };
+
+/** Finishes the visit with the payment confirmed in the Complete popup. An online payment stays as the customer left it. */
+export function markDone(id: string, pay?: DonePayment) {
   const row = mergeRequests().find((item) => item.id === id);
   if (row?.chairLabel) vacateChair(row.chairLabel, Date.now(), requestLocation(row));
+  const onlinePaid = Boolean(row?.paid) && row?.payWhere === "online";
   patchRequest(id, {
     status: "done",
-    paid: row?.payWhere === "shop" ? true : Boolean(row?.paid),
+    ...(onlinePaid || !pay ? { paid: Boolean(row?.paid) } : pay.paid
+      ? { price: pay.price, paid: true, payMethod: pay.method, payWhere: "shop" as const }
+      : { price: pay.price, paid: false, payMethod: undefined }),
     completedAt: Date.now(),
     seatLabel: row?.seatLabel || row?.chairLabel,
     chairLabel: undefined,

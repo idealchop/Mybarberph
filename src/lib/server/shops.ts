@@ -229,9 +229,8 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
     // Server time decides the day; a client can't backdate a walk-in around the limit.
     clean.createdAt = Date.now();
     const shop = (await shopRef(shopId).get()).data() as ShopDoc | undefined;
-    // Walk-ins are paid at the chair by default (cash), and always carry the service price.
-    if (row.paid === undefined) clean.paid = true;
-    if (clean.paid && !clean.payMethod) clean.payMethod = "cash";
+    // Walk-ins start unpaid at the menu price; payment is confirmed when the cut is completed.
+    clean.paid = false;
     if (!clean.price && shop) clean.price = menuFor(shop, clean.locationId).find((m) => m.id === (clean.serviceId || "haircut"))?.price ?? 0;
     const limit = walkInLimit(shop ? effectivePlan(shop) : "partner");
     if (Number.isFinite(limit) && (await walkInsToday(shopId, clean.locationId)) >= limit) throw new WalkInLimitError(WALKIN_LIMIT_MESSAGE);

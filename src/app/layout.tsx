@@ -1,3 +1,4 @@
+import { CompleteFlowHost } from "@/components/transactions/CompleteFlow";
 import type { Metadata, Viewport } from "next";
 import "@river-apps/tokens/fonts.css";
 import "./globals.css";
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <TierProvider>{children}</TierProvider>
+        <TierProvider>{children}<CompleteFlowHost /></TierProvider>
       </body>
     </html>
   );

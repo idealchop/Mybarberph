@@ -1,4 +1,5 @@
 "use client";
+import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { Button, Input, Topbar } from "@river-apps/ui";
 import { useSearchParams } from "next/navigation";
@@ -6,7 +7,7 @@ import { PageBack } from "@/components/shell/PageBack";
 import { useState } from "react";
 import { peso } from "@/lib/format";
 import { api, refreshCloud } from "@/lib/cloud";
-import { markDone, markInChair, setRequestStatus, statusLabel, useChairRequests } from "@/lib/chair-bookings";
+import { markInChair, setRequestStatus, statusLabel, useChairRequests } from "@/lib/chair-bookings";
 
 /** Partner Scan: find a ticket by its code (BK-…) and mark the visit verified on the server. */
 export function FindTicket() {
@@ -49,7 +50,7 @@ export function FindTicket() {
                 <Button size="sm" className="flex-1" data-auth="action" onClick={() => setNote(markInChair(match.id) ? "" : "Every chair is taken, or none have been added in Services yet.")}>Accept</Button>
               </>
             ) : null}
-            {match.status === "in_chair" ? <Button size="sm" fullWidth data-auth="action" onClick={() => markDone(match.id)}>Done</Button> : null}
+            {match.status === "in_chair" ? <Button size="sm" fullWidth data-auth="action" onClick={() => completeCut(match)}>Done</Button> : null}
           </div>
           {note ? <p className="mt-3 text-[13.5px] font-semibold">{note}</p> : null}
         </article>

@@ -1,4 +1,5 @@
 "use client";
+import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { Plus } from "lucide-react";
@@ -12,7 +13,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import {
-  completionLabel, markDone, markInChair, setRequestStatus, statusLabel, todayFigures, useScopedRequests,
+  completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useScopedRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { useTier } from "@/lib/tier";
@@ -43,7 +44,7 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
   if (row.status === "in_chair") {
     return (
       <div className="mt-3 border-t border-dashed border-[#E8E8EC] pt-3">
-        <Button size="sm" fullWidth data-auth="action" onClick={() => markDone(row.id)}>Done</Button>
+        <Button size="sm" fullWidth data-auth="action" onClick={() => completeCut(row)}>Done</Button>
       </div>
     );
   }

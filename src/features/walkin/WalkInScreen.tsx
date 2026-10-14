@@ -24,13 +24,10 @@ export function WalkInScreen() {
 
   const chosen = treatments.filter((t) => picked.includes(t.id));
   const menuTotal = (haircut.price ?? 0) + chosen.reduce((sum, t) => sum + (t.price ?? 0), 0);
-  const [priceText, setPriceText] = useState("");
-  const pricePesos = priceText ? Number(priceText) : menuTotal;
   const serviceName = [haircut.name, ...chosen.map((t) => t.name)].join(" · ");
 
   const save = () => {
     if (allowance.atLimit) { setNote(allowance.message); return; }
-    if (!(pricePesos > 0)) { setNote("Enter the price so it counts in Sales."); return; }
     const now = Date.now();
     const chair = seatWalkIn({
       id: `wk-${now}`,
@@ -42,12 +39,10 @@ export function WalkInScreen() {
       customerLabel: name.trim() || "Walk-in",
       serviceId: "haircut",
       serviceName,
-      price: Math.round(pricePesos * 100),
+      price: Math.round(menuTotal * 100),
       slotLabel: "Now",
       payWhere: "shop",
-      // Walk-ins are paid at the chair: recorded as paid cash. Change it in View details.
-      paid: true,
-      payMethod: "cash",
+      paid: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -113,9 +108,6 @@ export function WalkInScreen() {
       ) : null}
       <div className="mt-4">
         <Input label="Name" placeholder="Optional" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="mt-3">
-        <Input label="Price (₱) · paid cash" inputMode="decimal" placeholder={menuTotal ? String(menuTotal) : "e.g. 150"} value={priceText} onChange={(e) => setPriceText(e.target.value.replace(/[^\d.]/g, ""))} />
       </div>
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
       <Button data-auth="action" className="mt-5" fullWidth onClick={save}>Seat them</Button>

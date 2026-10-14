@@ -1,4 +1,5 @@
 "use client";
+import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { Avatar, Button, Input } from "@river-apps/ui";
@@ -7,7 +8,7 @@ import { useEffect, useState } from "react";
 import { BarberChair, BarberIcon } from "@/components/art";
 import { startBarberCloud, useCloud } from "@/lib/cloud";
 import {
-  acceptOnChair, completionLabel, elapsedLabel, markDone, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
+  acceptOnChair, completionLabel, elapsedLabel, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, chairLinkExpired, linkExpiryLabel, useShopChairs } from "@/lib/shop-chairs";
@@ -94,7 +95,7 @@ function ActiveCard({
         <h2 className="mt-1 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? elapsed : "Open"}</h2>
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${offer.label} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {row ? <Button variant="white" size="sm" className={PILL} onClick={() => markDone(row.id)}>Complete</Button> : (
+          {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
             <>
               <Button
                 variant="white"
@@ -264,8 +265,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
               price: Math.round(((haircut.price ?? 0) + chosen.reduce((sum, service) => sum + (service.price ?? 0), 0)) * 100),
               slotLabel: "Now",
               payWhere: "shop",
-              paid: true,
-              payMethod: "cash",
+              paid: false,
               createdAt: nowAt,
               updatedAt: nowAt,
             }, chair.label, placeId);
