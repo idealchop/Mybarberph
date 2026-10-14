@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
+import { ChevronRight, CreditCard, FileText, History, LogOut, MapPin, Package, Pencil, Scissors, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -35,6 +35,8 @@ export function SettingsScreen() {
     ...(paid ? [] : [{ href: "/qr", icon: Scissors, title: "Shop listing", subtitle: "How customers find this shop" }]),
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and chairs" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner free · Paid ${PAID_PER_MO}` },
+    { href: "/terms", icon: FileText, title: "Terms of Service", subtitle: "How Barbers.ph works for your shop" },
+    { href: "/privacy", icon: ShieldCheck, title: "Privacy Policy", subtitle: "Shop and customer data, Data Privacy Act" },
   ];
 
   return (
