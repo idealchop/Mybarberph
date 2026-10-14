@@ -151,7 +151,9 @@ export async function putState(shopId: string, key: string, raw: string) {
     // Plan limit: Partner and Pro run 1 shop, Lifetime 1–5 up to 5, Lifetime 5+ unlimited.
     const cur = ((await shopRef(shopId).get()).data() ?? {}) as ShopDoc;
     const limit = maxLocations(effectivePlan(cur));
-    if (parsed.enabled && Array.isArray(parsed.branches) && parsed.branches.length > limit) {
+    // Shops already saved stay usable (e.g. after a plan lapses); only adding past the limit is refused.
+    const had = Array.isArray(cur.branches) ? cur.branches.length : 0;
+    if (parsed.enabled && Array.isArray(parsed.branches) && parsed.branches.length > Math.max(limit, had)) {
       throw Object.assign(new Error(`Your plan allows ${limit} shop${limit === 1 ? "" : "s"}. Upgrade to Lifetime for more.`), { status: 403 });
     }
     const branches = (Array.isArray(parsed.branches) ? parsed.branches : []) as Record<string, unknown>[];
