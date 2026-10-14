@@ -1,4 +1,72 @@
-{"apphosting":[
- {"backendId":"barbers-ph-dev","rootDir":".","ignore":["node_modules",".git","tmp",".secret*",".env*",".next","firebase-debug.log"]},
- {"backendId":"barbers-ph","rootDir":".","ignore":["node_modules",".git","tmp",".secret*",".env*",".next","firebase-debug.log"]}
-]}
+{
+  "firestore": [
+    {
+      "database": "barbersdb-dev",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    },
+    {
+      "database": "barbersdb",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ],
+  "storage": [
+    {
+      "bucket": "mybarberph-shop-photos",
+      "rules": "storage.rules"
+    }
+  ],
+  "apphosting": [
+    {
+      "backendId": "barbers-ph-dev",
+      "rootDir": ".",
+      "ignore": [
+        "node_modules",
+        "**/node_modules",
+        ".git",
+        "tmp",
+        ".secret*",
+        "**/.secret*",
+        ".env*",
+        "**/.env*",
+        ".next",
+        "**/.next",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "docs/screenshots",
+        "vendor/river-apps-ui-kit/apps",
+        "vendor/river-maps/tools",
+        "vendor/river-maps/fonts",
+        "vendor/river-maps/sprites",
+        "vendor/river-maps/style",
+        "vendor/river-maps/docs"
+      ]
+    },
+    {
+      "backendId": "barbers-ph",
+      "rootDir": ".",
+      "ignore": [
+        "node_modules",
+        "**/node_modules",
+        ".git",
+        "tmp",
+        ".secret*",
+        "**/.secret*",
+        ".env*",
+        "**/.env*",
+        ".next",
+        "**/.next",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "docs/screenshots",
+        "vendor/river-apps-ui-kit/apps",
+        "vendor/river-maps/tools",
+        "vendor/river-maps/fonts",
+        "vendor/river-maps/sprites",
+        "vendor/river-maps/style",
+        "vendor/river-maps/docs"
+      ]
+    }
+  ]
+}
