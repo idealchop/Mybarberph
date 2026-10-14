@@ -1,6 +1,8 @@
 export type ChairStatus = "requested" | "accepted" | "in_chair" | "done" | "declined";
 export type PayWhere = "online" | "shop";
 export type Channel = "walk-in" | "online";
+/** How a visit was paid. Online bookings paid through the status page are "online". */
+export type PayMethod = "cash" | "gcash" | "online";
 
 export interface ChairRequest {
   id: string;
@@ -31,6 +33,10 @@ export interface ChairRequest {
   source?: string;
   /** River Mobile's own id for this booking. */
   externalId?: string;
+  /** How it was paid (cash, GCash at the shop, or online). */
+  payMethod?: PayMethod;
+  /** Owner's note on this visit. */
+  notes?: string;
   /** When the shop scanned the customer's code. */
   verifiedAt?: number;
   createdAt: number;

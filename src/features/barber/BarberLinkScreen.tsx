@@ -214,7 +214,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
             <span className="min-w-0 flex-1">
               <b className="block">{haircut.name}</b>
-              <small className="text-[12.5px] font-semibold text-on-ink/70">{haircut.durationMins} min</small>
+              <small className="text-[12.5px] font-semibold text-on-ink/70">{haircut.price ? `₱${haircut.price}` : ""}</small>
             </span>
           </div>
           {treatments.length ? (
@@ -233,7 +233,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
                     >
                       <BarberIcon name={service.icon} size={40} title={service.name} />
                       <span className="min-w-0 flex-1 font-bold">{service.name}</span>
-                      <span className="text-[13px] font-semibold">{service.durationMins} min</span>
+                      <span className="text-[13px] font-semibold">{service.price ? `₱${service.price}` : ""}</span>
                     </button>
                   );
                 })}
@@ -264,6 +264,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
               price: Math.round(((haircut.price ?? 0) + chosen.reduce((sum, service) => sum + (service.price ?? 0), 0)) * 100),
               slotLabel: "Now",
               payWhere: "shop",
+              paid: true,
+              payMethod: "cash",
               createdAt: nowAt,
               updatedAt: nowAt,
             }, chair.label, placeId);

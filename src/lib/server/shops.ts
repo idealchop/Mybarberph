@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import type { ChairRequest } from "@/lib/booking-types";
+import { allOverrides, effectiveMenu, type MenuFile } from "@/lib/menu-model";
 
 /**
  * Firestore layout (database from FIRESTORE_DATABASE_ID):
@@ -141,9 +142,14 @@ export async function putState(shopId: string, key: string, raw: string) {
       }
       return items;
     };
+    // Master list + per-location overrides (legacy full copies are migrated by the same model).
+    const file = { haircut: parsed.haircut ?? { name: "Haircut", durationMins: 30, icon: "clipper" }, treatments: Array.isArray(parsed.treatments) ? parsed.treatments : [], overrides: parsed.overrides, byLocation: parsed.byLocation } as MenuFile;
     const byLocation: Record<string, ShopDoc["menu"]> = {};
-    const rawBy = (parsed.byLocation && typeof parsed.byLocation === "object" ? parsed.byLocation : {}) as Record<string, Record<string, unknown>>;
-    for (const [id, m] of Object.entries(rawBy).slice(0, 20)) if (m && /^[\w-]{1,60}$/.test(id)) byLocation[id] = toItems(m);
+    for (const id of Object.keys(allOverrides(file)).slice(0, 50)) {
+      if (!/^[\w-]{1,60}$/.test(id)) continue;
+      const eff = effectiveMenu(file, id);
+      byLocation[id] = toItems({ haircut: eff.haircut, treatments: eff.treatments } as unknown as Record<string, unknown>);
+    }
     // Replace the whole map so removed branches don't keep stale menus.
     batch.update(shopRef(shopId), { menu: toItems(parsed), menuByLocation: byLocation, updatedAt: now });
   }
@@ -193,6 +199,8 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   for (const k of ["chairLabel", "seatLabel", "locationId", "source"] as const) if (typeof b[k] === "string") (out as unknown as Record<string, unknown>)[k] = str(b[k], 80);
   for (const k of ["startedAt", "completedAt", "verifiedAt"] as const) if (typeof b[k] === "number") (out as unknown as Record<string, unknown>)[k] = b[k];
   if (typeof b.paid === "boolean") out.paid = b.paid;
+  if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
+  if (typeof b.notes === "string") out.notes = str(b.notes, 500);
   return out;
 }
 
@@ -221,10 +229,19 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
     // Server time decides the day; a client can't backdate a walk-in around the limit.
     clean.createdAt = Date.now();
     const shop = (await shopRef(shopId).get()).data() as ShopDoc | undefined;
+    // Walk-ins are paid at the chair by default (cash), and always carry the service price.
+    if (row.paid === undefined) clean.paid = true;
+    if (clean.paid && !clean.payMethod) clean.payMethod = "cash";
+    if (!clean.price && shop) clean.price = menuFor(shop, clean.locationId).find((m) => m.id === (clean.serviceId || "haircut"))?.price ?? 0;
     const limit = walkInLimit(shop ? effectivePlan(shop) : "partner");
     if (Number.isFinite(limit) && (await walkInsToday(shopId, clean.locationId)) >= limit) throw new WalkInLimitError(WALKIN_LIMIT_MESSAGE);
   }
-  if (clean.payWhere === "online" && clean.paid && !prev?.paid) clean.paid = false;
+  // An owner can record an online booking as paid at the shop (cash/GCash); that makes it a shop payment.
+  if (clean.payWhere === "online" && clean.paid && !prev?.paid) {
+    if (clean.payMethod === "cash" || clean.payMethod === "gcash") clean.payWhere = "shop"; else clean.paid = false;
+  }
+  if (clean.paid && !clean.payMethod) clean.payMethod = prev?.payMethod ?? (clean.payWhere === "online" ? "online" : "cash");
+  if (!clean.paid) delete clean.payMethod;
   if (prev?.source) clean.source = prev.source;
   // A booking keeps its original time (and so its day for the walk-in limit).
   if (prev?.createdAt) clean.createdAt = prev.createdAt;

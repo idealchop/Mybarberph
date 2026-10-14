@@ -33,7 +33,7 @@ export interface SalesReport {
   barbers: SalesRow[];
   chairs: SalesRow[];
   customers: number;
-  recent: { id: string; who: string; service: string; sales: number; when: string }[];
+  recent: { id: string; who: string; service: string; sales: number; paid: boolean; when: string }[];
 }
 
 
@@ -109,7 +109,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
 
   for (const extra of extras) {
     add(services, extra.serviceName || "Service", 1, extra.price);
-    add(payments, extra.paid ? (extra.payWhere === "online" ? "Online" : "Cash") : "Still unpaid", 1, extra.price);
+    add(payments, extra.paid ? ({ cash: "Cash", gcash: "GCash", online: "Online" } as const)[extra.payMethod ?? (extra.payWhere === "online" ? "online" : "cash")] : "Still unpaid", 1, extra.price);
     add(channels, extra.channel === "online" ? "Online" : "Walk-in", 1, extra.price);
     const chair = extra.seatLabel || extra.chairLabel;
     if (chair) add(byChair, chair, 1, extra.price);
@@ -134,9 +134,9 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     });
 
   const recent = extras
-    .map((item) => ({ id: item.id, who: item.customerLabel || item.contact || "Walk-in", service: item.serviceName, sales: item.price, at: doneAt(item) }))
+    .map((item) => ({ id: item.id, who: item.customerLabel || item.contact || "Walk-in", service: item.serviceName, sales: item.price, paid: Boolean(item.paid), at: doneAt(item) }))
     .sort((a, b) => b.at - a.at).slice(0, 6)
-    .map(({ id, who, service, sales, at }) => ({ id, who, service, sales, when: whenLabel(at) }));
+    .map(({ id, who, service, sales, paid, at }) => ({ id, who, service, sales, paid, when: whenLabel(at) }));
 
   const delta = rangeSales === 0
     ? "No sales yet"

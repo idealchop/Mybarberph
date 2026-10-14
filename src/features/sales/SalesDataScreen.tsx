@@ -11,6 +11,7 @@ import { useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { SALES_RANGES, salesReport, type SalesRange, type SalesRow, type SalesView } from "@/lib/sales-report";
 import { SalesChartCard } from "./SalesChart";
+import { TransactionSheet } from "@/components/transactions/TransactionSheet";
 
 const VIEWS: { value: SalesView; label: string }[] = [
   { value: "overview", label: "Overview" },
@@ -82,6 +83,9 @@ export function SalesDataScreen() {
 }
 
 function Overview({ report, range }: { report: ReturnType<typeof salesReport>; range: SalesRange }) {
+  const { rows } = useScopedRequests();
+  const [open, setOpen] = useState<string | null>(null);
+  const openRow = open ? rows.find((r) => r.id === open) : undefined;
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -101,9 +105,10 @@ function Overview({ report, range }: { report: ReturnType<typeof salesReport>; r
       {report.recent.length ? (
         <Card padding="none" className="mt-3 px-4 py-3">
           <h2 className="px-0.5 pt-1 text-[16px] font-bold">Latest cuts</h2>
+          {openRow ? <TransactionSheet row={openRow} onClose={() => setOpen(null)} /> : null}
           <ul>
             {report.recent.map((item) => (
-              <li key={item.id} className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0">
+              <li key={item.id} role="button" tabIndex={0} aria-label={`View details for ${item.who}`} onClick={() => setOpen(item.id)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(item.id); }} className="flex cursor-pointer items-center gap-3 border-b border-line py-2.5 last:border-b-0">
                 <span aria-hidden className="flex size-9 flex-none items-center justify-center rounded-full bg-grey-100 text-[13px] font-extrabold">
                   {mark(item.who)}
                 </span>
@@ -111,11 +116,10 @@ function Overview({ report, range }: { report: ReturnType<typeof salesReport>; r
                   <b className="block truncate text-[14.5px]">{item.who}</b>
                   <small className="text-[12.5px] font-semibold text-muted">{item.when ? `${item.service} · ${item.when}` : item.service}</small>
                 </span>
-                {item.sales > 0 ? (
+                <span className="flex flex-col items-end">
                   <b className="text-[14px] tabular-nums">{peso(item.sales)}</b>
-                ) : (
-                  <span className="rounded-full bg-grey-100 px-2.5 py-1 text-[12px] font-bold text-muted">Unpaid</span>
-                )}
+                  {item.paid ? null : <span className="text-[11.5px] font-bold text-muted">Unpaid</span>}
+                </span>
               </li>
             ))}
           </ul>

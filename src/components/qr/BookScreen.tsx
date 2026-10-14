@@ -163,7 +163,7 @@ export function BookScreen() {
       <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
         <BarberIcon name="clipper" size={40} title={haircut.name} />
         <span className="min-w-0 flex-1 font-bold">{haircut.name}</span>
-        <span className="text-[13px] font-semibold">{haircut.durationMins} min{haircut.price ? ` · ${peso(haircut.price)}` : ""}</span>
+        <span className="text-[13px] font-semibold">{haircut.price ? peso(haircut.price) : ""}</span>
       </div>
       {treatments.length ? (
         <>
@@ -181,7 +181,7 @@ export function BookScreen() {
                 >
                   <BarberIcon name="towel" size={40} title={t.name} />
                   <span className="min-w-0 flex-1 font-bold">{t.name}</span>
-                  <span className="text-[13px] font-semibold">{t.durationMins} min{t.price ? ` · ${peso(t.price)}` : ""}</span>
+                  <span className="text-[13px] font-semibold">{t.price ? peso(t.price) : ""}</span>
                 </button>
               );
             })}

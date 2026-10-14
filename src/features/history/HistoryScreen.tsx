@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { Topbar } from "@river-apps/ui";
 import { PageBack } from "@/components/shell/PageBack";
 import { peso } from "@/lib/format";
@@ -28,10 +30,12 @@ export function HistoryScreen() {
 }
 
 function VisitList({ rows }: { rows: ChairRequest[] }) {
+  const [open, setOpen] = useState<ChairRequest | null>(null);
   return (
     <ul className="mt-2 flex flex-col gap-2">
+      {open ? <TransactionSheet row={rows.find((r) => r.id === open.id) ?? open} onClose={() => setOpen(null)} /> : null}
       {rows.map((row) => (
-        <li key={row.id} className="flex items-center justify-between rounded-card bg-surface px-4 py-3 shadow-card">
+        <li key={row.id} role="button" tabIndex={0} aria-label={`View details for ${row.ref}`} onClick={() => setOpen(row)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(row); }} className="flex cursor-pointer items-center justify-between rounded-card bg-surface px-4 py-3 shadow-card">
           <span className="min-w-0">
             <b className="block truncate">{row.customerLabel || row.contact}</b>
             <small className="text-[12.5px] font-semibold text-muted">{row.serviceName} · {row.ref} · {statusLabel(row.status)}</small>

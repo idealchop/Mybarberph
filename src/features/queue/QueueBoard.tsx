@@ -1,5 +1,6 @@
 "use client";
 
+import { payLabel, TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { Plus } from "lucide-react";
 import { Button, EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
 import Link from "next/link";
@@ -53,7 +54,8 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
   const { haircut } = useShopMenu();
   const who = row.customerLabel || row.contact || "Walk-in";
   const where = row.status === "in_chair" && row.chairLabel ? row.chairLabel : row.slotLabel;
-  const pay = row.paid ? "Paid" : row.payWhere === "online" ? "Pay online" : "Pay at the chair";
+  const pay = row.paid ? payLabel(row) : row.payWhere === "online" ? "Pay online" : "Pay at the chair";
+  const [open, setOpen] = useState(false);
   return (
     <li className="rounded-card bg-surface py-3 pl-3 pr-3.5 shadow-card">
       <div className="flex items-center gap-3">
@@ -68,6 +70,8 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
         <b className="text-[14px]">{row.price ? peso(row.price) : statusLabel(row.status)}</b>
       </div>
       <Actions row={row} onFull={onFull} />
+      <button type="button" onClick={() => setOpen(true)} className="mt-2 text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">View details</button>
+      {open ? <TransactionSheet row={row} onClose={() => setOpen(false)} /> : null}
     </li>
   );
 }
