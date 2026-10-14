@@ -15,7 +15,9 @@
     "start": "next start -p 3300",
     "lint": "eslint .",
     "typecheck": "npm run kit:build && tsc --noEmit",
-    "screenshots": "python3 scripts/screenshots.py"
+    "screenshots": "python3 scripts/screenshots.py",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
+    "predev": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.3.1",

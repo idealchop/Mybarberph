@@ -44,6 +44,7 @@ export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className }:
         ref={ref}
         style={{ width: "100%", height: "100%" }}
         styleUrl={STYLE_URL}
+        workerUrl="/maplibre/maplibre-gl-worker.mjs"
         center={{ latitude: centre.lat, longitude: centre.lng }}
         zoom={pin ? 16 : 12}
         pins={pin ? [{ id: "shop", coords: { latitude: pin.lat, longitude: pin.lng }, title: "Your shop" }] : []}
