@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 // The UI kit is a git submodule consumed from source; tsconfig "paths" map @river-apps/* to it.
 const kit = "./vendor/river-apps-ui-kit/packages";
+// River Maps (MapLibre + PMTiles) is a git submodule consumed from source too.
+const maps = "./vendor/river-maps/packages/river-map/src";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -30,6 +32,7 @@ const nextConfig: NextConfig = {
       "@river-apps/icons": `${kit}/icons/src/index.ts`,
       "@river-apps/tokens/fonts.css": `${kit}/tokens/dist/fonts.css`,
       "@river-apps/tokens/theme.css": `${kit}/tokens/dist/theme.css`,
+      "@river/map": `${maps}/index.ts`,
     },
   },
 };

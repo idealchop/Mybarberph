@@ -2,16 +2,18 @@
 
 /**
  * Map pin picker for the shop profile.
- * Draggable pin on an OpenStreetMap tile map, browser geolocation, and a reverse-geocoded address.
+ * River Maps (MapLibre + PMTiles) pin, browser geolocation, and a reverse-geocoded address.
  */
 import { MapPin, Navigation } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, cn } from "@river-apps/ui";
-import { PinMap } from "@/components/map/PinMap";
+const RiverPinMap = dynamic(() => import("@/components/map/RiverPinMap").then((m) => m.RiverPinMap), {
+  ssr: false,
+  loading: () => <div className="h-[240px] rounded-tile bg-grey-100" />,
+});
 import { reverseGeocodePin } from "@/lib/geocode";
 import type { ShopLocation } from "@/lib/shop-profile";
-
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 /** Metro Manila, for the map before a pin exists. */
 const FALLBACK = { lat: 14.5995, lng: 120.9842 };
@@ -30,8 +32,6 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
   const [locating, setLocating] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const placesId = "barber-places-search";
-  const googleLoaded = useRef(false);
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(onChange);
@@ -55,42 +55,6 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
       });
     }, GEOCODE_DELAY_MS);
   }, []);
-
-  useEffect(() => {
-    if (!GOOGLE_KEY || googleLoaded.current || disabled) return;
-    type Autocomplete = {
-      addListener: (e: string, cb: () => void) => void;
-      getPlace: () => { geometry?: { location?: { lat: () => number; lng: () => number } }; formatted_address?: string; place_id?: string };
-    };
-    const boot = () => {
-      const el = document.getElementById(placesId) as HTMLInputElement | null;
-      const g = (window as unknown as { google?: { maps?: { places?: { Autocomplete: new (el: HTMLInputElement, opts: object) => Autocomplete } } } }).google;
-      if (!g?.maps?.places || !el) return;
-      googleLoaded.current = true;
-      const ac = new g.maps.places.Autocomplete(el, {
-        fields: ["geometry", "formatted_address", "place_id"],
-        componentRestrictions: { country: "ph" },
-      });
-      ac.addListener("place_changed", () => {
-        const place = ac.getPlace();
-        const loc = place.geometry?.location;
-        if (!loc) return;
-        movePin(loc.lat(), loc.lng(), place.formatted_address, place.place_id);
-      });
-    };
-    const existing = document.querySelector<HTMLScriptElement>("script[data-barber-maps]");
-    if (existing) {
-      if ((window as unknown as { google?: unknown }).google) boot();
-      else existing.addEventListener("load", boot);
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_KEY)}&libraries=places`;
-    s.async = true;
-    s.dataset.barberMaps = "1";
-    s.onload = boot;
-    document.head.appendChild(s);
-  }, [movePin, disabled]);
 
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -118,19 +82,6 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
   return (
     <div className="flex flex-col gap-3">
       <FieldLabel aside="For customers" className="mb-0">Map pin</FieldLabel>
-      {GOOGLE_KEY ? (
-        <div className="flex flex-col">
-          <label htmlFor={placesId} className="mb-2 text-[14px] font-bold">Search address (Google)</label>
-          <input
-            id={placesId}
-            type="text"
-            disabled={busy}
-            placeholder="Start typing a Philippine address…"
-            className="h-[46px] rounded-tile bg-canvas px-4 text-[14px] font-semibold outline-none focus:bg-surface focus:ring-2 focus:ring-ink"
-            autoComplete="off"
-          />
-        </div>
-      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="secondary" leadingIcon={<Navigation size={16} />} onClick={useMyLocation} disabled={busy}>
           {locating ? "Locating…" : "Use my location"}
@@ -142,7 +93,7 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
         ) : null}
       </div>
       <div>
-        <PinMap
+        <RiverPinMap
           pin={pin ? { lat: pin.lat, lng: pin.lng } : null}
           fallbackCenter={FALLBACK}
           onPin={(p) => movePin(p.lat, p.lng)}
@@ -150,7 +101,7 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
           className="h-[240px]"
         />
         <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">
-          {pin ? "Drag the pin or tap the map to fine-tune your exact spot." : "Tap the map to drop your shop’s pin."}
+          {pin ? "Tap the map to move the pin to your exact spot." : "Tap the map to drop your shop’s pin."}
         </p>
       </div>
       {pin ? (
