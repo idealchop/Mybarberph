@@ -17,7 +17,6 @@ import {
   completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useScopedRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
-import { useTier } from "@/lib/tier";
 
 type Channel = "walk-ins" | "online";
 
@@ -80,8 +79,6 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
 
 /** Queue: walk-ins and online, with today’s sales on the same screen. */
 export function QueueBoard() {
-  const { tier } = useTier();
-  const paid = tier === "paid";
   const router = useRouter();
   const channel: Channel = useSearchParams().get("channel") === "online" ? "online" : "walk-ins";
   const [search, setSearch] = useState("");
@@ -165,11 +162,6 @@ export function QueueBoard() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        {paid && channel === "walk-ins" ? (
-          <Button href="/queue/new" size="md" aria-label="New walk-in" leadingIcon={<Plus size={18} strokeWidth={2.2} />} className="flex-none px-4">
-            Walk-in
-          </Button>
-        ) : null}
       </div>
 
       {full ? <p className="mt-3 px-1 text-[13.5px] font-semibold">{full}</p> : null}

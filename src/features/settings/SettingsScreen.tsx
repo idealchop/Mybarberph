@@ -32,7 +32,6 @@ export function SettingsScreen() {
 
   const links = [
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
-    ...(paid ? [] : [{ href: "/qr", icon: Scissors, title: "Shop listing", subtitle: "How customers find this shop" }]),
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and chairs" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
@@ -84,7 +83,7 @@ export function SettingsScreen() {
       </section>
 
 
-      {shops.ready ? <LocationCard shops={shops} /> : null}
+      <LocationCard shops={shops} />
 
       <div className="mt-6 grid grid-cols-1 gap-4">
         <Card padding="none" className="px-3.5 py-1.5">
@@ -112,14 +111,6 @@ export function SettingsScreen() {
 
         <Card padding="none" className="overflow-visible px-2 py-1.5">
           <b className="block px-2.5 pt-3 text-[16px]">Features</b>
-          <Link href="/settings/shops" className="flex min-h-[60px] items-center gap-3 rounded-tile px-1.5 py-2">
-            <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><MapPin size={18} strokeWidth={1.75} /></span>
-            <span className="min-w-0 flex-1">
-              <b className="block truncate text-[15px]">Multiple shops</b>
-              <small className="block truncate text-[13px] font-medium text-muted">{shops.enabled ? "On. Each shop has its own day." : "Off until you turn it on."}</small>
-            </span>
-            <Badge variant="soft" size="sm">{shops.enabled ? "On" : "Off"}</Badge>
-          </Link>
           {paid ? (
             <div className="relative mx-1.5 mb-1 mt-11 rounded-card bg-grey-100 px-4 pb-4 pt-[78px] lg:hidden">
               <div className="absolute inset-x-0 -top-9 flex justify-center"><BarberChair size={150} /></div>
@@ -201,7 +192,7 @@ function LocationCard({ shops }: { shops: ReturnType<typeof useShopLocations> })
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-[14.5px] font-semibold">Disabled. This phone stays on one shop.</p>
+        <p className="mt-2 text-[14.5px] font-semibold">One shop. Turn on multiple shops in Manage shops.</p>
       )}
       <Button className="mt-4" href="/settings/shops" size="md" fullWidth variant="secondary">Manage shops</Button>
     </section>

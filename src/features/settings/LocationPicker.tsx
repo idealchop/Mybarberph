@@ -101,7 +101,7 @@ export function LocationPicker({ value, onChange, disabled }: { value: ShopLocat
           className="h-[240px]"
         />
         <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">
-          {pin ? "Tap the map to move the pin to your exact spot." : "Tap the map to drop your shop’s pin."}
+          {pin ? "Drag the pin or tap the map to move it to your exact spot." : "Tap the map to drop your shop’s pin."}
         </p>
       </div>
       {pin ? (
