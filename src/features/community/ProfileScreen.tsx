@@ -38,7 +38,7 @@ export function ProfileScreen() {
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-[max(0.5rem,env(safe-area-inset-top))] lg:max-w-[640px] lg:px-[30px] lg:pt-6">
-      <PageBack fallback="/community" />
+      <PageBack fallback="/moments" />
       {!profile ? <p className="px-1 py-16 text-center text-[15px] font-semibold text-muted">That profile isn’t in the community.</p> : (
         <>
           <header className="mt-2 px-1">

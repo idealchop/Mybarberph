@@ -1,19 +1,10 @@
 "use client";
 
-import { ChatIcon } from "@river-apps/icons";
 import { Badge, cn, type NavItem } from "@river-apps/ui";
-import { BarberIcon } from "@/components/art";
-
-/** 3D marks for the phone bar: pole for the shop, ticket for the queue, chat for community. */
-function TabIcon({ itemKey }: { itemKey: string }) {
-  if (itemKey === "queue") return <BarberIcon name="ticket" size={28} />;
-  if (itemKey === "community") return <ChatIcon size={28} />;
-  return <BarberIcon name="pole" size={28} />;
-}
 
 /**
  * Phone tab bar, same shape as Laundry.ph: icon only, no label.
- * The pictures are the barbershop marks, not the laundry washer and basket.
+ * Icons are River Mobile 3D icons; the active one is full colour on a soft pill, others muted.
  */
 export function ShopTabBar({ items, activeKey, label = "Main" }: { items: NavItem[]; activeKey: string; label?: string }) {
   return (
@@ -37,10 +28,10 @@ export function ShopTabBar({ items, activeKey, label = "Main" }: { items: NavIte
               className={cn(
                 "relative inline-flex size-12 items-center justify-center rounded-full transition-opacity",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
-                on ? "opacity-100" : "opacity-55 hover:opacity-80",
+                on ? "bg-grey-100" : "hover:bg-grey-100/60",
               )}
             >
-              <TabIcon itemKey={it.key} />
+              {it.icon}
               {it.badge ? <Badge variant="count" className="absolute right-0 top-0" aria-hidden>{it.badge}</Badge> : null}
             </a>
           );

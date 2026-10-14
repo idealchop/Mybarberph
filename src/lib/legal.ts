@@ -30,7 +30,7 @@ export const TERMS: LegalDoc = {
   ],
   sections: [
     { id: "about", title: "1. What Barbers.ph is", blocks: [
-      `${E.app} helps barbershops run their day: a walk-in and online queue, a booking QR for customers, a sales record, chair links for barbers, a shop listing and a community for shop owners.`,
+      `${E.app} helps barbershops run their day: a walk-in and online queue, a booking QR for customers, a sales record, chair links for barbers, a shop listing and Moments, a feed for shop owners.`,
       `Your shop’s public listing can also be shown in River Mobile, the ${E.brand} app where customers find and book local providers.`,
     ] },
     { id: "responsibility", title: "2. Your responsibility vs River’s", blocks: [{ list: [
@@ -61,7 +61,7 @@ export const TERMS: LegalDoc = {
     { id: "public", title: "6. Public listing, photos and location", blocks: [
       "When you list your shop, its name, address, area, map location, hours, services and prices, logo and photos are public so customers can find you, including in River Mobile and on maps. You give River a non-exclusive, royalty-free licence to host, display and share this content for that purpose, and you confirm you have the rights to the photos you upload (including consent of any person shown).",
     ] },
-    { id: "community", title: "7. Community posts", blocks: [{ list: [
+    { id: "community", title: "7. Moments posts", blocks: [{ list: [
       "Keep posts honest, respectful and about running a shop. Do not post illegal, hateful, harassing, sexual or misleading content, other people’s personal data, or spam.",
       "You keep ownership of what you post; River may host, display and moderate it, and may remove content or limit accounts that break these rules.",
     ] }] },
@@ -110,7 +110,7 @@ export const PRIVACY: LegalDoc = {
       "<b>Shop data:</b> shop name, address, branches, map location, phone, hours, services and prices, chairs and barber links, logo and photos.",
       "<b>Customer and booking records:</b> customer names or labels, mobile numbers or emails, services, times, status, chair, prices and payment status for walk-ins and online bookings.",
       "<b>Plan and payments:</b> your plan, amount, status and PayMongo reference. Card and e-wallet details are collected by PayMongo, not stored by River.",
-      "<b>Community:</b> posts, photos, comments and likes.",
+      "<b>Moments:</b> posts, photos, comments and likes.",
       "<b>Device and usage data:</b> app version, device and browser type, IP address, error logs and in-app activity.",
     ] }] },
     { id: "use", title: "2. How we use information", blocks: [
@@ -132,7 +132,7 @@ export const PRIVACY: LegalDoc = {
       { list: [
         "<b>Customers and River Mobile users:</b> your public shop listing, and the status of a booking to the customer who made it.",
         "<b>Service providers:</b> Google Firebase and Google Cloud (hosting, database, storage, sign-in), PayMongo (payments), SMS providers, and map services.",
-        "<b>Other shop owners:</b> your display name and photo with community posts.",
+        "<b>Other shop owners:</b> your display name and photo with Moments posts.",
         "<b>Authorities</b> when required by law or to protect rights and safety.",
       ] },
       "Some service providers store data outside the Philippines (for example Google Cloud in Singapore). We use contracts and safeguards as required by the Data Privacy Act.",
@@ -140,7 +140,7 @@ export const PRIVACY: LegalDoc = {
     { id: "retention", title: "5. How long we keep data", blocks: [{ list: [
       "Account and shop data: while your account is active.",
       "Booking, sales and payment records: 10 years, as required for tax and accounting records under the National Internal Revenue Code (NIRC), then deleted or anonymised.",
-      "Community posts: until you delete them or your account.",
+      "Moments posts: until you delete them or your account.",
       "After your account is deleted we remove or anonymise personal data, shop photos and customer records within 30 days, except records we must keep by law.",
     ] }] },
     { id: "security", title: "6. Security", blocks: [{ list: [

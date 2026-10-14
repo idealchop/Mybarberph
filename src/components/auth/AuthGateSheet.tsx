@@ -7,6 +7,7 @@
 import { Button, OtpInput, PhoneInput, cn } from "@river-apps/ui";
 import { ArrowLeft, MessageSquareText, Phone, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { RiverMark } from "@/components/shell/Brand";
 import { authErrorMessage, confirmPhoneCode, sendPhoneCode, signInWithGoogle } from "@/lib/session";
 
 type Step = "methods" | "phone" | "code";
@@ -94,7 +95,8 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
           <X size={16} strokeWidth={2.2} />
         </button>
         <div className="max-h-[min(80dvh,620px)] overflow-y-auto px-5 pb-6 pt-5">
-          <h2 id="auth-gate-title" className="pr-10 text-[24px] font-extrabold leading-[1.15] tracking-[-0.025em]">{title}</h2>
+          <RiverMark size={40} />
+          <h2 id="auth-gate-title" className="mt-3 pr-10 text-[24px] font-extrabold leading-[1.15] tracking-[-0.025em]">{title}</h2>
           <p className="mt-2 text-[14.5px] font-medium leading-snug text-muted">{sub}</p>
 
           {step === "methods" ? (

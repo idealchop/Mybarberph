@@ -69,7 +69,7 @@ export function authorHandle(name: string): string {
 }
 
 export function profileHref(name: string): string {
-  return `/community/profile?u=${encodeURIComponent(authorHandle(name))}`;
+  return `/moments/profile?u=${encodeURIComponent(authorHandle(name))}`;
 }
 
 export type CommunityProfile = PostAuthor & { handle: string; bio: string };

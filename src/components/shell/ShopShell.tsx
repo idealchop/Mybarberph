@@ -9,7 +9,7 @@ import { useChairRequests } from "@/lib/chair-bookings";
 import { useTier } from "@/lib/tier";
 import { Brand } from "./Brand";
 import { ClientNav } from "./ClientNav";
-import { APP_NAV, APP_TABS, activeKeyFor } from "./nav";
+import { activeKeyFor, appNav } from "./nav";
 import { ShopTabBar } from "./ShopTabBar";
 
 function ShopQrPromo() {
@@ -37,7 +37,7 @@ function PartnerPlanCard() {
 
 const FOCUS = ["/queue/new", "/settings/edit"];
 
-/** Home, Queue, and Community. Paid shops get the QR card. Account is the avatar on Home. */
+/** Home, Queue, and Moments. Paid shops get the QR card. Account is the avatar on Home. */
 export function ShopShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const { tier } = useTier();
@@ -45,8 +45,8 @@ export function ShopShell({ children }: { children: ReactNode }) {
   const waiting = useChairRequests().rows.filter((r) => r.channel === "online" && r.status === "requested").length;
   const focus = FOCUS.some((r) => pathname === r || pathname.startsWith(`${r}/`));
   const active = activeKeyFor(pathname);
-  const items = APP_NAV.map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
-  const tabs = APP_TABS.map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
+  const items = appNav(active, 26).map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
+  const tabs = appNav(active, 32).map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);
 
 
   return (

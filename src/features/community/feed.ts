@@ -64,11 +64,11 @@ export function useCommunityFeed() {
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
   const share = async (p: CommunityPost) => {
-    const url = `${window.location.origin}/community#${p.id}`;
+    const url = `${window.location.origin}/moments#${p.id}`;
     const text = p.body ? `${p.author.name}: ${p.body.slice(0, 140)}` : `Post by ${p.author.name}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Barbers.ph Community", text, url });
+        await navigator.share({ title: "Barbers.ph Moments", text, url });
         return;
       }
       await navigator.clipboard.writeText(url);
