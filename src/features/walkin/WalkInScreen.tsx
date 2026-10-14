@@ -9,34 +9,24 @@ import { refCode, seatWalkIn } from "@/lib/chair-bookings";
 import { cloudSnapshot } from "@/lib/cloud";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
-import { useTier } from "@/lib/tier";
+import { useWalkInAllowance } from "@/lib/walkin-limit";
+import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 
-/** Paid counter: a walk-in sits down immediately. */
+/** Walk-in counter: they sit down immediately. Partner: 10 a day per shop; Pro and Lifetime: unlimited. */
 export function WalkInScreen() {
-  const { tier } = useTier();
   const shops = useShopLocations();
+  const allowance = useWalkInAllowance(shops.scopeId ?? HOME_LOCATION_ID);
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const { haircut, treatments } = useShopMenu();
   const [picked, setPicked] = useState<string[]>([]);
 
-  if (tier !== "paid") {
-    return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-[402px] flex-col px-4 pt-6">
-        <div className="flex items-center gap-1">
-          <PageBack fallback="/queue" />
-          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Walk-ins are on Pro</h1>
-        </div>
-        <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">Partner shops accept online bookings from Home and Queue.</p>
-      </main>
-    );
-  }
-
   const chosen = treatments.filter((t) => picked.includes(t.id));
   const serviceName = [haircut.name, ...chosen.map((t) => t.name)].join(" · ");
 
   const save = () => {
+    if (allowance.atLimit) { setNote(allowance.message); return; }
     const now = Date.now();
     const chair = seatWalkIn({
       id: `wk-${now}`,
@@ -75,6 +65,15 @@ export function WalkInScreen() {
       ) : (
       <>
       <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">{shops.enabled && shops.branch ? `They sit down now at ${shops.branch.name} and pay at the shop.` : "They sit down now and pay at the shop."}</p>
+      {allowance.unlimited ? null : allowance.atLimit ? (
+        <div className="mt-4 rounded-card bg-surface px-4 py-3.5 shadow-card">
+          <b className="block text-[14px]">That’s 10 walk-ins today</b>
+          <p className="mt-1 text-[13px] font-medium text-muted">{allowance.message}</p>
+          <Button href="/settings/billing" size="sm" className="mt-2.5">See plans</Button>
+        </div>
+      ) : (
+        <p className="mt-3 pl-11 text-[13px] font-bold">{allowance.label}</p>
+      )}
       <div className="mt-5 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
         <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
         <span className="min-w-0 flex-1">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CreditCard, FileText, History, LogOut, MapPin, Package, Pencil, Scissors, ShieldCheck } from "lucide-react";
+import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -35,8 +35,6 @@ export function SettingsScreen() {
     ...(paid ? [] : [{ href: "/qr", icon: Scissors, title: "Shop listing", subtitle: "How customers find this shop" }]),
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and chairs" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
-    { href: "/terms", icon: FileText, title: "Terms of Service", subtitle: "How Barbers.ph works for your shop" },
-    { href: "/privacy", icon: ShieldCheck, title: "Privacy Policy", subtitle: "Shop and customer data, Data Privacy Act" },
   ];
 
   return (
@@ -140,14 +138,14 @@ export function SettingsScreen() {
               <Badge variant="soft" size="sm">Included</Badge>
             </Link>
           ) : (
-            <div className="flex min-h-[60px] items-center gap-3 px-1.5 py-2">
+            <Link href="/queue/new" className="flex min-h-[60px] items-center gap-3 rounded-tile px-1.5 py-2">
               <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><Scissors size={18} strokeWidth={1.75} /></span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15px]">Walk-in</b>
-                <small className="block truncate text-[13px] font-medium text-muted">Add someone at the chair</small>
+                <small className="block truncate text-[13px] font-medium text-muted">Walk-ins: 10/day on Partner</small>
               </span>
-              <Button href="/settings/billing" size="xs" pill className="whitespace-nowrap">Upgrade · {PAID_PER_MO}</Button>
-            </div>
+              <Badge variant="soft" size="sm">10/day</Badge>
+            </Link>
           )}
         </Card>
 
@@ -162,6 +160,11 @@ export function SettingsScreen() {
             <small className="text-[13px] font-medium text-muted">{user.email || user.phone || "Signed in"}</small>
           </span>
         </button> : null}
+        <p className="-mt-1 px-1 text-[12px] font-medium text-muted">
+          <Link href="/terms" className="hover:underline">Terms</Link>
+          <span aria-hidden> · </span>
+          <Link href="/privacy" className="hover:underline">Privacy</Link>
+        </p>
       </div>
     </div>
   );

@@ -155,7 +155,13 @@ export function saveBooking(row: ChairRequest) {
   if (!mode) return;
   const rest = snap.bookings.filter((b) => b.id !== row.id);
   set({ bookings: [row, ...rest].sort((a, b) => b.createdAt - a.createdAt) });
-  void track(api(`${base()}/bookings/${encodeURIComponent(row.id)}`, { method: "PUT", body: JSON.stringify({ booking: row }) })).catch(() => undefined);
+  void track(api(`${base()}/bookings/${encodeURIComponent(row.id)}`, { method: "PUT", body: JSON.stringify({ booking: row }) })).catch((e: Error & { status?: number }) => {
+    // Over the Partner walk-in limit: take the optimistic row back out and tell the screen.
+    if (e.status === 402) {
+      set({ bookings: snap.bookings.filter((b) => b.id !== row.id) });
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("barbers-walkin-limit", { detail: e.message }));
+    }
+  });
 }
 
 export function removeBooking(id: string) {

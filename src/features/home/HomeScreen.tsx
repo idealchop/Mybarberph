@@ -148,8 +148,8 @@ export function HomeScreen() {
             </h2>
             <p className="mt-0.5 text-[12.5px] font-medium text-on-ink-muted">{figures.cuts} cuts · {inChair} in chair</p>
             <div className="mt-2 flex flex-nowrap items-center gap-1.5">
-              {paid ? <Button href="/queue/new" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button> : null}
-              <Button href="/scan" variant={paid ? "ghost-inverse" : "white"} size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
+              <Button href="/queue/new" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
+              <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
             </div>
           </div>
           <div aria-hidden className="relative z-0 w-[88px] flex-none"><BarberChair size={88} /></div>
@@ -171,7 +171,7 @@ export function HomeScreen() {
           <Card padding="none" className="mx-4 mt-2.5 flex items-center justify-between gap-3 px-4 py-3.5">
             <span className="min-w-0">
               <b className="block text-[14px]">You’re on Partner</b>
-              <small className="text-[12.5px] font-semibold text-muted">Pro adds walk-ins and the shop QR · ₱499/mo</small>
+              <small className="text-[12.5px] font-semibold text-muted">Walk-ins: 10/day · Pro adds unlimited walk-ins and the shop QR · ₱499/mo</small>
             </span>
             <Button href="/settings/billing" variant="secondary" size="sm" className="flex-none">Plans</Button>
           </Card>
@@ -191,8 +191,8 @@ export function HomeScreen() {
             contentWidth={460}
             actions={
               <div className="flex flex-nowrap items-center gap-2.5">
-                {paid ? <Button href="/queue/new" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button> : null}
-                <Button href="/scan" variant={paid ? "ghost-inverse" : "white"} size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
+                <Button href="/queue/new" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button>
+                <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
               </div>
             }
             illustration={<BarberChair size={220} />}

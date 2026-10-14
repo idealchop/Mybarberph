@@ -1,5 +1,6 @@
 "use client";
 
+import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { Avatar, Button, Input } from "@river-apps/ui";
 import { ChevronLeft, History, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -142,6 +143,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const chair = chairPreview;
+  const allowance = useWalkInAllowance(chair?.locationId || HOME_LOCATION_ID);
 
   if (cloud.ready && cloud.error && !cloud.shopId) {
     return (
@@ -246,6 +248,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
               setNote("Finish the cut in your chair first.");
               return;
             }
+            if (allowance.atLimit) { setNote(allowance.message); return; }
             const nowAt = Date.now();
             const chosen = treatments.filter((service) => picked.includes(service.id));
             const sat = seatWalkInOnChair({
@@ -306,7 +309,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
             setNote("Finish the cut in your chair first.");
             return;
           }
-          setNote("");
+          if (allowance.atLimit) { setNote(allowance.message); return; }
+          setNote(allowance.label);
           setAdding(true);
           setScanning(false);
         }}

@@ -1,5 +1,5 @@
 import { json, notFound } from "@/lib/server/auth";
-import { chairLink, loadBookings, loadState, publicShop, shopRef, type ShopDoc } from "@/lib/server/shops";
+import { chairLink, effectivePlan, loadBookings, loadState, publicShop, shopRef, type ShopDoc } from "@/lib/server/shops";
 
 export const dynamic = "force-dynamic";
 
@@ -14,5 +14,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     loadBookings(link.shopId, 150),
   ]);
   const shop = snap.data() as ShopDoc;
-  return json({ shopId: link.shopId, chairId: link.chairId, shop: { ...publicShop(link.shopId, shop), plan: shop.plan }, values, bookings });
+  return json({ shopId: link.shopId, chairId: link.chairId, shop: { ...publicShop(link.shopId, shop), plan: effectivePlan(shop) }, values, bookings });
 }

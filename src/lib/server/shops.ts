@@ -25,7 +25,7 @@ export const STATE_KEYS: Record<string, string> = {
 /** Keys a barber link may write. */
 export const BARBER_KEYS = new Set(["barbers.shop-chairs"]);
 
-import { isRecurring, maxLocations, normalizePlan, type PlanId } from "@/lib/plans";
+import { isRecurring, maxLocations, normalizePlan, walkInLimit, WALKIN_LIMIT_MESSAGE, type PlanId } from "@/lib/plans";
 
 /** Stored plan id; older records may still hold "monthly_950" / "lifetime_10000". */
 export type Plan = PlanId | "monthly_950" | "lifetime_10000";
@@ -196,13 +196,38 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   return out;
 }
 
+/** Thrown when a Partner shop is over its daily walk-in limit (routes answer 402). */
+export class WalkInLimitError extends Error { status = 402; }
+
+/** Start of today in Manila (UTC+8, no DST) as unix ms. */
+export function manilaDayStart(ms = Date.now()) {
+  const day = new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  return Date.parse(`${day}T00:00:00+08:00`);
+}
+
+/** Walk-ins created today (Manila) at one shop location: owner app and chair links alike. */
+export async function walkInsToday(shopId: string, locationId?: string) {
+  const loc = locationId || "home";
+  const q = await shopRef(shopId).collection("bookings").where("createdAt", ">=", manilaDayStart()).get();
+  return q.docs.filter((d) => { const b = d.data() as ChairRequest; return b.channel === "walk-in" && (b.locationId || "home") === loc; }).length;
+}
+
 export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
   const clean = cleanBooking(shopId, row);
   const ref = shopRef(shopId).collection("bookings").doc(clean.id);
   // Payment state can't be set to "paid online" by a client; only cash at the chair.
   const prev = (await ref.get()).data() as ChairRequest | undefined;
+  if (!prev && clean.channel === "walk-in") {
+    // Server time decides the day; a client can't backdate a walk-in around the limit.
+    clean.createdAt = Date.now();
+    const shop = (await shopRef(shopId).get()).data() as ShopDoc | undefined;
+    const limit = walkInLimit(shop ? effectivePlan(shop) : "partner");
+    if (Number.isFinite(limit) && (await walkInsToday(shopId, clean.locationId)) >= limit) throw new WalkInLimitError(WALKIN_LIMIT_MESSAGE);
+  }
   if (clean.payWhere === "online" && clean.paid && !prev?.paid) clean.paid = false;
   if (prev?.source) clean.source = prev.source;
+  // A booking keeps its original time (and so its day for the walk-in limit).
+  if (prev?.createdAt) clean.createdAt = prev.createdAt;
   await ref.set(clean);
   return clean;
 }
