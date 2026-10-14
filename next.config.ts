@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   agentRules: false,
   devIndicators: false,
+  // Same-origin Firebase Auth handler (Safari blocks cross-site redirect storage). Used when
+  // NEXT_PUBLIC_AUTH_SAME_ORIGIN=1 and the host's /__/auth/handler is an authorized OAuth redirect URI.
+  async rewrites() {
+    return [{ source: "/__/auth/:path*", destination: "https://mybarberph.firebaseapp.com/__/auth/:path*" }];
+  },
   async redirects() {
     return [
       { source: "/dashboard", destination: "/home", permanent: false },

@@ -3,8 +3,8 @@
  * Who is signed in (Firebase Auth). Guests browse freely; actions ask them to sign in.
  */
 import {
-  GoogleAuthProvider, RecaptchaVerifier, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword,
-  signInWithPhoneNumber, signInWithPopup, signOut as fbSignOut, type ConfirmationResult, type User,
+  GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, onAuthStateChanged,
+  signInWithPhoneNumber, signInWithPopup, signInWithRedirect, signOut as fbSignOut, type ConfirmationResult, type User,
 } from "firebase/auth";
 import { useSyncExternalStore } from "react";
 import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
@@ -55,13 +55,30 @@ export async function idToken(): Promise<string | null> {
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
-  await signInWithPopup(firebaseAuth(), provider);
+  try {
+    await signInWithPopup(firebaseAuth(), provider);
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? "";
+    // Mobile Safari / in-app browsers can block or break the popup: fall back to a full-page redirect.
+    if (code.includes("popup-blocked") || code.includes("operation-not-supported") || code.includes("web-storage-unsupported")) {
+      sessionStorage.setItem("bp.authRedirect", location.pathname + location.search);
+      await signInWithRedirect(firebaseAuth(), provider);
+      return;
+    }
+    throw err;
+  }
 }
 
-export async function signInEmail(email: string, password: string, create: boolean) {
-  if (create) await createUserWithEmailAndPassword(firebaseAuth(), email, password);
-  else await signInWithEmailAndPassword(firebaseAuth(), email, password);
+/** Finishes a Google redirect sign-in (if one is pending) after the page reloads. */
+export async function finishRedirectSignIn(): Promise<string | null> {
+  if (!isFirebaseConfigured()) return null;
+  const back = sessionStorage.getItem("bp.authRedirect");
+  if (!back) return null;
+  sessionStorage.removeItem("bp.authRedirect");
+  const res = await getRedirectResult(firebaseAuth()).catch(() => null);
+  return res ? back : null;
 }
+
 
 let confirmation: ConfirmationResult | null = null;
 let verifier: RecaptchaVerifier | null = null;
@@ -69,6 +86,10 @@ let verifier: RecaptchaVerifier | null = null;
 /** Sends a 6-digit code by SMS (Firebase phone auth, invisible reCAPTCHA on `buttonId`). */
 export async function sendPhoneCode(e164: string, buttonId: string) {
   verifier?.clear();
+  // Dev only: Firebase test numbers can skip reCAPTCHA for automated checks (opt-in per browser).
+  if (process.env.NEXT_PUBLIC_AUTH_TEST_MODE === "1" && localStorage.getItem("bp.authTest") === "1") {
+    firebaseAuth().settings.appVerificationDisabledForTesting = true;
+  }
   verifier = new RecaptchaVerifier(firebaseAuth(), buttonId, { size: "invisible" });
   confirmation = await signInWithPhoneNumber(firebaseAuth(), e164, verifier);
 }
@@ -92,11 +113,8 @@ export function authErrorMessage(err: unknown): string {
   if (code.includes("invalid-phone-number")) return "Enter a valid PH mobile number.";
   if (code.includes("too-many-requests")) return "Too many tries. Wait a few minutes and try again.";
   if (code.includes("operation-not-allowed")) return "This sign-in method isn’t turned on yet. Try another one.";
-  if (code.includes("billing-not-enabled") || code.includes("quota")) return "Text codes aren’t available right now. Use Google or email.";
-  if (code.includes("email-already-in-use")) return "That email already has an account. Log in instead.";
-  if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) return "Email or password is not right.";
-  if (code.includes("weak-password")) return "Use at least 6 characters for your password.";
-  if (code.includes("invalid-email")) return "Enter a valid email address.";
+  if (code.includes("billing-not-enabled") || code.includes("quota")) return "Text codes aren’t available right now. Use Google instead.";
+  if (code.includes("captcha")) return "Couldn’t confirm you’re not a robot. Reload and try again.";
   if (code.includes("unauthorized-domain")) return "Sign-in isn’t allowed on this web address yet.";
   return (err as Error)?.message || "Something went wrong. Try again.";
 }

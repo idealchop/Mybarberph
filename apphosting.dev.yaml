@@ -5,3 +5,5 @@ env:
     value: "barbersdb-dev"
   - variable: BARBERS_ENV
     value: "dev"
+  - variable: NEXT_PUBLIC_AUTH_TEST_MODE
+    value: "1"

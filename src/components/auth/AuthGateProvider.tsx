@@ -7,7 +7,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { startCloud } from "@/lib/cloud";
-import { useSession } from "@/lib/session";
+import { finishRedirectSignIn, useSession } from "@/lib/session";
 import { AuthGateSheet } from "./AuthGateSheet";
 
 type Ctx = { isAuthenticated: boolean; requireAuth: (after?: () => void) => void };
@@ -29,7 +29,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const pending = useRef<(() => void) | null>(null);
   const replaying = useRef(false);
 
-  useEffect(() => { startCloud(); }, []);
+  useEffect(() => { startCloud(); void finishRedirectSignIn(); }, []);
 
   const requireAuth = useCallback((after?: () => void) => {
     if (authedRef.current) { after?.(); return; }

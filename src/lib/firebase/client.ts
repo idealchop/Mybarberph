@@ -15,7 +15,10 @@ export const isFirebaseConfigured = () => Boolean(config.apiKey);
 
 export function firebaseApp(): FirebaseApp {
   if (!config.apiKey) throw new Error("Sign-in is not configured (NEXT_PUBLIC_FIREBASE_API_KEY is missing).");
-  return getApps().length ? getApp() : initializeApp(config);
+  if (getApps().length) return getApp();
+  // Same-origin auth domain keeps Google redirect sign-in working on mobile Safari (see next.config rewrites).
+  const sameOrigin = process.env.NEXT_PUBLIC_AUTH_SAME_ORIGIN === "1" && typeof window !== "undefined" && window.location.hostname.endsWith(".hosted.app");
+  return initializeApp(sameOrigin ? { ...config, authDomain: window.location.host } : config);
 }
 
 let auth: Auth | null = null;
