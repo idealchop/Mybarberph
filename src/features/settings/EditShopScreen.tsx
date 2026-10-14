@@ -178,6 +178,7 @@ function ProfileEditor({
                 <span className="mb-2 text-[14px] font-bold">Logo</span>
                 <button
                   type="button"
+                  data-auth="action"
                   aria-label={logo ? "Change logo" : "Upload logo"}
                   disabled={busy}
                   onClick={() => logoRef.current?.click()}
@@ -209,7 +210,7 @@ function ProfileEditor({
             <AboutField id={aboutId} about={about} starter={aboutDraft === null && !profile.about.trim()} disabled={busy} onChange={(value) => setAboutDraft(value)} />
             {enabled ? <Button type="button" variant="secondary" size="md" onClick={() => leave("/settings/shops")}>Shops</Button> : <LocationPicker value={location} onChange={setLocation} disabled={busy} />}
             {error ? <p className="text-[13.5px] font-semibold">{error}</p> : null}
-            <Button type="submit" size="md" fullWidth disabled={busy || !dirty || name.trim().length < 2}>
+            <Button data-auth="action" type="submit" size="md" fullWidth disabled={busy || !dirty || name.trim().length < 2}>
               {busy ? "Saving…" : "Save shop profile"}
             </Button>
           </form>

@@ -93,6 +93,7 @@ export function ShopPhotos({ urls, onChange, disabled = false }: { urls: string[
           size="md"
           disabled={busy || full || disabled}
           leadingIcon={<ImagePlus size={18} />}
+          data-auth="action"
           onClick={() => inputRef.current?.click()}
         >
           {busy ? "Uploading…" : full ? "Facade limit reached" : "Upload facades"}
