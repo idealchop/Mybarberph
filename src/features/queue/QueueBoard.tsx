@@ -1,4 +1,5 @@
 "use client";
+import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/TransactionSheet";
@@ -143,7 +144,10 @@ export function QueueBoard() {
         </div>
       </header>
 
-      <p className="mt-4 px-1 text-[13px] font-bold text-muted">{shops.viewingAll ? "Today · all shops" : "Today"}</p>
+      <div className="mt-4 flex items-center justify-between gap-3 px-1">
+        <p className="text-[13px] font-bold text-muted">{shops.viewingAll ? "Today · all shops" : "Today"}</p>
+        <QueueWalkInButton locationId={shops.scopeId ?? HOME_LOCATION_ID} />
+      </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
         <Link href="/queue/seats" aria-label="In chair" className="block rounded-card">
@@ -212,3 +216,21 @@ function Section({ title, rows, onFull }: { title: string; rows: ChairRequest[];
   );
 }
 
+
+/** Compact "Walk-in" pill next to Today: opens the add walk-in flow; Partner shops at 10/day see Upgrade instead. */
+function QueueWalkInButton({ locationId }: { locationId: string }) {
+  const allowance = useWalkInAllowance(locationId);
+  if (allowance.atLimit) {
+    return (
+      <Button href="/settings/billing" size="sm" variant="secondary" className="h-9 rounded-pill px-3.5 text-[13px]" title={allowance.message}>
+        0 left · Upgrade
+      </Button>
+    );
+  }
+  return (
+    <Button href="/queue/new" size="sm" data-auth="action" className="h-9 rounded-pill px-3.5 text-[13px]" leadingIcon={<Plus size={16} strokeWidth={2.4} />}
+      aria-label={allowance.unlimited ? "Add walk-in" : `Add walk-in, ${allowance.label}`}>
+      Walk-in
+    </Button>
+  );
+}
