@@ -1,11 +1,20 @@
-/**
- * Barbers.ph wordmark with the River icon (same artwork as River Mobile's app icon,
- * river/logo/final/favicon/favicon.svg), in its black-tile variant to match the app's black UI.
- * SVG, so it stays crisp at every size.
- */
+import { LogoMark } from "@river-apps/ui";
+import { LEFTCORNER_PATH, RIGHTCORNER_PATH, SMILE_PATH, UNDERLINE_PATH } from "./riverLogoPaths";
+
+const PATHS = [SMILE_PATH, UNDERLINE_PATH, LEFTCORNER_PATH, RIGHTCORNER_PATH];
+
+/** The official River smile mark (exact vector paths from River Mobile), crisp at any size. */
+export function RiverSmile({ color = "#fff", className }: { color?: string; className?: string }) {
+  return (
+    <svg viewBox="-10 -6 472 256" fill={color} aria-hidden className={className}>
+      {PATHS.map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
+}
+
+/** River smile in white on the kit's black tile. */
 export function RiverMark({ size = 34 }: { size?: number }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src="/brand/river-mark-black.svg" width={size} height={size} alt="" aria-hidden className="block shrink-0" style={{ width: size, height: size }} />;
+  return <LogoMark size={size} className="[&>svg]:!h-auto [&>svg]:!w-[66%]"><RiverSmile /></LogoMark>;
 }
 
 export function Brand({ size = 34, sub = true }: { size?: number; sub?: boolean }) {
