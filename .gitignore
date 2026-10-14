@@ -7,3 +7,9 @@ next-env.d.ts
 .DS_Store
 npm-debug.log*
 __pycache__/
+
+# local secrets and scratch
+.secret*
+.env*
+!.env.example
+tmp/
