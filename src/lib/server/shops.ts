@@ -25,7 +25,17 @@ export const STATE_KEYS: Record<string, string> = {
 /** Keys a barber link may write. */
 export const BARBER_KEYS = new Set(["barbers.shop-chairs"]);
 
-export type Plan = "partner" | "monthly_950" | "lifetime_10000";
+import { isRecurring, maxLocations, normalizePlan, type PlanId } from "@/lib/plans";
+
+/** Stored plan id; older records may still hold "monthly_950" / "lifetime_10000". */
+export type Plan = PlanId | "monthly_950" | "lifetime_10000";
+
+/** The plan in force now: legacy ids mapped, lapsed monthly plans back to Partner. */
+export function effectivePlan(s: Pick<ShopDoc, "plan" | "planRenewsAt">): PlanId {
+  const p = normalizePlan(s.plan);
+  if (isRecurring(p) && s.planRenewsAt && s.planRenewsAt < Date.now()) return "partner";
+  return p;
+}
 
 export interface ShopDoc {
   ownerUid: string;
@@ -43,6 +53,8 @@ export interface ShopDoc {
   logoUrl: string;
   branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"] }[];
   menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment" }[];
+  /** Menus for branches other than the first shop, keyed by location id. */
+  menuByLocation?: Record<string, ShopDoc["menu"]>;
   listed: boolean;
   createdAt: number;
   updatedAt: number;
@@ -120,15 +132,28 @@ export async function putState(shopId: string, key: string, raw: string) {
     }
   }
   if (docId === "menu") {
-    const h = (parsed.haircut ?? {}) as Record<string, unknown>;
-    const items: ShopDoc["menu"] = [{ id: "haircut", name: str(h.name, 60) || "Haircut", durationMins: Number(h.durationMins) || 30, price: Math.round(Math.max(0, Number(h.price) || 0) * 100), kind: "haircut" }];
-    for (const t of (Array.isArray(parsed.treatments) ? parsed.treatments : []) as Record<string, unknown>[]) {
-      if (!t?.id || !t?.name) continue;
-      items.push({ id: str(t.id, 60), name: str(t.name, 60), durationMins: Number(t.durationMins) || 15, price: Math.round(Math.max(0, Number(t.price) || 0) * 100), kind: "treatment" });
-    }
-    batch.set(shopRef(shopId), { menu: items, updatedAt: now }, { merge: true });
+    const toItems = (m: Record<string, unknown>): ShopDoc["menu"] => {
+      const h = (m.haircut ?? {}) as Record<string, unknown>;
+      const items: ShopDoc["menu"] = [{ id: "haircut", name: str(h.name, 60) || "Haircut", durationMins: Number(h.durationMins) || 30, price: Math.round(Math.max(0, Number(h.price) || 0) * 100), kind: "haircut" }];
+      for (const tr of (Array.isArray(m.treatments) ? m.treatments : []) as Record<string, unknown>[]) {
+        if (!tr?.id || !tr?.name) continue;
+        items.push({ id: str(tr.id, 60), name: str(tr.name, 60), durationMins: Number(tr.durationMins) || 15, price: Math.round(Math.max(0, Number(tr.price) || 0) * 100), kind: "treatment" });
+      }
+      return items;
+    };
+    const byLocation: Record<string, ShopDoc["menu"]> = {};
+    const rawBy = (parsed.byLocation && typeof parsed.byLocation === "object" ? parsed.byLocation : {}) as Record<string, Record<string, unknown>>;
+    for (const [id, m] of Object.entries(rawBy).slice(0, 20)) if (m && /^[\w-]{1,60}$/.test(id)) byLocation[id] = toItems(m);
+    // Replace the whole map so removed branches don't keep stale menus.
+    batch.update(shopRef(shopId), { menu: toItems(parsed), menuByLocation: byLocation, updatedAt: now });
   }
   if (docId === "locations") {
+    // Plan limit: Partner and Pro run 1 shop, Lifetime 1–5 up to 5, Lifetime 5+ unlimited.
+    const cur = ((await shopRef(shopId).get()).data() ?? {}) as ShopDoc;
+    const limit = maxLocations(effectivePlan(cur));
+    if (parsed.enabled && Array.isArray(parsed.branches) && parsed.branches.length > limit) {
+      throw Object.assign(new Error(`Your plan allows ${limit} shop${limit === 1 ? "" : "s"}. Upgrade to Lifetime for more.`), { status: 403 });
+    }
     const branches = (Array.isArray(parsed.branches) ? parsed.branches : []) as Record<string, unknown>[];
     batch.set(shopRef(shopId), {
       branches: parsed.enabled ? branches.slice(0, 20).map((b) => ({ id: str(b.id, 60), name: str(b.name, 80), address: str(b.address), area: str(b.area, 120), location: loc(b.location) })) : [],
@@ -198,12 +223,18 @@ export async function chairLink(token: string) {
 }
 
 /** Public view used by the booking page and River Mobile. Never includes owner-only data. */
+/** The menu a branch sells: its own when it has one, else the first shop's. */
+export function menuFor(s: ShopDoc, locationId?: string | null): ShopDoc["menu"] {
+  return (locationId && s.menuByLocation?.[locationId]) || s.menu || [];
+}
+
 export function publicShop(id: string, s: ShopDoc) {
   return {
     id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null,
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind })),
-    plan: s.plan === "partner" ? "partner" : "paid",
+    servicesByLocation: Object.fromEntries(Object.entries(s.menuByLocation ?? {}).map(([k, menu]) => [k, menu.map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind }))])),
+    plan: effectivePlan(s) === "partner" ? "partner" : "paid",
     updatedAt: s.updatedAt,
   };
 }
@@ -229,8 +260,10 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   const shop = await getPublicShop(shopId);
   if (!shop) throw new Error("Shop not found");
   const ids = (Array.isArray(input.serviceIds) && input.serviceIds.length ? input.serviceIds : [input.serviceId]).filter(Boolean);
-  const picked = shop.services.filter((s) => ids.includes(s.id));
-  if (!picked.length && shop.services[0]) picked.push(shop.services[0]);
+  const branchOk = input.locationId && shop.branches.some((b) => b.id === input.locationId);
+  const services = (branchOk && shop.servicesByLocation[input.locationId as string]) || shop.services;
+  const picked = services.filter((s) => ids.includes(s.id));
+  if (!picked.length && services[0]) picked.push(services[0]);
   if (!picked.length) throw new Error("This shop has no services yet");
   const svc = { id: picked[0]!.id, name: picked.map((p) => p.name).join(" · "), price: picked.reduce((sum, p) => sum + p.price, 0) };
   const now = Date.now();
