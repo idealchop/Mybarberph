@@ -10,7 +10,9 @@ import { SYSTEM_PROMPT, TIPS_PROMPT } from "./prompt";
 /**
  * Storage (all under the owner's shop; Firestore rules: owner-only read, server-only write):
  *   shops/{uid}/companion/memory              goals + facts the owner asked the Companion to remember
- *   shops/{uid}/companion/memory/messages/{id} the chat (user, assistant, tip, alert)
+ *   shops/{uid}/companion/memory/conversations/{cid}               one chat thread (title, dates)
+ *   shops/{uid}/companion/memory/conversations/{cid}/messages/{id} its messages
+ *   conversation "tips" holds the Monday tips and alerts (pinned)
  *   shops/{uid}/companion/usage-{weekId}      Gemini tokens + cost for that ISO week
  *   shops/{uid}/companion/quota-{YYYY-MM}     Partner question count for that month
  *   shops/{uid}/insights/{weekId}             Monday tips (+ alerts) for that week
@@ -22,7 +24,10 @@ export interface Message { id: string; role: "user" | "assistant" | "tip" | "ale
 
 const companion = (uid: string) => shopRef(uid).collection("companion");
 const memoryRef = (uid: string) => companion(uid).doc("memory");
-const messagesRef = (uid: string) => memoryRef(uid).collection("messages");
+const convsRef = (uid: string) => memoryRef(uid).collection("conversations");
+const messagesRef = (uid: string, cid: string) => convsRef(uid).doc(cid).collection("messages");
+export const TIPS_THREAD = "tips";
+export interface Conversation { id: string; title: string; createdAt: number; updatedAt: number; pinned?: boolean; preview?: string }
 const id = () => `${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
 
 export function isPaid(plan: string) { return normalizePlan(plan) !== "partner"; }
@@ -43,14 +48,32 @@ export async function loadMemory(uid: string): Promise<{ goals: T.Goal[]; facts:
   return { goals: Array.isArray(d.goals) ? d.goals : [], facts: Array.isArray(d.facts) ? d.facts : [] };
 }
 
-export async function listMessages(uid: string, limit = 60): Promise<Message[]> {
-  const q = await messagesRef(uid).orderBy("createdAt", "desc").limit(limit).get();
+export async function listMessages(uid: string, cid: string, limit = 100): Promise<Message[]> {
+  const q = await messagesRef(uid, cid).orderBy("createdAt", "desc").limit(limit).get();
   return q.docs.map((d) => d.data() as Message).reverse();
 }
 
-async function addMessage(uid: string, m: Omit<Message, "id" | "createdAt"> & { createdAt?: number }) {
+export async function listConversations(uid: string, limit = 50): Promise<Conversation[]> {
+  const q = await convsRef(uid).orderBy("updatedAt", "desc").limit(limit).get();
+  // Monday tips stay pinned at the top; chats follow, most recent first.
+  return q.docs.map((d) => d.data() as Conversation).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt - a.updatedAt);
+}
+
+export async function getConversation(uid: string, cid: string) {
+  const d = await convsRef(uid).doc(cid).get();
+  return d.exists ? (d.data() as Conversation) : null;
+}
+
+/** Title from the owner's first message: first line, trimmed to ~48 characters. */
+function titleFrom(text: string) {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > 48 ? `${line.slice(0, 47).replace(/\s\S*$/, "")}…` : line || "New chat";
+}
+
+async function addMessage(uid: string, cid: string, m: Omit<Message, "id" | "createdAt"> & { createdAt?: number }) {
   const row: Message = { id: id(), createdAt: Date.now(), ...m };
-  await messagesRef(uid).doc(row.id).set(row);
+  await messagesRef(uid, cid).doc(row.id).set(row);
+  await convsRef(uid).doc(cid).set({ updatedAt: row.createdAt, preview: row.text.replace(/[*_#`]+/g, "").replace(/\s+/g, " ").trim().slice(0, 120) }, { merge: true });
   return row;
 }
 
@@ -119,7 +142,7 @@ function context(shop: ShopDoc, data: T.ShopData, plan: string, goals: T.Goal[])
 }
 
 /** One owner question → tool calls → answer. Returns the saved assistant message. */
-export async function chat(uid: string, text: string, locationId?: string) {
+export async function chat(uid: string, text: string, locationId?: string, conversationId?: string) {
   const shop = await ensureShop(uid);
   const plan = effectivePlan(shop);
   const paid = isPaid(plan);
@@ -127,10 +150,17 @@ export async function chat(uid: string, text: string, locationId?: string) {
   if (!q.unlimited && q.remaining <= 0) {
     return { limited: true, quota: q, message: null };
   }
-  const userMsg = await addMessage(uid, { role: "user", text: text.slice(0, 2000) });
+  let cid = conversationId && conversationId !== TIPS_THREAD && (await getConversation(uid, conversationId)) ? conversationId : "";
+  if (conversationId === TIPS_THREAD) cid = TIPS_THREAD;
+  if (!cid) {
+    cid = id();
+    const now = Date.now();
+    await convsRef(uid).doc(cid).set({ id: cid, title: titleFrom(text), createdAt: now, updatedAt: now } satisfies Conversation);
+  }
+  const userMsg = await addMessage(uid, cid, { role: "user", text: text.slice(0, 2000) });
   if (!q.unlimited) await companion(uid).doc(`quota-${monthId()}`).set({ questions: FieldValue.increment(1), month: monthId() }, { merge: true });
 
-  const [data, mem, history] = await Promise.all([T.loadShopData(uid, shop.name, plan), loadMemory(uid), listMessages(uid, 13)]);
+  const [data, mem, history] = await Promise.all([T.loadShopData(uid, shop.name, plan), loadMemory(uid), listMessages(uid, cid, 13)]);
   const contents: Content[] = history.filter((m) => m.id !== userMsg.id).slice(-12).map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.role === "user" ? m.text : `${m.role === "tip" ? "[Weekly tip] " : m.role === "alert" ? "[Alert] " : ""}${m.text}` }] }));
   contents.push({ role: "user", parts: [{ text: (locationId && locationId !== "all" ? `[Viewing branch id ${locationId}] ` : "") + text }] });
   const system = SYSTEM_PROMPT + context(shop, data, plan, mem.goals);
@@ -152,8 +182,8 @@ export async function chat(uid: string, text: string, locationId?: string) {
     contents.push({ role: "user", parts: responses });
   }
   await logUsage(uid, usage, "chat");
-  const message = await addMessage(uid, { role: "assistant", text: answer || "Pasensya, I couldn't finish that one. Try asking again?" });
-  return { limited: false, quota: await quota(uid, plan), message, user: userMsg };
+  const message = await addMessage(uid, cid, { role: "assistant", text: answer || "Pasensya, I couldn't finish that one. Try asking again?" });
+  return { limited: false, quota: await quota(uid, plan), message, user: userMsg, conversation: await getConversation(uid, cid) };
 }
 
 /** Monday tips (3-5) and alerts for one shop. Idempotent per week unless force. */
@@ -180,8 +210,10 @@ export async function weeklyTips(uid: string, opts: { force?: boolean } = {}) {
   const alerts = paid ? (parsed.alerts ?? []).filter((t) => typeof t === "string" && t.trim()).slice(0, 3) : [];
   const shown = paid ? tips : tips.slice(0, PARTNER_WEEKLY_TIPS);
   const text = `Magandang umaga! Your Monday tips for this week:\n\n${shown.map((t, i) => `${i + 1}. ${t}`).join("\n")}${!paid && tips.length > shown.length ? `\n\n${tips.length - shown.length} more tips are waiting for you on Pro or Lifetime.` : ""}`;
-  const msg = await addMessage(uid, { role: "tip", text, weekId: w, locked: !paid && tips.length > shown.length });
-  for (const a of alerts) await addMessage(uid, { role: "alert", text: a, weekId: w });
+  const tipsRef = convsRef(uid).doc(TIPS_THREAD);
+  if (!(await tipsRef.get()).exists) await tipsRef.set({ id: TIPS_THREAD, title: "Monday tips", pinned: true, createdAt: Date.now(), updatedAt: Date.now() } satisfies Conversation);
+  const msg = await addMessage(uid, TIPS_THREAD, { role: "tip", text, weekId: w, locked: !paid && tips.length > shown.length });
+  for (const a of alerts) await addMessage(uid, TIPS_THREAD, { role: "alert", text: a, weekId: w });
   await ref.set({ weekId: w, createdAt: Date.now(), plan, tips: shown, hiddenTips: paid ? 0 : tips.length - shown.length, alerts, messageId: msg.id, usage: r.usage });
   return { weekId: w, tips: shown.length, alerts: alerts.length, messageId: msg.id };
 }

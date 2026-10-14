@@ -1,11 +1,13 @@
 import { getCaller, json, unauthorized } from "@/lib/server/auth";
 import { weeklyTips } from "@/lib/server/companion/companion";
+import { companionEnabled } from "@/lib/companion-flag";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /** Owner can re-run this week's tips (force) for their own shop. Used on Home and for QA. */
 export async function POST(req: Request) {
+  if (!companionEnabled()) return json({ error: "Not found" }, 404);
   const me = await getCaller(req);
   if (!me) return unauthorized();
   const body = await req.json().catch(() => ({}));

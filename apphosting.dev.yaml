@@ -10,3 +10,6 @@ env:
   # AI Companion (dev only for now): Monday tips runner auth for Cloud Scheduler.
   - variable: COMPANION_CRON_SECRET
     secret: COMPANION_CRON_SECRET
+  # Show the AI Companion (Home card, /companion, /api/companion/*). Leave unset on prod.
+  - variable: COMPANION_ENABLED
+    value: "1"

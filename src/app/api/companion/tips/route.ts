@@ -5,6 +5,7 @@
  */
 import { json, badRequest, unauthorized } from "@/lib/server/auth";
 import { allShopIds, weeklyTips } from "@/lib/server/companion/companion";
+import { companionEnabled } from "@/lib/companion-flag";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -18,6 +19,7 @@ function authorized(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!companionEnabled()) return json({ error: "Not found" }, 404);
   if (!authorized(req)) return unauthorized();
   const body = await req.json().catch(() => ({}));
   const force = Boolean(body.force);
