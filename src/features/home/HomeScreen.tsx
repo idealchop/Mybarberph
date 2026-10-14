@@ -96,7 +96,9 @@ export function HomeScreen() {
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
   const { user } = useSession();
   const { requireAuth } = useAuthGate();
-  const owner = user ? (user.name.split(" ")[0] || user.name) : "";
+  // Phone sign-ins have no name (it falls back to the number): greet with the shop instead.
+  const realName = user && !/^[+\d]/.test(user.name) ? user.name : "";
+  const owner = realName ? (realName.split(" ")[0] || realName) : (user ? profile.name : "");
   const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
   const contact = user ? shortPhone(user.phone || profile.phone) || user.email || "" : "";
   const needsSetup = Boolean(user) && ready && !profile.name;
