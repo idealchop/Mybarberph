@@ -16,6 +16,15 @@ import { usePublicShop } from "./usePublicShop";
 interface Draft { contact: string; slotLabel: string; serviceIds: string[]; serviceName: string; price: number }
 
 const TIMES = ["11:00 AM", "2:00 PM", "4:00 PM", "7:00 PM"] as const;
+const SLOT_HOUR: Record<string, number> = { "11:00 AM": 11, "2:00 PM": 14, "4:00 PM": 16, "7:00 PM": 19 };
+type Slot = "Now" | (typeof TIMES)[number];
+
+/** Today's slots in Manila time: "Now" plus the times that haven't passed. */
+function slotsFor(day: "Today" | "Tomorrow"): Slot[] {
+  if (day === "Tomorrow") return [...TIMES];
+  const hour = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila", hour: "numeric", hourCycle: "h23" }));
+  return ["Now", ...TIMES.filter((t) => (SLOT_HOUR[t] ?? 0) > hour)];
+}
 
 function savedBooking(shopId: string): string | null {
   if (typeof window === "undefined" || !shopId) return null;
@@ -31,12 +40,15 @@ export function BookScreen() {
   const { shop, payOnline } = usePublicShop(shopId);
   const branch = shop?.branches.find((item) => item.id === loc);
   const heading = shop ? (branch ? `${shop.name} · ${branch.name}` : shop.name) : "";
-  const haircut = shop?.services.find((s) => s.kind === "haircut");
-  const treatments = shop?.services.filter((s) => s.kind === "treatment") ?? [];
+  const menu = (branch && shop?.servicesByLocation?.[branch.id]) || shop?.services || [];
+  const haircut = menu.find((s) => s.kind === "haircut");
+  const treatments = menu.filter((s) => s.kind === "treatment");
   const [contact, setContact] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [day, setDay] = useState<"Today" | "Tomorrow">("Today");
-  const [time, setTime] = useState<(typeof TIMES)[number]>("4:00 PM");
+  const [time, setTime] = useState<Slot>("Now");
+  const slots = slotsFor(day);
+  const slot: Slot = slots.includes(time) ? time : (slots[0] ?? "Now");
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(() => savedBooking(shopId));
@@ -60,7 +72,7 @@ export function BookScreen() {
     }
     setError("");
     setPayWhere(payOnline ? null : "shop");
-    setDraft({ contact: who, slotLabel: `${day}, ${time}`, serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], serviceName, price: total });
+    setDraft({ contact: who, slotLabel: slot === "Now" ? "Now" : `${day}, ${slot}`, serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], serviceName, price: total });
     setPhase("pay");
   };
 
@@ -183,8 +195,8 @@ export function BookScreen() {
         ))}
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
-        {TIMES.map((t) => (
-          <button key={t} type="button" onClick={() => setTime(t)} className={`h-10 rounded-[12px] text-[14px] font-bold ${time === t ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>{t}</button>
+        {slots.map((t) => (
+          <button key={t} type="button" onClick={() => setTime(t)} className={`h-10 rounded-[12px] text-[14px] font-bold ${slot === t ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>{t}</button>
         ))}
       </div>
       <div className="mt-4">

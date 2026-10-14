@@ -47,7 +47,7 @@ export function RequestStatus({ bookingId, shopId, onBookAnother }: { bookingId:
   const canPay = online && !booking.paid && !closed && (booking.status === "in_chair" || booking.status === "done");
   const amount = booking.price ? peso(booking.price) : "";
   const payLine = booking.paid
-    ? (amount ? `Paid ${amount} with GCash.` : "Paid with GCash.")
+    ? (online ? (amount ? `Paid ${amount} with GCash.` : "Paid with GCash.") : (amount ? `Paid ${amount} at the chair.` : "Paid at the chair."))
     : online
       ? (canPay ? (amount ? `${amount} with GCash.` : "Pay with GCash.") : "You’ll pay online.")
       : (amount ? `Cash ${amount} when the cut is done.` : "Pay at the chair when the cut is done.");

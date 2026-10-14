@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { Button, Card, EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
+import { Button, EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -177,11 +177,11 @@ export function QueueBoard() {
       {shops.viewingAll ? shops.branches.map((branch) => (
         <Section
           key={`${branch.id}-open`}
-          title={`${branch.name} · To accept`}
+          title={`${branch.name} · Now`}
           rows={open.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id)}
           onFull={(message) => setFull(message)}
         />
-      )) : <Section title="To accept" rows={open} onFull={(message) => setFull(message)} />}
+      )) : <Section title="Now" rows={open} onFull={(message) => setFull(message)} />}
       {shops.viewingAll ? shops.branches.map((branch) => (
         <Section
           key={`${branch.id}-done`}
@@ -191,7 +191,6 @@ export function QueueBoard() {
         />
       )) : <Section title="Done today" rows={done} onFull={(message) => setFull(message)} />}
 
-      {channel === "walk-ins" && !search ? <Earlier extra={figures.extra.filter((row) => row.channel === "walk-in")} /> : null}
     </div>
   );
 }
@@ -208,22 +207,3 @@ function Section({ title, rows, onFull }: { title: string; rows: ChairRequest[];
   );
 }
 
-function Earlier({ extra }: { extra: ChairRequest[] }) {
-  if (extra.length === 0) return null;
-  return (
-    <Card padding="none" className="mt-6 px-4 py-4">
-      <b className="block text-[16px]">Earlier today</b>
-      <ul className="mt-2 divide-y divide-line">
-        {extra.map((row) => (
-          <li key={row.id} className="flex items-center justify-between gap-3 py-2.5">
-            <span className="min-w-0">
-              <b className="block truncate text-[14.5px]">{row.customerLabel || row.contact}</b>
-              <small className="text-[12.5px] font-semibold text-muted">{row.serviceName} · {row.ref}</small>
-            </span>
-            <b className="text-[14px]">{peso(row.price)}</b>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}

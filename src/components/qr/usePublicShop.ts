@@ -12,6 +12,7 @@ export interface PublicShop {
   logoUrl: string | null;
   branches: { id: string; name: string; address: string; area: string }[];
   services: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment" }[];
+  servicesByLocation?: Record<string, PublicShop["services"]>;
 }
 
 /** Public shop profile for the customer booking page. `null` = not found. */

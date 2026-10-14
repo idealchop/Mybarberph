@@ -32,8 +32,8 @@ export function QrScreen() {
           <PageBack fallback="/home" />
           <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Shop QR</h1>
         </div>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">The booking QR is part of Paid, with walk-ins.</p>
-        <Button className="mt-5" onClick={() => setTier("paid")}>See Paid</Button>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">The booking QR is part of Pro, with walk-ins.</p>
+        <Button className="mt-5" onClick={() => setTier("paid")}>See Pro</Button>
       </div>
     );
   }
