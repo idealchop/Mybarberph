@@ -7,3 +7,6 @@ env:
     value: "dev"
   - variable: NEXT_PUBLIC_AUTH_TEST_MODE
     value: "1"
+  # AI Companion (dev only for now): Monday tips runner auth for Cloud Scheduler.
+  - variable: COMPANION_CRON_SECRET
+    secret: COMPANION_CRON_SECRET

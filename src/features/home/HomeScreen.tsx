@@ -17,6 +17,7 @@ import { markInChair, setRequestStatus, todayFigures, useScopedRequests, type Ch
 import { branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
+import { CompanionCard } from "@/features/companion/CompanionCard";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -161,6 +162,7 @@ export function HomeScreen() {
           <StatCard className="pb-3" label="Unpaid" value={peso(unpaid)} />
         </div>
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
+        <CompanionCard className="mx-4 mt-3" />
         <SalesChartCard className="mx-4 mt-3" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
@@ -222,6 +224,7 @@ export function HomeScreen() {
           </Link>
           <StatCard className="pb-3" label="Unpaid" value={peso(unpaid)} />
         </div>
+        <CompanionCard className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} className="mt-5" /> : null}
         <Card padding="none" className="mt-5 px-[18px] pb-4 pt-4">

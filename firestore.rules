@@ -25,6 +25,17 @@ service cloud.firestore {
         allow read, write: if isOwner(shopId);
       }
 
+      // AI Companion: chat, goals, usage and quota (server writes; owner may read).
+      match /companion/{doc=**} {
+        allow read: if isOwner(shopId);
+        allow write: if false;
+      }
+      // Weekly Companion tips and alerts.
+      match /insights/{weekId} {
+        allow read: if isOwner(shopId);
+        allow write: if false;
+      }
+
       match /bookings/{bookingId} {
         allow read: if isOwner(shopId);
         allow create, update: if isOwner(shopId)
