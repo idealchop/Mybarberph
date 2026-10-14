@@ -6,44 +6,51 @@ import { useSession } from "@/lib/session";
 export interface CompanionMessage { id: string; role: "user" | "assistant" | "tip" | "alert"; text: string; createdAt: number; locked?: boolean; pending?: boolean }
 export interface CompanionQuota { unlimited: boolean; used: number; limit: number | null; remaining: number | null }
 export interface CompanionGoal { id: string; text: string; kind: string; targetPhp?: number }
-export interface CompanionConversation { id: string; title: string; createdAt: number; updatedAt: number; pinned?: boolean; preview?: string }
+
+const PAGE = 30;
 
 /**
- * Companion chats for the signed-in owner, saved per shop in Firestore.
- * On open the most recent chat is restored; older ones can be reopened and continued.
- * Guests see the intro only.
+ * The shop's one continuous Companion thread (chat, Monday tips and alerts together).
+ * Loads the newest page; older pages load on demand (scroll up). Guests see the intro only.
  */
 export function useCompanion() {
   const { user } = useSession();
-  const [conversations, setConversations] = useState<CompanionConversation[]>([]);
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<CompanionMessage[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [quota, setQuota] = useState<CompanionQuota | null>(null);
   const [goals, setGoals] = useState<CompanionGoal[]>([]);
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [upgrade, setUpgrade] = useState("");
   const [ready, setReady] = useState(false);
-  const seq = useRef(0);
+  const older = useRef(false);
 
-  const load = useCallback(async (c?: string) => {
+  const load = useCallback(async () => {
     if (!user) return;
-    const mine = ++seq.current;
-    setLoading(true); setError("");
     try {
-      const d = await api(`/api/companion/messages${c ? `?c=${encodeURIComponent(c)}` : ""}`);
-      if (mine !== seq.current) return;
-      setConversations(d.conversations ?? []); setConversationId(d.conversationId ?? null);
-      setMessages(d.messages ?? []); setQuota(d.quota ?? null); setGoals(d.goals ?? []);
-    } catch (e) { if (mine === seq.current) setError((e as Error).message); }
-    if (mine === seq.current) { setLoading(false); setReady(true); }
+      const d = await api(`/api/companion/messages?limit=${PAGE}`);
+      setMessages(d.messages ?? []); setHasMore(Boolean(d.hasMore)); setQuota(d.quota ?? null); setGoals(d.goals ?? []);
+    } catch (e) { setError((e as Error).message); }
+    setReady(true);
   }, [user]);
 
   useEffect(() => { const t = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(t); }, [load]);
 
-  const open = useCallback((id: string) => { setUpgrade(""); void load(id); }, [load]);
-  const newChat = useCallback(() => { seq.current++; setConversationId(null); setMessages([]); setUpgrade(""); setError(""); }, []);
+  /** Prepends the page before the oldest loaded message. Resolves true when rows were added. */
+  const loadOlder = useCallback(async () => {
+    const first = messages.find((m) => !m.pending);
+    if (!user || !hasMore || older.current || !first) return false;
+    older.current = true; setLoadingOlder(true);
+    try {
+      const d = await api(`/api/companion/messages?limit=${PAGE}&before=${first.createdAt}`);
+      const rows: CompanionMessage[] = d.messages ?? [];
+      setMessages((m) => [...rows.filter((r) => !m.some((x) => x.id === r.id)), ...m]);
+      setHasMore(Boolean(d.hasMore));
+      return rows.length > 0;
+    } catch (e) { setError((e as Error).message); return false; }
+    finally { older.current = false; setLoadingOlder(false); }
+  }, [user, hasMore, messages]);
 
   const send = useCallback(async (text: string, locationId?: string) => {
     const t = text.trim();
@@ -52,16 +59,11 @@ export function useCompanion() {
     const temp: CompanionMessage = { id: `tmp-${Date.now()}`, role: "user", text: t, createdAt: Date.now(), pending: true };
     setMessages((m) => [...m, temp]);
     try {
-      const d = await api("/api/companion/chat", { method: "POST", body: JSON.stringify({ message: t, locationId, conversationId: conversationId ?? undefined }) });
+      const d = await api("/api/companion/chat", { method: "POST", body: JSON.stringify({ message: t, locationId }) });
       setMessages((m) => [...m.filter((x) => x.id !== temp.id), d.user, d.message].filter(Boolean));
       setQuota(d.quota ?? null);
-      if (d.conversation) {
-        const conv = d.conversation as CompanionConversation;
-        setConversationId(conv.id);
-        setConversations((list) => [conv, ...list.filter((x) => x.id !== conv.id)].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt - a.updatedAt));
-      }
       if (/goal|target|50k|k\/month|kada buwan/i.test(t)) {
-        const g = await api(`/api/companion/messages?c=${encodeURIComponent(d.conversation?.id ?? "new")}`).catch(() => null);
+        const g = await api("/api/companion/messages?limit=1").catch(() => null);
         if (g) setGoals(g.goals ?? []);
       }
     } catch (e) {
@@ -70,7 +72,7 @@ export function useCompanion() {
       if (err.status === 402) { setUpgrade(err.body?.upgrade ?? "Upgrade for unlimited Companion."); if (err.body?.quota) setQuota(err.body.quota); }
       else setError(err.message);
     } finally { setBusy(false); }
-  }, [busy, conversationId]);
+  }, [busy]);
 
-  return { signedIn: Boolean(user), ready: ready || !user, loading, conversations, conversationId, messages, quota, goals, busy, error, upgrade, send, open, newChat };
+  return { signedIn: Boolean(user), ready: ready || !user, messages, hasMore, loadingOlder, loadOlder, quota, goals, busy, error, upgrade, send };
 }
