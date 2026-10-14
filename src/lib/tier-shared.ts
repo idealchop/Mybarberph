@@ -1,6 +1,6 @@
 import type { Tier } from "@/data";
 
-/** Features gated by tier. Partner (free) = River Mobile bookings, queue, community, settings. */
+/** Features gated by tier. Partner (entry tier) = River Mobile bookings, queue, community, settings. */
 export type Feature =
   | "dashboard" | "queue" | "sales" | "customers" | "barbers" | "vouchers" | "messages" | "kiosk" | "settings" | "partner_app";
 

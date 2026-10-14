@@ -13,7 +13,7 @@ import { locationCountLabel, shopHandle, useShopProfile } from "@/lib/shop-profi
 import { signOut, useSession } from "@/lib/session";
 import { useTier } from "@/lib/tier";
 
-const PAID_PER_MO = "₱950/mo";
+const PAID_PER_MO = "₱499/mo";
 
 /** Settings hub, same shape as Laundry.ph: profile, credits, setup, features, log out. */
 export function SettingsScreen() {
@@ -34,7 +34,7 @@ export function SettingsScreen() {
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     ...(paid ? [] : [{ href: "/qr", icon: Scissors, title: "Shop listing", subtitle: "How customers find this shop" }]),
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and chairs" },
-    { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner free · Paid ${PAID_PER_MO}` },
+    { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
     { href: "/terms", icon: FileText, title: "Terms of Service", subtitle: "How Barbers.ph works for your shop" },
     { href: "/privacy", icon: ShieldCheck, title: "Privacy Policy", subtitle: "Shop and customer data, Data Privacy Act" },
   ];

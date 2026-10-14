@@ -51,8 +51,9 @@ export const TERMS: LegalDoc = {
       "Honour bookings you accept, or decline them promptly so the customer can go elsewhere.",
     ] }] },
     { id: "plans", title: "5. Plans, payments and refunds", blocks: [{ list: [
-      "<b>Partner</b> is free.",
-      "<b>Paid monthly</b> is ₱950 per month and renews each month while active. <b>Paid one-time</b> is ₱10,000 for continued access to the paid plan features for the life of the Service.",
+      "<b>Partner</b> is the entry tier for 1 shop: online bookings from River Mobile, the queue and Moments.",
+      "<b>Pro</b> is ₱499 per month for all features and 1 shop, and renews each month while active. Extra shops are not sold on Pro; upgrade to Lifetime to run more than one shop.",
+      "<b>Lifetime · 1–5 shops</b> is ₱10,000 one-time for all features and up to 5 shops. <b>Lifetime · 5+ shops</b> is ₱20,000 one-time for all features and unlimited shops. Lifetime means continued access for the life of the Service.",
       "Plan payments are processed by PayMongo (cards, GCash, Maya and other methods offered). River does not store your full card number. Your plan changes only after PayMongo confirms the payment.",
       "Prices include VAT where applicable and are shown before you pay. If a monthly plan is not renewed, the shop returns to Partner at the end of the period; your data stays.",
       "Fees already paid are non-refundable except for duplicate or failed charges, or where Philippine law requires a refund. Contact us within 7 days about a billing problem.",

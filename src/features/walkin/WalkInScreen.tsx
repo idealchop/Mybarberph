@@ -26,7 +26,7 @@ export function WalkInScreen() {
       <main className="mx-auto flex min-h-dvh w-full max-w-[402px] flex-col px-4 pt-6">
         <div className="flex items-center gap-1">
           <PageBack fallback="/queue" />
-          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Walk-ins are on Paid</h1>
+          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Walk-ins are on Pro</h1>
         </div>
         <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">Partner shops accept online bookings from Home and Queue.</p>
       </main>

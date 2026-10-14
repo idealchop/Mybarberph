@@ -11,6 +11,8 @@ import {
 } from "@/lib/shop-locations";
 import { copyMenuToLocation } from "@/lib/shop-services";
 import { useShopProfile, type ShopLocation } from "@/lib/shop-profile";
+import { maxLocations, planForLocations, planInfo } from "@/lib/plans";
+import { useTier } from "@/lib/tier";
 import { LocationPicker } from "./LocationPicker";
 
 /** Turn shops on, add a place, and keep each pin with that shop. */
@@ -18,6 +20,10 @@ export function ShopsScreen() {
   const { profile, ready: profileReady } = useShopProfile();
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
+  const { plan } = useTier();
+  const limit = maxLocations(plan);
+  const atLimit = branches.length >= limit;
+  const next = planForLocations(branches.length + 1);
   const [name, setName] = useState("");
   const [pin, setPin] = useState<ShopLocation | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -120,6 +126,13 @@ export function ShopsScreen() {
             ))}
           </ul>
 
+          {atLimit ? (
+            <section className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card">
+              <b className="block text-[16px]">{planInfo(plan).title} runs {limit} shop{limit === 1 ? "" : "s"}</b>
+              <p className="mt-1 text-[13.5px] font-medium text-muted">To add another shop, upgrade to {next.title} ({next.price}).</p>
+              <Button className="mt-4" fullWidth href="/settings/billing">See Lifetime plans</Button>
+            </section>
+          ) : (
           <section className="mt-6">
             <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Add a shop</h2>
             <div className="mt-2 flex flex-col gap-3 rounded-card bg-surface px-3.5 py-3.5 shadow-card">
@@ -128,6 +141,7 @@ export function ShopsScreen() {
               <Button fullWidth disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
             </div>
           </section>
+          )}
 
           <button
             type="button"

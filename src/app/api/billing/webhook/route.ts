@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { json } from "@/lib/server/auth";
+import { PLANS } from "@/lib/plans";
 import { shopRef } from "@/lib/server/shops";
 
 export const runtime = "nodejs";
@@ -18,9 +19,10 @@ export async function POST(req: Request) {
   const event = JSON.parse(raw) as { data?: { attributes?: { type?: string; data?: { attributes?: { metadata?: Record<string, string> } } } } };
   const type = event.data?.attributes?.type;
   const meta = event.data?.attributes?.data?.attributes?.metadata ?? {};
-  if (type === "checkout_session.payment.paid" && meta.shopId && (meta.plan === "monthly_950" || meta.plan === "lifetime_10000")) {
-    const renews = meta.plan === "monthly_950" ? Date.now() + 31 * 86_400_000 : null;
-    await shopRef(meta.shopId).set({ plan: meta.plan, planStatus: "active", planRenewsAt: renews, updatedAt: Date.now() }, { merge: true });
+  const plan = PLANS.find((p) => p.id === meta.plan && p.amountCentavos > 0);
+  if (type === "checkout_session.payment.paid" && meta.shopId && plan) {
+    const renews = plan.recurring ? Date.now() + 31 * 86_400_000 : null;
+    await shopRef(meta.shopId).set({ plan: plan.id, planStatus: "active", planRenewsAt: renews, updatedAt: Date.now() }, { merge: true });
   }
   return json({ ok: true });
 }

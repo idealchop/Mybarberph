@@ -18,7 +18,7 @@ export interface CloudShop {
   location: { lat: number; lng: number; formattedAddress: string } | null;
   photoUrls: string[];
   logoUrl: string | null;
-  plan: "partner" | "monthly_950" | "lifetime_10000";
+  plan: import("@/lib/plans").PlanId;
   planStatus?: string;
   planRenewsAt?: number | null;
   services: { id: string; name: string; durationMins: number; price: number; kind: string }[];

@@ -6,12 +6,13 @@ import { useEffect, useState } from "react";
 import { Button, Card, Topbar } from "@river-apps/ui";
 import { PageBack } from "@/components/shell/PageBack";
 import { api, refreshCloud, useCloud } from "@/lib/cloud";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { PLANS, normalizePlan, type PlanId } from "@/lib/plans";
 import { useTier } from "@/lib/tier";
 
 /** Plans come from the shop record. Paid plans go through PayMongo checkout; the plan changes only after payment. */
 export function BillingScreen() {
-  const { plan } = useTier();
+  const { plan: rawPlan } = useTier();
+  const plan = normalizePlan(rawPlan);
   const cloud = useCloud();
   const params = useSearchParams();
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -36,19 +37,19 @@ export function BillingScreen() {
     }
   }
 
-  const renews = cloud.shop?.plan === "monthly_950" && cloud.shop.planRenewsAt
+  const renews = plan === "pro_499" && cloud.shop?.planRenewsAt
     ? new Date(cloud.shop.planRenewsAt).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric" })
     : "";
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[960px] lg:px-[30px] lg:pt-6">
-      <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Plan & billing" subtitle="Partner is free. Paid adds walk-ins and the shop QR." />
+      <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Plan & billing" subtitle="Partner is where every shop starts. Pro and Lifetime add every feature." />
       {configured === false ? (
         <p className="mt-4 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">
-          Online payments aren’t configured yet, so paid plans can’t be bought here. Your shop stays on its current plan.
+          Online payments aren’t configured yet, so Pro and Lifetime can’t be bought here yet. Your shop stays on its current plan.
         </p>
       ) : null}
-      <div className="mt-5 grid gap-3 lg:grid-cols-3">
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
         {PLANS.map((p) => {
           const on = plan === p.id;
           return (
@@ -58,11 +59,11 @@ export function BillingScreen() {
                   <b className="text-[16px]">{p.title}</b>
                   <p className="mt-1 text-[14px] font-medium text-ink-2">{p.detail}</p>
                 </div>
-                <b className="whitespace-nowrap text-[15px]">{p.price}</b>
+                <span className="flex flex-col items-end whitespace-nowrap">{p.wasPrice ? <s className="text-[13px] font-semibold text-muted" aria-label={`Was ${p.wasPrice}`}>{p.wasPrice}</s> : null}<b className="text-[15px]">{p.id === "partner" ? "" : p.price}</b></span>
               </div>
               {on ? (
                 <Button className="mt-3" size="sm" variant="secondary" leadingIcon={<Check size={16} />} disabled>
-                  {p.id === "monthly_950" && renews ? `Current · renews ${renews}` : "Current plan"}
+                  {p.id === "pro_499" && renews ? `Current · renews ${renews}` : "Current plan"}
                 </Button>
               ) : p.amountCentavos > 0 ? (
                 <Button data-auth="action" className="mt-3" size="sm" disabled={!configured || busy !== null} onClick={() => void checkout(p.id)}>
