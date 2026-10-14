@@ -1,22 +1,33 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { shop } from "@/data";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, useCloud } from "@/lib/cloud";
 import { useShopProfile } from "@/lib/shop-profile";
-import {
-  SEED_POSTS, updateCommunityStore, useCommunityStore, useNow,
-  type CommunityPost, type CommunityStore, type PostAuthor, type PostReply,
-} from "./posts";
+import { updateCommunityStore, useCommunityStore, useNow, type CommunityPost, type PostAuthor } from "./posts";
 
-/** Feed with this device's likes, replies, photos and reposts. */
+let cache: CommunityPost[] | null = null;
+
+async function dataUrlToUrl(src: string): Promise<string> {
+  if (!src.startsWith("data:")) return src;
+  const blob = await (await fetch(src)).blob();
+  const form = new FormData();
+  form.append("file", new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" }));
+  const d = await api("/api/shop/photos", { method: "POST", body: form });
+  return d.url as string;
+}
+
+/** The shared feed. Likes, replies and posts are saved on the server for the signed-in shop. */
 export function useCommunityFeed() {
   const { profile } = useShopProfile();
+  const cloud = useCloud();
   const me: PostAuthor = useMemo(
-    () => ({ name: profile.name, meta: shop.city, avatar: "sky" }),
-    [profile.name],
+    () => ({ name: profile.name, meta: profile.area.split(",").pop()?.trim() || undefined, photoUrl: profile.logoUrl || undefined }),
+    [profile.name, profile.area, profile.logoUrl],
   );
   const store = useCommunityStore();
   const now = useNow();
+  const [raw, setRaw] = useState<CommunityPost[]>(cache ?? []);
+  const [loading, setLoading] = useState(cache === null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -26,32 +37,29 @@ export function useCommunityFeed() {
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   }, []);
 
-  const update = useCallback((fn: (s: CommunityStore) => CommunityStore, done?: string) => {
-    const ok = updateCommunityStore(fn);
-    if (!ok) flash("Storage is full on this device. Try fewer or smaller photos.");
-    else if (done) flash(done);
-    return ok;
-  }, [flash]);
+  const reload = useCallback(() => api("/api/community")
+    .then((d) => { cache = d.posts as CommunityPost[]; setRaw(cache); })
+    .catch(() => undefined)
+    .finally(() => setLoading(false)), []);
+
+  useEffect(() => { void reload(); }, [reload, cloud.shopId]);
+
+  const op = useCallback(async (body: Record<string, unknown>, done?: string) => {
+    try {
+      await api("/api/community", { method: "POST", body: JSON.stringify(body) });
+      if (done) flash(done);
+      await reload();
+      return true;
+    } catch (e) {
+      flash((e as Error).message);
+      return false;
+    }
+  }, [flash, reload]);
 
   const posts = useMemo(() => {
     const hidden = new Set(store.hidden);
-    const liked = new Set(store.liked);
-    const reposted = new Set(store.reposted);
-    return [...store.mine, ...SEED_POSTS]
-      .filter((p) => !hidden.has(p.id))
-      .map((p) => {
-        const isLiked = liked.has(p.id);
-        const isReposted = reposted.has(p.id);
-        return {
-          ...p,
-          liked: isLiked,
-          reposted: isReposted,
-          likes: p.likes + (isLiked ? 1 : 0),
-          reposts: p.reposts + (isReposted ? 1 : 0),
-          replies: [...p.replies, ...(store.replies[p.id] ?? [])],
-        };
-      });
-  }, [store]);
+    return raw.filter((p) => !hidden.has(p.id));
+  }, [raw, store]);
 
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
@@ -74,45 +82,45 @@ export function useCommunityFeed() {
     me,
     now,
     posts,
+    loading,
     toast,
     following: store.following,
     post(body: string, images: string[]) {
-      const post: CommunityPost = {
-        id: `mine-${Date.now().toString(36)}`,
-        author: me,
-        body,
-        images,
-        createdAt: Date.now(),
-        likes: 0,
-        reposts: 0,
-        replies: [],
-        mine: true,
-      };
-      return update((st) => ({ ...st, mine: [post, ...st.mine] }), "Posted");
+      void (async () => {
+        try {
+          const urls = await Promise.all(images.map(dataUrlToUrl));
+          await op({ op: "post", body, images: urls }, "Posted");
+        } catch (e) {
+          flash((e as Error).message);
+        }
+      })();
+      return true;
     },
     like(id: string) {
-      update((st) => ({ ...st, liked: toggle(st.liked, id) }));
+      setRaw((cur) => cur.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p)));
+      void op({ op: "like", id });
     },
     repost(p: CommunityPost) {
-      update((st) => ({ ...st, reposted: toggle(st.reposted, p.id) }), p.reposted ? undefined : "Reposted");
+      void op({ op: "repost", id: p.id }, p.reposted ? undefined : "Reposted");
     },
     share,
     reply(p: CommunityPost, body: string) {
-      const r: PostReply = { id: `r-${Date.now().toString(36)}`, author: me, body, createdAt: Date.now() };
-      update((st) => ({ ...st, replies: { ...st.replies, [p.id]: [...(st.replies[p.id] ?? []), r] } }));
+      void op({ op: "reply", id: p.id, body });
     },
     remove(p: CommunityPost) {
-      update((st) => ({ ...st, mine: st.mine.filter((x) => x.id !== p.id) }), "Post deleted");
+      void op({ op: "delete", id: p.id }, "Post deleted");
     },
     hide(id: string) {
-      update((st) => ({ ...st, hidden: [...st.hidden, id] }), "Post hidden");
+      updateCommunityStore((st) => ({ ...st, hidden: [...st.hidden, id] }));
+      flash("Post hidden");
     },
     copy(p: CommunityPost) {
       void navigator.clipboard?.writeText(p.body).then(() => flash("Copied"), () => undefined);
     },
     toggleFollow(handle: string) {
       const on = store.following.includes(handle);
-      update((st) => ({ ...st, following: toggle(st.following, handle) }), on ? undefined : "Following");
+      updateCommunityStore((st) => ({ ...st, following: toggle(st.following, handle) }));
+      if (!on) flash("Following");
     },
   };
 }

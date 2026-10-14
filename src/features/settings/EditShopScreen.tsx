@@ -4,7 +4,7 @@ import { ChevronLeft, ImagePlus, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Badge, Button, Card, Input, cn } from "@river-apps/ui";
-import { fileToDataUrl } from "@/features/community/posts";
+import { uploadPhoto } from "@/lib/upload";
 import { reverseGeocodePin } from "@/lib/geocode";
 import { SHOP_ABOUT_MAX, defaultShopAbout } from "@/lib/shop-about";
 import { useShopLocations } from "@/lib/shop-locations";
@@ -60,6 +60,8 @@ function ProfileEditor({
   const [logo, setLogo] = useState(profile.logoUrl);
   const [photos, setPhotos] = useState(profile.photoUrls);
   const [locations, setLocations] = useState(String(profile.locations));
+  const [phone, setPhone] = useState(profile.phone);
+  const [hours, setHours] = useState(profile.hours);
   const [location, setLocation] = useState<ShopLocation | null>(profile.location);
   const [aboutDraft, setAboutDraft] = useState<string | null>(profile.about.trim() ? profile.about : null);
   const serviceNames = [haircut.name, ...treatments.map((t) => t.name)];
@@ -72,6 +74,8 @@ function ProfileEditor({
     || !photosSame
     || !pinSame
     || (aboutDraft !== null && about !== profile.about)
+    || phone.trim() !== profile.phone
+    || hours.trim() !== profile.hours
     || (!enabled && clampLocations(locations) !== profile.locations);
 
   useEffect(() => {
@@ -97,7 +101,7 @@ function ProfileEditor({
     setError("");
     setBusy(true);
     try {
-      setLogo(await fileToDataUrl(file, 480, 0.82));
+      setLogo(await uploadPhoto(file, 480, 0.85));
       setHold("");
     } catch {
       setError("Couldn’t read that logo. Try a smaller image.");
@@ -140,6 +144,8 @@ function ProfileEditor({
         address,
         location: loc,
         about: about.slice(0, SHOP_ABOUT_MAX),
+        phone: phone.trim(),
+        hours: hours.trim(),
       });
       router.push("/settings");
     } catch {
@@ -198,6 +204,8 @@ function ProfileEditor({
                 <p className="-mt-2 text-[12.5px] font-semibold text-muted">How many shops you run. This shows on your profile.</p>
               </>
             )}
+            <Input size="md" label="Shop phone" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.slice(0, 20))} disabled={busy} />
+            <Input size="md" label="Opening hours" placeholder="Mon–Sat 9 AM–8 PM" value={hours} onChange={(e) => setHours(e.target.value.slice(0, 120))} disabled={busy} />
             <AboutField id={aboutId} about={about} starter={aboutDraft === null && !profile.about.trim()} disabled={busy} onChange={(value) => setAboutDraft(value)} />
             {enabled ? <Button type="button" variant="secondary" size="md" onClick={() => leave("/settings/shops")}>Shops</Button> : <LocationPicker value={location} onChange={setLocation} disabled={busy} />}
             {error ? <p className="text-[13.5px] font-semibold">{error}</p> : null}

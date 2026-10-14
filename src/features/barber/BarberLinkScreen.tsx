@@ -4,9 +4,9 @@ import { Avatar, Button, Input } from "@river-apps/ui";
 import { ChevronLeft, History, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BarberChair, BarberIcon } from "@/components/art";
-import { shop as seedShop } from "@/data";
+import { startBarberCloud, useCloud } from "@/lib/cloud";
 import {
-  SAMPLE_SHOP_ID, acceptOnChair, completionLabel, elapsedLabel, markDone, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
+  acceptOnChair, completionLabel, elapsedLabel, markDone, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, chairLinkExpired, linkExpiryLabel, useShopChairs } from "@/lib/shop-chairs";
@@ -126,6 +126,8 @@ function ActiveCard({
 
 /** The page a barber opens from the link. No account. */
 export function BarberLinkScreen({ token }: { token: string }) {
+  useEffect(() => { startBarberCloud(token); }, [token]);
+  const cloud = useCloud();
   const { profile } = useShopProfile();
   const greeting = useGreeting();
   const { chairs, ready: chairsReady } = useShopChairs({ all: true });
@@ -141,7 +143,15 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [picked, setPicked] = useState<string[]>([]);
   const chair = chairPreview;
 
-  if (!chairsReady || !ready) {
+  if (cloud.ready && cloud.error && !cloud.shopId) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
+        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link is not active</h1>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send a new chair link. Each link expires after one month.</p>
+      </main>
+    );
+  }
+  if (!chairsReady || !ready || !cloud.ready) {
     return <main className="mx-auto min-h-dvh max-w-[402px] bg-canvas px-4 pt-8"><p className="text-[14px] font-semibold text-muted">Loading…</p></main>;
   }
   if (!chair || chairLinkExpired(chair)) {
@@ -187,7 +197,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
       <header className="flex min-w-0 items-center gap-2.5">
         <Avatar name={profile.name} src={profile.logoUrl || undefined} preset="sky" size={44} />
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-muted">{greeting}, {seedShop.ownerName}</p>
+          <p className="truncate text-[12px] font-medium text-muted">{greeting}, {chairBarberName(chair)}</p>
           <h1 className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{profile.name}</h1>
           <p className="truncate text-[13px] font-semibold text-muted">{chairBarberName(chair)} · {chair.label}</p>
         </div>
@@ -240,7 +250,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             const chosen = treatments.filter((service) => picked.includes(service.id));
             const sat = seatWalkInOnChair({
               id: `wk-${nowAt}`,
-              shopId: SAMPLE_SHOP_ID,
+              shopId: cloud.shopId ?? "",
               ref: refCode(),
               channel: "walk-in",
               status: "accepted",
@@ -248,7 +258,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
               customerLabel: name.trim() || "Walk-in",
               serviceId: "haircut",
               serviceName: [haircut.name, ...chosen.map((service) => service.name)].join(" · "),
-              price: 0,
+              price: Math.round(((haircut.price ?? 0) + chosen.reduce((sum, service) => sum + (service.price ?? 0), 0)) * 100),
               slotLabel: "Now",
               payWhere: "shop",
               createdAt: nowAt,

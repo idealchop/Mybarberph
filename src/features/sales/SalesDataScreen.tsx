@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
 import { peso } from "@/lib/format";
-import { todayFigures, useScopedRequests } from "@/lib/chair-bookings";
+import { useScopedRequests } from "@/lib/chair-bookings";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { SALES_RANGES, salesReport, type SalesRange, type SalesRow, type SalesView } from "@/lib/sales-report";
@@ -23,12 +23,11 @@ const VIEWS: { value: SalesView; label: string }[] = [
 export function SalesDataScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
-  const { rows, includeSeed } = useScopedRequests();
+  const { rows } = useScopedRequests();
   const [range, setRange] = useState<SalesRange>("today");
   const [view, setView] = useState<SalesView>("overview");
-  const figures = todayFigures(rows, includeSeed);
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
-  const report = salesReport(figures.extra, unpaid, includeSeed, range);
+  const report = salesReport(rows, unpaid, range);
   const place = shops.viewingAll ? "All locations" : shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name;
 
   return (

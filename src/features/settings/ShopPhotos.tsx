@@ -3,7 +3,7 @@
 import { ImagePlus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Badge, Button, Card } from "@river-apps/ui";
-import { fileToDataUrl } from "@/features/community/posts";
+import { uploadPhoto } from "@/lib/upload";
 
 const MAX_SHOP_PHOTOS = 6;
 
@@ -23,11 +23,11 @@ export function ShopPhotos({ urls, onChange, disabled = false }: { urls: string[
       for (const file of Array.from(files)) {
         if (next.length >= MAX_SHOP_PHOTOS) break;
         if (!file.type.startsWith("image/")) continue;
-        next.push(await fileToDataUrl(file, 960, 0.72));
+        next.push(await uploadPhoto(file, 1280, 0.8));
       }
       onChange(next);
-    } catch {
-      setError("Couldn’t read those photos. Try a smaller image.");
+    } catch (e) {
+      setError((e as Error).message || "Couldn’t upload those photos. Try a smaller image.");
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";

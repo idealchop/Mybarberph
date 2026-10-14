@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
-import { salesSummary, shop as seedShop } from "@/data";
+import { useAuthGate } from "@/components/auth/AuthGateProvider";
+import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { SalesChartCard } from "@/features/sales/SalesChart";
@@ -17,7 +18,6 @@ import { branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locat
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
 
-const DAILY_TARGET = 2_500_000;
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
 
@@ -79,23 +79,30 @@ export function HomeScreen() {
   const greeting = useGreeting();
   const { profile } = useShopProfile();
   const shops = useShopLocations();
-  const { rows, ready, includeSeed } = useScopedRequests();
-  const figures = todayFigures(rows, includeSeed);
+  const { rows, ready } = useScopedRequests();
+  const figures = todayFigures(rows);
   const todayTitle = shops.viewingAll ? `All shops: ${peso(figures.sales)}` : `Today: ${peso(figures.sales)}`;
   const placeFor = shops.viewingAll ? (row: ChairRequest) => branchName(shops.branches, row.locationId) : undefined;
   const byShop = shops.branches.map((branch) => {
     const mine = rows.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id);
-    const fig = todayFigures(mine, branch.id === HOME_LOCATION_ID);
+    const fig = todayFigures(mine);
     return { branch, sales: fig.sales, cuts: fig.cuts, inChair: mine.filter((row) => row.status === "in_chair").length };
   });
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
   const toAccept = rows.filter((row) => row.status === "requested" || row.status === "accepted").length;
   const inChair = rows.filter((row) => row.status === "in_chair").length;
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
-  const todaySales = salesReport(figures.extra, unpaid, includeSeed, "today");
+  const todaySales = salesReport(rows, unpaid, "today");
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
-  const owner = seedShop.ownerName.split(" ")[0] ?? seedShop.ownerName;
-  const pct = Math.round((figures.sales / DAILY_TARGET) * 100);
+  const { user } = useSession();
+  const { requireAuth } = useAuthGate();
+  const owner = user ? (user.name.split(" ")[0] || user.name) : "";
+  const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
+  const contact = user ? shortPhone(user.phone || profile.phone) || user.email || "" : "";
+  const needsSetup = Boolean(user) && ready && !profile.name;
+  const dayLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" });
+  const dayTotal = figures.cuts + toAccept;
+  const pct = dayTotal ? Math.round((figures.cuts / dayTotal) * 100) : 0;
 
   return (
     <>
@@ -104,13 +111,23 @@ export function HomeScreen() {
           <div className="flex h-16 items-center justify-between gap-2">
             <div className="flex min-w-0 items-center">
               <PageBack fallback="/home" />
-              <Link href="/settings" aria-label="My Account" className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5">
-              <Avatar name={owner} preset="sky" size={36} />
-              <span className="flex min-w-0 flex-col leading-[1.2]">
-                <span className="text-[13px] font-medium">My Account</span>
-                <span className="max-w-[130px] truncate text-[11px] font-medium text-muted">{shortPhone(profile.phone)}</span>
-              </span>
-            </Link>
+              {user ? (
+                <Link href="/settings" aria-label="My Account" className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5">
+                  <Avatar name={owner || "Me"} src={user.photoUrl} preset="sky" size={36} />
+                  <span className="flex min-w-0 flex-col leading-[1.2]">
+                    <span className="max-w-[150px] truncate text-[13px] font-medium">{user.name}</span>
+                    {contact ? <span className="max-w-[150px] truncate text-[11px] font-medium text-muted">{contact}</span> : null}
+                  </span>
+                </Link>
+              ) : (
+                <button type="button" onClick={() => requireAuth()} className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5 text-left">
+                  <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold">?</span>
+                  <span className="flex min-w-0 flex-col leading-[1.2]">
+                    <span className="text-[13px] font-bold">Sign in</span>
+                    <span className="text-[11px] font-medium text-muted">Save your shop</span>
+                  </span>
+                </button>
+              )}
             </div>
             <Link href="/sales" aria-label="Sales" className="inline-flex size-11 flex-none items-center justify-center">
               <CoinIcon size={36} />
@@ -121,7 +138,7 @@ export function HomeScreen() {
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
-              <span className="font-semibold text-on-ink/90">{profile.name}</span>
+              <span className="font-semibold text-on-ink/90">{shopName}</span>
             </p>
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
@@ -141,6 +158,7 @@ export function HomeScreen() {
           </Link>
           <StatCard className="pb-3" label="Unpaid" value={peso(unpaid)} />
         </div>
+        {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
         <SalesChartCard className="mx-4 mt-3" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
@@ -149,7 +167,7 @@ export function HomeScreen() {
           <Card padding="none" className="mx-4 mt-2.5 flex items-center justify-between gap-3 px-4 py-3.5">
             <span className="min-w-0">
               <b className="block text-[14px]">You’re on Partner (free)</b>
-              <small className="text-[12.5px] font-semibold text-muted">Paid adds walk-ins and the shop QR · ₱499/mo</small>
+              <small className="text-[12.5px] font-semibold text-muted">Paid adds walk-ins and the shop QR · ₱950/mo</small>
             </span>
             <Button href="/settings/billing" variant="secondary" size="sm" className="flex-none">Plans</Button>
           </Card>
@@ -157,11 +175,12 @@ export function HomeScreen() {
       </div>
 
       <div className="mx-auto hidden w-full max-w-[1120px] px-4 pb-6 pt-4 lg:block lg:px-[30px] lg:pt-6">
-        <DesktopBar name={profile.name} owner={owner} greeting={greeting} />
+        <DesktopBar name={shopName} owner={owner} greeting={greeting} dayLabel={dayLabel} photoUrl={user?.photoUrl} onSignIn={user ? undefined : () => requireAuth()} />
+        {needsSetup ? <SetupCard className="mt-5" /> : null}
         <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_286px]">
           <HeroBanner
             size="lg"
-            eyebrow={`Today · ${salesSummary.dayLabel}`}
+            eyebrow={`Today · ${dayLabel}`}
             title={`${todayTitle} · ${figures.cuts} cuts`}
             titleSize="lg"
             description={`${inChair} in chair`}
@@ -178,19 +197,19 @@ export function HomeScreen() {
           <StatCard
             className="px-5 pb-4 pt-[18px]"
             layout="title"
-            label="Daily target"
+            label="Today’s chairs"
             footer={
               <>
                 <span className="flex flex-col leading-[1.2]">
-                  <b className="text-[17px] font-extrabold">{peso(figures.sales)}</b>
-                  <small className="text-[12px] font-semibold text-muted">of {peso(DAILY_TARGET)}</small>
+                  <b className="text-[17px] font-extrabold">{figures.cuts} done</b>
+                  <small className="text-[12px] font-semibold text-muted">{peso(figures.sales)} in sales</small>
                 </span>
-                <Badge variant="soft">{peso(Math.max(0, DAILY_TARGET - figures.sales))} to go</Badge>
+                <Badge variant="soft">{toAccept} waiting</Badge>
               </>
             }
           >
             <div className="my-1.5 flex justify-center">
-              <ProgressRing value={pct} size={124} thickness={11.5} label={`${pct}%`} labelSize={23} ariaLabel={`${pct}% of daily target`} />
+              <ProgressRing value={pct} size={124} thickness={11.5} label={`${pct}%`} labelSize={23} ariaLabel={`${pct}% of today’s customers served`} />
             </div>
           </StatCard>
         </div>
@@ -225,26 +244,42 @@ function ShopDays({ rows, className }: { rows: { branch: { id: string; name: str
   );
 }
 
-function DesktopBar({ name, owner, greeting }: { name: string; owner: string; greeting: string }) {
+function SetupCard({ className }: { className?: string }) {
+  return (
+    <Card padding="none" className={`flex items-center justify-between gap-3 px-4 py-3.5 ${className ?? ""}`}>
+      <span className="min-w-0">
+        <b className="block text-[14.5px]">Set up your shop</b>
+        <small className="text-[12.5px] font-semibold text-muted">Add the name, map pin, chairs and prices so customers can book.</small>
+      </span>
+      <Button href="/settings/edit" size="sm" className="flex-none">Set up</Button>
+    </Card>
+  );
+}
+
+function DesktopBar({ name, owner, greeting, dayLabel, photoUrl, onSignIn }: { name: string; owner: string; greeting: string; dayLabel: string; photoUrl?: string; onSignIn?: () => void }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   return (
     <Topbar
       className="px-1"
       leading={<PageBack fallback="/home" />}
-      title={`${greeting}, ${owner}`}
-      subtitle={`${salesSummary.dayLabel} · ${name}`}
+      title={owner ? `${greeting}, ${owner}` : greeting}
+      subtitle={`${dayLabel} · ${name}`}
       actions={
         <>
           <form className="hidden xl:flex" onSubmit={(e) => { e.preventDefault(); router.push(search.trim() ? `/scan?code=${encodeURIComponent(search.trim())}` : "/scan"); }}>
-            <SearchInput className="w-[300px]" placeholder="Find ticket, e.g. A-031" label="Find a ticket" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <SearchInput className="w-[300px]" placeholder="Find ticket, e.g. BK-7K2Q9M" label="Find a ticket" value={search} onChange={(e) => setSearch(e.target.value)} />
           </form>
           <Link href="/sales" aria-label="Sales" className="inline-flex size-11 items-center justify-center">
             <CoinIcon size={40} />
           </Link>
-          <Link href="/settings" aria-label="Settings" className="rounded-full">
-            <Avatar name={owner} preset="sky" size={44} decorative={false} />
-          </Link>
+          {onSignIn ? (
+            <Button size="sm" onClick={onSignIn}>Sign in</Button>
+          ) : (
+            <Link href="/settings" aria-label="Settings" className="rounded-full">
+              <Avatar name={owner || "Me"} src={photoUrl} preset="sky" size={44} decorative={false} />
+            </Link>
+          )}
         </>
       }
     />

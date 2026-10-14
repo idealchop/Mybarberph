@@ -1,28 +1,19 @@
 "use client";
 
-import { CoinIcon } from "@river-apps/icons";
-import { ChevronLeft, ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
+import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Avatar, Badge, Button, Card, ListItem, Topbar, cn } from "@river-apps/ui";
-import { BarberChair, Star } from "@/components/art";
+import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
-import { salesSummary, shop as seed } from "@/data";
-import { peso } from "@/lib/format";
+import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { ALL_LOCATIONS, useShopLocations } from "@/lib/shop-locations";
 import { locationCountLabel, shopHandle, useShopProfile } from "@/lib/shop-profile";
-import { signOut } from "@/lib/session";
+import { signOut, useSession } from "@/lib/session";
 import { useTier } from "@/lib/tier";
 
-const PAID_PER_MO = "₱499/mo";
-
-const CREDITS = [
-  { id: "cr1", ref: "RM-48213", label: "Scan · Skin fade + beard", customer: "Andrei M.", amount: 45000, status: "available" as const },
-  { id: "cr2", ref: "RM-48220", label: "Scan · Classic cut", customer: "Nico F.", amount: 20000, status: "available" as const },
-  { id: "cr3", ref: "RM-48190", label: "Scan · Cut + hot towel", customer: "Paolo C.", amount: 38000, status: "pending" as const },
-  { id: "cr4", ref: "RM-48150", label: "Scan · Skin fade", customer: "Leo B.", amount: 25000, status: "withdrawn" as const },
-];
+const PAID_PER_MO = "₱950/mo";
 
 /** Settings hub, same shape as Laundry.ph: profile, credits, setup, features, log out. */
 export function SettingsScreen() {
@@ -30,18 +21,14 @@ export function SettingsScreen() {
   const shops = useShopLocations();
   const { tier } = useTier();
   const router = useRouter();
-  const [credits, setCredits] = useState(false);
   const [partnerOn, setPartnerOn] = useState(false);
+  const { user } = useSession();
+  const { requireAuth } = useAuthGate();
   const paid = tier === "paid";
-  const available = CREDITS.filter((l) => l.status === "available").reduce((s, l) => s + l.amount, 0);
-  const pending = CREDITS.filter((l) => l.status === "pending").reduce((s, l) => s + l.amount, 0);
-  const withdrawn = CREDITS.filter((l) => l.status === "withdrawn").reduce((s, l) => s + l.amount, 0);
   const place = shops.viewingAll
     ? "All locations"
     : (shops.enabled && shops.branch ? (shops.branch.area || shops.branch.name) : (profile.area || profile.location?.formattedAddress || profile.address.split(",")[0]?.trim()));
   const locationCount = shops.enabled ? Math.max(1, shops.branches.length) : profile.locations;
-
-  if (credits) return <CreditsView onBack={() => setCredits(false)} />;
 
   const links = [
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
@@ -60,7 +47,7 @@ export function SettingsScreen() {
           <div className="min-w-0 flex-1">
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="min-w-0 text-[18px] font-extrabold leading-[1.2] tracking-[-0.02em] sm:text-[20px]">{profile.name}</h2>
+                <h2 className="min-w-0 text-[18px] font-extrabold leading-[1.2] tracking-[-0.02em] sm:text-[20px]">{profile.name || (user ? "Name your shop" : "Your shop")}</h2>
                 <button
                   type="button"
                   aria-expanded={partnerOn}
@@ -73,19 +60,20 @@ export function SettingsScreen() {
               </div>
               {partnerOn ? <p className="mt-0.5 text-[12.5px] font-bold">River partner</p> : null}
             </div>
-            <p className="mt-0.5 text-[13.5px] font-semibold text-muted">{shopHandle(profile.name)}</p>
-            <p className="mt-1.5 inline-flex flex-wrap items-center gap-x-1.5 text-[12.5px] font-semibold text-muted">
-              <Star size={13} />
-              <b className="font-extrabold text-ink">{salesSummary.avgRating.toFixed(1)}</b>
-              <span aria-hidden>·</span>
-              <span>{locationCountLabel(locationCount)}</span>
+            {profile.name ? <p className="mt-0.5 text-[13.5px] font-semibold text-muted">{shopHandle(profile.name)}</p> : null}
+            <p className="mt-1.5 text-[12.5px] font-semibold text-muted">
+              {user ? locationCountLabel(locationCount) : "Sign in to set up your shop"}
             </p>
           </div>
         </div>
-        <Button className="mt-3" href="/settings/edit" size="xs" leadingIcon={<Pencil size={14} strokeWidth={1.75} />}>Update shop</Button>
+        {user ? (
+          <Button className="mt-3" href="/settings/edit" size="xs" leadingIcon={<Pencil size={14} strokeWidth={1.75} />}>{profile.name ? "Update shop" : "Set up shop"}</Button>
+        ) : (
+          <Button className="mt-3" size="xs" onClick={() => requireAuth()}>Sign in</Button>
+        )}
         <div className="mt-3 border-t border-line pt-3">
           <p className="text-[13.5px] font-medium leading-snug text-ink/80">
-            {paid ? `Barbershop in ${seed.city}. Walk-ins, the queue and the shop QR.` : `Barbershop in ${seed.city}. Online bookings from the shop QR.`}
+            {profile.about || (paid ? "Walk-ins, the queue and the shop QR." : "Online bookings from River Mobile and the queue.")}
           </p>
           {place ? (
             <p className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-semibold text-muted">
@@ -95,19 +83,6 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <button type="button" onClick={() => setCredits(true)} className="mt-4 w-full rounded-card bg-surface px-4 py-4 text-left shadow-card">
-        <div className="flex items-start gap-3">
-          <CoinIcon size={48} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-semibold text-muted">Credits</p>
-              <ChevronRight size={18} strokeWidth={1.75} className="text-subtle" aria-hidden />
-            </div>
-            <p className="mt-0.5 text-[26px] font-extrabold tracking-[-0.03em]">{peso(available)}</p>
-            <p className="mt-1 text-[12.5px] font-medium text-muted">Pending {peso(pending)} · Withdrawn {peso(withdrawn)}</p>
-          </div>
-        </div>
-      </button>
 
       {shops.ready ? <LocationCard shops={shops} /> : null}
 
@@ -174,17 +149,17 @@ export function SettingsScreen() {
           )}
         </Card>
 
-        <button
+        {user ? <button
           type="button"
-          onClick={() => { signOut(); router.push("/home"); }}
+          onClick={() => { void signOut().then(() => router.push("/home")); }}
           className="flex min-h-14 items-center gap-3 rounded-card bg-surface px-4 py-3 text-left shadow-card"
         >
           <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><LogOut size={18} strokeWidth={1.75} /></span>
           <span>
             <b className="block text-[15px]">Log out</b>
-            <small className="text-[13px] font-medium text-muted">Leave this shop on this device</small>
+            <small className="text-[13px] font-medium text-muted">{user.email || user.phone || "Signed in"}</small>
           </span>
-        </button>
+        </button> : null}
       </div>
     </div>
   );
@@ -225,56 +200,5 @@ function LocationCard({ shops }: { shops: ReturnType<typeof useShopLocations> })
       )}
       <Button className="mt-4" href="/settings/shops" size="md" fullWidth variant="secondary">Manage shops</Button>
     </section>
-  );
-}
-
-function CreditsView({ onBack }: { onBack: () => void }) {
-  const [lines, setLines] = useState(CREDITS);
-  const [note, setNote] = useState("");
-  const available = lines.filter((l) => l.status === "available");
-  const availableSum = available.reduce((s, l) => s + l.amount, 0);
-  const pending = lines.filter((l) => l.status === "pending").reduce((s, l) => s + l.amount, 0);
-  const withdrawn = lines.filter((l) => l.status === "withdrawn").reduce((s, l) => s + l.amount, 0);
-
-  return (
-    <div className="mx-auto flex w-full max-w-[402px] flex-col lg:max-w-[880px]">
-      <div className="flex h-14 items-center justify-between px-5 pt-1 lg:px-[30px]">
-        <button type="button" aria-label="Back" onClick={onBack} className="inline-flex size-11 items-center justify-center rounded-full bg-grey-100">
-          <ChevronLeft size={22} strokeWidth={1.75} />
-        </button>
-        <span className="text-[15px] font-bold">Credits</span>
-        <span className="w-11" />
-      </div>
-      <div className="flex flex-col gap-4 px-5 pb-10 pt-2">
-        <Card className="px-4 py-4">
-          <div className="flex items-center gap-3">
-            <CoinIcon size={52} />
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-muted">Available to withdraw</p>
-              <p className="mt-0.5 text-[28px] font-extrabold tracking-[-0.03em]">{peso(availableSum)}</p>
-            </div>
-          </div>
-          <p className="mt-3 text-[13px] font-medium text-muted">Pending {peso(pending)} · Withdrawn {peso(withdrawn)}</p>
-          <Button className="mt-4" fullWidth data-auth="action" disabled={availableSum <= 0} onClick={() => {
-            setLines((prev) => prev.map((l) => l.status === "available" ? { ...l, status: "withdrawn" as const } : l));
-            setNote(`Withdrawal of ${peso(availableSum)} recorded. Payouts to GCash are not charged in this demo.`);
-          }}>Withdraw</Button>
-          {note ? <p className="mt-3 text-[13px] font-semibold">{note}</p> : null}
-        </Card>
-        <ul className="rounded-card bg-surface px-2 py-1 shadow-card">
-          {lines.map((l) => (
-            <li key={l.id}>
-              <ListItem
-                variant="row"
-                leading={<CoinIcon size={36} />}
-                title={l.label}
-                subtitle={`${l.customer} · ${l.ref}`}
-                trailing={<span className="text-right"><b className="block">+{peso(l.amount)}</b><Badge variant="soft" size="sm" className="mt-1">{l.status === "available" ? "Available" : l.status === "pending" ? "Pending" : "Withdrawn"}</Badge></span>}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }

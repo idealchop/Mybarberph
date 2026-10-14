@@ -4,7 +4,7 @@ import { Button, Card, Topbar } from "@river-apps/ui";
 import { useEffect, useState } from "react";
 import { QrCode } from "@/components/common/QrCode";
 import { PageBack } from "@/components/shell/PageBack";
-import { shop } from "@/data";
+import { useCloud } from "@/lib/cloud";
 import { HOW_IT_WORKS, bookingUrl } from "@/lib/chair-bookings";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
@@ -15,12 +15,15 @@ export function QrScreen() {
   const { tier, setTier } = useTier();
   const { profile } = useShopProfile();
   const shops = useShopLocations();
+  const cloud = useCloud();
+  const shopId = cloud.shopId;
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   useEffect(() => setOrigin(window.location.origin), []);
   const locationId = shops.enabled && shops.scopeId ? shops.scopeId : undefined;
-  const url = origin && !shops.viewingAll ? bookingUrl(origin, shop.id, locationId) : "";
-  const who = shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : shop.name;
+  const listed = Boolean(profile.name && cloud.shop?.services.length);
+  const url = origin && shopId && listed && !shops.viewingAll ? bookingUrl(origin, shopId, locationId) : "";
+  const who = shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name || "your shop";
 
   if (tier !== "paid") {
     return (
@@ -49,7 +52,7 @@ export function QrScreen() {
       <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
         <Card className="flex flex-col items-center px-4 py-5 text-center">
           <b className="text-[16px]">Booking</b>
-          <p className="mt-1 max-w-[280px] text-[13px] font-medium text-muted">{shops.viewingAll ? "This code stays blank until one shop is open." : `One code for ${who}.`}</p>
+          <p className="mt-1 max-w-[280px] text-[13px] font-medium text-muted">{shops.viewingAll ? "This code stays blank until one shop is open." : !listed ? "Add the shop name and save your haircut in Services. Then your QR appears here." : `One code for ${who}.`}</p>
           <div className="mt-4 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
             {url ? <QrCode value={url} size={220} label="Booking QR code" /> : <span className="block size-[220px]" />}
           </div>

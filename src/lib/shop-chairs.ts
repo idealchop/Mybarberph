@@ -1,7 +1,7 @@
 "use client";
+import { cloudStorage } from "@/lib/cloud";
 
 import { useEffect, useState } from "react";
-import { barbers } from "@/data";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 
 /** A seat the shop created. Times are unix milliseconds. */
@@ -29,7 +29,8 @@ export interface ShopChair {
   locationId?: string;
 }
 
-export const shopBarbers = barbers.filter((b) => b.active).map((b) => ({ id: b.id, name: b.nickname }));
+/** Barbers are named on their chair; there is no separate barber list. */
+export const shopBarbers: { id: string; name: string }[] = [];
 
 const KEY = "barbers.shop-chairs";
 const EVENT = "barbers-chairs";
@@ -47,7 +48,7 @@ export function chairBarberName(chair: Pick<ShopChair, "barberId" | "barberName"
 
 function readChairs(): ShopChair[] {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = cloudStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ShopChair[];
     if (!Array.isArray(parsed)) return [];
@@ -70,7 +71,7 @@ function readChairs(): ShopChair[] {
 }
 
 function writeChairs(next: ShopChair[]) {
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  cloudStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(EVENT));
 }
 

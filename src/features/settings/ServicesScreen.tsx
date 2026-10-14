@@ -187,7 +187,7 @@ export function ServicesScreen() {
           <BarberIcon name={haircut.icon} size={44} title={haircut.name} />
           <span className="min-w-0 flex-1">
             <b className="block text-[15.5px]">{haircut.name}</b>
-            <small className="text-[12.5px] font-semibold text-muted">{haircut.durationMins} min</small>
+            <small className="text-[12.5px] font-semibold text-muted">{haircut.durationMins} min{haircut.price ? ` · ₱${haircut.price}` : ""}</small>
           </span>
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "haircut" })}>Edit</Button>
         </div>
@@ -210,7 +210,7 @@ export function ServicesScreen() {
                 <BarberIcon name={treatment.icon} size={44} title={treatment.name} />
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15.5px]">{treatment.name}</b>
-                  <small className="text-[12.5px] font-semibold text-muted">{treatment.durationMins} min</small>
+                  <small className="text-[12.5px] font-semibold text-muted">{treatment.durationMins} min{treatment.price ? ` · ₱${treatment.price}` : ""}</small>
                 </span>
                 <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment, fresh: false })}>Edit</Button>
               </li>
@@ -367,6 +367,7 @@ function ChairEditor({
 function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void }) {
   const [draft, setDraft] = useState(haircut);
   const [mins, setMins] = useState(String(haircut.durationMins));
+  const [price, setPrice] = useState(haircut.price ? String(haircut.price) : "");
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
@@ -377,11 +378,12 @@ function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBa
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
+        <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         const durationMins = Math.round(Number(mins));
         if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
-        onSave({ ...draft, name: draft.name.trim(), durationMins });
+        onSave({ ...draft, name: draft.name.trim(), durationMins, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
     </div>
   );
@@ -398,6 +400,7 @@ function TreatmentEditor({
 }) {
   const [draft, setDraft] = useState(treatment);
   const [mins, setMins] = useState(String(treatment.durationMins));
+  const [price, setPrice] = useState(treatment.price ? String(treatment.price) : "");
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
@@ -408,11 +411,12 @@ function TreatmentEditor({
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label="Minutes" inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value)} />
+        <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         const durationMins = Math.round(Number(mins));
         if (!draft.name.trim() || !Number.isFinite(durationMins) || durationMins <= 0) return;
-        onSave({ ...draft, name: draft.name.trim(), durationMins });
+        onSave({ ...draft, name: draft.name.trim(), durationMins, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
     </div>

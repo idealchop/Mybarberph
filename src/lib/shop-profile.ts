@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { shop as seed } from "@/data";
+import { useEffect, useMemo, useState } from "react";
+import { cloudStorage, useCloud } from "@/lib/cloud";
 
 export interface ShopLocation {
   lat: number;
@@ -23,57 +23,56 @@ export interface ShopProfile {
   logoUrl: string;
   /** Shops this owner runs. Shown on the profile. */
   locations: number;
+  /** Opening hours as the shop writes them, e.g. "Mon–Sat 9 AM–8 PM". */
+  hours: string;
 }
 
 const KEY = "barbers.shop-profile";
 
-/** 28 J.P. Rizal, Concepcion Uno, Marikina — the shop's starting pin. */
-const SHOP_PIN: ShopLocation = {
-  lat: 14.658031,
-  lng: 121.103906,
-  formattedAddress: seed.address,
-};
-
 export const shopDefaults: ShopProfile = {
-  name: seed.name,
-  address: seed.address,
-  phone: seed.phone,
-  area: "Concepcion Uno, Marikina",
+  name: "",
+  address: "",
+  phone: "",
+  area: "",
   about: "",
-  location: SHOP_PIN,
+  location: null,
   photoUrls: [],
   logoUrl: "",
   locations: 1,
+  hours: "",
 };
 
+function readProfile(): ShopProfile {
+  try {
+    const raw = cloudStorage.getItem(KEY);
+    if (!raw) return shopDefaults;
+    const saved = JSON.parse(raw) as Partial<ShopProfile> | null;
+    if (!saved) return shopDefaults;
+    return {
+      ...shopDefaults,
+      ...saved,
+      location: saved.location ?? null,
+      photoUrls: Array.isArray(saved.photoUrls) ? saved.photoUrls : [],
+      logoUrl: typeof saved.logoUrl === "string" ? saved.logoUrl : "",
+      hours: typeof saved.hours === "string" ? saved.hours : "",
+      locations: clampLocations(saved.locations),
+    };
+  } catch {
+    return shopDefaults;
+  }
+}
+
+/** The signed-in shop's profile. Empty for guests and for new shops. */
 export function useShopProfile() {
-  const [profile, setProfile] = useState<ShopProfile>(shopDefaults);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<ShopProfile>;
-        setProfile({
-          ...shopDefaults,
-          ...saved,
-          location: saved.location === undefined ? shopDefaults.location : saved.location,
-          photoUrls: Array.isArray(saved.photoUrls) ? saved.photoUrls : [],
-          logoUrl: typeof saved.logoUrl === "string" ? saved.logoUrl : "",
-          locations: clampLocations(saved.locations),
-        });
-      }
-    } catch {
-      setProfile(shopDefaults);
-    }
-    setReady(true);
-  }, []);
+  const cloud = useCloud();
+  const raw = cloud.values[KEY];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const profile = useMemo(() => readProfile(), [raw]);
   const save = (next: ShopProfile) => {
     const stored: ShopProfile = { ...next, photoUrls: next.photoUrls.slice(0, 6), locations: clampLocations(next.locations) };
-    window.localStorage.setItem(KEY, JSON.stringify(stored));
-    setProfile(stored);
+    cloudStorage.setItem(KEY, JSON.stringify(stored));
   };
-  return { profile, ready, save };
+  return { profile, ready: cloud.ready, save, signedIn: cloud.mode !== "guest" };
 }
 
 export function clampLocations(value: unknown) {

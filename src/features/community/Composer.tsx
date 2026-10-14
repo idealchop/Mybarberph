@@ -57,8 +57,8 @@ export function Composer({ me, onPost }: { me: PostAuthor; onPost: (body: string
   return (
     <section aria-label="New post" className="px-1 pb-3.5 pt-3">
       <Link href={profileHref(me.name)} className="flex w-fit max-w-full items-center gap-2.5 rounded-full focus-visible:outline-2 focus-visible:outline-ink">
-        <Avatar name={me.name} preset={me.avatar} size={40} className="flex-none" />
-        <b className="min-w-0 truncate text-[15px] font-extrabold leading-tight tracking-[-0.01em]">{me.name}</b>
+        <Avatar name={me.name || "Shop"} src={me.photoUrl} preset={me.avatar} size={40} className="flex-none" />
+        <b className="min-w-0 truncate text-[15px] font-extrabold leading-tight tracking-[-0.01em]">{me.name || "Your shop"}</b>
       </Link>
       <div className="mt-2.5">
         <label htmlFor="community-composer" className="sr-only">Write a post</label>

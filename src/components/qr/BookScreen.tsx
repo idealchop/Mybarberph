@@ -5,64 +5,48 @@ import { Button, Input } from "@river-apps/ui";
 import { Wallet, ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { Brand } from "@/components/shell/Brand";
-import { shop } from "@/data";
-import {
-  ACTIVE_BOOKING_KEY, SAMPLE_SHOP_ID, parseContact, refCode, writePublicBooking,
-  type ChairRequest, type PayWhere,
-} from "@/lib/chair-bookings";
-import { useShopMenu } from "@/lib/shop-services";
-import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
-import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
-import { BarberPortrait } from "@/features/settings/SeatList";
+import { ACTIVE_BOOKING_KEY, parseContact, type PayWhere } from "@/lib/chair-bookings";
+import { peso } from "@/lib/format";
 import { RequestStatus } from "./RequestStatus";
+import { usePublicShop } from "./usePublicShop";
+
+interface Draft { contact: string; slotLabel: string; serviceIds: string[]; serviceName: string; price: number }
 
 const TIMES = ["11:00 AM", "2:00 PM", "4:00 PM", "7:00 PM"] as const;
+
+function savedBooking(shopId: string): string | null {
+  if (typeof window === "undefined" || !shopId) return null;
+  const [sid, id] = (sessionStorage.getItem(ACTIVE_BOOKING_KEY) ?? "").split(":");
+  return sid === shopId && id ? id : null;
+}
 
 /** Public page opened by the shop QR. Contact is an email or a mobile number. */
 export function BookScreen() {
   const params = useSearchParams();
   const shopId = params.get("shop")?.trim() ?? "";
   const loc = params.get("loc")?.trim() ?? "";
-  const locationId = loc || HOME_LOCATION_ID;
-  const known = shopId === SAMPLE_SHOP_ID;
-  const shopName = known ? shop.name : shopId;
-  const shops = useShopLocations();
-  const branch = shops.branches.find((item) => item.id === locationId);
-  const heading = branch && (loc || shops.enabled) ? `${shop.name} · ${branch.name}` : shopName;
-
-  const { haircut, treatments } = useShopMenu(locationId);
-  const { chairs } = useShopChairs({ locationId });
+  const { shop, payOnline } = usePublicShop(shopId);
+  const branch = shop?.branches.find((item) => item.id === loc);
+  const heading = shop ? (branch ? `${shop.name} · ${branch.name}` : shop.name) : "";
+  const haircut = shop?.services.find((s) => s.kind === "haircut");
+  const treatments = shop?.services.filter((s) => s.kind === "treatment") ?? [];
   const [contact, setContact] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [day, setDay] = useState<"Today" | "Tomorrow">("Today");
   const [time, setTime] = useState<(typeof TIMES)[number]>("4:00 PM");
   const [error, setError] = useState("");
-  const [draft, setDraft] = useState<ChairRequest | null>(null);
-  const [phase, setPhase] = useState<"form" | "pay" | "status">("form");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(() => savedBooking(shopId));
+  const [sending, setSending] = useState(false);
+  const [phase, setPhase] = useState<"form" | "pay" | "status">(() => (savedBooking(shopId) ? "status" : "form"));
   const [payWhere, setPayWhere] = useState<PayWhere | null>(null);
 
-  useEffect(() => {
-    const id = sessionStorage.getItem(ACTIVE_BOOKING_KEY);
-    if (!id || !shopId) return;
-    const saved = window.localStorage.getItem("barbers.public-bookings");
-    if (!saved) return;
-    try {
-      const rows = JSON.parse(saved) as ChairRequest[];
-      const found = rows.find((b) => b.id === id && b.shopId === shopId);
-      if (found) {
-        setDraft(found);
-        setPhase("status");
-      }
-    } catch {
-      /* ignore a bad local copy */
-    }
-  }, [shopId]);
-
   const chosen = treatments.filter((t) => picked.includes(t.id));
-  const serviceName = [haircut.name, ...chosen.map((t) => t.name)].join(" · ");
+  const serviceName = [haircut?.name ?? "Haircut", ...chosen.map((t) => t.name)].join(" · ");
+  const total = (haircut?.price ?? 0) + chosen.reduce((sum, t) => sum + t.price, 0);
 
   const submit = () => {
     const who = parseContact(contact);
@@ -74,42 +58,38 @@ export function BookScreen() {
       setError("This code is missing the shop.");
       return;
     }
-    const now = Date.now();
-    const booking: ChairRequest = {
-      id: `bk-public-${now}`,
-      shopId,
-      ref: refCode(),
-      channel: "online",
-      status: "requested",
-      contact: who,
-      customerLabel: who,
-      serviceId: "haircut",
-      serviceName,
-      price: 0,
-      slotLabel: `${day}, ${time}`,
-      payWhere: "shop",
-      locationId,
-      createdAt: now,
-      updatedAt: now,
-    };
     setError("");
-    setPayWhere(null);
-    setDraft(booking);
+    setPayWhere(payOnline ? null : "shop");
+    setDraft({ contact: who, slotLabel: `${day}, ${time}`, serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], serviceName, price: total });
     setPhase("pay");
   };
 
-  const confirmPay = () => {
-    if (!draft || !payWhere) return;
-    const booking = { ...draft, payWhere, updatedAt: Date.now() };
-    writePublicBooking(booking);
-    sessionStorage.setItem(ACTIVE_BOOKING_KEY, booking.id);
-    setDraft(booking);
-    setPhase("status");
+  const confirmPay = async () => {
+    if (!draft || !payWhere || sending) return;
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch("/api/public/bookings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ shopId, locationId: loc || undefined, contact: draft.contact, customerLabel: draft.contact, slotLabel: draft.slotLabel, serviceIds: draft.serviceIds, payWhere }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Couldn’t send the request.");
+      sessionStorage.setItem(ACTIVE_BOOKING_KEY, `${shopId}:${d.booking.id}`);
+      setBookingId(d.booking.id);
+      setPhase("status");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const bookAnother = () => {
     sessionStorage.removeItem(ACTIVE_BOOKING_KEY);
     setDraft(null);
+    setBookingId(null);
     setPayWhere(null);
     setPhase("form");
   };
@@ -124,7 +104,20 @@ export function BookScreen() {
     );
   }
 
-  if (phase === "status" && draft) return <RequestStatus bookingId={draft.id} onBookAnother={bookAnother} />;
+  if (phase === "status" && bookingId) return <RequestStatus bookingId={bookingId} shopId={shopId} onBookAnother={bookAnother} />;
+
+  if (shop === undefined) {
+    return <main className="mx-auto min-h-dvh max-w-[402px] px-6 pt-10"><Brand sub={false} /><p className="mt-6 text-[14px] font-semibold text-muted">Loading the shop…</p></main>;
+  }
+  if (!shop || !haircut) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col justify-center px-6 py-12">
+        <Brand />
+        <h1 className="mt-6 text-[28px] font-extrabold tracking-[-0.03em]">{shop ? "Not taking bookings yet" : "Shop not found"}</h1>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">{shop ? "This shop hasn’t added its services yet. Ask at the counter." : "This code doesn’t match a shop on Barbers.ph. Ask the shop for a new QR code."}</p>
+      </main>
+    );
+  }
 
   if (phase === "pay" && draft) {
     return (
@@ -136,12 +129,15 @@ export function BookScreen() {
           </button>
           <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">How will you pay?</h1>
         </div>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">{draft.ref} · {draft.serviceName}. Choose online, or pay at the chair.</p>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">{draft.serviceName}{draft.price ? ` · ${peso(draft.price)}` : ""}. {payOnline ? "Choose online, or pay at the chair." : "Pay at the chair when the cut is done."}</p>
         <div className="mt-5 grid gap-3">
-          <PayChoice selected={payWhere === "online"} onClick={() => setPayWhere("online")} title="Pay online" subtitle="GCash" icon={<Wallet size={28} strokeWidth={1.75} />} />
+          {payOnline ? <PayChoice selected={payWhere === "online"} onClick={() => setPayWhere("online")} title="Pay online" subtitle="GCash" icon={<Wallet size={28} strokeWidth={1.75} />} /> : (
+            <p className="rounded-[18px] bg-grey-100 px-4 py-3 text-[13px] font-semibold text-muted">Online payment isn’t available for this shop yet.</p>
+          )}
           <PayChoice selected={payWhere === "shop"} onClick={() => setPayWhere("shop")} title="Pay at the chair" subtitle="Cash when you’re done" icon={<CoinIcon size={36} />} />
         </div>
-        <Button className="mt-5" fullWidth disabled={!payWhere} onClick={confirmPay}>Send request</Button>
+        {error ? <p className="mt-3 text-[13px] font-semibold">{error}</p> : null}
+        <Button className="mt-5" fullWidth disabled={!payWhere || sending} onClick={() => void confirmPay()}>{sending ? "Sending…" : "Send request"}</Button>
       </main>
     );
   }
@@ -151,24 +147,11 @@ export function BookScreen() {
       <Brand sub={false} />
       <p className="mt-4 text-[13px] font-bold text-muted">{heading}</p>
       <h1 className="mt-1 text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Book a haircut</h1>
-      {chairs.length ? (
-        <>
-          <p className="mt-5 text-[13px] font-bold">Barbers</p>
-          <ul className="mt-2 flex gap-3 overflow-x-auto pb-1">
-            {chairs.map((chair) => (
-              <li key={chair.id} className="flex w-16 flex-none flex-col items-center gap-1.5">
-                <BarberPortrait chair={chair} size={56} />
-                <span className="w-full truncate text-center text-[12px] font-bold">{chairBarberName(chair)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
       <label className="mt-5 block text-[13px] font-bold">Haircut</label>
       <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
-        <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
+        <BarberIcon name="clipper" size={40} title={haircut.name} />
         <span className="min-w-0 flex-1 font-bold">{haircut.name}</span>
-        <span className="text-[13px] font-semibold">{haircut.durationMins} min</span>
+        <span className="text-[13px] font-semibold">{haircut.durationMins} min{haircut.price ? ` · ${peso(haircut.price)}` : ""}</span>
       </div>
       {treatments.length ? (
         <>
@@ -184,9 +167,9 @@ export function BookScreen() {
                   onClick={() => setPicked((cur) => on ? cur.filter((id) => id !== t.id) : [...cur, t.id])}
                   className={`flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-left ${on ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}
                 >
-                  <BarberIcon name={t.icon} size={40} title={t.name} />
+                  <BarberIcon name="towel" size={40} title={t.name} />
                   <span className="min-w-0 flex-1 font-bold">{t.name}</span>
-                  <span className="text-[13px] font-semibold">{t.durationMins} min</span>
+                  <span className="text-[13px] font-semibold">{t.durationMins} min{t.price ? ` · ${peso(t.price)}` : ""}</span>
                 </button>
               );
             })}

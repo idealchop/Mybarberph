@@ -6,7 +6,8 @@
  * once signed in, the same action is replayed so the guest continues where they were.
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { hydrateSession, useSession } from "@/lib/session";
+import { startCloud } from "@/lib/cloud";
+import { useSession } from "@/lib/session";
 import { AuthGateSheet } from "./AuthGateSheet";
 
 type Ctx = { isAuthenticated: boolean; requireAuth: (after?: () => void) => void };
@@ -28,7 +29,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const pending = useRef<(() => void) | null>(null);
   const replaying = useRef(false);
 
-  useEffect(() => { hydrateSession(); }, []);
+  useEffect(() => { startCloud(); }, []);
 
   const requireAuth = useCallback((after?: () => void) => {
     if (authedRef.current) { after?.(); return; }

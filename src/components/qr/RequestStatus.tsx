@@ -1,11 +1,11 @@
 "use client";
 
 import { CheckIcon, CoinIcon } from "@river-apps/icons";
-import { Button, Card, HeroBanner, MonoText } from "@river-apps/ui";
+import { Card, HeroBanner, MonoText } from "@river-apps/ui";
 import { Wallet } from "lucide-react";
 import { BarberChair } from "@/components/art";
 import { Brand } from "@/components/shell/Brand";
-import { markPaid, statusLabel, usePublicBooking, type ChairRequest } from "@/lib/chair-bookings";
+import { statusLabel, usePublicBooking, type ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 
 const STEPS = ["Sent", "In chair", "Done"] as const;
@@ -17,8 +17,8 @@ function stepIndex(booking: ChairRequest) {
 }
 
 /** Customer page after a QR booking. Accepting at the shop puts them straight in a chair. */
-export function RequestStatus({ bookingId, onBookAnother }: { bookingId: string; onBookAnother: () => void }) {
-  const booking = usePublicBooking(bookingId);
+export function RequestStatus({ bookingId, shopId, onBookAnother }: { bookingId: string; shopId: string; onBookAnother: () => void }) {
+  const booking = usePublicBooking(bookingId, shopId);
 
   if (booking === undefined) {
     return <main className="mx-auto min-h-dvh max-w-[440px] px-5 pt-8"><p className="text-[14px] font-semibold text-muted">Loading…</p></main>;
@@ -83,7 +83,7 @@ export function RequestStatus({ bookingId, onBookAnother }: { bookingId: string;
           </ol>
         )}
         <p className="mt-3 border-t border-dashed border-[#E8E8EC] pt-2.5 text-[12.5px] font-semibold text-muted">
-          {booking.serviceName} · {booking.contact} · {statusLabel(booking.status)}
+          {booking.serviceName} · {statusLabel(booking.status)}
         </p>
       </Card>
       <Card className="mx-4 mt-2.5 flex items-center gap-3 px-4 py-3.5">
@@ -94,9 +94,7 @@ export function RequestStatus({ bookingId, onBookAnother }: { bookingId: string;
         </span>
       </Card>
       {canPay ? (
-        <div className="mx-4 mt-3">
-          <Button fullWidth onClick={() => markPaid(booking.id)}>{amount ? `Pay ${amount} with GCash` : "Pay with GCash"}</Button>
-        </div>
+        <p className="mx-4 mt-3 rounded-card bg-grey-100 px-4 py-3 text-[13px] font-semibold text-muted">Online payment isn’t connected yet. Please pay at the shop.</p>
       ) : null}
       <p className="mx-4 mt-4 px-1">
         <button type="button" onClick={onBookAnother} className="text-[13.5px] font-bold text-muted underline">Book another haircut</button>

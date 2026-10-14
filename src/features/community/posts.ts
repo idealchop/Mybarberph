@@ -1,9 +1,10 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { cloudStorage } from "@/lib/cloud";
 import type { AvatarPreset } from "@river-apps/icons";
 
-/** Community feed. Posts, likes and photos stay on this device. */
+/** Community feed shared by every shop on Barbers.ph (served by /api/community). */
 export type PostAuthor = {
   name: string;
   meta?: string;
@@ -36,69 +37,6 @@ export type CommunityPost = {
   mine?: boolean;
 };
 
-const IMG = "/community";
-
-export const RIVER_TEAM: PostAuthor = { name: "River Apps", meta: "Barbers.ph team", avatar: "indigo", verified: true };
-
-export const SEED_POSTS: CommunityPost[] = [
-  {
-    id: "seed-1",
-    author: { name: "Kanto Kings Barbershop", meta: "Marikina", avatar: "sky" },
-    body: "Sunday queue is steady. Skin fades are the ones people book from the QR.\n\nTip: put the shop code on the mirror. Customers scan it while they wait, and the status page stops the “is it my turn?” texts.",
-    images: [`${IMG}/chairs.svg`],
-    ageMin: 95,
-    likes: 48,
-    reposts: 6,
-    replies: [
-      { id: "r1", author: { name: "Fade Room QC", avatar: "mint" }, body: "We did the mirror sticker last week. It actually gets used.", ageMin: 70 },
-    ],
-    moreReplies: 4,
-  },
-  {
-    id: "seed-2",
-    author: { name: "Fade Room QC", meta: "Quezon City", avatar: "mint" },
-    body: "If you only keep one code at the door, customers actually use it. Separate links for each barber just confused people.",
-    images: [`${IMG}/shopfront.svg`],
-    ageMin: 260,
-    likes: 23,
-    reposts: 3,
-    replies: [],
-    moreReplies: 2,
-  },
-  {
-    id: "seed-3",
-    author: { name: "Barrio Cut Club", meta: "Pasig", avatar: "peach" },
-    body: "We stopped a separate sales screen. Today’s number sits on the queue, and that’s enough for the chair.",
-    images: [],
-    ageMin: 60 * 8,
-    likes: 19,
-    reposts: 2,
-    replies: [{ id: "r2", author: { name: "Kanto Kings Barbershop", avatar: "sky" }, body: "Same here. Done on the ticket is the sale.", ageMin: 60 * 7 }],
-  },
-  {
-    id: "seed-4",
-    author: RIVER_TEAM,
-    body: "Shop photos now show on your community profile. Add a clear shot of the chairs and the storefront. Shops with photos get more follows.",
-    images: [`${IMG}/chairs.svg`, `${IMG}/clippers.svg`, `${IMG}/shopfront.svg`],
-    ageMin: 60 * 26,
-    likes: 120,
-    reposts: 18,
-    replies: [{ id: "r3", author: { name: "Lineup Barbers", avatar: "butter" }, body: "Uploaded ours today. Thanks team.", ageMin: 60 * 20 }],
-    moreReplies: 9,
-  },
-  {
-    id: "seed-5",
-    author: { name: "Lineup Barbers", meta: "Makati", avatar: "butter" },
-    body: "How do you price a beard add-on when the fade already includes a lineup? We charge ₱150 on top. Curious what other shops do.",
-    images: [`${IMG}/clippers.svg`],
-    ageMin: 60 * 50,
-    likes: 31,
-    reposts: 1,
-    replies: [],
-    moreReplies: 6,
-  },
-];
-
 export function shortAge(createdAt: number | undefined, ageMin: number | undefined, now: number | null): string {
   const mins = ageMin ?? (createdAt != null && now != null ? Math.max(0, Math.floor((now - createdAt) / 60000)) : 0);
   if (mins < 1) return "now";
@@ -120,15 +58,11 @@ export function compact(n: number): string {
 const KEY = "barbers.community.v1";
 
 export type CommunityStore = {
-  mine: CommunityPost[];
-  liked: string[];
-  reposted: string[];
-  replies: Record<string, PostReply[]>;
   hidden: string[];
   following: string[];
 };
 
-const EMPTY: CommunityStore = { mine: [], liked: [], reposted: [], replies: {}, hidden: [], following: [] };
+const EMPTY: CommunityStore = { hidden: [], following: [] };
 
 export function authorHandle(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "shop";
@@ -138,49 +72,16 @@ export function profileHref(name: string): string {
   return `/community/profile?u=${encodeURIComponent(authorHandle(name))}`;
 }
 
-const PROFILE_COPY: Record<string, { bio: string; followers: number; rating: number; locations: number }> = {
-  kantokingsbarbershop: { bio: "Marikina barbershop. Walk-ins, the queue, and one shop QR.", followers: 860, rating: 4.8, locations: 1 },
-  faderoomqc: { bio: "Quezon City. Fades, the door code, and a short queue.", followers: 640, rating: 4.7, locations: 1 },
-  barriocutclub: { bio: "Pasig. Today’s number lives on the queue.", followers: 410, rating: 4.9, locations: 2 },
-  riverapps: { bio: "The Barbers.ph team. Updates for shop owners.", followers: 2100, rating: 5, locations: 1 },
-  lineupbarbers: { bio: "Makati. Fades, lineups, and beard add-ons.", followers: 530, rating: 4.6, locations: 3 },
-};
+export type CommunityProfile = PostAuthor & { handle: string; bio: string };
 
-export type CommunityProfile = PostAuthor & { handle: string; bio: string; followers: number; rating: number; locations: number };
-
-export function resolveProfile(handle: string, me: PostAuthor): CommunityProfile | null {
+/** A shop's community profile, built from what it has posted. */
+export function resolveProfile(handle: string, me: PostAuthor, posts: CommunityPost[]): CommunityProfile | null {
   const key = handle.toLowerCase();
   if (!key) return null;
-  if (authorHandle(me.name) === key) {
-    return { ...me, handle: key, bio: me.meta ? `Barbershop in ${me.meta}.` : "Barbershop on Barbers.ph.", followers: 86, rating: 4.8, locations: 1 };
-  }
-  const author = knownAuthors().find((a) => authorHandle(a.name) === key);
+  if (me.name && authorHandle(me.name) === key) return { ...me, handle: key, bio: me.meta ? `Barbershop in ${me.meta}.` : "Barbershop on Barbers.ph." };
+  const author = posts.flatMap((p) => [p.author, ...p.replies.map((r) => r.author)]).find((a) => authorHandle(a.name) === key);
   if (!author) return null;
-  const copy = PROFILE_COPY[key];
-  return {
-    ...author,
-    handle: key,
-    bio: copy?.bio ?? (author.meta ? `${author.meta}. On Barbers.ph Community.` : "On Barbers.ph Community."),
-    followers: copy?.followers ?? 120,
-    rating: copy?.rating ?? 4.8,
-    locations: copy?.locations ?? 1,
-  };
-}
-
-function knownAuthors(): PostAuthor[] {
-  const out: PostAuthor[] = [];
-  const seen = new Set<string>();
-  const add = (a: PostAuthor) => {
-    const k = authorHandle(a.name);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(a);
-  };
-  for (const p of SEED_POSTS) {
-    add(p.author);
-    for (const r of p.replies) add(r.author);
-  }
-  return out;
+  return { ...author, handle: key, bio: author.meta ? `Barbershop in ${author.meta}.` : "Barbershop on Barbers.ph." };
 }
 
 let current: CommunityStore | null = null;
@@ -188,13 +89,20 @@ const listeners = new Set<() => void>();
 
 function read(): CommunityStore {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = cloudStorage.getItem(KEY);
     if (!raw) return EMPTY;
-    const parsed = JSON.parse(raw) as Partial<CommunityStore>;
-    return { ...EMPTY, ...parsed, following: parsed.following ?? [], replies: parsed.replies ?? {}, mine: parsed.mine ?? [] };
+    const parsed = JSON.parse(raw) as Partial<CommunityStore> | null;
+    return { hidden: parsed?.hidden ?? [], following: parsed?.following ?? [] };
   } catch {
     return EMPTY;
   }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("barbers-profile", () => {
+    current = null;
+    listeners.forEach((l) => l());
+  });
 }
 
 function subscribeStore(cb: () => void) {
@@ -212,7 +120,7 @@ export function updateCommunityStore(fn: (s: CommunityStore) => CommunityStore):
   const next = fn(getStore());
   let ok = true;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
+    cloudStorage.setItem(KEY, JSON.stringify(next));
   } catch {
     ok = false;
   }

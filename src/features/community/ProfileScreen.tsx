@@ -5,8 +5,6 @@ import { PageBack } from "@/components/shell/PageBack";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Avatar, cn } from "@river-apps/ui";
-import { Star } from "@/components/art";
-import { salesSummary } from "@/data";
 import { useShopLocations } from "@/lib/shop-locations";
 import { locationCountLabel, useShopProfile } from "@/lib/shop-profile";
 import { useCommunityFeed } from "./feed";
@@ -27,11 +25,10 @@ export function ProfileScreen() {
   const feed = useCommunityFeed();
   const { profile: shop } = useShopProfile();
   const shops = useShopLocations();
-  const profile = resolveProfile(handle, feed.me);
+  const profile = resolveProfile(handle, feed.me, feed.posts);
   const [tab, setTab] = useState<Tab>("threads");
   const isMe = !!profile && authorHandle(feed.me.name) === profile.handle;
-  const rating = isMe ? salesSummary.avgRating : profile?.rating ?? 0;
-  const locations = isMe ? (shops.enabled ? Math.max(1, shops.branches.length) : shop.locations) : profile?.locations ?? 1;
+  const locations = isMe ? (shops.enabled ? Math.max(1, shops.branches.length) : shop.locations) : null;
   const following = !!profile && feed.following.includes(profile.handle);
   const byAuthor = (p: CommunityPost) => !!profile && authorHandle(p.author.name) === profile.handle;
   const threads = feed.posts.filter(byAuthor);
@@ -45,20 +42,14 @@ export function ProfileScreen() {
       {!profile ? <p className="px-1 py-16 text-center text-[15px] font-semibold text-muted">That profile isn’t in the community.</p> : (
         <>
           <header className="mt-2 px-1">
-            <Avatar name={profile.name} preset={profile.avatar} size={86} decorative={false} />
+            <Avatar name={profile.name} src={profile.photoUrl} preset={profile.avatar} size={86} decorative={false} />
             <h1 className="mt-3 flex items-center gap-1.5 text-[24px] font-extrabold leading-tight tracking-[-0.03em]">
               <span className="min-w-0 truncate">{profile.name}</span>
               {profile.verified ? <BadgeCheck size={20} strokeWidth={2.2} className="flex-none fill-[#0095F6] text-white" aria-label="Verified" /> : null}
             </h1>
             <p className="mt-0.5 text-[15px] font-medium text-muted">@{profile.handle}</p>
             <p className="mt-3 max-w-[440px] text-[15px] font-medium leading-snug">{profile.bio}</p>
-            <p className="mt-3 inline-flex flex-wrap items-center gap-x-1.5 text-[15px] font-semibold text-muted">
-              <Star size={15} />
-              <b className="font-extrabold text-ink">{rating.toFixed(1)}</b>
-              <span aria-hidden>·</span>
-              <span>{locationCountLabel(locations)}</span>
-            </p>
-            <p className="mt-2 text-[15px] text-muted"><b className="font-bold text-ink">{(profile.followers + (following ? 1 : 0)).toLocaleString("en-PH")}</b> followers</p>
+            {locations ? <p className="mt-3 text-[15px] font-semibold text-muted">{locationCountLabel(locations)}</p> : null}
             {isMe ? null : (
               <button type="button" aria-pressed={following} data-auth="action" onClick={() => feed.toggleFollow(profile.handle)} className={cn("mt-4 h-11 w-full rounded-pill text-[15px] font-bold sm:w-auto sm:min-w-[140px] sm:px-8", following ? "bg-grey-100" : "bg-ink text-on-ink")}>
                 {following ? "Following" : "Follow"}

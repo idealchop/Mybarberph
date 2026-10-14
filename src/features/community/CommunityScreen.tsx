@@ -5,7 +5,7 @@ import { Composer } from "./Composer";
 import { useCommunityFeed } from "./feed";
 import { PostCard } from "./PostCard";
 
-/** Shop-owner feed: profile, photos, and posts saved on this device. */
+/** Feed shared by every shop on Barbers.ph. */
 export function CommunityScreen() {
   const feed = useCommunityFeed();
   return (
@@ -35,7 +35,12 @@ export function CommunityScreen() {
           </li>
         ))}
       </ul>
-      <p className="border-t border-line px-1 py-4 text-center text-[13px] font-semibold text-muted">You’re all caught up</p>
+      {feed.loading ? <p className="px-1 py-10 text-center text-[14px] font-semibold text-muted">Loading posts…</p> : feed.posts.length === 0 ? (
+        <div className="px-1 py-12 text-center">
+          <b className="block text-[16px]">No posts yet</b>
+          <p className="mt-1 text-[14px] font-medium text-muted">Be the first shop to share a tip, a cut, or a question.</p>
+        </div>
+      ) : <p className="border-t border-line px-1 py-4 text-center text-[13px] font-semibold text-muted">You’re all caught up</p>}
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-[70] flex justify-center lg:bottom-8">
         {feed.toast ? <span className="rounded-pill bg-ink px-4 py-2.5 text-[14px] font-bold text-on-ink shadow-raised">{feed.toast}</span> : null}
       </div>

@@ -1,7 +1,5 @@
 "use client";
 
-import { chairs, salesSummary, transactions } from "@/data";
-import { barberStatsToday, dailySales, dailySalesEarlier } from "@/data/mock/seed";
 import type { ChairRequest } from "@/lib/chair-bookings";
 
 export type SalesRange = "today" | "week" | "month";
@@ -12,13 +10,6 @@ export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "week", label: "7 days" },
   { value: "month", label: "30 days" },
 ];
-
-const BARBER_NAMES: Record<string, string> = {
-  "b-caloy": "Caloy",
-  "b-ruben": "Ruben",
-  "b-tin": "Tin",
-  "b-jm": "JM",
-};
 
 export interface SalesRow {
   label: string;
@@ -45,8 +36,6 @@ export interface SalesReport {
   recent: { id: string; who: string; service: string; sales: number; when: string }[];
 }
 
-const PAY: Record<string, string> = { cash: "Cash", gcash: "GCash", maya: "Maya", card: "Card" };
-const DAYS = [...dailySalesEarlier, ...dailySales];
 
 function hourOf(ms: number) {
   const raw = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", hour: "numeric", hourCycle: "h23" })
@@ -85,106 +74,89 @@ function rowsFrom(map: Map<string, { orders: number; sales: number }>) {
     .sort((a, b) => b.salesCentavos - a.salesCentavos || b.orders - a.orders);
 }
 
-/** Sales for the shop that is open. The sample day is the shop total. New finished cuts add on top. */
-export function salesReport(extras: ChairRequest[], unpaidCentavos: number, includeSeed: boolean, range: SalesRange): SalesReport {
-  const extraSales = extras.reduce((sum, item) => sum + item.price, 0);
-  const todaySales = (includeSeed ? salesSummary.sales : 0) + extraSales;
-  const todayCuts = (includeSeed ? salesSummary.transactions : 0) + extras.length;
+const DAY_MS = 86_400_000;
 
-  const span = range === "month" ? DAYS.length : 7;
-  const currentDays = DAYS.slice(-span);
-  const previousDays = DAYS.slice(-(span * 2), -span);
-  const rangeSales = range === "today" || !includeSeed
-    ? todaySales
-    : currentDays.reduce((sum, day) => sum + day.sales, 0) - salesSummary.sales + todaySales;
-  const previousSales = previousDays.reduce((sum, day) => sum + day.sales, 0);
+function dayKey(ms: number) {
+  return new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+}
+
+function dayLabel(ms: number) {
+  return new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
+}
+
+/** Sales from this shop's finished visits (Manila days). `rows` is every visit in scope. */
+export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange): SalesReport {
+  const now = Date.now();
+  const span = range === "today" ? 1 : range === "week" ? 7 : 30;
+  const keys = Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY_MS));
+  const prevKeys = new Set(Array.from({ length: span }, (_, i) => dayKey(now - (2 * span - 1 - i) * DAY_MS)));
+  const inRange = new Set(keys);
+  const done = rows.filter((r) => r.status === "done");
+  const doneAt = (r: ChairRequest) => r.completedAt ?? r.updatedAt;
+  const extras = done.filter((r) => inRange.has(dayKey(doneAt(r))));
+  const previous = done.filter((r) => prevKeys.has(dayKey(doneAt(r))));
+  const rangeSales = extras.reduce((sum, item) => sum + item.price, 0);
+  const previousSales = previous.reduce((sum, item) => sum + item.price, 0);
+  const cuts = extras.length;
 
   const services = new Map<string, { orders: number; sales: number }>();
   const payments = new Map<string, { orders: number; sales: number }>();
   const channels = new Map<string, { orders: number; sales: number }>();
-  const byBarber = new Map<string, { orders: number; sales: number }>();
   const byChair = new Map<string, { orders: number; sales: number }>();
   const hours = new Map<number, { orders: number; sales: number }>();
+  const days = new Map<string, { orders: number; sales: number }>();
   const names = new Set<string>();
 
-  if (includeSeed) {
-    for (const mix of salesSummary.paymentMix) add(payments, PAY[mix.method] ?? mix.method, 0, mix.amount);
-    for (const [id, stat] of Object.entries(barberStatsToday)) add(byBarber, BARBER_NAMES[id] ?? "Barber", stat.cuts, stat.sales);
-    add(channels, "Walk-in", salesSummary.walkIns, 0);
-    add(channels, "Online", salesSummary.online, 0);
-    for (const tx of transactions) {
-      add(services, tx.serviceLabel, 1, tx.total);
-      const hour = hourOf(new Date(tx.completedAt).getTime());
-      const bucket = hours.get(hour) ?? { orders: 0, sales: 0 };
-      bucket.orders += 1;
-      bucket.sales += tx.total;
-      hours.set(hour, bucket);
-      add(byChair, chairs.find((chair) => chair.id === tx.chairId)?.label ?? "Chair", 1, tx.total);
-      names.add(tx.customerName);
-    }
-  }
-
   for (const extra of extras) {
-    add(services, extra.serviceName, 1, extra.price);
-    if (extra.paid) add(payments, extra.payWhere === "online" ? "GCash" : "Cash", 1, extra.price);
+    add(services, extra.serviceName || "Service", 1, extra.price);
+    add(payments, extra.paid ? (extra.payWhere === "online" ? "Online" : "Cash") : "Still unpaid", 1, extra.price);
     add(channels, extra.channel === "online" ? "Online" : "Walk-in", 1, extra.price);
     const chair = extra.seatLabel || extra.chairLabel;
     if (chair) add(byChair, chair, 1, extra.price);
-    if (extra.completedAt) {
-      const hour = hourOf(extra.completedAt);
-      const bucket = hours.get(hour) ?? { orders: 0, sales: 0 };
-      bucket.orders += 1;
-      bucket.sales += extra.price;
-      hours.set(hour, bucket);
-    }
-    names.add(extra.customerLabel || extra.contact || "Walk-in");
+    const at = doneAt(extra);
+    const hour = hourOf(at);
+    const bucket = hours.get(hour) ?? { orders: 0, sales: 0 };
+    bucket.orders += 1;
+    bucket.sales += extra.price;
+    hours.set(hour, bucket);
+    const d = days.get(dayKey(at)) ?? { orders: 0, sales: 0 };
+    d.orders += 1;
+    d.sales += extra.price;
+    days.set(dayKey(at), d);
+    names.add(extra.contact || extra.customerLabel || extra.id);
   }
-  if (unpaidCentavos > 0) add(payments, "Still unpaid", 0, unpaidCentavos);
 
-  const series: SalesRow[] = range === "today" || !includeSeed
+  const series: SalesRow[] = range === "today"
     ? [...hours.entries()].sort((a, b) => a[0] - b[0]).map(([hour, value]) => row(hourLabel(hour), value.orders, value.sales))
-    : currentDays.map((day, index) => {
-      const last = index === currentDays.length - 1;
-      const amount = last ? day.sales - salesSummary.sales + todaySales : day.sales;
-      return row(day.label, last ? todayCuts : 0, amount);
+    : keys.map((k, i) => {
+      const v = days.get(k) ?? { orders: 0, sales: 0 };
+      return row(dayLabel(now - (span - 1 - i) * DAY_MS), v.orders, v.sales);
     });
 
-  const recent = [
-    ...extras.map((item) => ({
-      id: item.id,
-      who: item.customerLabel || item.contact || "Walk-in",
-      service: item.serviceName,
-      sales: item.price,
-      at: item.completedAt ?? 0,
-    })),
-    ...(includeSeed ? transactions.map((tx) => ({
-      id: tx.id,
-      who: tx.customerName,
-      service: tx.serviceLabel,
-      sales: tx.total,
-      at: new Date(tx.completedAt).getTime(),
-    })) : []),
-  ].sort((a, b) => b.at - a.at).slice(0, 6).map(({ id, who, service, sales, at }) => ({ id, who, service, sales, when: whenLabel(at) }));
+  const recent = extras
+    .map((item) => ({ id: item.id, who: item.customerLabel || item.contact || "Walk-in", service: item.serviceName, sales: item.price, at: doneAt(item) }))
+    .sort((a, b) => b.at - a.at).slice(0, 6)
+    .map(({ id, who, service, sales, at }) => ({ id, who, service, sales, when: whenLabel(at) }));
 
-  const delta = range === "today"
-    ? (includeSeed ? salesSummary.salesDeltaLabel : todaySales > 0 ? "From this shop" : "No sales yet")
+  const delta = rangeSales === 0
+    ? "No sales yet"
     : previousSales > 0
-      ? `${rangeSales >= previousSales ? "+" : "−"}${Math.round((Math.abs(rangeSales - previousSales) / previousSales) * 100)}% vs previous ${span} days`
-      : "No earlier days on record";
+      ? `${rangeSales >= previousSales ? "+" : "−"}${Math.round((Math.abs(rangeSales - previousSales) / previousSales) * 100)}% vs previous ${span === 1 ? "day" : `${span} days`}`
+      : "First sales on record";
 
   return {
     delta,
     sales: rangeSales,
-    cuts: todayCuts,
-    collected: Math.max(0, todaySales - unpaidCentavos),
+    cuts,
+    collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price, 0),
     unpaid: unpaidCentavos,
-    average: todayCuts > 0 ? Math.round(todaySales / todayCuts) : 0,
+    average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,
-    seriesKind: range === "today" || !includeSeed ? "hour" : "day",
+    seriesKind: range === "today" ? "hour" : "day",
     services: rowsFrom(services),
     payments: rowsFrom(payments),
     channels: rowsFrom(channels),
-    barbers: rowsFrom(byBarber),
+    barbers: [],
     chairs: rowsFrom(byChair),
     customers: names.size,
     recent,

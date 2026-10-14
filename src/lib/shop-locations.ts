@@ -1,4 +1,5 @@
 "use client";
+import { cloudStorage } from "@/lib/cloud";
 
 import { useEffect, useState } from "react";
 import type { ShopLocation, ShopProfile } from "@/lib/shop-profile";
@@ -29,8 +30,6 @@ interface Store {
 const KEY = "barbers.shop-locations";
 const EVENT = "barbers-locations";
 const CHAIRS_KEY = "barbers.shop-chairs";
-const PUBLIC_KEY = "barbers.public-bookings";
-const WALKINS_KEY = "barbers.walk-ins";
 
 const EMPTY: Store = { enabled: false, viewId: HOME_LOCATION_ID, branches: [] };
 
@@ -56,7 +55,7 @@ function homeBranch(profile: ShopProfile): ShopBranch {
 export function readLocationStore(): Store {
   if (typeof window === "undefined") return EMPTY;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = cloudStorage.getItem(KEY);
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<Store>;
     const branches = Array.isArray(parsed.branches) ? parsed.branches.filter((b) => b && b.id && b.name) : [];
@@ -71,14 +70,14 @@ export function readLocationStore(): Store {
 }
 
 function writeStore(next: Store) {
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  cloudStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(EVENT));
 }
 
 /** Existing chairs and visits stay on the first shop. */
 function stampHome(key: string) {
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = cloudStorage.getItem(key);
     if (!raw) return;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return;
@@ -90,7 +89,7 @@ function stampHome(key: string) {
       }
       return item;
     });
-    if (dirty) window.localStorage.setItem(key, JSON.stringify(next));
+    if (dirty) cloudStorage.setItem(key, JSON.stringify(next));
   } catch {
     /* leave the list as it is */
   }
@@ -108,8 +107,6 @@ export function enableMultipleShops(profile: ShopProfile) {
   const viewId = branches.some((b) => b.id === store.viewId) ? store.viewId : HOME_LOCATION_ID;
   writeStore({ enabled: true, viewId, branches });
   stampHome(CHAIRS_KEY);
-  stampHome(PUBLIC_KEY);
-  stampHome(WALKINS_KEY);
   window.dispatchEvent(new Event("barbers-chairs"));
   window.dispatchEvent(new Event("barbers-bookings"));
 }

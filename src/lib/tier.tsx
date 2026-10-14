@@ -1,21 +1,26 @@
 "use client";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, type ReactNode } from "react";
 import type { Tier } from "@/data";
-import { canUse, TIER_COOKIE, type Feature } from "./tier-shared";
+import { useCloud } from "@/lib/cloud";
+import { tierForPlan } from "@/lib/plans";
+import { canUse, type Feature } from "./tier-shared";
 
 export type { Feature } from "./tier-shared";
 
-interface TierCtx { tier: Tier; setTier: (t: Tier) => void; can: (f: Feature) => boolean }
+interface TierCtx { tier: Tier; plan: string; setTier: (t: Tier) => void; can: (f: Feature) => boolean }
 const Ctx = createContext<TierCtx | null>(null);
 
-/** Demo-only tier switch. In production the tier comes from the shop subscription and is enforced server-side. */
-export function TierProvider({ initialTier, children }: { initialTier: Tier; children: ReactNode }) {
-  const [tier, set] = useState<Tier>(initialTier);
-  const setTier = useCallback((t: Tier) => {
-    set(t);
-    document.cookie = `${TIER_COOKIE}=${t}; path=/; max-age=31536000; samesite=lax`;
-  }, []);
-  return <Ctx.Provider value={{ tier, setTier, can: (f) => canUse(tier, f) }}>{children}</Ctx.Provider>;
+/** The shop's plan comes from shops/{shopId}.plan (set by the server after payment). Guests see Partner. */
+export function TierProvider({ children }: { children: ReactNode }) {
+  const cloud = useCloud();
+  const router = useRouter();
+  const shop = cloud.shop;
+  const plan = shop?.plan ?? "partner";
+  const tier = tierForPlan(plan);
+  /** Upgrades go through billing; the plan is never switched on the device. */
+  const setTier = useCallback((t: Tier) => { if (t === "paid") router.push("/settings/billing"); }, [router]);
+  return <Ctx.Provider value={{ tier, plan, setTier, can: (f) => canUse(tier, f) }}>{children}</Ctx.Provider>;
 }
 
 export function useTier() {

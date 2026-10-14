@@ -33,7 +33,7 @@ export function PostCard({
     <article className="px-1 pb-3 pt-4" aria-label={`Post by ${post.author.name}`}>
       <header className="flex items-start gap-2.5">
         <AuthorLink author={post.author} className="flex min-w-0 flex-1 items-start gap-2.5">
-          <Avatar name={post.author.name} preset={post.author.avatar} size={40} className="flex-none" />
+          <Avatar name={post.author.name} src={post.author.photoUrl} preset={post.author.avatar} size={40} className="flex-none" />
           <span className="min-w-0 flex-1 leading-tight">
             <span className="flex min-w-0 items-center gap-1.5">
               <b className="truncate text-[15px] font-extrabold tracking-[-0.01em]">{post.author.name}</b>
@@ -117,7 +117,7 @@ function Replies({ post, now, me, replyRef, onReply }: { post: CommunityPost; no
         {post.replies.map((r) => (
           <li key={r.id}>
             <AuthorLink author={r.author} className="flex items-center gap-2.5">
-              <Avatar name={r.author.name} preset={r.author.avatar} size={32} className="flex-none" />
+              <Avatar name={r.author.name} src={r.author.photoUrl} preset={r.author.avatar} size={32} className="flex-none" />
               <span className="flex min-w-0 items-center gap-1.5 leading-tight">
                 <b className="truncate text-[14px] font-extrabold">{r.author.name}</b>
                 <span className="flex-none text-[13px] font-medium text-muted">{shortAge(r.createdAt, r.ageMin, now)}</span>
@@ -129,7 +129,7 @@ function Replies({ post, now, me, replyRef, onReply }: { post: CommunityPost; no
       </ul>
       {post.moreReplies ? <p className="mt-2 text-[13px] font-semibold text-muted">+ {post.moreReplies} more {post.moreReplies === 1 ? "reply" : "replies"}</p> : null}
       <form data-auth="action" className="mt-3 flex items-end gap-2.5" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <Avatar name={me.name} preset={me.avatar} size={32} />
+        <Avatar name={me.name || "Shop"} src={me.photoUrl} preset={me.avatar} size={32} />
         <label htmlFor={id} className="sr-only">Reply to {post.author.name}</label>
         <textarea id={id} ref={replyRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} placeholder={`Reply to ${post.author.name}…`} className="max-h-32 min-h-10 flex-1 resize-none rounded-[20px] bg-grey-100 px-4 py-2.5 text-[14.5px] font-medium outline-none placeholder:text-muted" />
         <button type="submit" disabled={!text.trim()} className="h-10 rounded-pill px-3 text-[14px] font-extrabold disabled:text-subtle">Post</button>

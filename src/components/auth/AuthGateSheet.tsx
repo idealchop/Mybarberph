@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Sign-in sheet. Shown only when this device has no saved session.
- * Phone and Google both sign in locally; nothing is sent to a server.
+ * Sign-in sheet (Firebase Auth): Google, email + password, or a text code to a PH mobile.
+ * Opens only when a guest tries an action; the action continues after sign-in.
  */
 import { ChatIcon } from "@river-apps/icons";
-import { Button, OtpInput, PhoneInput, cn } from "@river-apps/ui";
-import { ArrowLeft, X } from "lucide-react";
+import { Button, Input, OtpInput, PhoneInput, cn } from "@river-apps/ui";
+import { ArrowLeft, Mail, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { signIn } from "@/lib/session";
+import { authErrorMessage, confirmPhoneCode, sendPhoneCode, signInEmail, signInWithGoogle } from "@/lib/session";
 
-type Step = "methods" | "phone" | "code";
+type Step = "methods" | "phone" | "code" | "email";
 
 export function AuthGateSheet({ open, onClose, onAuthenticated }: { open: boolean; onClose: () => void; onAuthenticated?: () => void }) {
   if (!open) return null;
@@ -33,30 +33,63 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
   const [formatted, setFormatted] = useState("");
   const [e164, setE164] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function finish(phone?: string) {
-    signIn({ name: "Jimboy", phone });
-    onAuthenticated();
+  async function run(fn: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      onAuthenticated();
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function sendCode(e?: FormEvent) {
+  async function sendCode(e?: FormEvent) {
     e?.preventDefault();
     if (!e164) {
       setError("Enter your 10-digit mobile number, e.g. 917 123 4567.");
       return;
     }
+    setBusy(true);
     setError(null);
-    setStep("code");
+    try {
+      await sendPhoneCode(e164, "auth-phone-send");
+      setStep("code");
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   function verify(value = code) {
     if (value.length !== 6) return;
     setCode(value);
-    finish(e164 ?? undefined);
+    void run(() => confirmPhoneCode(value));
+  }
+
+  function submitEmail(e: FormEvent) {
+    e.preventDefault();
+    void run(() => signInEmail(email.trim(), password, creating));
   }
 
   const national = formatted || "your number";
+  const title = step === "phone" ? "Your mobile number" : step === "code" ? "Enter the code" : step === "email" ? (creating ? "Create your account" : "Log in with email") : "Sign up or log in";
+  const sub = step === "phone"
+    ? "We’ll text you a 6-digit code to sign in."
+    : step === "code"
+      ? `Code sent to +63 ${national}.`
+      : step === "email"
+        ? "Use the email you run your shop with."
+        : "Sign in to save your shop. You can keep browsing without an account.";
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="auth-gate-title">
@@ -70,25 +103,20 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
         >
           <X size={16} strokeWidth={2.2} />
         </button>
-        <div className="max-h-[min(70dvh,560px)] overflow-y-auto px-5 pb-6 pt-5">
-          <h2 id="auth-gate-title" className="pr-10 text-[24px] font-extrabold leading-[1.15] tracking-[-0.025em]">
-            {step === "phone" ? "Your mobile number" : step === "code" ? "Enter the code" : "Sign up or log in"}
-          </h2>
-          <p className="mt-2 text-[14.5px] font-medium leading-snug text-muted">
-            {step === "phone"
-              ? "We’ll text you a 6-digit code to sign in."
-              : step === "code"
-                ? `Code sent to +63 ${national}.`
-                : "Sign in to continue. You can keep browsing without an account."}
-          </p>
+        <div className="max-h-[min(80dvh,620px)] overflow-y-auto px-5 pb-6 pt-5">
+          <h2 id="auth-gate-title" className="pr-10 text-[24px] font-extrabold leading-[1.15] tracking-[-0.025em]">{title}</h2>
+          <p className="mt-2 text-[14.5px] font-medium leading-snug text-muted">{sub}</p>
 
           {step === "methods" ? (
             <div className="mt-5 flex flex-col gap-2.5">
-              <Button type="button" fullWidth leadingIcon={<ChatIcon size={20} />} onClick={() => { setError(null); setStep("phone"); }}>
+              <Button type="button" fullWidth disabled={busy} leadingIcon={<GoogleMark />} onClick={() => void run(signInWithGoogle)}>
+                Continue with Google
+              </Button>
+              <Button type="button" fullWidth variant="secondary" disabled={busy} leadingIcon={<ChatIcon size={20} />} onClick={() => { setError(null); setStep("phone"); }}>
                 Continue with phone
               </Button>
-              <Button type="button" fullWidth variant="secondary" leadingIcon={<GoogleMark />} onClick={() => finish()}>
-                Continue with Google
+              <Button type="button" fullWidth variant="secondary" disabled={busy} leadingIcon={<Mail size={18} strokeWidth={2} />} onClick={() => { setError(null); setStep("email"); }}>
+                Continue with email
               </Button>
             </div>
           ) : null}
@@ -100,23 +128,33 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
                 value={formatted}
                 onChange={(f, v) => { setFormatted(f); setE164(v); setError(null); }}
                 autoFocus
-                error={error ?? undefined}
               />
-              <Button type="submit" fullWidth disabled={!e164} leadingIcon={<ChatIcon size={20} />}>Continue with phone</Button>
-              <Button type="button" fullWidth variant="ghost" leadingIcon={<ArrowLeft size={18} strokeWidth={2.2} />} onClick={() => setStep("methods")}>
-                Back
-              </Button>
+              <Button id="auth-phone-send" type="submit" fullWidth disabled={!e164 || busy} leadingIcon={<ChatIcon size={20} />}>{busy ? "Sending…" : "Text me a code"}</Button>
+              <Button type="button" fullWidth variant="ghost" leadingIcon={<ArrowLeft size={18} strokeWidth={2.2} />} onClick={() => setStep("methods")}>Back</Button>
             </form>
           ) : null}
 
           {step === "code" ? (
             <div className="mt-5 flex flex-col gap-3">
               <OtpInput value={code} onChange={setCode} onComplete={(v) => verify(v)} autoFocus />
-              <Button fullWidth disabled={code.length < 6} onClick={() => verify()}>Verify & continue</Button>
+              <Button fullWidth disabled={code.length < 6 || busy} onClick={() => verify()}>{busy ? "Checking…" : "Verify & continue"}</Button>
               <Button fullWidth variant="ghost" onClick={() => { setCode(""); setStep("phone"); }}>Use a different number</Button>
             </div>
           ) : null}
 
+          {step === "email" ? (
+            <form onSubmit={submitEmail} className="mt-5 flex flex-col gap-2.5">
+              <Input label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+              <Input label="Password" type="password" autoComplete={creating ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Button type="submit" fullWidth disabled={busy || !email.trim() || password.length < 6}>{busy ? "Please wait…" : creating ? "Create account" : "Log in"}</Button>
+              <Button type="button" fullWidth variant="ghost" onClick={() => { setCreating(!creating); setError(null); }}>
+                {creating ? "I already have an account" : "New here? Create an account"}
+              </Button>
+              <Button type="button" fullWidth variant="ghost" leadingIcon={<ArrowLeft size={18} strokeWidth={2.2} />} onClick={() => setStep("methods")}>Back</Button>
+            </form>
+          ) : null}
+
+          {error ? <p role="alert" className="mt-3 text-[13.5px] font-semibold text-[#C2410C]">{error}</p> : null}
           <p className="mt-4 text-center text-[12px] font-medium text-muted">By continuing you agree to our Terms and Privacy Policy.</p>
         </div>
       </div>

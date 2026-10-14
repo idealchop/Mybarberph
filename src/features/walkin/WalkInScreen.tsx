@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
-import { SAMPLE_SHOP_ID, refCode, seatWalkIn } from "@/lib/chair-bookings";
+import { refCode, seatWalkIn } from "@/lib/chair-bookings";
+import { cloudSnapshot } from "@/lib/cloud";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import { useTier } from "@/lib/tier";
@@ -39,7 +40,7 @@ export function WalkInScreen() {
     const now = Date.now();
     const chair = seatWalkIn({
       id: `wk-${now}`,
-      shopId: SAMPLE_SHOP_ID,
+      shopId: cloudSnapshot().shopId ?? "",
       ref: refCode(),
       channel: "walk-in",
       status: "accepted",
@@ -47,7 +48,7 @@ export function WalkInScreen() {
       customerLabel: name.trim() || "Walk-in",
       serviceId: "haircut",
       serviceName,
-      price: 0,
+      price: Math.round(((haircut.price ?? 0) + chosen.reduce((sum, t) => sum + (t.price ?? 0), 0)) * 100),
       slotLabel: "Now",
       payWhere: "shop",
       createdAt: now,

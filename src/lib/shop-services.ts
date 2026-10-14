@@ -1,4 +1,5 @@
 "use client";
+import { cloudStorage } from "@/lib/cloud";
 
 import { useEffect, useState } from "react";
 import type { BarberIconName } from "@/components/art";
@@ -8,6 +9,8 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 export interface ShopHaircut {
   name: string;
   durationMins: number;
+  /** Price in pesos. 0 = not set. */
+  price?: number;
   icon: BarberIconName;
 }
 
@@ -16,6 +19,8 @@ export interface ShopTreatment {
   id: string;
   name: string;
   durationMins: number;
+  /** Price in pesos. 0 = not set. */
+  price?: number;
   icon: BarberIconName;
 }
 
@@ -48,7 +53,7 @@ function menuFrom(parsed: Partial<Menu> | undefined): Menu {
 
 function readFile(): MenuFile {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = cloudStorage.getItem(KEY);
     if (!raw) return { haircut: defaultHaircut, treatments: [] };
     const parsed = JSON.parse(raw) as Partial<MenuFile>;
     const byLocation: Record<string, Menu> = {};
@@ -70,7 +75,7 @@ function read(locationId = HOME_LOCATION_ID): Menu {
 }
 
 function write(next: MenuFile) {
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  cloudStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -134,7 +139,7 @@ export function useShopMenu(explicitId?: string) {
 export function blankTreatment(): ShopTreatment {
   return {
     id: `tx-${Date.now().toString(36)}`,
-    name: "Beard trim",
+    name: "",
     durationMins: 15,
     icon: "razor",
   };

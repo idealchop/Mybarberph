@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
-import { transactions } from "@/data";
 import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
@@ -82,9 +81,9 @@ export function QueueBoard() {
   const [search, setSearch] = useState("");
   const [full, setFull] = useState("");
   const shops = useShopLocations();
-  const { rows: loaded, ready, includeSeed } = useScopedRequests();
+  const { rows: loaded, ready } = useScopedRequests();
   const rows = loaded.filter((r) => r.status !== "declined");
-  const figures = todayFigures(loaded, includeSeed);
+  const figures = todayFigures(loaded);
 
   const walkIns = useMemo(() => rows.filter((r) => r.channel === "walk-in"), [rows]);
   const online = useMemo(() => rows.filter((r) => r.channel === "online"), [rows]);
@@ -192,7 +191,7 @@ export function QueueBoard() {
         />
       )) : <Section title="Done today" rows={done} onFull={(message) => setFull(message)} />}
 
-      {channel === "walk-ins" && !search ? <Earlier extra={figures.extra.filter((row) => row.channel === "walk-in")} seed={includeSeed} /> : null}
+      {channel === "walk-ins" && !search ? <Earlier extra={figures.extra.filter((row) => row.channel === "walk-in")} /> : null}
     </div>
   );
 }
@@ -209,8 +208,8 @@ function Section({ title, rows, onFull }: { title: string; rows: ChairRequest[];
   );
 }
 
-function Earlier({ extra, seed }: { extra: ChairRequest[]; seed: boolean }) {
-  if (!seed && extra.length === 0) return null;
+function Earlier({ extra }: { extra: ChairRequest[] }) {
+  if (extra.length === 0) return null;
   return (
     <Card padding="none" className="mt-6 px-4 py-4">
       <b className="block text-[16px]">Earlier today</b>
@@ -224,15 +223,6 @@ function Earlier({ extra, seed }: { extra: ChairRequest[]; seed: boolean }) {
             <b className="text-[14px]">{peso(row.price)}</b>
           </li>
         ))}
-        {seed ? transactions.slice(0, 6).map((t) => (
-          <li key={t.id} className="flex items-center justify-between gap-3 py-2.5">
-            <span className="min-w-0">
-              <b className="block truncate text-[14.5px]">{t.customerName}</b>
-              <small className="text-[12.5px] font-semibold text-muted">{t.serviceLabel} · {t.referenceId}</small>
-            </span>
-            <b className="text-[14px]">{peso(t.total)}</b>
-          </li>
-        )) : null}
       </ul>
     </Card>
   );

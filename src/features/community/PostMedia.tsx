@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- user and demo images of unknown size. */
+/* eslint-disable @next/next/no-img-element -- user images of unknown size. */
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@river-apps/ui";
