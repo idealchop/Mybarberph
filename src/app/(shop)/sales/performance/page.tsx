@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { PerformanceScreen } from "@/features/performance/PerformanceScreen";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Chair performance" };
-
-export default function PerformancePage() {
-  return <PerformanceScreen />;
+/** Performance now lives on Sales → Performance. */
+export default async function PerformancePage({ searchParams }: { searchParams: Promise<{ loc?: string }> }) {
+  const { loc } = await searchParams;
+  redirect(`/sales?view=performance${loc ? `&loc=${encodeURIComponent(loc)}` : ""}`);
 }

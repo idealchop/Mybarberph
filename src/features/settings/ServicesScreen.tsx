@@ -1,15 +1,15 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { Camera, Check, ChevronLeft, Loader2, Plus, Share2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Button, Input, Topbar } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { fileToDataUrl } from "@/features/community/posts";
-import { ChairMark, BarberPortrait } from "@/features/settings/SeatList";
+import { BarberPortrait } from "@/features/settings/SeatList";
 import { useChairRequests } from "@/lib/chair-bookings";
 import {
-  chairBarberName, chairLinkExpired, ensureChairLink, linkExpiryLabel, nextChairNumber, removeChair, saveChair, seatTime, useShopChairs,
+  chairBarberName, ensureChairLink, nextChairNumber, removeChair, saveChair, useShopChairs,
   type ShopChair,
 } from "@/lib/shop-chairs";
 import {
@@ -24,13 +24,14 @@ type Editor =
   | { kind: "treatment"; treatment: ShopTreatment; fresh: boolean };
 
 /** Haircut, the treatments the shop adds, and the chairs it has created. */
-export function ServicesScreen() {
+/** Services and chairs. `locationId` scopes it to one shop (Manage Shop); `embedded` drops the page header. */
+export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: string; embedded?: boolean } = {}) {
   const shops = useShopLocations();
-  const menu = useShopMenu();
+  const menu = useShopMenu(forLoc);
   const { haircut, services, saveHaircut, saveTreatment, removeTreatment, setEnabled, resetHaircut, resetTreatment, atLocation } = menu;
-  const sharedSetup = shops.enabled && shops.viewingAll;
-  const { chairs } = useShopChairs();
-  const place = shops.enabled ? shops.branch?.name : undefined;
+  const sharedSetup = !forLoc && shops.enabled && shops.viewingAll;
+  const { chairs } = useShopChairs(forLoc ? { locationId: forLoc } : undefined);
+  const place = forLoc ? shops.branches.find((b) => b.id === forLoc)?.name : shops.enabled ? shops.branch?.name : undefined;
   const { rows } = useChairRequests();
   const [editing, setEditing] = useState<Editor | null>(null);
   const [note, setNote] = useState("");
@@ -52,14 +53,14 @@ export function ServicesScreen() {
         onSave={(next) => {
           const error = saveChair(next);
           if (!error) {
-            setNote("Saved. The queue uses this chair.");
+            setNote("Saved.");
             setEditing(null);
           }
           return error;
         }}
         onRemove={() => {
           if (holders[editing.chair.label] || editing.chair.occupiedAt) {
-            const error = `${editing.chair.label} is in use. Finish that cut before removing it.`;
+            const error = `${editing.chair.label} is with a customer. Finish that cut before removing.`;
             setNote(error);
             return error;
           }
@@ -108,66 +109,45 @@ export function ServicesScreen() {
 
 
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
-      <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title={sharedSetup ? "Shared setup" : "Services"} subtitle={sharedSetup ? "Defined once for every shop. Each shop uses these unless you change them there." : place ? `${place}: uses the shared setup. Turn items off, change a price, or add services only this shop sells.` : "One haircut, the other services you add, and the chairs you create."} />
+    <div className={embedded ? "w-full" : "mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6"}>
+      {embedded ? <h2 className="px-1 text-[18px] font-extrabold tracking-[-0.02em]">Services &amp; chairs</h2> : <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title={sharedSetup ? "Shared setup" : "Services"} subtitle={sharedSetup ? "Defined once for every shop. Each shop uses these unless you change them there." : place ? `${place}: uses the shared setup. Turn items off, change a price, or add services only this shop sells.` : "One haircut, the other services you add, and your barbers."} />}
       {note ? <p className="mt-3 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
 
-      {sharedSetup ? <p className="mt-3 px-1 text-[13px] font-semibold text-muted">Chairs belong to each shop. Open a shop in Settings → Shops to set its chairs.</p> : null}
+      {sharedSetup ? <p className="mt-3 px-1 text-[13px] font-semibold text-muted">Barbers belong to each shop. Open a shop in Manage Locations to set its barbers.</p> : null}
       {sharedSetup ? null : <section className="mt-5">
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
-            <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Chairs</h2>
-            <p className="mt-1 text-[13px] font-medium text-ink-2">Seats you create, each with a barber. The barber link expires each month.</p>
+            <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Barbers</h2>
+            <p className="mt-1 text-[13px] font-medium text-ink-2">Each barber gets their own link to take walk-ins and finish cuts.</p>
           </div>
-          <Button data-auth="action" size="sm" onClick={() => {
-            const locationId = shops.scopeId ?? HOME_LOCATION_ID;
+          <Button data-auth="action" size="sm" leadingIcon={<Plus size={15} strokeWidth={2.2} />} onClick={() => {
+            const locationId = forLoc ?? shops.scopeId ?? HOME_LOCATION_ID;
             const number = nextChairNumber(locationId);
-            setEditing({
-              kind: "chair",
-              fresh: true,
-              chair: {
-                id: `c-${Date.now().toString(36)}`,
-                number,
-                label: `Chair ${number}`,
-                barberId: "",
-                barberName: "",
-                vacantAt: Date.now(),
-                locationId,
-              },
-            });
-          }}>Add a chair</Button>
+            setEditing({ kind: "chair", fresh: true, chair: { id: `c-${Date.now().toString(36)}`, number, label: `Barber ${number}`, barberId: "", barberName: "", vacantAt: Date.now(), locationId } });
+          }}>Add barber</Button>
         </div>
         {chairs.length === 0 ? (
-          <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No chairs yet. Add one and assign a barber.</p>
+          <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add your first barber.</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {chairs.map((chair) => {
               const holder = holders[chair.label];
-              const used = Boolean(holder || chair.occupiedAt);
+              const off = chair.active === false;
               return (
-                <li key={chair.id} className="flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
-                  <ChairMark label={chair.label} />
-                  <span className="min-w-0 flex-1">
-                    <b className="block text-[15.5px]">{chair.label}</b>
-                    <small className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
-                      <BarberPortrait chair={chair} size={18} />
-                      {chairBarberName(chair)}
-                    </small>
-                    <small className="block text-[12.5px] font-semibold text-muted">
-                      {used
-                        ? (holder ? `${holder} · ` : "") + (chair.occupiedAt ? `In use since ${seatTime(chair.occupiedAt)}` : "In use")
-                        : (chair.vacantAt ? `Vacant since ${seatTime(chair.vacantAt)}` : "Vacant") + (chair.lastUsedAt ? ` · Last used ${seatTime(chair.lastUsedAt)}` : "")}
-                    </small>
-                    {chair.linkExpiresAt ? (
-                      <small className="block text-[12.5px] font-semibold text-muted">
-                        {chairLinkExpired(chair) ? `Link expired ${linkExpiryLabel(chair.linkExpiresAt)}` : `Link expires ${linkExpiryLabel(chair.linkExpiresAt)}`}
-                      </small>
-                    ) : null}
-                  </span>
-                  <span className="flex flex-none flex-col gap-2">
-                    <CopyChairLink id={chair.id} />
-                    <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "chair", chair, fresh: false })}>Edit</Button>
-                  </span>
+                <li key={chair.id} className="flex items-center gap-2.5 rounded-card bg-surface px-3 py-3 shadow-card">
+                  <button type="button" style={{ opacity: off ? 0.5 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
+                    <BarberPortrait chair={chair} size={44} />
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[15.5px]">{chairBarberName(chair)}</b>
+                      <small className="block truncate text-[12.5px] font-semibold text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}</small>
+                    </span>
+                  </button>
+                  {off ? null : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
+                  <button type="button" role="switch" data-auth="action" aria-checked={!off} aria-label={`${chairBarberName(chair)} active`}
+                    onClick={() => { const e = saveChair({ ...chair, active: off }); if (e) setNote(e); }}
+                    className={`relative h-6 w-10 flex-none rounded-full transition ${off ? "bg-grey-300" : "bg-ink"}`}>
+                    <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${off ? "left-0.5" : "left-[18px]"}`} />
+                  </button>
                 </li>
               );
             })}
@@ -230,20 +210,21 @@ export function ServicesScreen() {
 
 const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop only" } as const;
 
-function CopyChairLink({ id }: { id: string }) {
-  const [label, setLabel] = useState("Copy link");
+/** Small share icon on a barber row: opens the phone share sheet (or copies) with that barber's own link. */
+function ShareBarberLink({ id, name }: { id: string; name: string }) {
+  const [done, setDone] = useState(false);
   return (
-    <Button data-auth="action" size="sm" variant="secondary" onClick={() => {
-      const path = ensureChairLink(id);
-      const url = `${window.location.origin}${path}`;
-      navigator.clipboard?.writeText(url).then(
-        () => {
-          setLabel("Copied");
-          window.setTimeout(() => setLabel("Copy link"), 1500);
-        },
-        () => setLabel(path),
-      );
-    }}>{label}</Button>
+    <button type="button" data-auth="action" aria-label={`Share ${name}’s link`} title="Share barber link"
+      className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-ink"
+      onClick={async () => {
+        const url = `${window.location.origin}${ensureChairLink(id)}`;
+        try {
+          if (navigator.share) await navigator.share({ title: `${name} · Barbers.ph`, text: `Your barber link, ${name}`, url });
+          else { await navigator.clipboard.writeText(url); setDone(true); window.setTimeout(() => setDone(false), 1500); }
+        } catch { /* share sheet closed */ }
+      }}>
+      {done ? <Check size={16} strokeWidth={2.6} /> : <Share2 size={16} strokeWidth={2} />}
+    </button>
   );
 }
 
@@ -278,7 +259,7 @@ function IconPick({ icons, value, onChange }: { icons: typeof HAIRCUT_ICONS; val
 }
 
 function ChairEditor({
-  chair, fresh, place, onBack, onSave, onRemove,
+  chair, fresh, onBack, onSave, onRemove,
 }: {
   chair: ShopChair;
   fresh: boolean;
@@ -287,87 +268,59 @@ function ChairEditor({
   onSave: (next: ShopChair) => string;
   onRemove: () => string;
 }) {
-  const [label, setLabel] = useState(chair.label);
   const [name, setName] = useState(chair.barberName?.trim() || (fresh ? "" : chairBarberName(chair) === "No barber" ? "" : chairBarberName(chair)));
   const [photo, setPhoto] = useState(chair.photoUrl ?? "");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [up, setUp] = useState<"" | "uploading" | "done">("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function pickPhoto(file: File | undefined) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Choose a photo.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+    if (!file.type.startsWith("image/")) { setError("Choose a photo."); return; }
+    setUp("uploading"); setError("");
     try {
       setPhoto(await fileToDataUrl(file, 480, 0.72));
+      setUp("done"); window.setTimeout(() => setUp(""), 2500);
     } catch {
-      setError("Couldn’t read that photo. Try a smaller image.");
+      setError("Couldn’t read that photo. Try a smaller image."); setUp("");
     } finally {
-      setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
-      <Back title={fresh ? "Add a chair" : "Edit chair"} onBack={onBack} />
-      <p className="mt-1 pl-11 text-[14px] font-medium text-muted">The chair keeps its icon. The photo is the barber, and customers see it when they book.</p>
+      <Back title={fresh ? "Add barber" : "Edit barber"} onBack={onBack} />
       <div className="mt-5 flex items-end gap-3">
-        <span className="mb-1 flex-none"><BarberIcon name="pole" size={48} title="Chair" /></span>
-        <div className="min-w-0 flex-1">
-          <Input label="Chair" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <div className="flex flex-none flex-col items-center">
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={up === "uploading"} aria-label={photo ? "Change photo" : "Upload photo"}
+            className="relative size-[68px] rounded-full bg-grey-100 ring-1 ring-line">
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photo} alt={name || "Barber"} className="size-full rounded-full object-cover" />
+            ) : <span className="flex size-full items-center justify-center rounded-full border-2 border-grey-300 bg-grey-100"><Camera size={24} strokeWidth={2} className="text-ink-2" /></span>}
+            {up === "uploading" ? <span className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70" role="status" aria-label="Uploading photo"><Loader2 size={20} className="animate-spin" /></span> : null}
+            {photo || up === "done" ? <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-6 items-center justify-center rounded-full bg-ink text-white ring-2 ring-surface">
+              {up === "done" ? <Check size={13} strokeWidth={3} /> : <Camera size={13} strokeWidth={2.2} />}
+            </span> : null}
+          </button>
+          <span className="mt-1 h-4 text-[11px] font-bold" role="status">{up === "uploading" ? "Uploading…" : up === "done" ? "Uploaded" : ""}</span>
+          <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => void pickPhoto(e.target.files?.[0])} />
         </div>
-      </div>
-      <div className="mt-5">
-        <p className="text-[13px] font-bold">Barber</p>
-        <div className="mt-2 flex items-center gap-3">
-          {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt={name || "Barber"} className="size-16 flex-none rounded-full object-cover" />
-          ) : (
-            <span className="flex size-16 flex-none items-center justify-center rounded-full bg-grey-100 text-[18px] font-bold">
-              {(name || "?").slice(0, 1).toUpperCase()}
-            </span>
-          )}
-          <div className="flex flex-col items-start gap-2">
-            <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => void pickPhoto(e.target.files?.[0])} />
-            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => fileRef.current?.click()}>
-              {photo ? "Change photo" : "Add photo"}
-            </Button>
-            {photo ? <button type="button" className="text-[12.5px] font-bold text-muted" onClick={() => setPhoto("")}>Remove photo</button> : null}
-          </div>
-        </div>
-        <div className="mt-3">
+        <div className="mb-5 min-w-0 flex-1">
           <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Barber’s name" />
         </div>
-        <p className="mt-2 text-[12.5px] font-semibold text-muted">This photo is what customers see online.</p>
       </div>
+      {photo ? <button type="button" className="text-[12.5px] font-bold text-muted underline underline-offset-2" onClick={() => setPhoto("")}>Remove photo</button> : null}
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
-      {fresh ? <p className="mt-4 text-[13px] font-semibold text-muted">Save, then copy the link and send it to this barber. It expires each month.{place ? ` It is only for ${place}.` : ""}</p> : (
-        <div className="mt-4">
-          <CopyChairLink id={chair.id} />
-          <p className="mt-2 text-[13px] font-semibold text-muted">
-            They open this link to accept customers and finish the cut. No account.
-            {chair.linkExpiresAt
-              ? ` It expires each month, on ${linkExpiryLabel(chair.linkExpiresAt)}.`
-              : " It expires each month."}
-            {chairLinkExpired(chair) ? " This one has expired. Copy link sends a new one." : ""}
-            {place ? ` This link is only for ${place}.` : ""}
-          </p>
-        </div>
-      )}
-      <Button data-auth="action" className="mt-6" fullWidth disabled={busy} onClick={() => {
-        const error = onSave({ ...chair, label: label.trim() || chair.label, barberName: name.trim(), photoUrl: photo || undefined });
+      <Button data-auth="action" className="mt-6" fullWidth disabled={up === "uploading"} onClick={() => {
+        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined });
         if (error) setError(error);
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={() => {
         const error = onRemove();
         if (error) setError(error);
-      }}>Remove chair</Button>}
+      }}>Remove barber</Button>}
     </div>
   );
 }

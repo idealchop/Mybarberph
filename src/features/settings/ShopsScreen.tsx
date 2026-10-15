@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { QrCode } from "@/components/common/QrCode";
 
 import { useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
@@ -22,14 +24,12 @@ export function ShopsScreen() {
   const { profile, ready: profileReady } = useShopProfile();
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
-  const { access, tier } = useTier();
+  const { access } = useTier();
   const limit = maxLocations(access);
   const atLimit = branches.length >= limit;
   const next = planForLocations(branches.length + 1);
   const [name, setName] = useState("");
   const [pin, setPin] = useState<ShopLocation | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editPin, setEditPin] = useState<ShopLocation | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -53,42 +53,12 @@ export function ShopsScreen() {
       copyMenuToLocation(result.branch.id);
       setName("");
       setPin(null);
-      setNote(`${result.branch.name} is ready. Its queue, chairs, and barber links stay on this shop.`);
+      setNote(`${result.branch.name} is ready. Its queue, barbers, and barber links stay on this shop.`);
     } catch {
       setError("Couldn’t look up that pin. Try again.");
     } finally {
       setBusy(false);
     }
-  }
-
-  async function savePin(branch: ShopBranch) {
-    if (!editPin) return;
-    setBusy(true);
-    setError("");
-    try {
-      const geo = await reverseGeocodePin(editPin.lat, editPin.lng);
-      const address = geo?.formatted || editPin.formattedAddress;
-      const area = geo?.area || branch.area;
-      updateBranch(branch.id, { location: { ...editPin, formattedAddress: address }, address, area });
-      setEditing(null);
-      setNote(`Saved the pin for ${branch.name}.`);
-    } catch {
-      setError("Couldn’t look up that pin. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function onRemove(branch: ShopBranch) {
-    const mine = chairs.filter((c) => chairLocation(c) === branch.id);
-    if (mine.some((c) => c.occupiedAt)) {
-      setError(`Finish the cuts at ${branch.name} before removing it.`);
-      return;
-    }
-    removeChairsAt(branch.id);
-    const message = removeBranch(branch.id);
-    setError(message);
-    if (!message) setNote(`${branch.name} is removed.`);
   }
 
   return (
@@ -96,9 +66,9 @@ export function ShopsScreen() {
       <header className="mt-1 px-1">
         <div className="flex items-center gap-1">
           <PageBack fallback="/settings" />
-          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Shops</h1>
+          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Manage Locations</h1>
         </div>
-        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Add a shop, move its pin, or turn multiple shops off." : "Turn this on when you run more than one shop."}</p>
+        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Each shop has its own QR. Tap Edit Shop for its details, pin and services." : "Turn this on when you run more than one shop."}</p>
       </header>
       {note ? <p className="mt-3 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
@@ -107,25 +77,15 @@ export function ShopsScreen() {
         <>
           <ul className="mt-4 flex flex-col gap-3">
             {branches.map((branch) => (
-              <li key={branch.id} className="rounded-card bg-surface px-3.5 py-3 shadow-card">
-                <b className="block text-[16px]">{branch.name}</b>
-                <p className="mt-0.5 text-[13px] font-medium text-muted">{branch.area || branch.address || "No pin yet"}</p>
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => { setEditing(editing === branch.id ? null : branch.id); setEditPin(branch.location); }}>
-                    {editing === branch.id ? "Close" : "Edit pin"}
-                  </Button>
-                  <Button size="sm" variant="secondary" href={`/sales/performance?loc=${encodeURIComponent(branch.id)}`}>Performance</Button>
-                  {branch.id === HOME_LOCATION_ID ? null : (
-                    <Button size="sm" variant="secondary" data-auth="action" onClick={() => onRemove(branch)}>Remove</Button>
-                  )}
-                </div>
-                <ShareBranch branchId={branch.id} name={branch.name} paid={tier === "paid"} />
-                {editing === branch.id ? (
-                  <div className="mt-3">
-                    <LocationPicker value={editPin} onChange={setEditPin} disabled={busy} />
-                    <Button className="mt-3" size="sm" disabled={busy || !editPin} data-auth="action" onClick={() => void savePin(branch)}>Save pin</Button>
+              <li key={branch.id} className="rounded-card bg-surface px-3.5 py-3.5 shadow-card">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <b className="block text-[16px]">{branch.name}{branch.id === HOME_LOCATION_ID ? <span className="ml-1.5 text-[12px] font-semibold text-muted">Main</span> : null}</b>
+                    <p className="mt-0.5 text-[13px] font-medium text-muted">{branch.area || branch.address || "No pin yet"}</p>
+                    <Link href={`/settings/shops/edit?id=${encodeURIComponent(branch.id)}`} className="mt-3 inline-flex h-8 items-center rounded-pill px-3.5 text-[12.5px] font-bold ring-1 ring-ink">Edit Shop</Link>
                   </div>
-                ) : null}
+                  <BranchQr branchId={branch.id} name={branch.name} />
+                </div>
               </li>
             ))}
           </ul>
@@ -167,20 +127,13 @@ export function ShopsScreen() {
   );
 }
 
-/** Each shop has its own public booking link and QR (Pro and Lifetime, like the shop QR). */
-function ShareBranch({ branchId, name, paid }: { branchId: string; name: string; paid: boolean }) {
+/** This shop's booking QR, right on its card. Tap to open the printable QR page. */
+function BranchQr({ branchId, name }: { branchId: string; name: string }) {
   const cloud = useCloud();
-  const [done, setDone] = useState("");
-  if (!paid) return <p className="mt-2 text-[12.5px] font-semibold text-muted">Booking link and QR for this shop are on Pro. <a href="/settings/billing" className="font-bold underline underline-offset-[3px]">See plans</a></p>;
   const url = cloud.shopId && typeof window !== "undefined" ? bookingUrl(window.location.origin, cloud.shopId, branchId) : "";
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      <Button size="sm" variant="secondary" disabled={!url} data-auth="action" onClick={() => {
-        const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
-        if (share) { void share.call(navigator, { title: `Book at ${name}`, url }).catch(() => undefined); return; }
-        void navigator.clipboard?.writeText(url).then(() => { setDone("Link copied"); window.setTimeout(() => setDone(""), 1800); });
-      }}>{done || "Share"}</Button>
-      <Button size="sm" variant="secondary" href={`/qr?loc=${encodeURIComponent(branchId)}`}>QR</Button>
-    </div>
+    <a href={`/qr?loc=${encodeURIComponent(branchId)}`} className="flex-none rounded-[12px] bg-white p-1 ring-1 ring-line" aria-label={`Booking QR for ${name}. Open to print or share.`}>
+      {url ? <QrCode value={url} size={92} label={`Booking QR for ${name}`} /> : <span className="block size-[92px]" />}
+    </a>
   );
 }

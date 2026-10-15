@@ -33,7 +33,7 @@ export function TransactionSheet({ row: initial, onClose }: { row: ChairRequest;
   const onlinePaid = isOnlinePaid(row);
   const tone = row.status === "done" ? "idle" : row.status === "in_chair" ? "active" : "waiting";
   const lines = (row.serviceName || "Service").split(" · ");
-  const timeline: [string, number | undefined][] = [["Booked", row.createdAt], ["In the chair", row.startedAt], ["Done", row.completedAt]];
+  const timeline: [string, number | undefined][] = [["Booked", row.createdAt], ["In service", row.startedAt], ["Done", row.completedAt]];
   const setPay = (patch: Partial<ChairRequest>) => patchRequest(row.id, patch);
 
   return (
@@ -46,7 +46,7 @@ export function TransactionSheet({ row: initial, onClose }: { row: ChairRequest;
           )}
           <div className="flex min-w-0 flex-1 flex-col leading-[1.25]">
             <h1 id="txn-title" className="truncate text-[26px] font-extrabold leading-[1.15] tracking-[-0.03em]">{row.ref || row.id}</h1>
-            <p className="mt-0.5 truncate text-[13.5px] font-semibold text-ink-2">{row.channel === "walk-in" ? "Walk-in" : "Online booking"}{row.seatLabel || row.chairLabel ? ` · ${row.seatLabel || row.chairLabel}` : ""}</p>
+            <p className="mt-0.5 truncate text-[13.5px] font-semibold text-ink-2">{row.channel === "walk-in" ? "Walk-in" : "Online booking"}{row.seatLabel || row.chairLabel ? ` · ${row.seatLabel || row.chairLabel}` : ""}{row.barberName ? ` · ${row.barberName}` : ""}</p>
             <StatusDot tone={tone} className="mt-1 text-[12.5px] font-semibold text-muted">{statusLabel(row.status)} · updated {when(row.updatedAt)}</StatusDot>
           </div>
         </header>
@@ -121,6 +121,12 @@ export function TransactionSheet({ row: initial, onClose }: { row: ChairRequest;
               </ol>
             </Card>
 
+            {row.rating ? (
+              <Card className="mt-4 px-4 py-3.5">
+                <div className="flex items-center justify-between"><b className="text-[16px]">Customer feedback</b><span className="text-[16px] font-extrabold text-[#F5B301]" aria-label={`${row.rating} of 5 stars`}>{"★".repeat(row.rating)}<span className="text-grey-300">{"★".repeat(5 - row.rating)}</span></span></div>
+                {row.feedback ? <p className="mt-1.5 whitespace-pre-wrap text-[14px] font-medium text-ink-2">“{row.feedback}”</p> : <p className="mt-1.5 text-[13px] font-semibold text-muted">No comment.</p>}
+              </Card>
+            ) : null}
             {row.notes ? (
               <Card className="mt-4 px-4 py-3.5">
                 <b className="text-[16px]">Notes</b>

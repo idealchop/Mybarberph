@@ -47,3 +47,6 @@
 @media (prefers-reduced-motion: reduce) {
   .companion-idle svg, .companion-face .cm-smile, .companion-face .cm-spark, .companion-dots i, .companion-enter { animation: none !important; }
 }
+
+/* OSM credit is shown in the Settings footer and /terms instead of over the map. */
+[data-testid="river-pin-map"] .maplibregl-ctrl-attrib { display: none !important; }

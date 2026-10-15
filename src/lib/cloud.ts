@@ -44,6 +44,8 @@ let mode: Mode | null = null;
 let uid: string | null = null;
 let started = false;
 let pending = 0;
+/** Bumped on every local write; a poll that started before a write is stale and is dropped. */
+let writeEpoch = 0;
 let pollTimer: number | undefined;
 const listeners = new Set<() => void>();
 /** Events the older stores listen for. */
@@ -76,8 +78,10 @@ async function load(quiet = false) {
   if (!mode) return;
   if (!quiet) set({ loading: true, error: null });
   try {
+    const epoch = writeEpoch;
     const d = await api(base());
-    if (pending > 0 && quiet) return; // don't clobber unsaved local edits
+    // Don't clobber unsaved local edits, or anything written while this request was in flight.
+    if ((pending > 0 || epoch !== writeEpoch) && quiet) return;
     set({ ready: true, loading: false, error: null, mode: mode.kind, shopId: d.shopId, chairId: d.chairId ?? null, shop: d.shop, values: d.values ?? {}, bookings: d.bookings ?? [] });
   } catch (e) {
     set({ ready: true, loading: false, error: (e as Error).message });
@@ -120,6 +124,7 @@ export function refreshCloud() { return load(true); }
 
 async function track<T>(p: Promise<T>) {
   pending++;
+  writeEpoch++;
   try { return await p; } catch (e) { set({ error: (e as Error).message }); throw e; } finally { pending--; }
 }
 
@@ -132,6 +137,7 @@ export const cloudStorage = {
   },
   setItem(key: string, value: string) {
     if (!mode) return;
+    writeEpoch++;
     set({ values: { ...snap.values, [key]: value } });
     // One pending count per key: a re-edit inside the debounce window must not leak a count,
     // or polling stops forever and new online bookings never show up until a reload.
@@ -151,17 +157,46 @@ export const cloudStorage = {
 
 export function cloudBookings(): ChairRequest[] { return snap.bookings; }
 
+/** One save in flight per booking; edits made meanwhile are coalesced and sent after it, in order. */
+const inflight = new Map<string, { next: ChairRequest | null }>();
+
+function sendBooking(row: ChairRequest) {
+  const slot = { next: null as ChairRequest | null };
+  inflight.set(row.id, slot);
+  void track(api(`${base()}/bookings/${encodeURIComponent(row.id)}`, { method: "PUT", body: JSON.stringify({ booking: row }) }))
+    .then((res: { booking?: ChairRequest }) => {
+      // The server's copy wins (price filled in, out-of-order write refused, barber stamped).
+      if (!slot.next && res?.booking) set({ bookings: snap.bookings.map((b) => (b.id === row.id ? res.booking! : b)) });
+    })
+    .catch((e: Error & { status?: number }) => {
+      // Over the Partner walk-in limit: take the optimistic row back out and tell the screen.
+      if (e.status === 402) {
+        slot.next = null;
+        set({ bookings: snap.bookings.filter((b) => b.id !== row.id) });
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("barbers-walkin-limit", { detail: e.message }));
+      }
+    })
+    .finally(() => {
+      inflight.delete(row.id);
+      if (slot.next) sendBooking(slot.next);
+    });
+}
+
 export function saveBooking(row: ChairRequest) {
   if (!mode) return;
   const rest = snap.bookings.filter((b) => b.id !== row.id);
+  writeEpoch++;
   set({ bookings: [row, ...rest].sort((a, b) => b.createdAt - a.createdAt) });
-  void track(api(`${base()}/bookings/${encodeURIComponent(row.id)}`, { method: "PUT", body: JSON.stringify({ booking: row }) })).catch((e: Error & { status?: number }) => {
-    // Over the Partner walk-in limit: take the optimistic row back out and tell the screen.
-    if (e.status === 402) {
-      set({ bookings: snap.bookings.filter((b) => b.id !== row.id) });
-      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("barbers-walkin-limit", { detail: e.message }));
-    }
-  });
+  const busy = inflight.get(row.id);
+  if (busy) { busy.next = row; return; }
+  sendBooking(row);
+}
+
+/** Barber link: the barber sets their own name. */
+export async function saveBarberName(name: string) {
+  if (mode?.kind !== "barber") return;
+  await track(api(`${base()}/name`, { method: "PUT", body: JSON.stringify({ name }) }));
+  await load(true);
 }
 
 export function removeBooking(id: string) {

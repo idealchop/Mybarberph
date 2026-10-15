@@ -1,4 +1,5 @@
 "use client";
+import { ChevronRight } from "lucide-react";
 
 import { useState } from "react";
 import { TransactionSheet } from "@/components/transactions/TransactionSheet";
@@ -40,7 +41,7 @@ function VisitList({ rows }: { rows: ChairRequest[] }) {
             <b className="block truncate">{row.customerLabel || row.contact}</b>
             <small className="text-[12.5px] font-semibold text-muted">{row.serviceName} · {row.ref} · {statusLabel(row.status)}</small>
           </span>
-          <b>{peso(row.price)}</b>
+          <span className="flex items-center gap-1.5"><b>{peso(row.price)}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
         </li>
       ))}
     </ul>

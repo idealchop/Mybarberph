@@ -2,6 +2,7 @@
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
+import { BarberNameEdit, BarberTotals } from "./BarberSelf";
 import { Avatar, Button, Input } from "@river-apps/ui";
 import { ChevronLeft, History, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -150,7 +151,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
         <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link is not active</h1>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send a new chair link. Each link expires after one month.</p>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send a new barber link. Each link expires after one month.</p>
       </main>
     );
   }
@@ -163,8 +164,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
         <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">{chair ? "This link expired" : "This link is not active"}</h1>
         <p className="mt-2 text-[15px] font-medium text-ink-2">
           {chair
-            ? `It stopped on ${linkExpiryLabel(chair.linkExpiresAt!)}. Chair links expire each month. Ask the shop to send a new one.`
-            : "Ask the shop to send a new chair link. Each link expires after one month."}
+            ? `It stopped on ${linkExpiryLabel(chair.linkExpiresAt!)}. Barber links expire each month. Ask the shop to send a new one.`
+            : "Ask the shop to send a new barber link. Each link expires after one month."}
         </p>
       </main>
     );
@@ -203,6 +204,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
           <p className="truncate text-[12px] font-medium text-muted">{greeting}, {chairBarberName(chair)}</p>
           <h1 className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{profile.name}</h1>
           <p className="truncate text-[13px] font-semibold text-muted">{chairBarberName(chair)} · {chair.label}</p>
+          <BarberNameEdit name={chair.barberName?.trim() || ""} />
         </div>
       </header>
 
@@ -251,7 +253,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
           </div>
           <Button className="mt-4" fullWidth onClick={() => {
             if (current) {
-              setNote("Finish the cut in your chair first.");
+              setNote("Finish your current cut first.");
               return;
             }
             if (allowance.atLimit) { setNote(allowance.message); return; }
@@ -275,7 +277,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
               updatedAt: nowAt,
             }, chair.label, placeId);
             if (!sat) {
-              setNote(`${chair.label} is taken.`);
+              setNote(`You already have a customer.`);
               return;
             }
             setAdding(false);
@@ -291,13 +293,13 @@ export function BarberLinkScreen({ token }: { token: string }) {
           onCancel={() => setScanning(false)}
           onSeat={(row) => {
             if (current) {
-              setNote("Finish the cut in your chair first.");
+              setNote("Finish your current cut first.");
               setScanning(false);
               return;
             }
             const sat = acceptOnChair(row.id, chair.label, placeId);
             if (!sat) {
-              setNote(`${chair.label} is taken.`);
+              setNote(`You already have a customer.`);
               return;
             }
             setScanning(false);
@@ -313,7 +315,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         treatments={treatments}
         onWalkIn={() => {
           if (current) {
-            setNote("Finish the cut in your chair first.");
+            setNote("Finish your current cut first.");
             return;
           }
           if (allowance.atLimit) { setNote(allowance.message); return; }
@@ -323,7 +325,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         }}
         onScan={() => {
           if (current) {
-            setNote("Finish the cut in your chair first.");
+            setNote("Finish your current cut first.");
             return;
           }
           setNote("");
@@ -331,6 +333,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
           setAdding(false);
         }}
       />
+
+      <BarberTotals token={token} refreshKey={done.length} />
 
       <section className="mt-5">
         <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Waiting</h2>
@@ -348,11 +352,11 @@ export function BarberLinkScreen({ token }: { token: string }) {
                 treatments={treatments}
                 onAccept={() => {
                   if (current) {
-                    setNote("Finish the cut in your chair first.");
+                    setNote("Finish your current cut first.");
                     return;
                   }
                   const sat = acceptOnChair(row.id, chair.label, placeId);
-                  setNote(sat ? "" : `${chair.label} is taken.`);
+                  setNote(sat ? "" : `You already have a customer.`);
                 }}
               />
             ))}

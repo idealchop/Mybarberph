@@ -25,6 +25,8 @@ export interface ShopProfile {
   locations: number;
   /** Opening hours as the shop writes them, e.g. "Mon–Sat 9 AM–8 PM". */
   hours: string;
+  /** Tap-to-set hours; `hours` is its formatted line. */
+  hoursWeek?: import("@/lib/shop-hours").WeekHours | null;
 }
 
 const KEY = "barbers.shop-profile";

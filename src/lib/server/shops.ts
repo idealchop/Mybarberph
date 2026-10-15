@@ -1,3 +1,4 @@
+import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
 import { randomBytes } from "node:crypto";
@@ -25,7 +26,8 @@ export const STATE_KEYS: Record<string, string> = {
   "barbers.community.v1": "community",
 };
 /** Keys a barber link may write. */
-export const BARBER_KEYS = new Set(["barbers.shop-chairs"]);
+/** State a chair link may write directly: none. Barbers change only their own name (setBarberName). */
+export const BARBER_KEYS = new Set<string>();
 
 import { isRecurring, maxLocations, normalizePlan, walkInLimit, WALKIN_LIMIT_MESSAGE, type PlanId } from "@/lib/plans";
 
@@ -50,11 +52,12 @@ export interface ShopDoc {
   phone: string;
   about: string;
   hours: string;
+  hoursWeek?: import("@/lib/shop-hours").WeekHours | null;
   location: { lat: number; lng: number; formattedAddress: string } | null;
   photoUrls: string[];
   logoUrl: string;
   branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"] }[];
-  menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment" }[];
+  menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string }[];
   /** Menus for branches other than the first shop, keyed by location id. */
   menuByLocation?: Record<string, ShopDoc["menu"]>;
   listed: boolean;
@@ -108,7 +111,7 @@ function loc(v: unknown): ShopDoc["location"] {
   if (!l || typeof l.lat !== "number" || typeof l.lng !== "number" || !Number.isFinite(l.lat) || !Number.isFinite(l.lng)) return null;
   return { lat: l.lat, lng: l.lng, formattedAddress: str(l.formattedAddress) };
 }
-function urls(v: unknown) { return Array.isArray(v) ? v.filter((u): u is string => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 6) : []; }
+function urls(v: unknown, max = 8) { return Array.isArray(v) ? v.filter((u): u is string => typeof u === "string" && /^https:\/\//.test(u)).slice(0, max) : []; }
 
 /** Saves one state key and mirrors the public parts onto shops/{shopId}. */
 export async function putState(shopId: string, key: string, raw: string) {
@@ -123,7 +126,7 @@ export async function putState(shopId: string, key: string, raw: string) {
     const name = str(parsed.name, 80).trim();
     batch.set(shopRef(shopId), {
       name, address: str(parsed.address), area: str(parsed.area, 120), phone: str(parsed.phone, 30),
-      about: str(parsed.about, 600), hours: str(parsed.hours, 200), location: loc(parsed.location),
+      about: str(parsed.about, 600), hours: str(parsed.hours, 200), hoursWeek: parseWeek(parsed.hoursWeek), location: loc(parsed.location),
       photoUrls: urls(parsed.photoUrls), logoUrl: urls([parsed.logoUrl])[0] ?? "",
       listed: Boolean(name), updatedAt: now,
     }, { merge: true });
@@ -136,10 +139,10 @@ export async function putState(shopId: string, key: string, raw: string) {
   if (docId === "menu") {
     const toItems = (m: Record<string, unknown>): ShopDoc["menu"] => {
       const h = (m.haircut ?? {}) as Record<string, unknown>;
-      const items: ShopDoc["menu"] = [{ id: "haircut", name: str(h.name, 60) || "Haircut", durationMins: Number(h.durationMins) || 30, price: Math.round(Math.max(0, Number(h.price) || 0) * 100), kind: "haircut" }];
+      const items: ShopDoc["menu"] = [{ id: "haircut", name: str(h.name, 60) || "Haircut", durationMins: Number(h.durationMins) || 30, price: Math.round(Math.max(0, Number(h.price) || 0) * 100), kind: "haircut", icon: str(h.icon, 20) || "clipper" }];
       for (const tr of (Array.isArray(m.treatments) ? m.treatments : []) as Record<string, unknown>[]) {
-        if (!tr?.id || !tr?.name) continue;
-        items.push({ id: str(tr.id, 60), name: str(tr.name, 60), durationMins: Number(tr.durationMins) || 15, price: Math.round(Math.max(0, Number(tr.price) || 0) * 100), kind: "treatment" });
+        if (!tr?.id || !tr?.name || tr.enabled === false) continue;
+        items.push({ id: str(tr.id, 60), name: str(tr.name, 60), durationMins: Number(tr.durationMins) || 15, price: Math.round(Math.max(0, Number(tr.price) || 0) * 100), kind: "treatment", icon: str(tr.icon, 20) || "scissors" });
       }
       return items;
     };
@@ -197,7 +200,7 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
     serviceName: str(b.serviceName, 80), price: Math.max(0, Number(b.price) || 0), slotLabel: str(b.slotLabel, 40),
     payWhere: b.payWhere === "online" ? "online" : "shop", createdAt: Number(b.createdAt) || now, updatedAt: now,
   };
-  for (const k of ["chairLabel", "seatLabel", "locationId", "source"] as const) if (typeof b[k] === "string") (out as unknown as Record<string, unknown>)[k] = str(b[k], 80);
+  for (const k of ["chairLabel", "seatLabel", "locationId", "source", "barberId", "barberName"] as const) if (typeof b[k] === "string") (out as unknown as Record<string, unknown>)[k] = str(b[k], 80);
   for (const k of ["startedAt", "completedAt", "verifiedAt"] as const) if (typeof b[k] === "number") (out as unknown as Record<string, unknown>)[k] = b[k];
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
@@ -221,10 +224,18 @@ export async function walkInsToday(shopId: string, locationId?: string) {
   return q.docs.filter((d) => { const b = d.data() as ChairRequest; return b.channel === "walk-in" && (b.locationId || "home") === loc; }).length;
 }
 
-export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
+const RANK: Record<string, number> = { requested: 0, accepted: 1, in_chair: 2, done: 3, declined: 3 };
+
+/** Saves one booking. `barber` stamps the chair link's barber (a link can't claim another barber). */
+export async function putBooking(shopId: string, row: Partial<ChairRequest>, barber?: { barberId: string; barberName: string; locationId?: string }) {
   const clean = cleanBooking(shopId, row);
+  if (barber) {
+    clean.barberId = barber.barberId;
+    clean.barberName = barber.barberName;
+    // A chair link only works its own shop's queue.
+    clean.locationId = barber.locationId || "home";
+  }
   const ref = shopRef(shopId).collection("bookings").doc(clean.id);
-  // Payment state can't be set to "paid online" by a client; only cash at the chair.
   const prev = (await ref.get()).data() as ChairRequest | undefined;
   if (!prev && clean.channel === "walk-in") {
     // Server time decides the day; a client can't backdate a walk-in around the limit.
@@ -245,8 +256,20 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
   if (prev?.source) clean.source = prev.source;
   // A booking keeps its original time (and so its day for the walk-in limit).
   if (prev?.createdAt) clean.createdAt = prev.createdAt;
-  await ref.set(clean);
-  return clean;
+  // Customer-only fields: the shop can't change them by saving the row.
+  if (prev?.payPref) clean.payPref = prev.payPref;
+  if (prev?.rating) { clean.rating = prev.rating; if (prev.feedback) clean.feedback = prev.feedback; if (prev.feedbackAt) clean.feedbackAt = prev.feedbackAt; }
+  // Keep the barber recorded on the visit unless this write names one.
+  if (!clean.barberId && prev?.barberId) { clean.barberId = prev.barberId; if (prev.barberName) clean.barberName = prev.barberName; }
+  // Writes can land out of order (e.g. "accepted" after "in chair", or a stale tab after "done").
+  // A visit never moves back a step: an older write is ignored and the saved row is returned.
+  return db().runTransaction(async (tx) => {
+    const cur = (await tx.get(ref)).data() as ChairRequest | undefined;
+    if (cur && RANK[clean.status]! < RANK[cur.status]!) return cur;
+    if (cur?.status === "declined" && clean.status !== "declined") return cur;
+    tx.set(ref, clean);
+    return clean;
+  });
 }
 
 export async function deleteBooking(shopId: string, id: string) {
@@ -256,6 +279,29 @@ export async function deleteBooking(shopId: string, id: string) {
 export async function findBookingByRef(shopId: string, ref: string) {
   const q = await shopRef(shopId).collection("bookings").where("ref", "==", ref.trim().toUpperCase()).limit(1).get();
   return (q.docs[0]?.data() as ChairRequest | undefined) ?? null;
+}
+
+/** The barber on a chair link: id, name and shop location, from the shop's chairs. */
+export async function linkBarber(shopId: string, chairId: string) {
+  const chairs = JSON.parse((await loadState(shopId, ["barbers.shop-chairs"]))["barbers.shop-chairs"] || "[]") as { id: string; barberId?: string; barberName?: string; label?: string; locationId?: string }[];
+  const c = chairs.find((x) => x.id === chairId);
+  if (!c) return undefined;
+  return { barberId: c.barberId || c.id, barberName: (c.barberName || "").trim() || c.label || "Barber", locationId: c.locationId };
+}
+
+/** A barber renames themself on their own link. Only that chair's barberName changes. */
+export async function setBarberName(shopId: string, chairId: string, name: string) {
+  const clean = str(name, 40).trim();
+  if (!clean) throw new Error("Enter a name");
+  const ref = shopRef(shopId).collection("private").doc(STATE_KEYS["barbers.shop-chairs"] as string);
+  await db().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const raw = (snap.data()?.json as string | undefined) ?? "[]";
+    const chairs = JSON.parse(raw) as { id: string; barberName?: string }[];
+    if (!chairs.some((c) => c.id === chairId)) throw new Error("Chair not found");
+    tx.set(ref, { json: JSON.stringify(chairs.map((c) => (c.id === chairId ? { ...c, barberName: clean } : c))), updatedAt: Date.now() });
+  });
+  return clean;
 }
 
 export async function chairLink(token: string) {
@@ -274,10 +320,10 @@ export function menuFor(s: ShopDoc, locationId?: string | null): ShopDoc["menu"]
 
 export function publicShop(id: string, s: ShopDoc) {
   return {
-    id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null,
+    id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null, hoursWeek: s.hoursWeek ?? null,
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
-    services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind })),
-    servicesByLocation: Object.fromEntries(Object.entries(s.menuByLocation ?? {}).map(([k, menu]) => [k, menu.map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind }))])),
+    services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null })),
+    servicesByLocation: Object.fromEntries(Object.entries(s.menuByLocation ?? {}).map(([k, menu]) => [k, menu.map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null }))])),
     plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
     updatedAt: s.updatedAt,
   };
@@ -300,7 +346,7 @@ export function refCode() {
 }
 
 /** Creates a customer booking (public booking page or River Mobile). */
-export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; locationId?: string; source: "qr" | "river"; externalId?: string }) {
+export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; payPref?: string; locationId?: string; source: "qr" | "river"; externalId?: string }) {
   const shop = await getPublicShop(shopId);
   if (!shop) throw new Error("Shop not found");
   const ids = (Array.isArray(input.serviceIds) && input.serviceIds.length ? input.serviceIds : [input.serviceId]).filter(Boolean);
@@ -314,14 +360,37 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   const id = `${input.source}-${randomBytes(9).toString("base64url").replace(/[^A-Za-z0-9]/g, "x")}`;
   const row: ChairRequest = {
     id, shopId, ref: refCode(), channel: "online", status: "requested",
-    contact: str(input.contact, 120), customerLabel: str(input.customerLabel, 80) || "Customer",
+    contact: str(input.contact, 120), customerLabel: str(input.customerLabel, 80) || (input.source === "qr" ? "QR guest" : "Customer"),
     serviceId: svc.id, serviceName: svc.name, price: svc.price, slotLabel: str(input.slotLabel, 40) || "Now",
     payWhere: input.payWhere === "online" ? "online" : "shop", createdAt: now, updatedAt: now, source: input.source,
   };
-  if (input.locationId) row.locationId = str(input.locationId, 60);
+  // A QR is bound to one shop: an unknown location is refused, never guessed.
+  if (input.locationId) {
+    if (!branchOk && input.locationId !== "home") throw new Error("This QR code is for a shop that no longer exists. Ask the shop for a new code.");
+    row.locationId = str(input.locationId, 60);
+  }
   if (input.externalId) row.externalId = str(input.externalId, 120);
+  if (input.payPref === "cash" || input.payPref === "gcash") row.payPref = input.payPref;
   await shopRef(shopId).collection("bookings").doc(id).set(row);
   return row;
+}
+
+/** Customer rates a finished visit once (1–5 stars, optional comment). */
+export async function saveFeedback(shopId: string, id: string, rating: number, comment: string) {
+  if (!/^[\w-]{6,128}$/.test(shopId) || !/^[\w-]{3,80}$/.test(id)) throw new Error("Bad booking");
+  const r = Math.round(Number(rating));
+  if (!(r >= 1 && r <= 5)) throw new Error("Pick 1 to 5 stars");
+  const ref = shopRef(shopId).collection("bookings").doc(id);
+  return db().runTransaction(async (tx) => {
+    const b = (await tx.get(ref)).data() as ChairRequest | undefined;
+    if (!b) throw new Error("Booking not found");
+    if (b.status !== "done") throw new Error("You can rate the visit once it’s done.");
+    if (b.rating) return b;
+    const next = { ...b, rating: r, feedback: str(comment, 500).trim() || undefined, feedbackAt: Date.now() };
+    if (!next.feedback) delete next.feedback;
+    tx.set(ref, next);
+    return next as ChairRequest;
+  });
 }
 
 export async function getBooking(shopId: string, id: string) {
@@ -334,7 +403,8 @@ export async function getBooking(shopId: string, id: string) {
 export function publicBooking(b: ChairRequest) {
   return {
     id: b.id, shopId: b.shopId, ref: b.ref, status: b.status, serviceId: b.serviceId, serviceName: b.serviceName, price: b.price,
-    slotLabel: b.slotLabel, payWhere: b.payWhere, paid: Boolean(b.paid), chairLabel: b.chairLabel ?? null,
+    slotLabel: b.slotLabel, payWhere: b.payWhere, paid: Boolean(b.paid), chairLabel: b.chairLabel ?? null, payPref: b.payPref ?? null,
+    payMethod: b.paid ? b.payMethod ?? null : null, rating: b.rating ?? null, completedAt: b.completedAt ?? null, barberName: b.barberName ?? null,
     locationId: b.locationId ?? null, verifiedAt: b.verifiedAt ?? null, createdAt: b.createdAt, updatedAt: b.updatedAt,
   };
 }

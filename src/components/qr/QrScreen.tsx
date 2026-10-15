@@ -1,7 +1,9 @@
 "use client";
 
 import { Button, Card, Topbar } from "@river-apps/ui";
+import { Check, Copy, Download } from "lucide-react";
 import { useEffect, useState } from "react";
+import { makeQrPoster } from "@/lib/qr-poster";
 import { QrCode } from "@/components/common/QrCode";
 import { PageBack } from "@/components/shell/PageBack";
 import { useCloud } from "@/lib/cloud";
@@ -19,6 +21,7 @@ export function QrScreen() {
   const shopId = cloud.shopId;
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
+  const [making, setMaking] = useState(false);
   const [urlLoc, setUrlLoc] = useState<string | null>(null);
   useEffect(() => { setOrigin(window.location.origin); setUrlLoc(new URLSearchParams(window.location.search).get("loc")); }, []);
   const fromUrl = urlLoc && shops.branches.find((b) => b.id === urlLoc);
@@ -40,6 +43,22 @@ export function QrScreen() {
     );
   }
 
+  const poster = async (mode: "download" | "print") => {
+    if (!url || making) return;
+    setMaking(true);
+    try {
+      const place = (fromUrl ? fromUrl.name : "") || (shops.enabled ? shops.branch?.name : "") || profile.area || "";
+      const blob = await makeQrPoster({ url, shopName: profile.name, place, logoUrl: profile.logoUrl || undefined });
+      const href = URL.createObjectURL(blob);
+      if (mode === "download") {
+        const a = document.createElement("a"); a.href = href; a.download = `${(profile.name || "shop").replace(/[^\w]+/g, "-")}${place ? `-${place.replace(/[^\w]+/g, "-")}` : ""}-QR-poster.png`; a.click();
+      } else {
+        const w = window.open("", "_blank");
+        w?.document.write(`<title>QR poster</title><style>@page{size:A5;margin:0}html,body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${href}" onload="setTimeout(()=>print(),200)">`);
+      }
+      window.setTimeout(() => URL.revokeObjectURL(href), 60_000);
+    } finally { setMaking(false); }
+  };
   const copy = () => {
     if (!url) return;
     void navigator.clipboard?.writeText(url).then(() => {
@@ -56,11 +75,16 @@ export function QrScreen() {
           <b className="text-[16px]">Booking</b>
           <p className="mt-1 max-w-[280px] text-[13px] font-medium text-muted">{shops.viewingAll ? "This code stays blank until one shop is open." : !listed ? "Add the shop name and save your haircut in Services. Then your QR appears here." : `One code for ${who}.`}</p>
           <div className="mt-4 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
-            {url ? <QrCode value={url} size={220} label="Booking QR code" /> : <span className="block size-[220px]" />}
+            {url ? <QrCode value={url} size={220} label="Booking QR code" logo={profile.logoUrl || "/icon-192.png"} /> : <span className="block size-[220px]" />}
           </div>
-          <p className="mt-3 max-w-full break-all font-mono text-[12px] font-semibold text-muted">{url || " "}</p>
-          {shops.viewingAll ? <Button size="sm" className="mt-3" href="/settings/shops">Shops</Button> : (
-            <Button size="sm" variant="secondary" className="mt-3" disabled={!url} onClick={copy}>{copied ? "Copied" : "Copy link"}</Button>
+          <p className="mt-3 max-w-[260px] truncate font-mono text-[11px] font-medium text-subtle" title={url}>{url ? url.replace(/^https?:\/\//, "") : " "}</p>
+          {shops.viewingAll ? <Button size="sm" className="mt-3" href="/settings/shops">Manage Locations</Button> : (
+            <>
+              <div className="mt-3 grid w-full grid-cols-2 gap-2">
+                <Button size="sm" variant="secondary" disabled={!url} onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}>{copied ? "Copied" : "Copy link"}</Button>
+                <Button size="sm" disabled={!url || making} onClick={() => void poster("download")} leadingIcon={<Download size={15} />}>{making ? "Making…" : "Download QR"}</Button>
+              </div>
+            </>
           )}
         </Card>
         <Card className="px-5 py-5">

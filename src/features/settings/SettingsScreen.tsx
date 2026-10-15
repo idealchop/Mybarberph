@@ -4,12 +4,12 @@ import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Sci
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Avatar, Badge, Button, Card, ListItem, Topbar, cn } from "@river-apps/ui";
+import { Badge, Button, Card, ListItem, Topbar, cn } from "@river-apps/ui";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { ALL_LOCATIONS, useShopLocations } from "@/lib/shop-locations";
-import { locationCountLabel, shopHandle, useShopProfile } from "@/lib/shop-profile";
+import { locationCountLabel, useShopProfile } from "@/lib/shop-profile";
 import { signOut, useSession } from "@/lib/session";
 import { useTier } from "@/lib/tier";
 
@@ -32,7 +32,7 @@ export function SettingsScreen() {
 
   const links = [
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
-    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and chairs" },
+    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and barbers" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
 
@@ -40,10 +40,18 @@ export function SettingsScreen() {
     <div className="mx-auto w-full max-w-[402px] px-4 pb-6 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <Topbar className="px-1" leading={<PageBack fallback="/home" />} title="Settings" subtitle="Your shop on Barbers.ph" />
 
-      <section className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
+      <section className="relative mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
+        {user ? (
+          <Link href="/settings/edit" aria-label={profile.name ? "Update shop" : "Set up shop"} title={profile.name ? "Update shop" : "Set up shop"}
+            className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-ink hover:bg-grey-200">
+            <Pencil size={16} strokeWidth={1.9} />
+          </Link>
+        ) : null}
         <div className="flex items-center gap-3.5">
-          <Avatar name={profile.name} src={profile.logoUrl || undefined} preset="sky" size={72} decorative={false} className="flex-none shadow-tile ring-1 ring-line" />
-          <div className="min-w-0 flex-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={profile.logoUrl || "/icons3d/house.png"} alt={profile.name ? `${profile.name} logo` : "Shop"} width={72} height={72}
+            className={cn("size-[72px] flex-none rounded-[22px]", profile.logoUrl ? "object-cover shadow-tile ring-1 ring-line" : "bg-grey-50 object-contain p-1.5")} />
+          <div className="min-w-0 flex-1 pr-8">
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="min-w-0 text-[18px] font-extrabold leading-[1.2] tracking-[-0.02em] sm:text-[20px]">{profile.name || (user ? "Name your shop" : "Your shop")}</h2>
@@ -59,17 +67,13 @@ export function SettingsScreen() {
               </div>
               {partnerOn ? <p className="mt-0.5 text-[12.5px] font-bold">River partner</p> : null}
             </div>
-            {profile.name ? <p className="mt-0.5 text-[13.5px] font-semibold text-muted">{shopHandle(profile.name)}</p> : null}
+            {user && (profile.address || profile.location?.formattedAddress) ? <p className="mt-0.5 line-clamp-2 text-[13px] font-semibold text-muted">{profile.address || profile.location?.formattedAddress}</p> : null}
             <p className="mt-1.5 text-[12.5px] font-semibold text-muted">
               {user ? locationCountLabel(locationCount) : "Sign in to set up your shop"}
             </p>
           </div>
         </div>
-        {user ? (
-          <Button className="mt-3" href="/settings/edit" size="xs" leadingIcon={<Pencil size={14} strokeWidth={1.75} />}>{profile.name ? "Update shop" : "Set up shop"}</Button>
-        ) : (
-          <Button className="mt-3" size="xs" onClick={() => requireAuth()}>Sign in</Button>
-        )}
+        {user ? null : <Button className="mt-3" size="xs" onClick={() => requireAuth()}>Sign in</Button>}
         <div className="mt-3 border-t border-line pt-3">
           <p className="text-[13.5px] font-medium leading-snug text-ink/80">
             {profile.about || (paid ? "Walk-ins, the queue and the shop QR." : "Online bookings from River Mobile and the queue.")}
@@ -155,6 +159,8 @@ export function SettingsScreen() {
           <Link href="/terms" className="hover:underline">Terms</Link>
           <span aria-hidden> · </span>
           <Link href="/privacy" className="hover:underline">Privacy</Link>
+          <span aria-hidden> · </span>
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="hover:underline">© OpenStreetMap contributors</a>
         </p>
       </div>
     </div>
@@ -192,9 +198,9 @@ function LocationCard({ shops }: { shops: ReturnType<typeof useShopLocations> })
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-[14.5px] font-semibold">One shop. Turn on multiple shops in Manage shops.</p>
+        <p className="mt-2 text-[14.5px] font-semibold">One shop. Turn on multiple shops in Manage Locations.</p>
       )}
-      <Button className="mt-4" href="/settings/shops" size="md" fullWidth variant="secondary">Manage shops</Button>
+      <Button className="mt-4" href="/settings/shops" size="md" fullWidth variant="secondary">Manage Locations</Button>
     </section>
   );
 }

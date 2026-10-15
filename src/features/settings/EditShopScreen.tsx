@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronLeft, ImagePlus, MapPin } from "lucide-react";
+import { Check, ChevronLeft, ImagePlus, Loader2, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Badge, Button, Card, Input, cn } from "@river-apps/ui";
 import { uploadPhoto } from "@/lib/upload";
+import { formatHours, type WeekHours } from "@/lib/shop-hours";
+import { HoursPicker } from "./HoursPicker";
 import { reverseGeocodePin } from "@/lib/geocode";
 import { SHOP_ABOUT_MAX, defaultShopAbout } from "@/lib/shop-about";
 import { useShopLocations } from "@/lib/shop-locations";
@@ -33,9 +35,7 @@ function EditorBar({ dirty, busy, hold, onBack }: { dirty: boolean; busy: boolea
           <ChevronLeft size={22} strokeWidth={1.75} />
         </button>
         <span className="truncate text-[15px] font-bold">Update shop</span>
-        <Button data-auth="action" type="submit" form="edit-shop-form" size="sm" className="min-w-[4.5rem]" disabled={busy || !dirty}>
-          {busy ? "Saving…" : "Save"}
-        </Button>
+        <span className="size-11 flex-none" aria-hidden />
       </div>
       {hold ? <p className="px-5 pb-1 text-[13px] font-semibold">{hold}</p> : null}
     </>
@@ -61,7 +61,10 @@ function ProfileEditor({
   const [photos, setPhotos] = useState(profile.photoUrls);
   const [locations, setLocations] = useState(String(profile.locations));
   const [phone, setPhone] = useState(profile.phone);
-  const [hours, setHours] = useState(profile.hours);
+  const [hoursWeek, setHoursWeek] = useState<WeekHours | null>(profile.hoursWeek ?? null);
+  const hours = hoursWeek ? formatHours(hoursWeek) : profile.hours;
+  const [photosBusy, setPhotosBusy] = useState(false);
+  const [logoState, setLogoState] = useState<"" | "uploading" | "done">("");
   const [location, setLocation] = useState<ShopLocation | null>(profile.location);
   const [aboutDraft, setAboutDraft] = useState<string | null>(profile.about.trim() ? profile.about : null);
   const serviceNames = [haircut.name, ...treatments.map((t) => t.name)];
@@ -75,7 +78,7 @@ function ProfileEditor({
     || !pinSame
     || (aboutDraft !== null && about !== profile.about)
     || phone.trim() !== profile.phone
-    || hours.trim() !== profile.hours
+    || hours !== profile.hours || JSON.stringify(hoursWeek ?? null) !== JSON.stringify(profile.hoursWeek ?? null)
     || (!enabled && clampLocations(locations) !== profile.locations);
 
   useEffect(() => {
@@ -99,14 +102,16 @@ function ProfileEditor({
   async function onLogo(file: File | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
     setError("");
-    setBusy(true);
+    setLogoState("uploading");
     try {
       setLogo(await uploadPhoto(file, 480, 0.85));
       setHold("");
+      setLogoState("done");
+      window.setTimeout(() => setLogoState((s) => (s === "done" ? "" : s)), 3000);
     } catch {
       setError("Couldn’t read that logo. Try a smaller image.");
+      setLogoState("");
     } finally {
-      setBusy(false);
       if (logoRef.current) logoRef.current.value = "";
     }
   }
@@ -145,7 +150,8 @@ function ProfileEditor({
         location: loc,
         about: about.slice(0, SHOP_ABOUT_MAX),
         phone: phone.trim(),
-        hours: hours.trim(),
+        hours,
+        hoursWeek,
       });
       router.push("/settings");
     } catch {
@@ -174,22 +180,16 @@ function ProfileEditor({
 
           <form id="edit-shop-form" onSubmit={onSave} className="mt-3 grid gap-4">
             <div className="flex items-end gap-3">
-              <div className="flex flex-none flex-col items-center">
-                <span className="mb-2 text-[14px] font-bold">Logo</span>
-                <button
-                  type="button"
-                  data-auth="action"
-                  aria-label={logo ? "Change logo" : "Upload logo"}
-                  disabled={busy}
-                  onClick={() => logoRef.current?.click()}
-                  className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-grey-100 ring-1 ring-line"
-                >
+              <div className="flex flex-none flex-col">
+                <span className="mb-1.5 text-[14px] font-bold leading-5">Logo</span>
+                <button type="button" data-auth="action" aria-label={logo ? "Change logo" : "Upload logo"} disabled={busy || logoState === "uploading"} onClick={() => logoRef.current?.click()}
+                  className="relative flex size-12 items-center justify-center overflow-hidden rounded-[14px] bg-grey-100 ring-1 ring-line">
+                  {logoState === "uploading" ? <span className="absolute inset-0 z-[1] flex items-center justify-center bg-white/70" role="status" aria-label="Uploading logo"><Loader2 size={18} className="animate-spin" /></span> : null}
                   {logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logo} alt="" className="size-full object-cover" />
-                  ) : (
-                    <ImagePlus size={20} className="text-muted" />
-                  )}
+                  ) : <ImagePlus size={18} className="text-muted" />}
+                  {logoState === "done" ? <span className="absolute bottom-0.5 right-0.5 inline-flex size-4 items-center justify-center rounded-full bg-ink text-white"><Check size={10} strokeWidth={3} /></span> : null}
                 </button>
                 <input ref={logoRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={busy} onChange={(e) => void onLogo(e.target.files?.[0])} />
               </div>
@@ -197,6 +197,13 @@ function ProfileEditor({
                 <Input size="md" label="Shop name" value={name} onChange={(e) => { setName(e.target.value); setHold(""); }} required minLength={2} maxLength={80} disabled={busy} />
               </div>
             </div>
+            {logo && logoState !== "uploading" ? (
+              <p className="-mt-2 flex gap-3 text-[12px] font-bold">
+                <button type="button" disabled={busy} onClick={() => logoRef.current?.click()} className="underline underline-offset-2">Change logo</button>
+                <button type="button" disabled={busy} onClick={() => { setLogo(""); setLogoState(""); }} className="text-muted underline underline-offset-2">Remove</button>
+                {logoState === "done" ? <span className="inline-flex items-center gap-0.5 text-muted" role="status"><Check size={12} strokeWidth={3} />Uploaded</span> : null}
+              </p>
+            ) : logoState === "uploading" ? <p className="-mt-2 text-[12px] font-bold text-muted" role="status">Uploading logo…</p> : null}
             {enabled ? (
               <p className="text-[12.5px] font-semibold text-muted">This name is the brand on every shop. Each shop’s pin is set under Shops.</p>
             ) : (
@@ -206,16 +213,18 @@ function ProfileEditor({
               </>
             )}
             <Input size="md" label="Shop phone" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.slice(0, 20))} disabled={busy} />
-            <Input size="md" label="Opening hours" placeholder="Mon–Sat 9 AM–8 PM" value={hours} onChange={(e) => setHours(e.target.value.slice(0, 120))} disabled={busy} />
+            <HoursPicker value={hoursWeek} onChange={(w) => { setHoursWeek(w); setHold(""); }} disabled={busy} />
             <AboutField id={aboutId} about={about} starter={aboutDraft === null && !profile.about.trim()} disabled={busy} onChange={(value) => setAboutDraft(value)} />
             {enabled ? <Button type="button" variant="secondary" size="md" onClick={() => leave("/settings/shops")}>Shops</Button> : <LocationPicker value={location} onChange={setLocation} disabled={busy} />}
             {error ? <p className="text-[13.5px] font-semibold">{error}</p> : null}
-            <Button data-auth="action" type="submit" size="md" fullWidth disabled={busy || !dirty || name.trim().length < 2}>
-              {busy ? "Saving…" : "Save shop profile"}
-            </Button>
           </form>
         </Card>
-        <ShopPhotos urls={photos} disabled={busy} onChange={(next) => { setPhotos(next); setHold(""); }} />
+        <ShopPhotos urls={photos} disabled={busy} onBusy={setPhotosBusy} onChange={(next) => { setPhotos(next); setHold(""); }} />
+      </div>
+      <div className="sticky bottom-0 z-10 flex-none border-t border-line bg-surface/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+        <Button data-auth="action" type="submit" form="edit-shop-form" size="md" fullWidth disabled={busy || logoState === "uploading" || photosBusy || !dirty || name.trim().length < 2}>
+          {busy ? "Saving…" : photosBusy || logoState === "uploading" ? "Uploading…" : "Save Shop Profile"}
+        </Button>
       </div>
     </>
   );

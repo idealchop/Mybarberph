@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
-import { refCode, seatWalkIn } from "@/lib/chair-bookings";
+import { queueLocation, refCode, seatWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
+import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { cloudSnapshot } from "@/lib/cloud";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
@@ -15,12 +16,17 @@ import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 /** Walk-in counter: they sit down immediately. Partner: 10 a day per shop; Pro and Lifetime: unlimited. */
 export function WalkInScreen() {
   const shops = useShopLocations();
-  const allowance = useWalkInAllowance(shops.scopeId ?? HOME_LOCATION_ID);
+  const allowance = useWalkInAllowance(queueLocation(shops));
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const { haircut, treatments } = useShopMenu();
   const [picked, setPicked] = useState<string[]>([]);
+  const loc = queueLocation(shops);
+  const { chairs } = useShopChairs({ locationId: loc });
+  const { rows } = useChairRequests();
+  const busyLabels = new Set(rows.filter((r) => r.status === "in_chair" && r.chairLabel && (r.locationId || HOME_LOCATION_ID) === loc).map((r) => r.chairLabel!));
+  const [barberChair, setBarberChair] = useState("");
 
   const chosen = treatments.filter((t) => picked.includes(t.id));
   const menuTotal = (haircut.price ?? 0) + chosen.reduce((sum, t) => sum + (t.price ?? 0), 0);
@@ -29,7 +35,9 @@ export function WalkInScreen() {
   const save = () => {
     if (allowance.atLimit) { setNote(allowance.message); return; }
     const now = Date.now();
-    const chair = seatWalkIn({
+    const pick = chairs.find((c) => c.id === barberChair);
+    if (pick && busyLabels.has(pick.label)) { setNote(`${chairBarberName(pick)} is busy. Pick another barber or any free barber.`); return; }
+    const row = {
       id: `wk-${now}`,
       shopId: cloudSnapshot().shopId ?? "",
       ref: refCode(),
@@ -45,9 +53,10 @@ export function WalkInScreen() {
       paid: false,
       createdAt: now,
       updatedAt: now,
-    });
+    } as const;
+    const chair = pick ? seatWalkInOnChair({ ...row }, pick.label, loc) : seatWalkIn({ ...row });
     if (!chair) {
-      setNote("Every chair is taken, or none have been added in Services yet.");
+      setNote("Every barber is busy, or none have been added in Services yet.");
       return;
     }
     router.push("/queue");
@@ -59,14 +68,8 @@ export function WalkInScreen() {
         <PageBack fallback="/queue" />
         <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Walk-in</h1>
       </div>
-      {shops.viewingAll ? (
-        <div className="mt-3">
-          <p className="text-[15px] font-medium text-ink-2">Open one shop in Settings → Shops before seating a walk-in.</p>
-          <Button className="mt-4" href="/settings/shops">Shops</Button>
-        </div>
-      ) : (
       <>
-      <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">{shops.enabled && shops.branch ? `They sit down now at ${shops.branch.name} and pay at the shop.` : "They sit down now and pay at the shop."}</p>
+      <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">{shops.enabled ? `They sit down now at ${shops.branches.find((b) => b.id === loc)?.name ?? "the main shop"} and pay at the shop.` : "They sit down now and pay at the shop."}</p>
       {allowance.unlimited ? null : allowance.atLimit ? (
         <div className="mt-4 rounded-card bg-surface px-4 py-3.5 shadow-card">
           <b className="block text-[14px]">That’s 10 walk-ins today</b>
@@ -109,10 +112,18 @@ export function WalkInScreen() {
       <div className="mt-4">
         <Input label="Name" placeholder="Optional" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
+      {chairs.length ? (
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="text-[13px] font-bold">Barber <span className="font-semibold text-muted">(optional)</span></span>
+          <select value={barberChair} onChange={(e) => setBarberChair(e.target.value)} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+            <option value="">Any free barber</option>
+            {chairs.filter((c) => c.active !== false).map((c) => <option key={c.id} value={c.id} disabled={busyLabels.has(c.label)}>{chairBarberName(c)}{busyLabels.has(c.label) ? " (busy)" : ""}</option>)}
+          </select>
+        </label>
+      ) : null}
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
       <Button data-auth="action" className="mt-5" fullWidth onClick={save}>Seat them</Button>
       </>
-      )}
     </main>
   );
 }

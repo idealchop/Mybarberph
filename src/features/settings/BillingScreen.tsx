@@ -16,6 +16,7 @@ export function BillingScreen() {
   const cloud = useCloud();
   const params = useSearchParams();
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [toast, setToast] = useState("");
   const [busy, setBusy] = useState<PlanId | null>(null);
   const status = params.get("status");
   const [note, setNote] = useState(status === "success" ? "Payment received. Your plan updates as soon as PayMongo confirms it." : status === "cancel" ? "Checkout was cancelled. Nothing was charged." : "");
@@ -44,11 +45,7 @@ export function BillingScreen() {
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[960px] lg:px-[30px] lg:pt-6">
       <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Plan & billing" subtitle="Partner is where every shop starts. Pro and Lifetime add every feature." />
-      {configured === false ? (
-        <p className="mt-4 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">
-          Online payments aren’t configured yet, so Pro and Lifetime can’t be bought here yet. Your shop stays on its current plan.
-        </p>
-      ) : null}
+      {toast ? <p role="status" className="fixed inset-x-0 bottom-24 z-[90] mx-auto w-fit rounded-pill bg-ink px-4 py-2 text-[13px] font-bold text-on-ink shadow-card">{toast}</p> : null}
       <div className="mt-5 grid gap-3 lg:grid-cols-2">
         {PLANS.map((p) => {
           const on = plan === p.id;
@@ -66,8 +63,8 @@ export function BillingScreen() {
                   {p.id === "pro_499" && renews ? `Current · renews ${renews}` : "Current plan"}
                 </Button>
               ) : p.amountCentavos > 0 ? (
-                <Button data-auth="action" className="mt-3" size="sm" disabled={!configured || busy !== null} onClick={() => void checkout(p.id)}>
-                  {busy === p.id ? "Opening checkout…" : configured ? `Get ${p.title}` : "Not available yet"}
+                <Button data-auth="action" className="mt-3" size="sm" disabled={busy !== null} onClick={() => { if (!configured) { setToast("Coming soon"); window.setTimeout(() => setToast(""), 1800); return; } void checkout(p.id); }}>
+                  {busy === p.id ? "Opening checkout…" : `Get ${p.title}`}
                 </Button>
               ) : null}
             </Card>

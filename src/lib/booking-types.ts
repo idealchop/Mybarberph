@@ -37,6 +37,15 @@ export interface ChairRequest {
   payMethod?: PayMethod;
   /** Owner's note on this visit. */
   notes?: string;
+  /** How the customer said they'd pay at booking (QR page). */
+  payPref?: "cash" | "gcash";
+  /** Customer's rating after the visit (1–5) and optional comment. */
+  rating?: number;
+  feedback?: string;
+  feedbackAt?: number;
+  /** Barber who did the cut (snapshot at the time; for salary and remittance). */
+  barberId?: string;
+  barberName?: string;
   /** When the shop scanned the customer's code. */
   verifiedAt?: number;
   createdAt: number;

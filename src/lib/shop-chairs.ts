@@ -14,6 +14,8 @@ export interface ShopChair {
   barberName?: string;
   /** Portrait of that barber, stored as a compressed data URL. */
   photoUrl?: string;
+  /** false = barber is off (not offered for new walk-ins/bookings). Missing = active. */
+  active?: boolean;
   /** Set while someone is in the seat. */
   occupiedAt?: number;
   ticketId?: string;
@@ -55,6 +57,8 @@ function readChairs(): ShopChair[] {
     let stamped = false;
     const list = parsed
       .filter((c) => c && c.id && c.label && (c.barberName?.trim() || c.barberId))
+      // Old saved occupancy is ignored (see occupyChair); seats show as used from their booking.
+      .map(({ occupiedAt: _o, ticketId: _t, ...c }) => c as ShopChair)
       .map((c) => {
         if (c.linkToken && !c.linkExpiresAt) {
           stamped = true;
@@ -155,6 +159,8 @@ export function saveChair(chair: ShopChair): string {
   const saved: ShopChair = {
     ...chair,
     barberName: name,
+    // Barbers are the unit now: the seat label follows the barber's name (id + link token unchanged).
+    label: name,
     barberId: chair.barberId || prev?.barberId || `b-${chair.id}`,
     photoUrl: chair.photoUrl || undefined,
     linkToken,
@@ -164,7 +170,7 @@ export function saveChair(chair: ShopChair): string {
   const exists = Boolean(prev);
   const next = exists
     ? cur.map((c) => c.id === chair.id
-      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, linkToken: saved.linkToken, linkExpiresAt: saved.linkExpiresAt, locationId: saved.locationId }
+      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, active: saved.active, linkToken: saved.linkToken, linkExpiresAt: saved.linkExpiresAt, locationId: saved.locationId }
       : c)
     : [...cur, saved];
   try {
@@ -184,32 +190,28 @@ export function removeChair(id: string): string {
   return "";
 }
 
-/** Sit someone in a chosen seat. Returns false when that seat is already taken. */
-export function occupyChair(label: string, ticketId: string, at = Date.now(), locationId = HOME_LOCATION_ID): boolean {
-  const list = readChairs();
-  const chair = list.find((c) => c.label === label && chairLocation(c) === locationId);
-  if (!chair || chair.occupiedAt) return false;
-  writeChairs(list.map((c) => c.id === chair.id
-    ? { ...c, occupiedAt: at, lastUsedAt: at, ticketId, vacantAt: undefined }
-    : c));
-  return true;
+/*
+ * Who is in a chair comes from the bookings (status "in_chair" + chairLabel), never from the chairs list.
+ * The chairs list is one shared document: writing occupancy into it from several phones (owner and each
+ * chair link) raced and left chairs stuck "in use" or wiped another barber's seat and link.
+ */
+
+/** Sit someone in a chosen seat. Returns false when that seat doesn't exist at this shop. */
+export function occupyChair(label: string, _ticketId: string, _at = Date.now(), locationId = HOME_LOCATION_ID): boolean {
+  return readChairs().some((c) => c.label === label && chairLocation(c) === locationId);
 }
 
-/** Sit someone down. Returns the chair label, or null when every created seat is taken. */
-export function occupyNextChair(ticketId: string, taken: Set<string>, at = Date.now(), locationId = HOME_LOCATION_ID): string | null {
-  const list = readChairs();
-  const free = list.find((c) => chairLocation(c) === locationId && !taken.has(c.label));
-  if (!free) return null;
-  writeChairs(list.map((c) => c.id === free.id
-    ? { ...c, occupiedAt: at, lastUsedAt: at, ticketId, vacantAt: undefined }
-    : c));
-  return free.label;
+/** The first free seat. Returns the chair label, or null when every created seat is taken. */
+export function occupyNextChair(_ticketId: string, taken: Set<string>, _at = Date.now(), locationId = HOME_LOCATION_ID): string | null {
+  return readChairs().find((c) => chairLocation(c) === locationId && c.active !== false && !taken.has(c.label))?.label ?? null;
 }
 
-export function vacateChair(label: string, at = Date.now(), locationId = HOME_LOCATION_ID) {
-  writeChairs(readChairs().map((c) => c.label === label && chairLocation(c) === locationId
-    ? { ...c, lastUsedAt: c.occupiedAt ?? c.lastUsedAt, occupiedAt: undefined, ticketId: undefined, vacantAt: at }
-    : c));
+/** Kept for callers; the seat frees itself when its booking is done. */
+export function vacateChair(_label: string, _at = Date.now(), _locationId = HOME_LOCATION_ID) {}
+
+/** The chair (and so the barber) for a seat label at a shop. */
+export function chairByLabel(label: string | undefined, locationId = HOME_LOCATION_ID) {
+  return label ? readChairs().find((c) => c.label === label && chairLocation(c) === locationId) : undefined;
 }
 
 /** Drops every free chair at one shop. Occupied chairs are left in place. */

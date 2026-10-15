@@ -8,6 +8,7 @@ import { RiverMap, RIVER_STYLE_URL_V2026_10, type RiverMapHandle } from "@river/
 import * as maplibregl from "maplibre-gl";
 import type { Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type React from "react";
 import { useEffect, useRef } from "react";
 
 const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL || RIVER_STYLE_URL_V2026_10;
@@ -54,7 +55,24 @@ function DraggablePin({ map, pin, onPin, disabled }: { map: MapLibreMap; pin: La
   return null;
 }
 
-export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className }: {
+/** Keeps the map sized to its box (fullscreen toggle) and the OSM credit collapsed to the (i) icon. */
+function MapChrome({ map, onMap }: { map: MapLibreMap; onMap?: (m: MapLibreMap) => void }) {
+  useEffect(() => {
+    onMap?.(map);
+    const collapse = () => map.getContainer().querySelectorAll(".maplibregl-ctrl-attrib.maplibregl-compact-show").forEach((el) => el.classList.remove("maplibregl-compact-show"));
+    collapse();
+    map.once("load", collapse);
+    const t = window.setTimeout(collapse, 600);
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(map.getContainer());
+    return () => { ro.disconnect(); window.clearTimeout(t); };
+  }, [map, onMap]);
+  return null;
+}
+
+export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className, onMap, children }: {
+  onMap?: (m: MapLibreMap) => void;
+  children?: React.ReactNode;
   pin: LatLng | null;
   fallbackCenter: LatLng;
   onPin: (p: LatLng) => void;
@@ -68,7 +86,7 @@ export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className }:
     if (map && pin) map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
   }, [pin]);
   return (
-    <div className={`overflow-hidden rounded-tile bg-grey-100 ring-1 ring-line ${className ?? ""}`} data-testid="river-pin-map">
+    <div className={`relative overflow-hidden rounded-tile bg-grey-100 ring-1 ring-line ${className ?? ""}`} data-testid="river-pin-map">
       <RiverMap
         ref={ref}
         style={{ width: "100%", height: "100%" }}
@@ -82,11 +100,13 @@ export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className }:
       >
         {(map) => (
           <>
+            <MapChrome map={map} onMap={onMap} />
             <ClickToPin map={map} onPin={onPin} disabled={disabled} />
             {pin ? <DraggablePin map={map} pin={pin} onPin={onPin} disabled={disabled} /> : null}
           </>
         )}
       </RiverMap>
+      {children}
     </div>
   );
 }

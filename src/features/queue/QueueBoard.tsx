@@ -1,4 +1,6 @@
 "use client";
+import { EmptyBookings } from "@/components/common/EmptyBookings";
+import { ChevronRight } from "lucide-react";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
@@ -14,7 +16,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import {
-  completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useScopedRequests,
+  completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
 
@@ -36,7 +38,7 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
         <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
         <Button data-auth="action" size="sm" className="flex-1" onClick={() => {
           const chair = markInChair(row.id);
-          onFull(chair ? "" : "Every chair is taken. Finish a cut first.");
+          onFull(chair ? "" : "Every barber is busy. Finish a cut first.");
         }}>Accept</Button>
       </div>
     );
@@ -55,11 +57,11 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
   const { haircut } = useShopMenu();
   const who = row.customerLabel || row.contact || "Walk-in";
   const where = row.status === "in_chair" && row.chairLabel ? row.chairLabel : row.slotLabel;
-  const pay = row.paid ? payLabel(row) : row.payWhere === "online" ? "Pay online" : "Pay at the chair";
+  const pay = row.paid ? payLabel(row) : row.payWhere === "online" ? "Pay online" : "Pay at the shop";
   const [open, setOpen] = useState(false);
   return (
     <li className="rounded-card bg-surface py-3 pl-3 pr-3.5 shadow-card">
-      <div className="flex items-center gap-3">
+      <div role="button" tabIndex={0} aria-label={`Open order ${row.ref}`} onClick={() => setOpen(true)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(true); }} className="flex cursor-pointer items-center gap-3">
         <BarberIcon name={row.serviceId === "haircut" ? haircut.icon : "scissors"} size={40} title={row.serviceName} />
         <div className="flex min-w-0 flex-1 flex-col leading-[1.3]">
           <b className="truncate text-[15.5px] tracking-[-0.01em]">{who}</b>
@@ -69,9 +71,9 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
           </span>
         </div>
         <b className="text-[14px]">{row.price ? peso(row.price) : statusLabel(row.status)}</b>
+        <ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden />
       </div>
       <Actions row={row} onFull={onFull} />
-      <button type="button" onClick={() => setOpen(true)} className="mt-2 text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">View details</button>
       {open ? <TransactionSheet row={row} onClose={() => setOpen(false)} /> : null}
     </li>
   );
@@ -84,7 +86,7 @@ export function QueueBoard() {
   const [search, setSearch] = useState("");
   const [full, setFull] = useState("");
   const shops = useShopLocations();
-  const { rows: loaded, ready } = useScopedRequests();
+  const { rows: loaded, ready, locationId: queueLoc } = useQueueRequests();
   const rows = loaded.filter((r) => r.status !== "declined");
   const figures = todayFigures(loaded);
 
@@ -140,10 +142,21 @@ export function QueueBoard() {
           })}
         </div>
       </header>
+      {shops.enabled && shops.branches.length > 1 ? (
+        <div className="mt-3">
+          {shops.viewingAll ? <p className="px-1 text-[12.5px] font-semibold text-muted">The queue is per shop. Showing the main shop; pick one:</p> : null}
+          <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Shop">
+            {shops.branches.map((b) => (
+              <button key={b.id} type="button" aria-pressed={!shops.viewingAll && queueLoc === b.id} onClick={() => shops.setView(b.id)}
+                className={cn("h-9 flex-none rounded-pill px-3.5 text-[13px] font-bold", !shops.viewingAll && queueLoc === b.id ? "bg-ink text-on-ink" : "bg-surface shadow-card")}>{b.name}</button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-4 flex items-center justify-between gap-3 px-1">
-        <p className="text-[13px] font-bold text-muted">{shops.viewingAll ? "Today · all shops" : "Today"}</p>
-        <QueueWalkInButton locationId={shops.scopeId ?? HOME_LOCATION_ID} />
+        <p className="text-[13px] font-bold text-muted">Today{shops.enabled ? ` · ${shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}` : ""}</p>
+        <QueueWalkInButton locationId={queueLoc} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
@@ -168,29 +181,13 @@ export function QueueBoard() {
       {!ready ? (
         <p className="mt-4 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold text-muted">Loading the queue…</p>
       ) : list.length === 0 ? (
-        <EmptyState
-          className="mt-4"
-          title={search ? "No matches" : channel === "online" ? "No bookings yet" : "The chairs are clear"}
-          description={search ? undefined : channel === "online" ? "Customers who scan the shop QR show up here." : "Walk-ins you add at the chair show up here."}
-        />
+        search ? <EmptyState className="mt-4" title="No matches" /> : channel === "online"
+          ? <EmptyBookings className="mt-4" locationId={queueLoc} />
+          : <EmptyBookings className="mt-4" icon="ticket" title="The chairs are clear" subtitle="Add a walk-in, or share your QR so customers can book" locationId={queueLoc} />
       ) : null}
 
-      {shops.viewingAll ? shops.branches.map((branch) => (
-        <Section
-          key={`${branch.id}-open`}
-          title={`${branch.name} · Now`}
-          rows={open.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id)}
-          onFull={(message) => setFull(message)}
-        />
-      )) : <Section title="Now" rows={open} onFull={(message) => setFull(message)} />}
-      {shops.viewingAll ? shops.branches.map((branch) => (
-        <Section
-          key={`${branch.id}-done`}
-          title={`${branch.name} · Done today`}
-          rows={done.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id)}
-          onFull={(message) => setFull(message)}
-        />
-      )) : <Section title="Done today" rows={done} onFull={(message) => setFull(message)} />}
+      <Section title="Now" rows={open} onFull={(message) => setFull(message)} />
+      <Section title="Done today" rows={done} onFull={(message) => setFull(message)} />
 
     </div>
   );

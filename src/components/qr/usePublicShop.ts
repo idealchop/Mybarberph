@@ -11,7 +11,7 @@ export interface PublicShop {
   photoUrls: string[];
   logoUrl: string | null;
   branches: { id: string; name: string; address: string; area: string }[];
-  services: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment" }[];
+  services: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string | null }[];
   servicesByLocation?: Record<string, PublicShop["services"]>;
 }
 

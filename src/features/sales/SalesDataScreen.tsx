@@ -1,35 +1,46 @@
 "use client";
+import { ChevronRight, MapPin } from "lucide-react";
 
 import { CoinIcon } from "@river-apps/icons";
 import { Card, EmptyState, SegmentedControl, StatCard, cn } from "@river-apps/ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
 import { peso } from "@/lib/format";
-import { useScopedRequests } from "@/lib/chair-bookings";
-import { useShopLocations } from "@/lib/shop-locations";
+import { useChairRequests } from "@/lib/chair-bookings";
+import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { SALES_RANGES, salesReport, type SalesRange, type SalesRow, type SalesView } from "@/lib/sales-report";
 import { SalesChartCard } from "./SalesChart";
 import { TransactionSheet } from "@/components/transactions/TransactionSheet";
+import { BarberSalesView } from "./BarberSalesView";
 
-const VIEWS: { value: SalesView; label: string }[] = [
+type View = SalesView | "performance";
+const VIEWS: { value: View; label: string }[] = [
   { value: "overview", label: "Overview" },
+  { value: "performance", label: "Barbers" },
   { value: "services", label: "Services" },
-  { value: "payments", label: "Payments" },
-  { value: "shop", label: "Shop" },
 ];
 
 /** Sales for the shop: money, cuts, how it was paid, and who did the work. */
 export function SalesDataScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
-  const { rows } = useScopedRequests();
+  const { rows: all, ready } = useChairRequests();
+  const [loc, setLoc] = useState<string>("");
+  const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
+  const rows = ready ? all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where) : [];
   const [range, setRange] = useState<SalesRange>("today");
-  const [view, setView] = useState<SalesView>("overview");
+  const [view, setView] = useState<View>("overview");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const t = window.setTimeout(() => { if (q.get("view") === "performance") setView("performance"); if (q.get("loc")) setLoc(q.get("loc")!); }, 0);
+    return () => window.clearTimeout(t);
+  }, []);
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   const report = salesReport(rows, unpaid, range);
-  const place = shops.viewingAll ? "All locations" : shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name;
+  const branchName = shops.branches.find((b) => b.id === where)?.name;
+  const place = where === "all" ? (shops.enabled ? "All locations" : profile.name) : `${profile.name} · ${branchName ?? ""}`;
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
@@ -42,30 +53,26 @@ export function SalesDataScreen() {
               Sales
             </h1>
           </div>
-          <p className="mt-0.5 pl-[4.75rem] text-[14px] font-semibold text-muted">{SALES_RANGES.find((item) => item.value === range)?.label} · {place}</p>
-        </div>
-        <div role="tablist" aria-label="Sales view" className="flex items-end gap-5">
-          {VIEWS.map((item) => {
-            const on = view === item.value;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setView(item.value)}
-                className={cn(
-                  "-mb-px min-h-11 border-b-2 px-0.5 pb-2.5 pt-2 text-[15px]",
-                  on ? "border-ink font-bold text-ink" : "border-transparent font-semibold text-muted",
-                )}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          <p className="mt-0.5 pl-[4.75rem] text-[14px] font-semibold text-muted">{view === "performance" ? "Barbers" : SALES_RANGES.find((item) => item.value === range)?.label} · {place}</p>
         </div>
       </header>
+      <div role="tablist" aria-label="Sales view" className="mt-3 grid grid-cols-3 rounded-pill bg-grey-100 p-1">
+        {VIEWS.map((item) => (
+          <button key={item.value} type="button" role="tab" aria-selected={view === item.value} onClick={() => setView(item.value)}
+            className={cn("h-9 rounded-pill text-[13.5px] font-bold transition", view === item.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{item.label}</button>
+        ))}
+      </div>
+      {shops.enabled && shops.branches.length > 1 ? (
+        <label className="mt-2.5 flex h-10 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-card">
+          <MapPin size={15} className="flex-none text-muted" aria-hidden />
+          <select aria-label="Location" value={where} onChange={(e) => setLoc(e.target.value)} className="min-w-0 flex-1 bg-transparent text-[13.5px] font-bold outline-none">
+            <option value="all">All locations</option>
+            {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+      ) : null}
 
+      {view === "performance" ? <div className="mt-4"><BarberSalesView loc={where} ranked={where === "all" && shops.enabled} /></div> : (
       <SegmentedControl
         className="mt-4 w-fit"
         label="Date range"
@@ -73,17 +80,16 @@ export function SalesDataScreen() {
         onChange={setRange}
         options={SALES_RANGES.map(({ value, label }) => ({ value, label }))}
       />
+      )}
 
       {view === "overview" ? <Overview report={report} range={range} /> : null}
       {view === "services" ? <Breakdown title="Services" empty="No cuts in this shop yet." rows={report.services} total={report.services.reduce((sum, item) => sum + item.salesCentavos, 0)} /> : null}
-      {view === "payments" ? <Breakdown mix title="How it was paid" empty="No payments yet." rows={report.payments} total={report.payments.reduce((sum, item) => sum + item.salesCentavos, 0)} note="Cash, GCash, Maya and card are collected. Unpaid is still owed." /> : null}
-      {view === "shop" ? <ShopView report={report} /> : null}
     </div>
   );
 }
 
 function Overview({ report, range }: { report: ReturnType<typeof salesReport>; range: SalesRange }) {
-  const { rows } = useScopedRequests();
+  const { rows } = useChairRequests();
   const [open, setOpen] = useState<string | null>(null);
   const openRow = open ? rows.find((r) => r.id === open) : undefined;
   return (
@@ -120,6 +126,7 @@ function Overview({ report, range }: { report: ReturnType<typeof salesReport>; r
                   <b className="text-[14px] tabular-nums">{peso(item.sales)}</b>
                   {item.paid ? null : <span className="text-[11.5px] font-bold text-muted">Unpaid</span>}
                 </span>
+                <ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden />
               </li>
             ))}
           </ul>
@@ -246,3 +253,4 @@ function mark(name: string) {
   const parts = trimmed.split(/\s+/).slice(0, 2);
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
+

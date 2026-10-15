@@ -1,4 +1,5 @@
 "use client";
+import { EmptyBookings } from "@/components/common/EmptyBookings";
 
 import { CoinIcon } from "@river-apps/icons";
 import { Plus, ScanLine } from "lucide-react";
@@ -45,7 +46,7 @@ function BookingCard({ row, place }: { row: ChairRequest; place?: string }) {
         <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
         <Button data-auth="action" size="sm" className="flex-1" onClick={() => {
           const chair = markInChair(row.id);
-          setNote(chair ? "" : "Every chair is taken, or none have been added in Services yet.");
+          setNote(chair ? "" : "Every barber is busy, or none have been added in Services yet.");
         }}>Accept</Button>
       </div>
       {note ? <p className="mt-2 text-[13px] font-semibold">{note}</p> : null}
@@ -53,16 +54,14 @@ function BookingCard({ row, place }: { row: ChairRequest; place?: string }) {
   );
 }
 
-function Bookings({ rows, loading, max, placeFor }: { rows: ChairRequest[]; loading: boolean; max: number; placeFor?: (row: ChairRequest) => string }) {
+function Bookings({ rows, loading, max, placeFor, locationId }: { rows: ChairRequest[]; loading: boolean; max: number; placeFor?: (row: ChairRequest) => string; locationId?: string }) {
   const shown = rows.slice(0, max);
   const more = rows.length - shown.length;
   if (loading) return <p className="rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold text-muted">Loading bookings…</p>;
   return (
     <div className="flex flex-col gap-3">
       {shown.length === 0 ? (
-        <p className="rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold text-muted">
-          No bookings yet. When customers scan the shop QR, they’ll show up here.
-        </p>
+        <EmptyBookings locationId={locationId} />
       ) : (
         <div className="grid grid-cols-2 items-start gap-3">
           {shown.map((row) => <BookingCard key={row.id} row={row} place={placeFor?.(row)} />)}
@@ -166,7 +165,7 @@ export function HomeScreen() {
         <SalesChartCard className="mx-4 mt-3" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
-        <div className="mx-4"><Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} /></div>
+        <div className="mx-4"><Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} locationId={shops.viewingAll ? undefined : shops.scopeId ?? undefined} /></div>
         {paid ? null : (
           <Card padding="none" className="mx-4 mt-2.5 flex items-center justify-between gap-3 px-4 py-3.5">
             <span className="min-w-0">
@@ -187,7 +186,7 @@ export function HomeScreen() {
             eyebrow={`Today · ${dayLabel}`}
             title={`${todayTitle} · ${figures.cuts} cuts`}
             titleSize="lg"
-            description={`${inChair} in chair`}
+            description={`${inChair} in service`}
             contentWidth={460}
             actions={
               <div className="flex flex-nowrap items-center gap-2.5">
@@ -201,7 +200,7 @@ export function HomeScreen() {
           <StatCard
             className="px-5 pb-4 pt-[18px]"
             layout="title"
-            label="Today’s chairs"
+            label="Today’s barbers"
             footer={
               <>
                 <span className="flex flex-col leading-[1.2]">
@@ -229,7 +228,7 @@ export function HomeScreen() {
         {shops.viewingAll ? <ShopDays rows={byShop} className="mt-5" /> : null}
         <Card padding="none" className="mt-5 px-[18px] pb-4 pt-4">
           <CardHeader className="mb-3" title="Bookings to accept" subtitle={aside} action={<Link href="/queue?channel=online" className={linkCls}>All bookings</Link>} />
-          <Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} />
+          <Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} locationId={shops.viewingAll ? undefined : shops.scopeId ?? undefined} />
         </Card>
       </div>
     </>

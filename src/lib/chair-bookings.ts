@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { ChairRequest, ChairStatus } from "@/lib/booking-types";
-import { cloudBookings, removeBooking, saveBooking, useCloud } from "@/lib/cloud";
-import { chairLocation, loadChairs, occupyChair, occupyNextChair, vacateChair } from "@/lib/shop-chairs";
+import { cloudBookings, saveBooking, useCloud } from "@/lib/cloud";
+import { chairBarberName, chairByLabel, chairLocation, loadChairs, occupyChair, occupyNextChair, vacateChair } from "@/lib/shop-chairs";
 import { ALL_LOCATIONS, HOME_LOCATION_ID, inLocation, readLocationStore, useShopLocations } from "@/lib/shop-locations";
 
 export type { ChairRequest, ChairStatus, Channel, PayWhere } from "@/lib/booking-types";
@@ -46,9 +46,14 @@ export function addWalkIn(booking: ChairRequest) {
 /** Adds a walk-in and sits them immediately. Returns the chair, or null when none is free. */
 export function seatWalkIn(booking: ChairRequest): string | null {
   const locationId = locationForNew(booking);
-  addWalkIn({ ...booking, locationId, status: "accepted" });
-  const label = markInChair(booking.id);
-  if (!label) removeBooking(booking.id);
+  const at = Date.now();
+  if (!loadChairs().some((chair) => chairLocation(chair) === locationId)) {
+    addWalkIn({ ...booking, locationId, status: "in_chair", startedAt: at });
+    return "Chair";
+  }
+  const label = occupyNextChair(booking.id, usedChairs(locationId), at, locationId);
+  if (!label) return null;
+  addWalkIn({ ...booking, locationId, status: "in_chair", chairLabel: label, seatLabel: label, startedAt: at, ...barberOf(label, locationId) });
   return label;
 }
 
@@ -56,10 +61,10 @@ export function seatWalkIn(booking: ChairRequest): string | null {
 export function seatWalkInOnChair(booking: ChairRequest, chairLabel: string, locationId?: string): string | null {
   const loc = locationId || locationForNew(booking);
   if (usedChairs(loc).has(chairLabel)) return null;
-  addWalkIn({ ...booking, locationId: loc, status: "accepted" });
-  const label = acceptOnChair(booking.id, chairLabel, loc);
-  if (!label) removeBooking(booking.id);
-  return label;
+  // One save: the walk-in is created already in the chair (two quick saves could land out of order).
+  const at = Date.now();
+  addWalkIn({ ...booking, locationId: loc, status: "in_chair", chairLabel, seatLabel: chairLabel, startedAt: at, ...barberOf(chairLabel, loc) });
+  return chairLabel;
 }
 
 function usedChairs(loc: string) {
@@ -94,8 +99,14 @@ export function markInChair(id: string): string | null {
   }
   const label = occupyNextChair(id, usedChairs(loc), at, loc);
   if (!label) return null;
-  patchRequest(id, { status: "in_chair", chairLabel: label, seatLabel: label, startedAt: at, locationId: loc });
+  patchRequest(id, { status: "in_chair", chairLabel: label, seatLabel: label, startedAt: at, locationId: loc, ...barberOf(label, loc) });
   return label;
+}
+
+/** Snapshot of the barber on a seat, saved on the visit for salary and remittance. */
+function barberOf(label: string, loc: string) {
+  const chair = chairByLabel(label, loc);
+  return chair ? { barberId: chair.barberId || chair.id, barberName: chairBarberName(chair) } : {};
 }
 
 /** Accept onto one barber’s chair and start their timer. Null when that chair is taken. */
@@ -105,7 +116,7 @@ export function acceptOnChair(id: string, chairLabel: string, locationId?: strin
   if (usedChairs(loc).has(chairLabel)) return null;
   const at = Date.now();
   if (!occupyChair(chairLabel, id, at, loc)) return null;
-  patchRequest(id, { status: "in_chair", chairLabel, seatLabel: chairLabel, startedAt: at, locationId: loc });
+  patchRequest(id, { status: "in_chair", chairLabel, seatLabel: chairLabel, startedAt: at, locationId: loc, ...barberOf(chairLabel, loc) });
   return chairLabel;
 }
 
@@ -148,6 +159,20 @@ export function useScopedRequests() {
   return { rows, ready: data.ready && loc.ready };
 }
 
+/** The one shop the Queue works on: the open shop, or the main shop when "All locations" is open. */
+export function queueLocation(loc: { enabled: boolean; viewingAll: boolean; scopeId: string | null }) {
+  return !loc.enabled || loc.viewingAll ? HOME_LOCATION_ID : loc.scopeId || HOME_LOCATION_ID;
+}
+
+/** Queue rows (and the Queue nav badge) for exactly one location. Never mixes shops. */
+export function useQueueRequests() {
+  const data = useChairRequests();
+  const loc = useShopLocations();
+  const locationId = queueLocation(loc);
+  const rows = data.ready && loc.ready ? data.rows.filter((row) => requestLocation(row) === locationId) : [];
+  return { rows, ready: data.ready && loc.ready, locationId };
+}
+
 export function useChairRequests() {
   const cloud = useCloud();
   const rows = [...cloud.bookings].sort((a, b) => b.createdAt - a.createdAt);
@@ -169,7 +194,7 @@ export function usePublicBooking(id: string, shopId: string) {
       } catch { /* keep the last status */ }
     };
     void pull();
-    const timer = window.setInterval(pull, 5000);
+    const timer = window.setInterval(pull, 3000);
     return () => { live = false; window.clearInterval(timer); };
   }, [id, shopId]);
   return booking;
