@@ -9,7 +9,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
-import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
+import { salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats } from "@/lib/sales-stats";
 import { BarberRanking, ClaimHistory, ClaimRanking, RangeChips, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
@@ -55,7 +55,6 @@ export function SalesDataScreen() {
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
   const branchName = shops.branches.find((b) => b.id === where)?.name;
-  const place = where === "all" ? (shops.enabled ? "All locations" : profile.name) : `${profile.name} · ${branchName ?? ""}`;
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
@@ -66,7 +65,6 @@ export function SalesDataScreen() {
             <CoinIcon size={28} /> Sales
           </h1>
         </div>
-        <p className="mt-0.5 pl-[4.75rem] text-[14px] font-semibold text-muted">{SALES_RANGES.find((i) => i.value === range)?.label} · {place}</p>
       </header>
 
       <div role="tablist" aria-label="Sales view" className="mt-3 grid grid-cols-3 rounded-pill bg-grey-100 p-1">

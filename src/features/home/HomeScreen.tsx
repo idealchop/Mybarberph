@@ -9,7 +9,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BarberChair } from "@/components/art";
-import { PageBack } from "@/components/shell/PageBack";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
@@ -120,7 +119,6 @@ export function HomeScreen() {
         <header className="px-4 pt-1">
           <div className="flex h-16 items-center justify-between gap-2">
             <div className="flex min-w-0 items-center">
-              <PageBack fallback="/home" />
               {user ? (
                 <div className="flex min-h-11 min-w-0 items-center gap-2 py-1 pl-1 pr-1.5">
                   <Link href="/settings" aria-label="My Account" className="flex-none">
@@ -282,7 +280,6 @@ function DesktopBar({ name, owner, greeting, dayLabel, photoUrl, onSignIn }: { n
   return (
     <Topbar
       className="px-1"
-      leading={<PageBack fallback="/home" />}
       title={owner ? `${greeting}, ${owner}` : greeting}
       subtitle={`${dayLabel} · ${name}`}
       actions={
