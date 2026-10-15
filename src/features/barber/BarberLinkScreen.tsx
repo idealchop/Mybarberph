@@ -206,7 +206,12 @@ export function BarberLinkScreen({ token }: { token: string }) {
         </div>
       </header>
 
-      {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
+      {allowance.unlimited ? null : (
+        <p className="mt-3 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-bold text-ink-2" aria-live="polite">
+          {allowance.atLimit ? allowance.message : allowance.label}
+        </p>
+      )}
+      {note && note !== allowance.label && note !== allowance.message ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
 
       {adding ? (
         <section className="mt-5">
