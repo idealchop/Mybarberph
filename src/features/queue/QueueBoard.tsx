@@ -113,7 +113,7 @@ export function QueueBoard() {
           <div>
             <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Queue</h1>
             <p className="mt-0.5 text-[14px] font-semibold text-muted">
-              {inChair} in chair · {toAcceptCount} to accept
+              {inChair ? `${inChair} barber${inChair === 1 ? "" : "s"} busy` : "Barbers free"} · {toAcceptCount} waiting
             </p>
           </div>
         </div>
@@ -160,10 +160,10 @@ export function QueueBoard() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
-        <Link href="/queue/seats" aria-label="In chair" className="block rounded-card">
-          <StatCard className="pb-3" label="In chair" value={String(inChair)} />
+        <Link href="/queue/seats" aria-label="Barbers busy" className="block rounded-card">
+          <StatCard className="pb-3" label="Busy barbers" value={String(inChair)} />
         </Link>
-        <StatCard className="pb-3" label="To accept" value={String(toAcceptCount)} />
+        <StatCard className="pb-3" label="Waiting" value={String(toAcceptCount)} />
         <StatCard className="pb-3" label="Done" value={String(rows.filter((r) => r.status === "done").length)} />
       </div>
 

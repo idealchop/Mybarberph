@@ -1,8 +1,9 @@
 "use client";
+import { useRemit } from "@/features/sales/useRemit";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { Plus, ScanLine } from "lucide-react";
+import { ChevronDown, Plus, ScanLine } from "lucide-react";
 import { Avatar, Badge, Button, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,7 @@ import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { SalesChartCard } from "@/features/sales/SalesChart";
 import { markInChair, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
-import { branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
 import { CompanionCard } from "@/features/companion/CompanionCard";
@@ -90,7 +91,13 @@ export function HomeScreen() {
   });
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
   const toAccept = rows.filter((row) => row.status === "requested" || row.status === "accepted").length;
-  const inChair = rows.filter((row) => row.status === "in_chair").length;
+  const busy = rows.filter((row) => row.status === "in_chair").length;
+  const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
+  const todays = rows.filter((row) => row.createdAt >= today0 && row.status !== "declined");
+  const customers = todays.length;
+  const online = todays.filter((row) => row.channel === "online").length;
+  const remit = useRemit(shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
+  const toClaim = remit.data?.total ?? 0;
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   const todaySales = salesReport(rows, unpaid, "today");
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
@@ -100,7 +107,6 @@ export function HomeScreen() {
   const realName = user && !/^[+\d]/.test(user.name) ? user.name : "";
   const owner = realName ? (realName.split(" ")[0] || realName) : (user ? profile.name : "");
   const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
-  const contact = user ? shortPhone(user.phone || profile.phone) || user.email || "" : "";
   const needsSetup = Boolean(user) && ready && !profile.name;
   const dayLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" });
   const dayTotal = figures.cuts + toAccept;
@@ -114,13 +120,25 @@ export function HomeScreen() {
             <div className="flex min-w-0 items-center">
               <PageBack fallback="/home" />
               {user ? (
-                <Link href="/settings" aria-label="My Account" className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5">
-                  <Avatar name={owner || "Me"} src={user.photoUrl} preset="sky" size={36} />
+                <div className="flex min-h-11 min-w-0 items-center gap-2 py-1 pl-1 pr-1.5">
+                  <Link href="/settings" aria-label="My Account" className="flex-none">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={profile.logoUrl || "/icons3d/house.png"} alt="" width={36} height={36} className={`size-9 rounded-[11px] ${profile.logoUrl ? "object-cover ring-1 ring-line" : "bg-grey-50 object-contain p-0.5"}`} />
+                  </Link>
                   <span className="flex min-w-0 flex-col leading-[1.2]">
-                    <span className="max-w-[150px] truncate text-[13px] font-medium">{user.name}</span>
-                    {contact ? <span className="max-w-[150px] truncate text-[11px] font-medium text-muted">{contact}</span> : null}
+                    <Link href="/settings" className="max-w-[170px] truncate text-[14px] font-extrabold tracking-[-0.01em]">{shopName}</Link>
+                    {shops.enabled && shops.branches.length > 1 ? (
+                      <label className="relative inline-flex max-w-[170px] items-center gap-0.5 text-[11.5px] font-semibold text-muted">
+                        <span className="truncate">{shops.viewingAll ? "All locations" : shops.branch?.name ?? "Main"}</span>
+                        <ChevronDown size={13} strokeWidth={2.2} className="flex-none" aria-hidden />
+                        <select aria-label="Switch location" value={shops.viewId} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+                          {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          <option value={ALL_LOCATIONS}>All locations</option>
+                        </select>
+                      </label>
+                    ) : <span className="max-w-[170px] truncate text-[11.5px] font-semibold text-muted">{profile.area || profile.address.split(",")[0] || "Your shop"}</span>}
                   </span>
-                </Link>
+                </div>
               ) : (
                 <button type="button" onClick={() => requireAuth()} className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5 text-left">
                   <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold">?</span>
@@ -145,7 +163,7 @@ export function HomeScreen() {
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
             </h2>
-            <p className="mt-0.5 text-[12.5px] font-medium text-on-ink-muted">{figures.cuts} cuts · {inChair} in chair</p>
+            <p className="mt-0.5 text-[12.5px] font-medium text-on-ink-muted">{figures.cuts} cuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</p>
             <div className="mt-2 flex flex-nowrap items-center gap-1.5">
               <Button href="/queue/new" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
               <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
@@ -154,11 +172,9 @@ export function HomeScreen() {
           <div aria-hidden className="relative z-0 w-[88px] flex-none"><BarberChair size={88} /></div>
         </section>
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
-          <StatCard className="pb-3" label="To accept" value={String(toAccept)} />
-          <Link href="/queue/seats" aria-label="In chair" className="block min-w-0 rounded-card">
-            <StatCard className="pb-3" label="In chair" value={String(inChair)} />
-          </Link>
-          <StatCard className="pb-3" label="Unpaid" value={peso(unpaid)} />
+          <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
+          <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
+          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={peso(toClaim)} /></Link>
         </div>
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
         <CompanionCard className="mx-4 mt-3" />
@@ -186,7 +202,7 @@ export function HomeScreen() {
             eyebrow={`Today · ${dayLabel}`}
             title={`${todayTitle} · ${figures.cuts} cuts`}
             titleSize="lg"
-            description={`${inChair} in service`}
+            description={busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
             actions={
               <div className="flex flex-nowrap items-center gap-2.5">
@@ -217,11 +233,9 @@ export function HomeScreen() {
           </StatCard>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-5">
-          <StatCard className="pb-3" label="To accept" value={String(toAccept)} />
-          <Link href="/queue/seats" aria-label="In chair" className="block min-w-0 rounded-card">
-            <StatCard className="pb-3" label="In chair" value={String(inChair)} />
-          </Link>
-          <StatCard className="pb-3" label="Unpaid" value={peso(unpaid)} />
+          <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
+          <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
+          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={peso(toClaim)} /></Link>
         </div>
         <CompanionCard className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />
@@ -241,7 +255,7 @@ function ShopDays({ rows, className }: { rows: { branch: { id: string; name: str
       {rows.map((item) => (
         <li key={item.branch.id} className="rounded-card bg-surface px-3.5 py-3 shadow-card">
           <b className="block text-[15px]">{item.branch.name}</b>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Today: {peso(item.sales)} · {item.cuts} cuts · {item.inChair} in chair</p>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Today: {peso(item.sales)} · {item.cuts} cuts · {item.inChair} busy</p>
         </li>
       ))}
     </ul>

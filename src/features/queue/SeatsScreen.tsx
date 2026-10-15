@@ -17,7 +17,7 @@ function seatHolders(chairs: ShopChair[], rows: ChairRequest[]) {
   return map;
 }
 
-/** Chairs for the open shop, opened from the In chair card. */
+/** Chairs for the open shop, opened from the Busy barbers card. */
 export function SeatsScreen() {
   const shops = useShopLocations();
   const { chairs, ready } = useShopChairs();
@@ -30,7 +30,7 @@ export function SeatsScreen() {
       <Topbar
         className="px-1"
         leading={<PageBack fallback="/queue" />}
-        title="In chair"
+        title="My Barbers"
         subtitle={ready ? `${inUse} in use${place ? ` · ${place}` : ""}` : "Loading"}
       />
       {!ready ? null : shops.viewingAll ? shops.branches.map((branch) => {
