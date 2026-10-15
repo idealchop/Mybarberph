@@ -2,6 +2,7 @@
 import { cn } from "@river-apps/ui";
 import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { rangeWindow, type SalesRange } from "@/lib/sales-report";
@@ -110,6 +111,8 @@ export function PerformanceDashboard({ all, range, where, branches, chairs }: { 
         <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} cut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
       </div>
 
+      <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />
+      {multiLoc ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
 
       <Panel title="Busiest days" sub={byDay.some((d) => d.cuts) ? `Most on ${WD[byDay.reduce((b, d, i) => (d.cuts > byDay[b]!.cuts ? i : b), 0)]}` : "By weekday and hour"}>
@@ -166,8 +169,6 @@ export function PerformanceDashboard({ all, range, where, branches, chairs }: { 
         </ul>
       </Panel>
 
-      <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />
-      {multiLoc ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
     </div>
   );
 }
@@ -215,13 +216,17 @@ function Split({ label, parts, fmt, className }: { label: string; parts: { k: st
     </div>
   );
 }
-function Rank({ title, rows }: { title: string; rows: { key: string; name: string; sub: string; v: number; href: string }[] }) {
+function Rank({ title, rows: all }: { title: string; rows: { key: string; name: string; sub: string; v: number; href: string }[] }) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(all.length / 10));
+  const p = Math.min(page, pages - 1);
+  const rows = all.slice(p * 10, p * 10 + 10);
   return (
     <section className="rounded-card bg-surface shadow-card">
       <h2 className="px-4 pt-4 text-[16px] font-bold">{title}</h2>
       {rows.length ? (
         <ol className="mt-1">
-          {rows.map((r, i) => (
+          {rows.map((r, j) => { const i = p * 10 + j; return (
             <li key={r.key} className="border-b border-line last:border-b-0">
               <Link href={r.href} className="flex items-center gap-3 px-4 py-2.5">
                 <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full font-extrabold", i < 3 ? "text-[20px]" : "bg-grey-100 text-[13px] text-muted")}>{i < 3 ? MEDAL[i] : i + 1}</span>
@@ -229,9 +234,16 @@ function Rank({ title, rows }: { title: string; rows: { key: string; name: strin
                 <b className="tabular-nums">{peso(r.v)}</b><ChevronRight size={16} className="text-subtle" aria-hidden />
               </Link>
             </li>
-          ))}
+          ); })}
         </ol>
       ) : <p className="px-4 pb-4 pt-2 text-[13px] font-semibold text-muted">No finished cuts in this range.</p>}
+      {pages > 1 ? (
+        <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-[13px] font-bold">
+          <button type="button" disabled={p === 0} onClick={() => setPage(p - 1)} className="disabled:opacity-30">‹ Prev</button>
+          <span className="text-[12px] text-muted">{p * 10 + 1}–{Math.min(all.length, p * 10 + 10)} of {all.length}</span>
+          <button type="button" disabled={p >= pages - 1} onClick={() => setPage(p + 1)} className="disabled:opacity-30">Next ›</button>
+        </div>
+      ) : null}
     </section>
   );
 }
