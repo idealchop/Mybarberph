@@ -1,3 +1,4 @@
+import { entitledPlan } from "@/lib/entitlements";
 import { companionEnabled } from "@/lib/companion-flag";
 import { getCaller, json, unauthorized } from "@/lib/server/auth";
 import { listMessages, loadMemory, quota } from "@/lib/server/companion/companion";
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   const limit = Number(sp.get("limit")) || 30;
   if (before) return json(await listMessages(me.uid, { before, limit }));
   const shop = await ensureShop(me.uid);
-  const plan = effectivePlan(shop);
+  const plan = entitledPlan(effectivePlan(shop));
   const [page, mem, q] = await Promise.all([listMessages(me.uid, { limit }), loadMemory(me.uid), quota(me.uid, plan)]);
   return json({ ...page, goals: mem.goals, quota: q, plan });
 }

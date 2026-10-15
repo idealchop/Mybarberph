@@ -1,3 +1,4 @@
+import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
@@ -156,7 +157,7 @@ export async function putState(shopId: string, key: string, raw: string) {
   if (docId === "locations") {
     // Plan limit: Partner and Pro run 1 shop, Lifetime 1–5 up to 5, Lifetime 5+ unlimited.
     const cur = ((await shopRef(shopId).get()).data() ?? {}) as ShopDoc;
-    const limit = maxLocations(effectivePlan(cur));
+    const limit = maxLocations(entitledPlan(effectivePlan(cur)));
     // Shops already saved stay usable (e.g. after a plan lapses); only adding past the limit is refused.
     const had = Array.isArray(cur.branches) ? cur.branches.length : 0;
     if (parsed.enabled && Array.isArray(parsed.branches) && parsed.branches.length > Math.max(limit, had)) {
@@ -232,7 +233,7 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>) {
     // Walk-ins start unpaid at the menu price; payment is confirmed when the cut is completed.
     clean.paid = false;
     if (!clean.price && shop) clean.price = menuFor(shop, clean.locationId).find((m) => m.id === (clean.serviceId || "haircut"))?.price ?? 0;
-    const limit = walkInLimit(shop ? effectivePlan(shop) : "partner");
+    const limit = walkInLimit(entitledPlan(shop ? effectivePlan(shop) : "partner"));
     if (Number.isFinite(limit) && (await walkInsToday(shopId, clean.locationId)) >= limit) throw new WalkInLimitError(WALKIN_LIMIT_MESSAGE);
   }
   // An owner can record an online booking as paid at the shop (cash/GCash); that makes it a shop payment.
@@ -277,7 +278,7 @@ export function publicShop(id: string, s: ShopDoc) {
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind })),
     servicesByLocation: Object.fromEntries(Object.entries(s.menuByLocation ?? {}).map(([k, menu]) => [k, menu.map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind }))])),
-    plan: effectivePlan(s) === "partner" ? "partner" : "paid",
+    plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
     updatedAt: s.updatedAt,
   };
 }

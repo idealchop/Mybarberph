@@ -22,8 +22,8 @@ export function ShopsScreen() {
   const { profile, ready: profileReady } = useShopProfile();
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
-  const { plan, tier } = useTier();
-  const limit = maxLocations(plan);
+  const { access, tier } = useTier();
+  const limit = maxLocations(access);
   const atLimit = branches.length >= limit;
   const next = planForLocations(branches.length + 1);
   const [name, setName] = useState("");
@@ -132,7 +132,7 @@ export function ShopsScreen() {
 
           {atLimit ? (
             <section className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card">
-              <b className="block text-[16px]">{planInfo(plan).title} runs {limit} shop{limit === 1 ? "" : "s"}</b>
+              <b className="block text-[16px]">{planInfo(access).title} runs {limit} shop{limit === 1 ? "" : "s"}</b>
               <p className="mt-1 text-[13.5px] font-medium text-muted">To add another shop, upgrade to {next.title} ({next.price}).</p>
               <Button className="mt-4" fullWidth href="/settings/billing">See Lifetime plans</Button>
             </section>

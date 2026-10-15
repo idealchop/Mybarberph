@@ -5,3 +5,6 @@ env:
     value: "barbersdb"
   - variable: BARBERS_ENV
     value: "prod"
+  # Plan limits (walk-in cap, QR, shops, Companion questions). "0" = test phase: all features for every plan.
+  - variable: PLAN_LIMITS_ENABLED
+    value: "0"

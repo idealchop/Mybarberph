@@ -11,7 +11,11 @@ const nextConfig: NextConfig = {
   agentRules: false,
   devIndicators: false,
   // AI Companion switch (see src/lib/companion-flag.ts): on only where COMPANION_ENABLED=1.
-  env: { NEXT_PUBLIC_COMPANION_ENABLED: process.env.COMPANION_ENABLED === "1" ? "1" : "0" },
+  env: {
+    NEXT_PUBLIC_COMPANION_ENABLED: process.env.COMPANION_ENABLED === "1" ? "1" : "0",
+    // Plan limits switch (src/lib/entitlements.ts): off unless PLAN_LIMITS_ENABLED=1.
+    NEXT_PUBLIC_PLAN_LIMITS_ENABLED: process.env.PLAN_LIMITS_ENABLED === "1" ? "1" : "0",
+  },
   // Same-origin Firebase Auth handler (Safari blocks cross-site redirect storage). Used when
   // NEXT_PUBLIC_AUTH_SAME_ORIGIN=1 and the host's /__/auth/handler is an authorized OAuth redirect URI.
   async rewrites() {

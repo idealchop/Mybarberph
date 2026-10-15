@@ -1,3 +1,4 @@
+import { entitledPlan } from "@/lib/entitlements";
 import { getCaller, json, unauthorized } from "@/lib/server/auth";
 import { chairPerformance, loadShopData } from "@/lib/server/companion/data";
 import { effectivePlan, ensureShop, manilaDayStart } from "@/lib/server/shops";
@@ -13,6 +14,6 @@ export async function GET(req: Request) {
   const loc = sp.get("loc") || "all";
   const from = range === "today" ? manilaDayStart() : manilaDayStart() - (range === "7d" ? 6 : 27) * 86_400_000;
   const shop = await ensureShop(me.uid);
-  const data = await loadShopData(me.uid, shop.name, effectivePlan(shop));
+  const data = await loadShopData(me.uid, shop.name, entitledPlan(effectivePlan(shop)));
   return json({ range, loc, from, ...chairPerformance(data, from, loc) });
 }

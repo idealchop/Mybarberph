@@ -1,3 +1,4 @@
+import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
@@ -65,7 +66,7 @@ async function addMessage(uid: string, m: Omit<Message, "id" | "createdAt"> & { 
 }
 
 export async function quota(uid: string, plan: string) {
-  if (isPaid(plan)) return { unlimited: true as const, used: 0, limit: null, remaining: null };
+  if (isPaid(entitledPlan(plan))) return { unlimited: true as const, used: 0, limit: null, remaining: null };
   const used = ((await companion(uid).doc(`quota-${monthId()}`).get()).data()?.questions as number) ?? 0;
   return { unlimited: false as const, used, limit: PARTNER_MONTHLY_QUESTIONS, remaining: Math.max(0, PARTNER_MONTHLY_QUESTIONS - used) };
 }
@@ -131,7 +132,7 @@ function context(shop: ShopDoc, data: T.ShopData, plan: string, goals: T.Goal[])
 /** One owner question → tool calls → answer. Returns the saved assistant message. */
 export async function chat(uid: string, text: string, locationId?: string) {
   const shop = await ensureShop(uid);
-  const plan = effectivePlan(shop);
+  const plan = entitledPlan(effectivePlan(shop));
   const paid = isPaid(plan);
   const q = await quota(uid, plan);
   if (!q.unlimited && q.remaining <= 0) {
@@ -172,7 +173,7 @@ export async function weeklyTips(uid: string, opts: { force?: boolean } = {}) {
   const ref = shopRef(uid).collection("insights").doc(w);
   if (!opts.force && (await ref.get()).exists) return { skipped: "already sent", weekId: w };
   const shop = await ensureShop(uid);
-  const plan = effectivePlan(shop);
+  const plan = entitledPlan(effectivePlan(shop));
   const paid = isPaid(plan);
   const data = await T.loadShopData(uid, shop.name, plan);
   const mem = await loadMemory(uid);
