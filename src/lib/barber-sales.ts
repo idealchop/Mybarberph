@@ -1,5 +1,5 @@
 /** Per-barber sales for salary and remittance. Manila time (UTC+8, no DST); weeks run Monday to Sunday. */
-export interface BarberSalesRow { barberId: string; barberName: string; cuts: number; gross: number; cash: number; gcash: number; online: number; unpaid: number; remit: number }
+export interface BarberSalesRow { barberId: string; barberName: string; locationId?: string; locationName?: string; cuts: number; gross: number; cash: number; gcash: number; online: number; unpaid: number; remit: number }
 export interface BarberSales { range: "week" | "month" | "custom"; from: number; to: number; label: string; barbers: BarberSalesRow[]; total: BarberSalesRow }
 
 const DAY = 86_400_000;

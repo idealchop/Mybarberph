@@ -7,8 +7,8 @@ export type SalesView = "overview" | "services" | "payments" | "shop";
 
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "today", label: "Today" },
-  { value: "week", label: "7 days" },
-  { value: "month", label: "30 days" },
+  { value: "week", label: "7d" },
+  { value: "month", label: "28d" },
 ];
 
 export interface SalesRow {
@@ -87,7 +87,7 @@ function dayLabel(ms: number) {
 /** Sales from this shop's finished visits (Manila days). `rows` is every visit in scope. */
 export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange): SalesReport {
   const now = Date.now();
-  const span = range === "today" ? 1 : range === "week" ? 7 : 30;
+  const span = range === "today" ? 1 : range === "week" ? 7 : 28;
   const keys = Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY_MS));
   const prevKeys = new Set(Array.from({ length: span }, (_, i) => dayKey(now - (2 * span - 1 - i) * DAY_MS)));
   const inRange = new Set(keys);

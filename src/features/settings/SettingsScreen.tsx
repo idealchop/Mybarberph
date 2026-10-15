@@ -32,7 +32,7 @@ export function SettingsScreen() {
 
   const links = [
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
-    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and barbers" },
+    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and My Barbers" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
 

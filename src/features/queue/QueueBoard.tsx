@@ -183,7 +183,7 @@ export function QueueBoard() {
       ) : list.length === 0 ? (
         search ? <EmptyState className="mt-4" title="No matches" /> : channel === "online"
           ? <EmptyBookings className="mt-4" locationId={queueLoc} />
-          : <EmptyBookings className="mt-4" icon="ticket" title="The chairs are clear" subtitle="Add a walk-in, or share your QR so customers can book" locationId={queueLoc} />
+          : <EmptyBookings className="mt-4" icon="ticket" title="No walk-ins yet" subtitle="Add a walk-in, or share your QR so customers can book" locationId={queueLoc} />
       ) : null}
 
       <Section title="Now" rows={open} onFull={(message) => setFull(message)} />
