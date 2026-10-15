@@ -4,6 +4,7 @@ import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Sci
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { NotificationBell } from "@/features/activity/ActivityScreen";
 import { Badge, Button, Card, ListItem, Topbar, cn } from "@river-apps/ui";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
@@ -31,14 +32,17 @@ export function SettingsScreen() {
   const locationCount = shops.enabled ? Math.max(1, shops.branches.length) : profile.locations;
 
   const links = [
-    { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and My Barbers" },
+    { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-6 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
-      <Topbar className="px-1" leading={<PageBack fallback="/home" />} title="Settings" subtitle="Your shop on Barbers.ph" />
+      <div className="flex items-start gap-2">
+        <Topbar className="min-w-0 flex-1 px-1" leading={<PageBack fallback="/home" />} title="Settings" subtitle="Your shop on Barbers.ph" />
+        <div className="pt-1.5"><NotificationBell /></div>
+      </div>
 
       <section className="relative mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
         {user ? (

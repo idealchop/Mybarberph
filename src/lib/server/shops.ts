@@ -4,6 +4,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
+import { bookingActivity, OWNER, stateActivity, type Actor } from "./activity";
 import type { ChairRequest } from "@/lib/booking-types";
 
 /**
@@ -113,10 +114,11 @@ function loc(v: unknown): ShopDoc["location"] {
 function urls(v: unknown, max = 8) { return Array.isArray(v) ? v.filter((u): u is string => typeof u === "string" && /^https:\/\//.test(u)).slice(0, max) : []; }
 
 /** Saves one state key and mirrors the public parts onto shops/{shopId}. */
-export async function putState(shopId: string, key: string, raw: string) {
+export async function putState(shopId: string, key: string, raw: string, actor: Actor = OWNER) {
   const docId = STATE_KEYS[key];
   if (!docId) throw new Error("Unknown key");
   if (raw.length > 400_000) throw new Error("Too large");
+  const prevRaw = docId === "community" ? undefined : ((await shopRef(shopId).collection("private").doc(docId).get()).data()?.json as string | undefined);
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   const batch = db().batch();
   batch.set(shopRef(shopId).collection("private").doc(docId), { json: raw, updatedAt: Date.now() });
@@ -178,6 +180,7 @@ export async function putState(shopId: string, key: string, raw: string) {
     existing.docs.forEach((d) => { if (!keep.has(d.id)) batch.delete(d.ref); });
   }
   await batch.commit();
+  if (prevRaw !== undefined || docId !== "community") await stateActivity(shopId, docId, prevRaw, raw, actor);
 }
 
 const STATUSES = new Set(["requested", "accepted", "in_chair", "done", "declined"]);
@@ -256,17 +259,22 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (!clean.barberId && prev?.barberId) { clean.barberId = prev.barberId; if (prev.barberName) clean.barberName = prev.barberName; }
   // Writes can land out of order (e.g. "accepted" after "in chair", or a stale tab after "done").
   // A visit never moves back a step: an older write is ignored and the saved row is returned.
-  return db().runTransaction(async (tx) => {
+  const res = await db().runTransaction(async (tx) => {
     const cur = (await tx.get(ref)).data() as ChairRequest | undefined;
-    if (cur && RANK[clean.status]! < RANK[cur.status]!) return cur;
-    if (cur?.status === "declined" && clean.status !== "declined") return cur;
+    if (cur && RANK[clean.status]! < RANK[cur.status]!) return { saved: cur, before: cur, wrote: false };
+    if (cur?.status === "declined" && clean.status !== "declined") return { saved: cur, before: cur, wrote: false };
     tx.set(ref, clean);
-    return clean;
+    return { saved: clean, before: cur, wrote: true };
   });
+  if (res.wrote) await bookingActivity(shopId, res.before, res.saved, barber ? { name: barber.barberName, role: "barber" } : OWNER);
+  return res.saved;
 }
 
 export async function deleteBooking(shopId: string, id: string) {
-  await shopRef(shopId).collection("bookings").doc(id).delete();
+  const ref = shopRef(shopId).collection("bookings").doc(id);
+  const prev = (await ref.get()).data() as ChairRequest | undefined;
+  await ref.delete();
+  if (prev) await (await import("./activity")).logActivity(shopId, { type: "booking_deleted", actor: OWNER, locationId: prev.locationId || "home", ref: prev.ref, text: `Owner deleted ${prev.ref} (${prev.customerLabel || prev.contact || "customer"})` });
 }
 
 export async function findBookingByRef(shopId: string, ref: string) {
@@ -366,6 +374,8 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   if (input.externalId) row.externalId = str(input.externalId, 120);
   if (input.payPref === "cash" || input.payPref === "gcash") row.payPref = input.payPref;
   await shopRef(shopId).collection("bookings").doc(id).set(row);
+  await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,
+    text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "river" ? " (River app)" : " (QR)"}` }, true);
   return row;
 }
 

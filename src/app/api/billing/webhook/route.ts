@@ -1,3 +1,4 @@
+import { logActivity, SYSTEM } from "@/lib/server/activity";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { json } from "@/lib/server/auth";
 import { PLANS } from "@/lib/plans";
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   if (type === "checkout_session.payment.paid" && meta.shopId && plan) {
     const renews = plan.recurring ? Date.now() + 31 * 86_400_000 : null;
     await shopRef(meta.shopId).set({ plan: plan.id, planStatus: "active", planRenewsAt: renews, updatedAt: Date.now() }, { merge: true });
+    await logActivity(meta.shopId, { type: "plan_changed", actor: SYSTEM, amount: plan.amountCentavos, text: `Plan changed to ${plan.id} · payment received` }, true);
   }
   return json({ ok: true });
 }

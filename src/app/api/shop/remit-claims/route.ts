@@ -1,4 +1,6 @@
 import { badRequest, getCaller, json, unauthorized } from "@/lib/server/auth";
+import { logActivity, OWNER } from "@/lib/server/activity";
+import { peso } from "@/lib/format";
 import { claimRemit, remitSummary } from "@/lib/server/remit";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +20,7 @@ export async function POST(req: Request) {
   if (!b?.barberId || !b.locationId) return badRequest("barberId and locationId are required");
   try {
     const claim = await claimRemit(me.uid, b.barberId, b.locationId, me.email || me.phone || me.uid);
+    await logActivity(me.uid, { type: "remit_claimed", actor: OWNER, locationId: claim.locationId, amount: claim.amount, text: `Owner claimed ${peso(claim.amount)} cash from ${claim.barberName} · ${claim.bookingIds.length} cut${claim.bookingIds.length === 1 ? "" : "s"}` });
     return json({ claim: { ...claim, count: claim.bookingIds.length, bookingIds: undefined } });
   } catch (e) {
     return badRequest((e as Error).message);
