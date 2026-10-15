@@ -12,7 +12,7 @@ import { useShopChairs } from "@/lib/shop-chairs";
 import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
-import { BarberCards, BarberRanking, ClaimHistory, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
+import { BarberRanking, ClaimHistory, ClaimRanking, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 
@@ -96,10 +96,7 @@ export function SalesDataScreen() {
       {view === "overview" ? (
         <>
           <Overview report={report} />
-          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
-          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
-          <ClaimHistory remit={remit.data} locName={locName} />
-          <BarberCards rows={barbers} range={range} showLoc={shops.enabled} />
+          <ClaimRanking remit={remit.data} barbers={barbers} range={range} showLoc={shops.enabled} />
         </>
       ) : null}
       {view === "performance" ? (
@@ -111,7 +108,12 @@ export function SalesDataScreen() {
           <ClaimHistory remit={remit.data} locName={locName} />
         </>
       ) : null}
-      {view === "services" ? <ServiceTable rows={services} split={serviceByLoc} /> : null}
+      {view === "services" ? (
+        <>
+          <SalesChartCard className="mt-4" series={report.series} kind={report.seriesKind} sales={report.sales} />
+          <ServiceTable rows={services} split={serviceByLoc} />
+        </>
+      ) : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>
     </div>
   );
@@ -121,13 +123,14 @@ function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <StatCard className="col-span-2 pb-3" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>} caption={report.delta} />
-        <StatCard className="pb-3" label="Average" value={peso(report.average)} caption="Per cut" />
-        <StatCard className="pb-3" label="Cuts" value={String(report.cuts)} caption={`${report.customers} customers`} />
+        <StatCard className="col-span-2 pb-3" label="Sales" caption={report.delta} value={
+          <span className="flex w-full items-baseline justify-between gap-3">
+            <span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>
+            <span className="text-right text-[15px] font-extrabold tabular-nums">{report.cuts} <small className="text-[12px] font-semibold text-muted">cut{report.cuts === 1 ? "" : "s"}</small></span>
+          </span>} />
         <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption="Paid" />
         <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
       </div>
-      <SalesChartCard className="mt-3" series={report.series} kind={report.seriesKind} sales={report.sales} />
     </>
   );
 }

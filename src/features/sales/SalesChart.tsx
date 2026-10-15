@@ -49,7 +49,23 @@ export function SalesChartCard({
   );
 }
 
-function FillChart({ series, peakIndex, kind }: { series: SalesRow[]; peakIndex: number; kind: "hour" | "day" }) {
+const hourLabel = (h: number) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
+const hourOf = (label: string) => { const [n, p] = label.split(" "); const h = Number(n) % 12; return p === "PM" ? h + 12 : h; };
+
+/** Hour charts always span the working day (6 AM–10 PM, widened to fit any sale), so one sale is one thin bar, not a solid block. */
+function padHours(series: SalesRow[]): SalesRow[] {
+  const by = new Map(series.map((r) => [hourOf(r.label), r]));
+  const hrs = [...by.keys()].filter((h) => Number.isFinite(h));
+  const lo = Math.min(6, ...hrs), hi = Math.max(22, ...hrs);
+  const out: SalesRow[] = [];
+  for (let h = lo; h <= hi; h++) out.push(by.get(h) ?? { label: hourLabel(h), orders: 0, salesCentavos: 0, detail: "" });
+  return out;
+}
+
+function FillChart({ series: raw, peakIndex: _p, kind }: { series: SalesRow[]; peakIndex: number; kind: "hour" | "day" }) {
+  void _p;
+  const series = kind === "hour" ? padHours(raw) : raw;
+  const peakIndex = series.reduce((b, it, i) => (it.salesCentavos > (series[b]?.salesCentavos ?? 0) ? i : b), -1);
   const max = Math.max(1, ...series.map((item) => item.salesCentavos));
   const dense = series.length > 12;
   const summary = series.map((item) => `${item.label} ${peso(item.salesCentavos)}`).join(", ");
@@ -58,11 +74,11 @@ function FillChart({ series, peakIndex, kind }: { series: SalesRow[]; peakIndex:
       {series.map((item, index) => {
         const on = index === peakIndex && item.salesCentavos > 0;
         const height = item.salesCentavos <= 0 ? 8 : Math.max(14, Math.round((item.salesCentavos / max) * 100));
-        const show = !dense || on || index === series.length - 1 || index % 5 === 0;
+        const show = kind === "hour" ? on || hourOf(item.label) % 3 === 0 : !dense || on || index === series.length - 1 || index % 5 === 0;
         return (
           <div key={`${item.label}-${index}`} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${item.label} · ${peso(item.salesCentavos)}`}>
             <div className="flex min-h-0 flex-1 items-end">
-              <div className={cn("w-full rounded-t-[8px]", on ? "bg-ink" : "bg-grey-200")} style={{ height: `${height}%` }} />
+              <div className={cn("mx-auto w-full max-w-[22px] rounded-t-[6px]", on ? "bg-ink" : "bg-grey-200")} style={{ height: item.salesCentavos <= 0 ? "4%" : `${height}%` }} />
             </div>
             <span className={cn("mt-2 h-3 truncate text-center text-[10px] leading-none", on ? "font-extrabold text-ink" : "font-semibold text-grey-400", !show && "invisible")}>
               {tick(item.label, kind)}

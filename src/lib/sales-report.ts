@@ -8,7 +8,6 @@ export type SalesView = "overview" | "services" | "payments" | "shop";
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "week", label: "7d" },
-  { value: "month", label: "28d" },
 ];
 
 let custom: { from: string; to: string } | null = null;
