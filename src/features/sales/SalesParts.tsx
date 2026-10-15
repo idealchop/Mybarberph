@@ -4,7 +4,7 @@ import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
-import { SALES_RANGES, rangeWindow, setCustomRange, type SalesRange } from "@/lib/sales-report";
+import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
 import type { Remit } from "./useRemit";
 
@@ -232,41 +232,39 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
-/** Overview: every barber ranked by cash the owner claimed from them in this period. */
-export function ClaimRanking({ remit, barbers, range, showLoc }: { remit: Remit | null; barbers: BarberStat[]; range: SalesRange; showLoc: boolean }) {
-  const { end, span } = rangeWindow(range);
-  const endDay = Date.parse(`${ymd(end)}T00:00:00+08:00`) + 86_400_000;
-  const from = endDay - span * 86_400_000;
-  const map = new Map<string, { id: string; name: string; loc: string; locName: string; amount: number; count: number }>();
-  for (const b of barbers) map.set(`${b.id}@${b.locationId}`, { id: b.id, name: b.name, loc: b.locationId, locName: b.locationName, amount: 0, count: 0 });
-  for (const c of remit?.claims ?? []) {
-    if (c.claimedAt < from || c.claimedAt >= endDay) continue;
-    const k = `${c.barberId}@${c.locationId}`;
-    const row = map.get(k) ?? { id: c.barberId, name: c.barberName, loc: c.locationId, locName: barbers.find((b) => b.locationId === c.locationId)?.locationName ?? "", amount: 0, count: 0 };
-    row.amount += c.amount; row.count += 1; map.set(k, row);
+/** Overview · My Barbers: every barber (incl. 0 sales) ranked by sales for the period. Unassigned visits get a small note. */
+export function BarberSalesRanking({ barbers, roster, range, showLoc, where }: { barbers: BarberStat[]; roster: { id: string; name: string; locationId: string; locationName: string }[]; range: SalesRange; showLoc: boolean; where: string }) {
+  const map = new Map<string, { id: string; name: string; loc: string; locName: string; sales: number; cuts: number }>();
+  for (const b of roster) if (where === "all" || b.locationId === where) map.set(`${b.id}@${b.locationId}`, { id: b.id, name: b.name, loc: b.locationId, locName: b.locationName, sales: 0, cuts: 0 });
+  let unassigned = 0, unCuts = 0;
+  for (const b of barbers) {
+    if (b.id.startsWith("seat:") || b.name === "No barber") { unassigned += b.sales; unCuts += b.cuts; continue; }
+    const k = `${b.id}@${b.locationId}`;
+    const r = map.get(k) ?? { id: b.id, name: b.name, loc: b.locationId, locName: b.locationName, sales: 0, cuts: 0 };
+    r.sales += b.sales; r.cuts += b.cuts; map.set(k, r);
   }
-  const rows = [...map.values()].sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+  const rows = [...map.values()].sort((a, b) => b.sales - a.sales || b.cuts - a.cuts || a.name.localeCompare(b.name));
   return (
-    <section className="mt-4" aria-label="Claimed by barber">
-      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Claimed</h2>
-      {!remit ? <p className="mt-2 rounded-card bg-surface px-4 py-4 text-[13px] font-semibold text-muted shadow-card">Loading…</p>
-        : !rows.length ? <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers in this range yet.</p> : (
+    <section className="mt-4" aria-label="My Barbers">
+      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">My Barbers</h2>
+      {!rows.length ? <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add them in Manage Shop.</p> : (
         <ol className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
           {rows.map((r, i) => (
             <li key={`${r.id}@${r.loc}`} className="border-b border-line last:border-b-0">
               <Link href={href("barber", r.id, range, r.loc)} className="flex items-center gap-3 px-4 py-3">
-                <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i < 3 && r.amount > 0 ? "text-[20px]" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i < 3 && r.amount > 0 ? MEDAL[i] : i + 1}</span>
+                <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full font-extrabold", i < 3 && r.sales > 0 ? "text-[20px]" : "bg-grey-100 text-[13.5px] text-muted")} aria-label={`Rank ${i + 1}`}>{i < 3 && r.sales > 0 ? MEDAL[i] : i + 1}</span>
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15px]">{r.name}</b>
-                  <small className="block truncate text-[12px] font-semibold text-muted">{[showLoc ? r.locName : "", r.count ? `${r.count} claim${r.count === 1 ? "" : "s"}` : "Nothing claimed"].filter(Boolean).join(" · ")}</small>
+                  <small className="block truncate text-[12px] font-semibold text-muted">{[showLoc ? r.locName : "", `${r.cuts} cut${r.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
                 </span>
-                <b className="flex-none text-[15px] tabular-nums">{peso(r.amount)}</b>
+                <b className="flex-none text-[15px] tabular-nums">{peso(r.sales)}</b>
                 <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
               </Link>
             </li>
           ))}
         </ol>
       )}
+      {unassigned > 0 ? <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">Unassigned {peso(unassigned)} · {unCuts} cut{unCuts === 1 ? "" : "s"}</p> : null}
     </section>
   );
 }

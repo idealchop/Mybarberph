@@ -8,10 +8,10 @@ import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
-import { useShopChairs } from "@/lib/shop-chairs";
+import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats } from "@/lib/sales-stats";
-import { BarberRanking, ClaimHistory, ClaimRanking, RangeChips, UnclaimedCard } from "./SalesParts";
+import { BarberRanking, ClaimHistory, BarberSalesRanking, RangeChips, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 import { PerformanceDashboard } from "./PerformanceDashboard";
@@ -52,9 +52,9 @@ export function SalesDataScreen() {
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => barberStats(all, range, where, branches, chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
+  const roster = useMemo(() => chairs.filter((c) => c.active !== false).map((c) => { const l = c.locationId || HOME_LOCATION_ID; return { id: c.barberId || c.id, name: chairBarberName(c), locationId: l, locationName: branches.find((b) => b.id === l)?.name ?? "" }; }), [chairs, branches]);
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
-  const branchName = shops.branches.find((b) => b.id === where)?.name;
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
@@ -90,7 +90,7 @@ export function SalesDataScreen() {
       {view === "overview" ? (
         <>
           <Overview report={report} />
-          <ClaimRanking remit={remit.data} barbers={barbers} range={range} showLoc={shops.enabled} />
+          <BarberSalesRanking barbers={barbers} roster={roster} range={range} showLoc={shops.enabled && where === "all"} where={where} />
         </>
       ) : null}
       {view === "performance" ? (
