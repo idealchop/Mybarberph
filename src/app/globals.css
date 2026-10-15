@@ -50,3 +50,23 @@
 
 /* OSM credit is shown in the Settings footer and /terms instead of over the map. */
 [data-testid="river-pin-map"] .maplibregl-ctrl-attrib { display: none !important; }
+
+/* Live "cut in progress" hero: slow warm/teal gradient drift, soft glow ring, pulsing live dot. */
+.live-hero {
+  background: linear-gradient(120deg, #0a0a0a 0%, #0f3d3e 30%, #1b6b63 48%, #7a3e12 72%, #0a0a0a 100%);
+  background-size: 260% 260%;
+  animation: live-hero-drift 14s ease-in-out infinite, live-hero-glow 3.2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(45, 180, 160, 0.0), 0 10px 30px -12px rgba(27, 107, 99, 0.55);
+}
+@keyframes live-hero-drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes live-hero-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(45, 180, 160, 0.0), 0 10px 30px -12px rgba(27, 107, 99, 0.55); }
+  50% { box-shadow: 0 0 0 5px rgba(45, 180, 160, 0.18), 0 14px 36px -12px rgba(232, 140, 60, 0.45); }
+}
+.live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: #4ade80; }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: live-dot-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes live-dot-ping { 75%, 100% { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .live-hero { animation: none; background-position: 30% 50%; }
+  .live-dot::after { animation: none; display: none; }
+}

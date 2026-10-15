@@ -7,7 +7,7 @@ import { ChevronDown, Plus, ScanLine } from "lucide-react";
 import { Avatar, Badge, Button, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
@@ -15,7 +15,7 @@ import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { SalesChartCard } from "@/features/sales/SalesChart";
-import { markInChair, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
+import { elapsedLabel, markInChair, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
@@ -92,6 +92,8 @@ export function HomeScreen() {
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
   const toAccept = rows.filter((row) => row.status === "requested" || row.status === "accepted").length;
   const busy = rows.filter((row) => row.status === "in_chair").length;
+  const oldest = rows.filter((row) => row.status === "in_chair" && row.startedAt).reduce((m, row) => Math.min(m, row.startedAt!), Infinity);
+  const now = useTick(busy > 0);
   const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
   const todays = rows.filter((row) => row.createdAt >= today0 && row.status !== "declined");
   const customers = todays.length;
@@ -154,7 +156,7 @@ export function HomeScreen() {
             </Link>
           </div>
         </header>
-        <section className="relative isolate mx-4 mt-3 flex h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 text-on-ink">
+        <section className={`relative isolate mx-4 mt-3 flex h-[150px] items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy ? "live-hero" : "bg-ink"}`}>
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
@@ -163,7 +165,7 @@ export function HomeScreen() {
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
             </h2>
-            <p className="mt-0.5 text-[12.5px] font-medium text-on-ink-muted">{figures.cuts} cuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{figures.cuts} cuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
             <div className="mt-2 flex flex-nowrap items-center gap-1.5">
               <Button href="/queue/new" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
               <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
@@ -302,4 +304,15 @@ function DesktopBar({ name, owner, greeting, dayLabel, photoUrl, onSignIn }: { n
       }
     />
   );
+}
+
+/** Ticks every second only while a cut is live. */
+function useTick(on: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!on) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [on]);
+  return now;
 }

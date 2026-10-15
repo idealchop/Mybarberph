@@ -37,8 +37,11 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
   const names = (row.serviceName || "").split(" · ");
   const menuTotal = Math.round(([haircut, ...treatments].filter((m) => names.includes(m.name)).reduce((s, m) => s + (m.price ?? 0), 0) || (haircut.price ?? 0)) * 100);
   const base = row.price || menuTotal;
-  const method = row.payPref === "gcash" ? "gcash" : "cash";
   const [adjust, setAdjust] = useState(false);
+  const [paid, setPaid] = useState(true);
+  const [m, setM] = useState<"cash" | "gcash">("cash");
+  const method = adjust ? m : "cash";
+  const isPaid = adjust ? paid : true;
   const [amount, setAmount] = useState(String(base / 100));
   const [busy, setBusy] = useState(false);
   const typed = Math.round(Number(amount) * 100);
@@ -48,8 +51,8 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
     if (busy) return;
     setBusy(true);
     const price = onlinePaid ? row.price : cents;
-    markDone(row.id, onlinePaid ? undefined : { price, paid: true, method });
-    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: true, payMethod: onlinePaid ? row.payMethod : method, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
+    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method });
+    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
   };
   return (
     <div className="fixed inset-0 z-[85] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="pay-title">
@@ -61,18 +64,35 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <h2 id="pay-title" className="text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(onlinePaid ? row.price : cents)}</h2>
-            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : `Paid · ${method === "gcash" ? "GCash" : "Cash"}`}</p>
+            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}</p>
           </div>
           {onlinePaid ? null : <button type="button" onClick={() => setAdjust(!adjust)} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">{adjust ? "Use default" : "Adjust"}</button>}
         </div>
         {adjust && !onlinePaid ? (
           <div className="mt-3">
             <Input label="Amount (₱)" inputMode="decimal" value={amount} autoFocus onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
+            <p className="mt-3 text-[12px] font-bold text-muted">Payment</p>
+            <Seg label="Payment status" value={paid ? "paid" : "unpaid"} onChange={(v) => setPaid(v === "paid")} options={[["paid", "Paid"], ["unpaid", "Not paid"]]} />
+            {paid ? <>
+              <p className="mt-3 text-[12px] font-bold text-muted">Method</p>
+              <Seg label="Payment method" value={m} onChange={(v) => setM(v as "cash" | "gcash")} options={[["cash", "Cash"], ["gcash", "GCash"]]} />
+            </> : null}
           </div>
         ) : null}
-        {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">GCash, cash or not paid yet? Change it later in the order details.</p>}
+        {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{adjust ? (isPaid ? `Saved as paid by ${method === "gcash" ? "GCash" : "cash"}.${method === "cash" ? " Cash counts toward the barber’s remit." : ""}` : "Saved as not paid. Mark it paid later in the order details.") : "Paid in cash by default. Tap Adjust to change the amount, mark it not paid, or switch to GCash."}</p>}
         <Button data-auth="action" className="mt-5" fullWidth disabled={busy} onClick={confirm}>Confirm &amp; complete</Button>
       </div>
+    </div>
+  );
+}
+
+function Seg({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][] }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="mt-1.5 grid grid-cols-2 rounded-pill bg-grey-100 p-1">
+      {options.map(([v, l]) => (
+        <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}
+          className={`h-9 rounded-pill text-[13.5px] font-bold transition ${value === v ? "bg-surface text-ink shadow-card" : "text-muted"}`}>{l}</button>
+      ))}
     </div>
   );
 }

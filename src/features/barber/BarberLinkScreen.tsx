@@ -92,10 +92,10 @@ function ActiveCard({
   const elapsed = row?.startedAt ? elapsedLabel(row.startedAt, now) : "";
   const who = row ? (row.customerLabel || row.contact || "Customer") : "Ready for next customer";
   return (
-    <section className="relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink" aria-label="Current customer">
+    <section className={`relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner px-4 py-4 text-on-ink ${row ? "live-hero" : "bg-ink"}`} aria-label="Current customer">
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
-        <h2 className="mt-1 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? elapsed : "Free"}</h2>
+        <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em]">Live</span></> : "Free"}</h2>
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${offer.label} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
