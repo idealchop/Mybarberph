@@ -169,14 +169,11 @@ export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }
               <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i === 0 ? "bg-ink text-on-ink" : i < 3 ? "bg-grey-200" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i + 1}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
-                <small className="block truncate text-[12.5px] font-semibold text-muted">{showLoc ? b.locationName : `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`}</small>
+                <small className="block truncate text-[12.5px] font-semibold text-muted">{[showLoc ? b.locationName : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
               </span>
               <b className="text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
             </div>
-            <dl className="mt-2.5 grid grid-cols-4 gap-1.5">
-              <Mini k="Cuts" v={String(b.cuts)} /><Mini k="Cash" v={peso(b.cash)} /><Mini k="GCash" v={peso(b.gcash)} /><Mini k="Remit" v={peso(b.remit)} />
-            </dl>
           </Link>
           {onClaim ? <ClaimRow b={b} remit={remit ?? null} onClaim={onClaim} busy={claiming === `${b.id}@${b.locationId}`} /> : null}
         </li>

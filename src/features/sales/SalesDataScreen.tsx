@@ -19,7 +19,7 @@ import { PerformanceDashboard } from "./PerformanceDashboard";
 type View = "overview" | "performance" | "services";
 const VIEWS: { value: View; label: string }[] = [
   { value: "overview", label: "Overview" },
-  { value: "performance", label: "Barbers" },
+  { value: "performance", label: "Collection" },
   { value: "services", label: "Performance" },
 ];
 
