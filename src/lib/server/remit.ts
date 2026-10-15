@@ -15,10 +15,22 @@ const keyOf = (r: ChairRequest, chairs: Chair[]) => {
 /** Cash the barber collected = done, paid, cash. */
 const isCash = (r: ChairRequest) => r.status === "done" && Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
 
-async function load(shopId: string) {
+// Per-instance cache: Home, Sales and History all ask for the same summary; a claim clears it.
+const cache = new Map<string, { at: number; data: Promise<Awaited<ReturnType<typeof loadFresh>>> }>();
+function load(shopId: string, fresh = false) {
+  const hit = cache.get(shopId);
+  if (!fresh && hit && Date.now() - hit.at < 15_000) return hit.data;
+  const data = loadFresh(shopId);
+  cache.set(shopId, { at: Date.now(), data });
+  data.catch(() => cache.delete(shopId));
+  return data;
+}
+
+async function loadFresh(shopId: string) {
   const [claimsSnap, doneSnap, state] = await Promise.all([
     shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").limit(500).get(),
-    shopRef(shopId).collection("bookings").where("status", "==", "done").limit(8000).get(),
+    // Only the fields remit needs (not full booking docs).
+    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt").limit(8000).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
@@ -50,7 +62,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
   const lock = shop.collection("private").doc("remitLock");
   return shop.firestore.runTransaction(async (tx) => {
     await tx.get(lock);
-    const { chairs, open } = await load(shopId);
+    const { chairs, open } = await load(shopId, true);
     const mine = open.filter((r) => { const k = keyOf(r, chairs); return k.id === barberId && k.loc === locationId; });
     if (!mine.length) throw new Error("Nothing to claim for this barber.");
     const ref = shop.collection("remitClaims").doc();
@@ -62,6 +74,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
     };
     tx.set(ref, claim);
     tx.set(lock, { at: claim.claimedAt, last: ref.id });
+    cache.delete(shopId);
     return claim;
   });
 }

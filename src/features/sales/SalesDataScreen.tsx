@@ -1,8 +1,10 @@
 "use client";
+import { DashboardSkeleton } from "@/components/common/Skeleton";
 import { MapPin, Trophy } from "lucide-react";
 import Link from "next/link";
 import { CoinIcon } from "@river-apps/icons";
-import { Button, StatCard, cn } from "@river-apps/ui";
+import { StatCard, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { useEffect, useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
 import { useChairRequests } from "@/lib/chair-bookings";
@@ -57,6 +59,7 @@ export function SalesDataScreen() {
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
 
+  if (!deep && !cloud.ready) return <DashboardSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
       <header className="border-b border-line px-1 pb-3">

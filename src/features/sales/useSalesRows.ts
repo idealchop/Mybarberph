@@ -3,19 +3,22 @@ import { useEffect, useState } from "react";
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { api } from "@/lib/cloud";
 import { useSession } from "@/lib/session";
+import { cached, fetchShared } from "@/lib/swr";
 
-/** Last 28 Manila days of visits for Sales (refreshes every 30s). */
+/** Last N Manila days of visits for Sales (shared across screens, refreshes every 30s while visible). */
 export function useSalesRows(days = 28, full = false) {
   const { user } = useSession();
-  const [rows, setRows] = useState<ChairRequest[] | null>(null);
+  const key = `sales-rows:${days}:${full ? 1 : 0}`;
+  const [rows, setRows] = useState<ChairRequest[] | null>(() => cached<ChairRequest[]>(key) ?? null);
   useEffect(() => {
     if (!user) return;
     let live = true, tries = 0;
-    const get = () => api(`/api/shop/sales-rows?days=${days}${full ? "&full=1" : ""}`).then((d: { rows: ChairRequest[] }) => { if (live) setRows(d.rows); })
-      .catch(() => { if (live && tries++ < 3) window.setTimeout(get, 1200); });
-    void get();
-    const t = window.setInterval(get, 30_000);
+    const get = (maxAge = 0) => fetchShared(key, () => api(`/api/shop/sales-rows?days=${days}${full ? "&full=1" : ""}`).then((d: { rows: ChairRequest[] }) => d.rows), maxAge)
+      .then((r) => { if (live) setRows(r); })
+      .catch(() => { if (live && tries++ < 3) window.setTimeout(() => get(), 1200); });
+    void get(10_000);
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") void get(); }, 30_000);
     return () => { live = false; window.clearInterval(t); };
-  }, [user, days, full]);
+  }, [user, key, days, full]);
   return rows;
 }

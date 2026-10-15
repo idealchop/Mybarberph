@@ -3,7 +3,8 @@
 import { Check, ChevronLeft, ImagePlus, Loader2, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { Badge, Button, Card, Input, cn } from "@river-apps/ui";
+import { Badge, Card, Input, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { uploadPhoto } from "@/lib/upload";
 import { formatHours, type WeekHours } from "@/lib/shop-hours";
 import { HoursPicker } from "./HoursPicker";
@@ -222,7 +223,7 @@ function ProfileEditor({
         <ShopPhotos urls={photos} disabled={busy} onBusy={setPhotosBusy} onChange={(next) => { setPhotos(next); setHold(""); }} />
       </div>
       <div className="sticky bottom-0 z-10 flex-none border-t border-line bg-surface/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-        <Button data-auth="action" type="submit" form="edit-shop-form" size="md" fullWidth disabled={busy || logoState === "uploading" || photosBusy || !dirty || name.trim().length < 2}>
+        <Button data-auth="action" type="submit" form="edit-shop-form" size="md" fullWidth loading={busy} disabled={busy || logoState === "uploading" || photosBusy || !dirty || name.trim().length < 2}>
           {busy ? "Saving…" : photosBusy || logoState === "uploading" ? "Uploading…" : "Save Shop Profile"}
         </Button>
       </div>

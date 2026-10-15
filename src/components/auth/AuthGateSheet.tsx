@@ -4,7 +4,8 @@
  * Sign-in sheet (Firebase Auth): Google or a text code to a PH mobile.
  * Opens only when a guest tries an action; the action continues after sign-in.
  */
-import { Button, OtpInput, PhoneInput, cn } from "@river-apps/ui";
+import { OtpInput, PhoneInput, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { ArrowLeft, MessageSquareText, Phone, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { RiverMark } from "@/components/shell/Brand";

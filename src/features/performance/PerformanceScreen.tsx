@@ -1,4 +1,5 @@
 "use client";
+import { RowsSkeleton } from "@/components/common/Skeleton";
 import { SegmentedControl, StatCard } from "@river-apps/ui";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/cloud";
@@ -35,7 +36,7 @@ export function PerformanceBody({ loc }: { loc: string }) {
       </div>
       <SegmentedControl className="mt-2 w-fit" label="Range" value={range} onChange={(v) => setRange(v as Range)} options={[{ value: "today", label: "Today" }, { value: "7d", label: "7 days" }, { value: "28d", label: "28 days" }]} />
       {error ? <p className="mt-3 text-[13px] font-semibold">{error}</p> : null}
-      {!user ? <p className="mt-4 text-[13px] font-semibold text-muted">Sign in to see your chairs.</p> : !data ? <p className="mt-4 text-[13px] font-semibold text-muted">Loading…</p> : (
+      {!user ? <p className="mt-4 text-[13px] font-semibold text-muted">Sign in to see your chairs.</p> : !data ? <RowsSkeleton /> : (
         <>
           <div className="mt-3 grid grid-cols-3 gap-3">
             <StatCard className="pb-3" label="Sales" value={peso(data.totals.salesCentavos)} />

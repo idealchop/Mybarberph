@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/cloud";
 import { useSession } from "@/lib/session";
+import { cached, fetchShared, invalidate } from "@/lib/swr";
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; count: number; oldest: number }
 export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[] }
@@ -10,16 +11,16 @@ export interface Remit { unclaimed: UnclaimedRow[]; total: number; claims: Claim
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
 export function useRemit(loc: string) {
   const { user } = useSession();
-  const [data, setData] = useState<Remit | null>(null);
+  const [data, setData] = useState<Remit | null>(() => cached<Remit>(`remit:${loc}`) ?? null);
   const [busy, setBusy] = useState<string>("");
   const [error, setError] = useState("");
-  const load = useCallback(() => api(`/api/shop/remit-claims?loc=${encodeURIComponent(loc)}`).then((d: Remit) => setData(d)).catch(() => undefined), [loc]);
+  const load = useCallback((maxAge = 0) => fetchShared(`remit:${loc}`, () => api(`/api/shop/remit-claims?loc=${encodeURIComponent(loc)}`) as Promise<Remit>, maxAge).then((d) => setData(d)), [loc]);
   useEffect(() => {
     if (!user) return;
     let tries = 0;
-    const get = () => load().catch(() => { if (tries++ < 2) window.setTimeout(get, 1200); });
+    const get = () => load(10_000).catch(() => { if (tries++ < 2) window.setTimeout(get, 1200); });
     void get();
-    const t = window.setInterval(get, 30_000);
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") void load().catch(() => undefined); }, 30_000);
     return () => window.clearInterval(t);
   }, [user, load]);
   const claim = async (barberId: string, locationId: string) => {
@@ -28,6 +29,7 @@ export function useRemit(loc: string) {
     setBusy(key); setError("");
     try {
       await api("/api/shop/remit-claims", { method: "POST", body: JSON.stringify({ barberId, locationId }) });
+      invalidate("remit:");
       await load();
     } catch (e) { setError((e as Error).message); } finally { setBusy(""); }
   };

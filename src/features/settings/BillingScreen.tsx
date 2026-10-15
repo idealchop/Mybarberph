@@ -3,7 +3,8 @@
 import { Check } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, Card, Topbar } from "@river-apps/ui";
+import { Card, Topbar } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { PageBack } from "@/components/shell/PageBack";
 import { api, refreshCloud, useCloud } from "@/lib/cloud";
 import { PLANS, normalizePlan, type PlanId } from "@/lib/plans";

@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const me = await getCaller(req);
   if (!me) return unauthorized();
-  const r = await remitSummary(me.uid, "all").catch(() => null);
+  const countOnly = Boolean(new URL(req.url).searchParams.get("count"));
+  // The bell badge only needs the count; the remit reminder is checked when the list is opened.
+  const r = countOnly ? null : await remitSummary(me.uid, "all").catch(() => null);
   const remit = r ? { total: r.total, barbers: r.unclaimed.length, oldest: Math.min(Date.now(), ...r.unclaimed.map((u) => u.oldest)) } : undefined;
   const data = await listNotifications(me.uid, remit);
-  return json(new URL(req.url).searchParams.get("count") ? { unread: data.unread } : data);
+  return json(countOnly ? { unread: data.unread } : data);
 }
 
 /** Owner: mark read. { ids?: string[] } (omit ids = mark all read) */

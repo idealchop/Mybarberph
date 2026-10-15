@@ -4,7 +4,8 @@
 import { ImagePlus, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Avatar, Button, cn } from "@river-apps/ui";
+import { Avatar, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { fileToDataUrl, profileHref, type PostAuthor } from "./posts";
 
 const MAX_IMAGES = 4;

@@ -1,11 +1,14 @@
 "use client";
 
+import { FormSkeleton } from "@/components/common/Skeleton";
+import { useCloud } from "@/lib/cloud";
 import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { NotificationBell } from "@/features/activity/ActivityScreen";
-import { Badge, Button, Card, ListItem, Topbar, cn } from "@river-apps/ui";
+import { Badge, Card, ListItem, Topbar, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
@@ -18,6 +21,7 @@ const PAID_PER_MO = "₱499/mo";
 
 /** Settings hub, same shape as Laundry.ph: profile, credits, setup, features, log out. */
 export function SettingsScreen() {
+  const cloudReady = useCloud().ready;
   const { profile } = useShopProfile();
   const shops = useShopLocations();
   const { tier } = useTier();
@@ -37,6 +41,7 @@ export function SettingsScreen() {
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
 
+  if (!cloudReady) return <FormSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-6 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <div className="flex items-start gap-2">

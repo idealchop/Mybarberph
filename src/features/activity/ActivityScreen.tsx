@@ -1,4 +1,5 @@
 "use client";
+import { RowsSkeleton } from "@/components/common/Skeleton";
 import { cn } from "@river-apps/ui";
 import {
   Ban, Bell, CalendarCheck, CalendarPlus, CheckCircle2, CreditCard, HandCoins, MapPin, Package, Play, QrCode, Scissors, Star, Store, Trash2, UserCog, UserMinus, UserPlus, Wallet,
@@ -89,7 +90,7 @@ function ActivityLog() {
         <select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)} className={sel}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
       {err ? <p className="mt-3 text-[13px] font-semibold">{err}</p> : null}
-      {!items ? <p className="mt-4 text-[13.5px] font-semibold text-muted">{user ? "Loading…" : "Sign in to see activity."}</p> : items.length === 0 ? (
+      {!items ? (user ? <RowsSkeleton /> : <p className="mt-4 text-[13.5px] font-semibold text-muted">Sign in to see activity.</p>) : items.length === 0 ? (
         <Empty title="No activity yet" text="Walk-ins, bookings, finished cuts, payments, claims and changes by you and your barbers show up here." />
       ) : (
         <ul className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">{items.map((e) => <Row key={e.id} e={e} place={nameOf(e.locationId)} />)}</ul>
@@ -113,7 +114,7 @@ function Notifications() {
         <span className="text-[13px] font-semibold text-muted">{data ? (data.unread ? `${data.unread} unread` : "All caught up") : ""}</span>
         {data?.unread ? <button type="button" onClick={() => void markAll()} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">Mark all read</button> : null}
       </div>
-      {!data ? <p className="mt-4 text-[13.5px] font-semibold text-muted">{user ? "Loading…" : "Sign in to see notifications."}</p> : data.items.length === 0 ? (
+      {!data ? (user ? <RowsSkeleton /> : <p className="mt-4 text-[13.5px] font-semibold text-muted">Sign in to see notifications.</p>) : data.items.length === 0 ? (
         <Empty title="No notifications" text="New online bookings, customer feedback, finished cuts by barbers and unclaimed cash reminders land here." />
       ) : (
         <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">

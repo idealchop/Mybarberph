@@ -1,5 +1,7 @@
 "use client";
-import { Button, Card, Input } from "@river-apps/ui";
+import { FormSkeleton } from "@/components/common/Skeleton";
+import { Card, Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
@@ -16,7 +18,7 @@ export function ManageShopScreen() {
   const id = useSearchParams().get("id") ?? HOME_LOCATION_ID;
   const shops = useShopLocations();
   const branch = shops.branches.find((b) => b.id === id);
-  if (!shops.ready) return <p className="px-5 pt-8 text-[14px] font-semibold text-muted">Loading…</p>;
+  if (!shops.ready) return <FormSkeleton />;
   if (!branch) {
     return (
       <div className="mx-auto max-w-[402px] px-4 pt-6">
@@ -114,7 +116,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
         <div className="mx-auto max-w-[402px] lg:max-w-[720px]">
-          <Button data-auth="action" fullWidth disabled={busy || !dirty || name.trim().length < 2} onClick={() => void save()}>{busy ? "Saving…" : "Save Shop"}</Button>
+          <Button data-auth="action" fullWidth loading={busy} disabled={busy || !dirty || name.trim().length < 2} onClick={() => void save()}>{busy ? "Saving…" : "Save Shop"}</Button>
         </div>
       </div>
     </div>

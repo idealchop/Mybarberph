@@ -79,3 +79,8 @@
   .live-hero::after { opacity: 0.6; }
   .live-dot::after { display: none; }
 }
+
+/* Complete toast: progress bar shrinks over 3.2s (transform only). */
+.toast-progress { animation: toast-progress 3.2s linear forwards; }
+@keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .toast-progress { animation: none; } }

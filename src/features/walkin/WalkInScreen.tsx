@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Input } from "@river-apps/ui";
+import { Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BarberIcon } from "@/components/art";

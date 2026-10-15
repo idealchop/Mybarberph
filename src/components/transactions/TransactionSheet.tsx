@@ -1,5 +1,6 @@
 "use client";
-import { Avatar, Badge, Button, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
+import { Avatar, Badge, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { ArrowLeft, Phone, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
@@ -18,7 +19,8 @@ export function payLabel(row: ChairRequest) {
 const isOnlinePaid = (row: ChairRequest) => Boolean(row.paid) && (row.payMethod === "online" || (!row.payMethod && row.payWhere === "online"));
 
 /** Order details (Laundry.ph layout): header with status, customer, service lines + total, payment, timeline, edit. */
-export function TransactionSheet({ row: initial, onClose }: { row: ChairRequest; onClose: () => void }) {
+/** `barber`: barber-link view; payment can be recorded, but price/service edits are owner-only. */
+export function TransactionSheet({ row: initial, onClose, barber = false }: { row: ChairRequest; onClose: () => void; barber?: boolean }) {
   const { rows } = useChairRequests();
   const row = rows.find((r) => r.id === initial.id) ?? initial;
   const [editing, setEditing] = useState(false);
@@ -135,7 +137,7 @@ export function TransactionSheet({ row: initial, onClose }: { row: ChairRequest;
             ) : null}
 
             <p className="mt-4 px-1 text-[12.5px] font-semibold text-muted">Ticket {row.id}</p>
-            <Button data-auth="action" className="mt-3" fullWidth onClick={() => setEditing(true)}>Edit</Button>
+            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">Need to change the price or service? Ask the shop owner.</p> : <Button data-auth="action" className="mt-3" fullWidth onClick={() => setEditing(true)}>Edit</Button>}
           </>
         )}
       </div>

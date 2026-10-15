@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
-import { Avatar, Button, cn, IconTile, SegmentedControl } from "@river-apps/ui";
+import { Avatar, cn, IconTile, SegmentedControl } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { Stars } from "@/components/art";
 import { Dialog } from "@/components/common/Dialog";
 import { FilterSelect, PaymentPill, Pill, Ref } from "@/components/common/ui";

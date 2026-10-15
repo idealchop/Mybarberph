@@ -7,7 +7,8 @@
 import { Loader2, MapPin, Maximize2, Minimize2, Navigation, Search, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, cn } from "@river-apps/ui";
+import { cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 const RiverPinMap = dynamic(() => import("@/components/map/RiverPinMap").then((m) => m.RiverPinMap), {
   ssr: false,
   loading: () => <div className="h-[240px] rounded-tile bg-grey-100" />,

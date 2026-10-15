@@ -1,7 +1,8 @@
 "use client";
 
 import { CoinIcon } from "@river-apps/icons";
-import { Button, Input } from "@river-apps/ui";
+import { Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { Check, ChevronRight, Plus, Wallet, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";

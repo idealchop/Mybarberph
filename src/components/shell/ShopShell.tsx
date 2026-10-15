@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { AppShell, Button, Sidebar } from "@river-apps/ui";
+import { AppShell, Sidebar } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { BarberChair } from "@/components/art";
 import { useQueueRequests } from "@/lib/chair-bookings";

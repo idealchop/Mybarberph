@@ -1,5 +1,5 @@
 "use client";
-import { Button } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { QrCode as QrIcon } from "lucide-react";
 
 /** Calm empty state for bookings / queue lists: River 3D icon on a soft backdrop, one line, one quiet action. */

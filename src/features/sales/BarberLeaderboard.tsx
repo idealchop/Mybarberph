@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/common/Skeleton";
 import { cn } from "@river-apps/ui";
 import { ChevronRight, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -72,6 +73,7 @@ export function BarberLeaderboard() {
   const shown = sorted.slice(p * 10, p * 10 + 10);
   const hasScore = (r: Row) => val(r) > 0 || (sort === "speed" && r.avgMin != null);
 
+  if (!deep && !cloud.ready) return <ListSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-10 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-1">

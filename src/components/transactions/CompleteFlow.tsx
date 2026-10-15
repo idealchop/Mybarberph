@@ -1,7 +1,8 @@
 "use client";
-import { Button, Input } from "@river-apps/ui";
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
+import { Check, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { markDone, type ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { TransactionSheet } from "./TransactionSheet";
@@ -17,6 +18,7 @@ export function completeCut(row: ChairRequest) {
 export function CompleteFlowHost() {
   const [row, setRow] = useState<ChairRequest | null>(null);
   const [details, setDetails] = useState<ChairRequest | null>(null);
+  const [done, setDone] = useState<ChairRequest | null>(null);
   // Pause live CSS animations while the page is hidden (battery).
   useEffect(() => {
     const sync = () => { if (document.hidden) document.documentElement.dataset.hidden = "1"; else delete document.documentElement.dataset.hidden; };
@@ -31,7 +33,8 @@ export function CompleteFlowHost() {
   }, []);
   return (
     <>
-      {row ? <CompletePaymentSheet key={row.id} row={row} onClose={() => setRow(null)} onDone={(r) => { setRow(null); setDetails(r); }} /> : null}
+      {row ? <CompletePaymentSheet key={row.id} row={row} onClose={() => setRow(null)} onDone={(r) => { setRow(null); setDone(r); }} /> : null}
+      {done ? <CompletedToast key={done.id} row={done} onClose={() => setDone(null)} onDetails={() => { setDetails(done); setDone(null); }} /> : null}
       {details ? <TransactionSheet row={details} onClose={() => setDetails(null)} /> : null}
     </>
   );
@@ -87,7 +90,7 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
           </div>
         ) : null}
         {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{adjust ? (isPaid ? `Saved as paid by ${method === "gcash" ? "GCash" : "cash"}.${method === "cash" ? " Cash counts toward the barber’s remit." : ""}` : "Saved as not paid. Mark it paid later in the order details.") : "Paid in cash by default. Tap Adjust to change the amount, mark it not paid, or switch to GCash."}</p>}
-        <Button data-auth="action" className="mt-5" fullWidth disabled={busy} onClick={confirm}>Confirm &amp; complete</Button>
+        <Button data-auth="action" className="mt-5" fullWidth loading={busy} onClick={confirm}>Confirm &amp; complete</Button>
       </div>
     </div>
   );
@@ -100,6 +103,29 @@ function Seg({ label, value, onChange, options }: { label: string; value: string
         <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}
           className={`h-9 rounded-pill text-[13.5px] font-bold transition ${value === v ? "bg-surface text-ink shadow-card" : "text-muted"}`}>{l}</button>
       ))}
+    </div>
+  );
+}
+
+/** Shown after Confirm & complete: auto-closes after 3s; "View details" opens the order. */
+function CompletedToast({ row, onClose, onDetails }: { row: ChairRequest; onClose: () => void; onDetails: () => void }) {
+  const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; }, [onClose]);
+  useEffect(() => { const t = window.setTimeout(() => close.current(), 3200); return () => window.clearTimeout(t); }, []);
+  const pay = !row.paid ? "Not paid yet" : row.payMethod === "gcash" ? "GCash" : row.payMethod === "online" ? "Paid online" : "Cash";
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[86] flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]" role="status" aria-live="polite">
+      <div className="pointer-events-auto w-full max-w-[420px] overflow-hidden rounded-[22px] bg-ink text-on-ink shadow-card">
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          <span className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-[#22c55e] text-white"><Check size={22} strokeWidth={3} /></span>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[16px]">Cut completed</b>
+            <small className="block truncate text-[12.5px] font-semibold text-on-ink-muted">{[row.customerLabel || "Walk-in", row.serviceName, peso(row.price || 0), pay].filter(Boolean).join(" · ")}</small>
+          </span>
+          <button type="button" onClick={onDetails} className="flex-none text-[13px] font-bold underline decoration-white/40 underline-offset-[3px]">View details</button>
+        </div>
+        <div className="h-1 bg-white/15"><div className="toast-progress h-full origin-left bg-[#22c55e]" /></div>
+      </div>
     </div>
   );
 }

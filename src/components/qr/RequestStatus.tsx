@@ -1,7 +1,9 @@
 "use client";
 
+import { TicketSkeleton } from "@/components/common/Skeleton";
 import { CheckIcon } from "@river-apps/icons";
-import { Button, Card, MonoText } from "@river-apps/ui";
+import { Card, MonoText } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { Star } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { BarberChair } from "@/components/art";
@@ -21,7 +23,7 @@ export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnoth
   const [rated, setRated] = useState<ChairRequest | null>(null);
   const booking = rated ?? live;
 
-  if (booking === undefined) return <main className="mx-auto min-h-dvh max-w-[440px] px-5 pt-8"><p className="text-[14px] font-semibold text-muted">Loading…</p></main>;
+  if (booking === undefined) return <TicketSkeleton />;
   if (!booking) {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col bg-canvas">

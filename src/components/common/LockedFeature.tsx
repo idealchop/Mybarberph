@@ -1,7 +1,8 @@
 "use client";
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
-import { Button, EmptyState } from "@river-apps/ui";
+import { EmptyState } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { BarberIcon } from "@/components/art";
 import { useTier, type Feature } from "@/lib/tier";
 

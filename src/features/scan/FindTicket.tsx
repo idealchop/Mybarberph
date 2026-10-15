@@ -1,7 +1,8 @@
 "use client";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
-import { Button, Input, Topbar } from "@river-apps/ui";
+import { Input, Topbar } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { useSearchParams } from "next/navigation";
 import { PageBack } from "@/components/shell/PageBack";
 import { useState } from "react";

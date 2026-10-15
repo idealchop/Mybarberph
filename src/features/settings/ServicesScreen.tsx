@@ -2,7 +2,8 @@
 
 import { Camera, Check, ChevronLeft, Loader2, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { Button, Input, Topbar } from "@river-apps/ui";
+import { Input, Topbar } from "@river-apps/ui";
+import { Button, Spinner } from "@/components/common/Button";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { fileToDataUrl } from "@/features/community/posts";
@@ -216,16 +217,19 @@ const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop on
 /** Outlined pill: opens the phone share sheet (or copies) with that barber's own link. */
 function ShareBarberLink({ id, name }: { id: string; name: string }) {
   const [done, setDone] = useState(false);
+  const [pending, setPending] = useState(false);
   return (
     <button type="button" data-auth="action" className="inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"
+      disabled={pending} aria-busy={pending}
       onClick={async () => {
+        setPending(true);
         const url = `${window.location.origin}${ensureChairLink(id)}`;
         try {
           if (navigator.share) await navigator.share({ title: `${name} · Barbers.ph`, text: `Your barber link, ${name}`, url });
           else { await navigator.clipboard.writeText(url); setDone(true); window.setTimeout(() => setDone(false), 1500); }
-        } catch { /* share sheet closed */ }
+        } catch { /* share sheet closed */ } finally { setPending(false); }
       }}>
-      {done ? <><Check size={13} strokeWidth={3} /> Link copied</> : "Share to barber"}
+      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : "Share to barber"}
     </button>
   );
 }

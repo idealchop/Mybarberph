@@ -135,9 +135,9 @@ export async function listNotifications(shopId: string, remit?: { total: number;
         text: `${peso(remit.total)} cash from ${remit.barbers} barber${remit.barbers === 1 ? "" : "s"} is still unclaimed` });
     }
   }
-  const snap = await col.orderBy("at", "desc").limit(50).get();
+  const [snap, cnt] = await Promise.all([col.orderBy("at", "desc").limit(50).get(), col.where("read", "==", false).count().get()]);
   const items = snap.docs.map((d) => d.data() as ActivityEntry & { read: boolean });
-  const unread = (await col.where("read", "==", false).count().get()).data().count;
+  const unread = cnt.data().count;
   return { items, unread };
 }
 

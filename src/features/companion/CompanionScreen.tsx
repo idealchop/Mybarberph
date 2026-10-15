@@ -1,5 +1,5 @@
 "use client";
-import { Button } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";

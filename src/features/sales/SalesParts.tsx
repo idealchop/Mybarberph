@@ -4,6 +4,7 @@ import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
+import { Spinner } from "@/components/common/Button";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
 import type { Remit } from "./useRemit";
@@ -100,7 +101,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
           <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
           {onClaim && rows.length ? (
             <button type="button" data-auth="action" disabled={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))}
-              className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{one && busy(one) ? "Claiming…" : "Claim"}</button>
+              className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{one && busy(one) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
           ) : null}
         </span>
       </div>
@@ -120,7 +121,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
                     <span className="flex flex-none items-center gap-2.5">
                       <b className="text-[15px] tabular-nums">{peso(u.amount)}</b>
                       <button type="button" data-auth="action" disabled={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)}
-                        className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy(u) ? "Claiming…" : "Claim"}</button>
+                        className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy(u) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
                     </span>
                   </li>
                 ))}
@@ -221,7 +222,7 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
       </span>
       {open ? (
         <button type="button" data-auth="action" disabled={busy} onClick={() => onClaim(b.id, b.locationId)}
-          className="inline-flex h-8 flex-none items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy ? "Claiming…" : "Claim"}</button>
+          className="inline-flex h-8 flex-none items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
       ) : last ? <span className="flex-none rounded-pill bg-grey-100 px-2.5 py-1 text-[11.5px] font-bold">Claimed</span> : null}
     </div>
   );

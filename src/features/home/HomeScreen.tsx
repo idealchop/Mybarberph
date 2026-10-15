@@ -1,10 +1,12 @@
 "use client";
+import { HomeSkeleton } from "@/components/common/Skeleton";
 import { useRemit } from "@/features/sales/useRemit";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 
 import { CoinIcon } from "@river-apps/icons";
 import { ChevronDown, Plus, ScanLine } from "lucide-react";
-import { Avatar, Badge, Button, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
+import { Avatar, Badge, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -113,6 +115,7 @@ export function HomeScreen() {
   const dayTotal = figures.cuts + toAccept;
   const pct = dayTotal ? Math.round((figures.cuts / dayTotal) * 100) : 0;
 
+  if (!ready) return <HomeSkeleton />;
   return (
     <>
       <div className="mx-auto w-full max-w-[402px] pb-4 lg:hidden">

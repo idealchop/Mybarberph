@@ -1,12 +1,15 @@
 "use client";
+import { HomeSkeleton } from "@/components/common/Skeleton";
 import { completeCut } from "@/components/transactions/CompleteFlow";
+import { TransactionSheet } from "@/components/transactions/TransactionSheet";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { BarberPerformanceView } from "./BarberSelf";
 import { QrScanner } from "@/components/scan/QrScanner";
 import { parseTicketCode } from "@/lib/ticket-code";
-import { Avatar, Button, Input } from "@river-apps/ui";
-import { BarChart3, ChevronLeft, History, Plus, ScanLine } from "lucide-react";
+import { Avatar, Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
+import { BarChart3, ChevronLeft, ChevronRight, History, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BarberChair, BarberIcon } from "@/components/art";
 import { startBarberCloud, useCloud } from "@/lib/cloud";
@@ -73,7 +76,7 @@ function WaitingCard({
           <p className="mt-0.5 text-[12.5px] font-semibold text-muted">{row.ref}</p>
         </div>
       </div>
-      <Button className="mt-3" size="sm" fullWidth disabled={busy} onClick={onAccept}>Accept</Button>
+      <Button className="mt-3" size="sm" fullWidth loading={busy} onClick={onAccept}>Accept</Button>
     </li>
   );
 }
@@ -160,7 +163,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
     );
   }
   if (!chairsReady || !ready || !cloud.ready) {
-    return <main className="mx-auto min-h-dvh max-w-[402px] bg-canvas px-4 pt-8"><p className="text-[14px] font-semibold text-muted">Loading…</p></main>;
+    return <HomeSkeleton />;
   }
   if (!chair || chairLinkExpired(chair)) {
     return (
@@ -458,6 +461,7 @@ function ChairHistory({
   treatments: ShopTreatment[];
   onBack: () => void;
 }) {
+  const [openRow, setOpenRow] = useState<ChairRequest | null>(null);
   const [range, setRange] = useState<HistoryRange>("all");
   const [day, setDay] = useState("");
   const [query, setQuery] = useState("");
@@ -522,14 +526,17 @@ function ChairHistory({
         <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts for this filter.</p>
       ) : (
         <ul className="mt-4 flex flex-col gap-2">
+          {openRow ? <TransactionSheet row={openRow} barber onClose={() => setOpenRow(null)} /> : null}
           {shown.map((row) => (
-            <li key={row.id} className="flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
+            <li key={row.id} role="button" tabIndex={0} aria-label={`Order details for ${row.customerLabel || row.contact || "customer"}`} onClick={() => setOpenRow(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenRow(row); } }}
+              className="flex cursor-pointer items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card active:scale-[0.99]">
               <OfferIcons haircut={haircut} extras={visitOffer(row, haircut, treatments).extras} />
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15px]">{row.customerLabel || row.contact || "Customer"}</b>
                 <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{visitOffer(row, haircut, treatments).label}</p>
                 <p className="mt-1 text-[12.5px] font-semibold text-muted">Completed {completionLabel(row.completedAt!)}</p>
               </span>
+              <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
             </li>
           ))}
         </ul>

@@ -1,10 +1,12 @@
 "use client";
+import { FormSkeleton } from "@/components/common/Skeleton";
 import Link from "next/link";
 import { QrCode } from "@/components/common/QrCode";
 
 import { useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
-import { Button, Input } from "@river-apps/ui";
+import { Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { reverseGeocodePin } from "@/lib/geocode";
 import { removeChairsAt, useShopChairs, chairLocation } from "@/lib/shop-chairs";
 import {
@@ -21,6 +23,7 @@ import { LocationPicker } from "./LocationPicker";
 
 /** Turn shops on, add a place, and keep each pin with that shop. */
 export function ShopsScreen() {
+  const cloudReady = useCloud().ready;
   const { profile, ready: profileReady } = useShopProfile();
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
@@ -62,6 +65,7 @@ export function ShopsScreen() {
     }
   }
 
+  if (!cloudReady) return <FormSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <header className="mt-1 px-1">
@@ -103,7 +107,7 @@ export function ShopsScreen() {
             <div className="mt-2 flex flex-col gap-3 rounded-card bg-surface px-3.5 py-3.5 shadow-card">
               <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
               <LocationPicker value={pin} onChange={setPin} disabled={busy} />
-              <Button fullWidth disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
+              <Button fullWidth loading={busy} disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
             </div>
           </section>
           )}

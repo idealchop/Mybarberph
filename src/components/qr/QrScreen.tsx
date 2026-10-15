@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Card, Topbar } from "@river-apps/ui";
+import { Card, Topbar } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import { Check, Copy, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { makeQrPoster } from "@/lib/qr-poster";

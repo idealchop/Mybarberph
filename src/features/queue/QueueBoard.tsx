@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/common/Skeleton";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 import { ChevronRight } from "lucide-react";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
@@ -6,7 +7,8 @@ import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { Plus } from "lucide-react";
-import { Button, EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
+import { EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -105,6 +107,7 @@ export function QueueBoard() {
   const open = list.filter((r) => r.status === "requested" || r.status === "accepted" || r.status === "in_chair");
   const done = list.filter((r) => r.status === "done");
 
+  if (!ready) return <ListSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <header className="flex flex-wrap items-end gap-x-6 border-b border-line px-1">
