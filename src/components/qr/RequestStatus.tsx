@@ -3,11 +3,12 @@
 import { CheckIcon } from "@river-apps/icons";
 import { Button, Card, MonoText } from "@river-apps/ui";
 import { Star } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { BarberChair } from "@/components/art";
 import { usePublicBooking, type ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { PoweredBy, ShopHeader } from "./ShopBrand";
+import { QrCode } from "@/components/common/QrCode";
 import type { PublicShop } from "./usePublicShop";
 
 const STEPS = ["Sent", "In chair", "Done"] as const;
@@ -15,6 +16,7 @@ const stepIndex = (b: ChairRequest) => (b.status === "done" ? 2 : b.status === "
 
 /** Customer ticket after a QR booking. Updates live (every 3s) as the shop or the barber moves it along. */
 export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnother }: { bookingId: string; shopId: string; shop: PublicShop | null; branchName?: string; onBookAnother: () => void }) {
+  const origin = useSyncExternalStore(noop, () => window.location.origin, () => "");
   const live = usePublicBooking(bookingId, shopId);
   const [rated, setRated] = useState<ChairRequest | null>(null);
   const booking = rated ?? live;
@@ -51,6 +53,12 @@ export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnoth
           <span className="text-[12.5px] font-bold uppercase tracking-[0.04em] text-muted">Your ticket</span>
           <MonoText className="text-[13px]">{booking.ref}</MonoText>
         </div>
+        {!done && !closed && !sitting && origin ? (
+          <Card className="mt-2 flex items-center gap-3 px-4 py-3">
+            <span className="flex-none rounded-[12px] bg-white p-1 ring-1 ring-line"><QrCode value={`${origin}/scan?code=${encodeURIComponent(booking.ref)}`} size={104} label={`Ticket QR ${booking.ref}`} /></span>
+            <span className="min-w-0 text-[13px] font-semibold text-muted">Show this at the shop. Your barber scans it to call you in.</span>
+          </Card>
+        ) : null}
         <Card className="mt-2 overflow-hidden px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
@@ -128,3 +136,4 @@ function Feedback({ booking, shop, branchName, shopId, onSaved }: { booking: Cha
     </main>
   );
 }
+function noop() { return () => undefined; }

@@ -7,6 +7,8 @@ import { PageBack } from "@/components/shell/PageBack";
 import { useState } from "react";
 import { peso } from "@/lib/format";
 import { api, refreshCloud } from "@/lib/cloud";
+import { QrScanner } from "@/components/scan/QrScanner";
+import { parseTicketCode } from "@/lib/ticket-code";
 import { markInChair, setRequestStatus, statusLabel, useChairRequests } from "@/lib/chair-bookings";
 
 /** Partner Scan: find a ticket by its code (BK-…) and mark the visit verified on the server. */
@@ -20,20 +22,25 @@ export function FindTicket() {
     ? rows.find((row) => row.ref.toLowerCase() === query || row.ref.toLowerCase().includes(query) || row.customerLabel.toLowerCase().includes(query))
     : undefined;
 
+  function find(raw: string) {
+    const value = raw.trim();
+    setCode(value);
+    setQuery(value.toLowerCase());
+    setNote("");
+    if (/^BK-[A-Z0-9]{6}$/i.test(value)) {
+      void api("/api/shop/verify", { method: "POST", body: JSON.stringify({ code: value.toUpperCase() }) })
+        .then((r) => { if (r.ok) void refreshCloud(); })
+        .catch(() => undefined);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-[440px] px-4 pb-10 pt-6">
-      <Topbar className="px-0" leading={<PageBack fallback="/home" />} title="Scan QR" subtitle="Type the code on the customer’s ticket." />
-      <form className="mt-4" onSubmit={(e) => {
-        e.preventDefault();
-        const value = code.trim();
-        setQuery(value.toLowerCase());
-        setNote("");
-        if (/^BK-[A-Z0-9]{6}$/i.test(value)) {
-          void api("/api/shop/verify", { method: "POST", body: JSON.stringify({ code: value }) })
-            .then((r) => { if (r.ok) void refreshCloud(); })
-            .catch(() => undefined);
-        }
-      }}>
+      <Topbar className="px-0" leading={<PageBack fallback="/home" />} title="Scan QR" subtitle="Point the camera at the QR on the customer’s ticket." />
+      <QrScanner className="mt-4" paused={Boolean(match)} onResult={(text) => find(parseTicketCode(text))} />
+      {match ? <Button className="mt-2" size="sm" variant="secondary" fullWidth onClick={() => { setQuery(""); setCode(""); setNote(""); }}>Scan another</Button> : null}
+      <form className="mt-4" onSubmit={(e) => { e.preventDefault(); find(code); }}>
+        <p className="mb-2 px-1 text-[12.5px] font-semibold text-muted">Or type the code</p>
         <Input label="Ticket" placeholder="BK-7K2Q9M" value={code} onChange={(e) => setCode(e.target.value)} />
         <Button data-auth="action" className="mt-3" type="submit" fullWidth>Find</Button>
       </form>

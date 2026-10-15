@@ -23,3 +23,14 @@ export function barberRange(range?: string | null, from?: string | null, to?: st
   const f = today - dow * DAY;
   return { range: "week" as const, from: f, to: f + 7 * DAY, label: `${fmt(f)} – ${fmt(f + 6 * DAY)}` };
 }
+
+export interface BarberPerformance {
+  label: string; from: number; to: number;
+  cuts: number; sales: number; cash: number; gcash: number; online: number; unpaid: number; remit: number;
+  avg: number; completionPct: number | null; declined: number;
+  walkIns: number; onlineBookings: number;
+  claimedCash: number; unclaimedCash: number;
+  hours: { hour: number; cuts: number }[]; days: { day: string; cuts: number; sales: number }[];
+  services: { name: string; cuts: number; sales: number }[];
+  claims: { id: string; amount: number; count: number; claimedAt: number }[];
+}

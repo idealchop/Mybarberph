@@ -2,9 +2,11 @@
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
-import { BarberNameEdit, BarberTotals } from "./BarberSelf";
+import { BarberPerformanceView } from "./BarberSelf";
+import { QrScanner } from "@/components/scan/QrScanner";
+import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Button, Input } from "@river-apps/ui";
-import { ChevronLeft, History, Plus, ScanLine } from "lucide-react";
+import { BarChart3, ChevronLeft, History, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BarberChair, BarberIcon } from "@/components/art";
 import { startBarberCloud, useCloud } from "@/lib/cloud";
@@ -13,7 +15,7 @@ import {
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, chairLinkExpired, linkExpiryLabel, useShopChairs } from "@/lib/shop-chairs";
-import { HOME_LOCATION_ID } from "@/lib/shop-locations";
+import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
 
@@ -88,12 +90,12 @@ function ActiveCard({
 }) {
   const offer = row ? visitOffer(row, haircut, treatments) : null;
   const elapsed = row?.startedAt ? elapsedLabel(row.startedAt, now) : "";
-  const who = row ? (row.customerLabel || row.contact || "Customer") : "No one seated";
+  const who = row ? (row.customerLabel || row.contact || "Customer") : "Ready for next customer";
   return (
-    <section className="relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink" aria-label="In the chair">
+    <section className="relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink" aria-label="Current customer">
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
-        <h2 className="mt-1 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? elapsed : "Open"}</h2>
+        <h2 className="mt-1 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? elapsed : "Free"}</h2>
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${offer.label} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
@@ -142,6 +144,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [adding, setAdding] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [history, setHistory] = useState(false);
+  const [perf, setPerf] = useState(false);
+  const shopsLoc = useShopLocations();
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const chair = chairPreview;
@@ -182,13 +186,15 @@ export function BarberLinkScreen({ token }: { token: string }) {
     .filter((row) => row.status === "done" && mine(row) && row.completedAt)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
 
+  const placeName = shopsLoc.enabled ? shopsLoc.branches.find((b) => b.id === placeId)?.name ?? "" : "";
+  if (perf) return <BarberPerformanceView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} />;
   if (history) {
     return (
       <ChairHistory
         rows={done}
         now={now}
         who={chairBarberName(chair)}
-        chairLabel={chair.label}
+        chairLabel={placeName}
         haircut={haircut}
         treatments={treatments}
         onBack={() => setHistory(false)}
@@ -203,9 +209,9 @@ export function BarberLinkScreen({ token }: { token: string }) {
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-muted">{greeting}, {chairBarberName(chair)}</p>
           <h1 className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{profile.name}</h1>
-          <p className="truncate text-[13px] font-semibold text-muted">{chairBarberName(chair)} · {chair.label}</p>
-          <BarberNameEdit name={chair.barberName?.trim() || ""} />
+          <p className="truncate text-[13px] font-semibold text-muted">{[chairBarberName(chair), placeName].filter(Boolean).join(" · ")}</p>
         </div>
+        <button type="button" aria-label="My sales" title="My sales" onClick={() => setPerf(true)} className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><BarChart3 size={20} strokeWidth={2} /></button>
       </header>
 
       {allowance.unlimited ? null : (
@@ -284,7 +290,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             setName("");
             setPicked([]);
             setNote("");
-          }}>Seat them</Button>
+          }}>Accept</Button>
           <Button className="mt-2" fullWidth variant="secondary" onClick={() => { setAdding(false); setName(""); setPicked([]); }}>Cancel</Button>
         </section>
       ) : scanning ? (
@@ -334,11 +340,10 @@ export function BarberLinkScreen({ token }: { token: string }) {
         }}
       />
 
-      <BarberTotals token={token} refreshKey={done.length} />
 
       <section className="mt-5">
         <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Waiting</h2>
-        {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish the cut in your chair before you accept the next one.</p> : null}
+        {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current cut before you accept the next one.</p> : null}
         {waiting.length === 0 ? (
           <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No one waiting.</p>
         ) : (
@@ -392,9 +397,12 @@ function OnlineScan({
   return (
     <section className="mt-5">
       <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Scan</h2>
-      <p className="mt-1 px-1 text-[13px] font-semibold text-muted">The ticket on the customer’s phone, from an online booking.</p>
+      <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Point the camera at the QR on the customer’s ticket.</p>
+      <QrScanner className="mt-3" paused={Boolean(match)} onResult={(text) => { const c = parseTicketCode(text); setCode(c); setQuery(c.toLowerCase()); }} />
+      {match ? <Button className="mt-2" size="sm" variant="secondary" fullWidth onClick={() => { setCode(""); setQuery(""); }}>Scan another</Button> : null}
       <form className="mt-3" onSubmit={(e) => { e.preventDefault(); setQuery(code.trim().toLowerCase()); }}>
-        <Input label="Ticket" placeholder="RM-48213" value={code} onChange={(e) => setCode(e.target.value)} />
+        <p className="mb-2 px-1 text-[12.5px] font-semibold text-muted">Or type the code</p>
+        <Input label="Ticket" placeholder="BK-7K2Q9M" value={code} onChange={(e) => setCode(e.target.value)} />
         <Button className="mt-3" type="submit" fullWidth>Find</Button>
       </form>
       {needle && !match ? <p className="mt-4 text-[14px] font-semibold">No online ticket matches {code.trim()}.</p> : null}
@@ -406,7 +414,7 @@ function OnlineScan({
           <b className="block text-[18px]">{match.customerLabel || match.contact || "Customer"}</b>
           <p className="mt-1 text-[14px] font-medium text-muted">{match.serviceName} · {match.ref}</p>
           <p className="mt-1 text-[13px] font-semibold text-muted">Online · {match.slotLabel}</p>
-          <Button className="mt-4" fullWidth onClick={() => onSeat(match)}>Seat them</Button>
+          <Button className="mt-4" fullWidth onClick={() => onSeat(match)}>Accept</Button>
         </article>
       ) : null}
       <Button className="mt-2" fullWidth variant="secondary" onClick={onCancel}>Cancel</Button>
@@ -473,7 +481,7 @@ function ChairHistory({
         </button>
         <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">History</h1>
       </div>
-      <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{who} · {chairLabel}</p>
+      <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{[who, chairLabel].filter(Boolean).join(" · ")}</p>
 
       <div className="mt-4 flex gap-2 overflow-x-auto" role="group" aria-label="Date filter">
         {HISTORY_RANGES.map((item) => {
