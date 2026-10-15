@@ -32,7 +32,7 @@ export function SettingsScreen() {
   const locationCount = shops.enabled ? Math.max(1, shops.branches.length) : profile.locations;
 
   const links = [
-    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut, other services and My Barbers" },
+    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut and other services" },
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
   ];
