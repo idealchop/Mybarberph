@@ -1,13 +1,13 @@
 "use client";
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
-import type { SalesRange } from "@/lib/sales-report";
+import { rangeWindow, type SalesRange } from "@/lib/sales-report";
 
 const DAY = 86_400_000;
 export const dayKey = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
-export function rangeKeys(range: SalesRange, now = Date.now()) {
-  const span = range === "today" ? 1 : range === "week" ? 7 : 28;
+export function rangeKeys(range: SalesRange) {
+  const { end: now, span } = rangeWindow(range);
   return { span, keys: new Set(Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY))) };
 }
 
@@ -115,8 +115,7 @@ export function barberKey(r: ChairRequest, chairs: ChairLite[]) {
 
 /** Daily series for a detail trend chart (Manila days in range). */
 export function dailySeries(rows: ChairRequest[], range: SalesRange, loc: string, keep: (r: ChairRequest) => boolean = () => true) {
-  const { span } = rangeKeys(range);
-  const now = Date.now();
+  const { end: now, span } = rangeWindow(range);
   const days = Array.from({ length: span }, (_, i) => {
     const ms = now - (span - 1 - i) * DAY;
     return { key: dayKey(ms), label: new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" }), sales: 0, cuts: 0 };

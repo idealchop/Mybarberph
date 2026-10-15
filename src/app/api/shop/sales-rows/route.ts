@@ -12,7 +12,8 @@ export async function GET(req: Request) {
   const from = manilaDayStart() - (days - 1) * 86_400_000;
   const snap = await shopRef(me.uid).collection("bookings").where("createdAt", ">=", from - 86_400_000).limit(5000).get();
   const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating"] as const;
-  const rows = snap.docs.map((d) => {
+  const full = new URL(req.url).searchParams.get("full") === "1";
+  const rows = full ? snap.docs.map((d) => d.data()) : snap.docs.map((d) => {
     const b = d.data() as ChairRequest & Record<string, unknown>;
     return Object.fromEntries(keep.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]));
   });

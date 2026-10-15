@@ -2,7 +2,7 @@
 
 import type { ChairRequest } from "@/lib/chair-bookings";
 
-export type SalesRange = "today" | "week" | "month";
+export type SalesRange = "today" | "week" | "month" | "custom";
 export type SalesView = "overview" | "services" | "payments" | "shop";
 
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
@@ -10,6 +10,18 @@ export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "week", label: "7d" },
   { value: "month", label: "28d" },
 ];
+
+let custom: { from: string; to: string } | null = null;
+/** Sets the dates used when the range is "custom" (YYYY-MM-DD, Manila, inclusive). */
+export function setCustomRange(from: string, to: string) { custom = from && to ? (from <= to ? { from, to } : { from: to, to: from }) : null; }
+/** End time (noon of the last Manila day) and number of days for a range. */
+export function rangeWindow(range: SalesRange, now = Date.now()) {
+  if (range === "custom" && custom) {
+    const f = Date.parse(`${custom.from}T12:00:00+08:00`), t = Date.parse(`${custom.to}T12:00:00+08:00`);
+    return { end: Math.min(t, now), span: Math.max(1, Math.min(62, Math.round((Math.min(t, now) - f) / 86_400_000) + 1)) };
+  }
+  return { end: now, span: range === "today" ? 1 : range === "week" ? 7 : 28 };
+}
 
 export interface SalesRow {
   label: string;
@@ -86,8 +98,7 @@ function dayLabel(ms: number) {
 
 /** Sales from this shop's finished visits (Manila days). `rows` is every visit in scope. */
 export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange): SalesReport {
-  const now = Date.now();
-  const span = range === "today" ? 1 : range === "week" ? 7 : 28;
+  const { end: now, span } = rangeWindow(range);
   const keys = Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY_MS));
   const prevKeys = new Set(Array.from({ length: span }, (_, i) => dayKey(now - (2 * span - 1 - i) * DAY_MS)));
   const inRange = new Set(keys);
@@ -126,7 +137,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     names.add(extra.contact || extra.customerLabel || extra.id);
   }
 
-  const series: SalesRow[] = range === "today"
+  const series: SalesRow[] = span === 1
     ? [...hours.entries()].sort((a, b) => a[0] - b[0]).map(([hour, value]) => row(hourLabel(hour), value.orders, value.sales))
     : keys.map((k, i) => {
       const v = days.get(k) ?? { orders: 0, sales: 0 };
@@ -152,7 +163,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     unpaid: unpaidCentavos,
     average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,
-    seriesKind: range === "today" ? "hour" : "day",
+    seriesKind: span === 1 ? "hour" : "day",
     services: rowsFrom(services),
     payments: rowsFrom(payments),
     channels: rowsFrom(channels),

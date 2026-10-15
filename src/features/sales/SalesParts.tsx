@@ -1,21 +1,49 @@
 "use client";
 import { Card, cn } from "@river-apps/ui";
-import { ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
-import { SALES_RANGES, type SalesRange } from "@/lib/sales-report";
+import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, LocStat, ServiceStat } from "@/lib/sales-stats";
+import type { Remit } from "./useRemit";
 
 const pct = (v: number | null) => (v == null ? "–" : `${v}%`);
 
-/** Compact date chips: Today | 7d | 28d. */
-export function RangeChips({ value, onChange, className }: { value: SalesRange; onChange: (v: SalesRange) => void; className?: string }) {
+const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
+const short = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
+
+/** Compact date chips: Today | 7d | 28d | calendar (custom from–to, up to 62 days). */
+export function RangeChips({ value, onChange, className, allowCustom = false }: { value: SalesRange; onChange: (v: SalesRange) => void; className?: string; allowCustom?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState(() => ymd(Date.now() - 13 * 86_400_000));
+  const [to, setTo] = useState(() => ymd(Date.now()));
+  const [today] = useState(() => ymd(Date.now()));
+  const apply = (f: string, t: string) => { setCustomRange(f, t); onChange("custom"); };
   return (
-    <div role="radiogroup" aria-label="Date range" className={cn("inline-flex gap-1", className)}>
-      {SALES_RANGES.map((r) => (
-        <button key={r.value} type="button" role="radio" aria-checked={value === r.value} onClick={() => onChange(r.value)}
-          className={cn("h-8 rounded-pill px-3 text-[12.5px] font-bold", value === r.value ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{r.label}</button>
-      ))}
+    <div className={cn("relative inline-flex gap-1", className)}>
+      <div role="radiogroup" aria-label="Date range" className="inline-flex gap-1">
+        {SALES_RANGES.map((r) => (
+          <button key={r.value} type="button" role="radio" aria-checked={value === r.value} onClick={() => { setOpen(false); onChange(r.value); }}
+            className={cn("h-8 rounded-pill px-3 text-[12.5px] font-bold", value === r.value ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{r.label}</button>
+        ))}
+        {allowCustom ? (
+          <button type="button" aria-pressed={value === "custom"} aria-label="Custom dates" aria-expanded={open} onClick={() => setOpen(!open)}
+            className={cn("inline-flex h-8 items-center gap-1 rounded-pill px-2.5 text-[12.5px] font-bold", value === "custom" ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>
+            <CalendarDays size={14} strokeWidth={2} />{value === "custom" ? `${short(from)}–${short(to)}` : null}
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="absolute right-0 top-10 z-30 w-[260px] rounded-[18px] bg-surface p-3 shadow-card ring-1 ring-line" role="dialog" aria-label="Custom dates">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] font-bold text-muted">From<input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-grey-100 px-2 text-[13px] font-semibold text-ink" /></label>
+            <label className="text-[11px] font-bold text-muted">To<input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-grey-100 px-2 text-[13px] font-semibold text-ink" /></label>
+          </div>
+          <button type="button" onClick={() => { apply(from, to); setOpen(false); }} className="mt-2.5 h-9 w-full rounded-pill bg-ink text-[13px] font-bold text-on-ink">Apply</button>
+          <p className="mt-1.5 text-center text-[11px] font-semibold text-muted">Up to 62 days</p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -52,13 +80,25 @@ export function LocationCards({ rows, range }: { rows: LocStat[]; range: SalesRa
 }
 
 /** Barbers tab: ranked by sales, badge 1/2/3…, location under the name. Tap for the barber's page. */
-export function BarberRanking({ rows, range, showLoc }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean }) {
+const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
+
+/** Total cash barbers hold that the owner hasn't marked received. */
+export function UnclaimedCard({ remit, className }: { remit: Remit | null; className?: string }) {
+  return (
+    <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
+      <span><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (remit.unclaimed.length ? `${remit.unclaimed.reduce((s, u) => s + u.count, 0)} cash cuts · ${remit.unclaimed.length} barber${remit.unclaimed.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small></span>
+      <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
+    </div>
+  );
+}
+
+export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
   if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>;
   return (
     <ol className="mt-4 grid gap-2.5 lg:grid-cols-2" aria-label="Barber ranking by sales">
       {rows.map((b, i) => (
         <li key={`${b.id}@${b.locationId}`}>
-          <Link href={href("barber", b.id, range, b.locationId)} className="block rounded-card bg-surface px-4 py-3.5 shadow-card">
+          <Link href={href("barber", b.id, range, b.locationId)} className={cn("block bg-surface px-4 py-3.5 shadow-card", onClaim ? "rounded-t-card" : "rounded-card")}>
             <div className="flex items-center gap-3">
               <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i === 0 ? "bg-ink text-on-ink" : i < 3 ? "bg-grey-200" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i + 1}</span>
               <span className="min-w-0 flex-1">
@@ -72,6 +112,7 @@ export function BarberRanking({ rows, range, showLoc }: { rows: BarberStat[]; ra
               <Mini k="Cuts" v={String(b.cuts)} /><Mini k="Cash" v={peso(b.cash)} /><Mini k="GCash" v={peso(b.gcash)} /><Mini k="Remit" v={peso(b.remit)} />
             </dl>
           </Link>
+          {onClaim ? <ClaimRow b={b} remit={remit ?? null} onClaim={onClaim} busy={claiming === `${b.id}@${b.locationId}`} /> : null}
         </li>
       ))}
     </ol>
@@ -102,5 +143,23 @@ export function ServiceTable({ rows, split }: { rows: ServiceStat[]; split?: { l
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Under a barber card (single location): unclaimed cash with a Claim button, or the last claim badge. */
+function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | null; onClaim: (barberId: string, locationId: string) => void; busy: boolean }) {
+  const open = remit?.unclaimed.find((u) => u.barberId === b.id && u.locationId === b.locationId);
+  const last = remit?.claims.find((c) => c.barberId === b.id && c.locationId === b.locationId);
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-b-card border-t border-dashed border-line bg-surface px-4 py-2.5 shadow-card">
+      <span className="min-w-0 text-[12.5px] font-semibold">
+        {open ? <><b className="text-[14px] tabular-nums">{peso(open.amount)}</b> <span className="text-muted">unclaimed · {open.count} cash cut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
+        {last ? <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-bold text-muted"><Check size={12} strokeWidth={3} /> Claimed {peso(last.amount)} · {day(last.claimedAt)}</span> : null}
+      </span>
+      {open ? (
+        <button type="button" data-auth="action" disabled={busy} onClick={() => onClaim(b.id, b.locationId)}
+          className="inline-flex h-8 flex-none items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy ? "Claiming…" : "Claim"}</button>
+      ) : last ? <span className="flex-none rounded-pill bg-grey-100 px-2.5 py-1 text-[11.5px] font-bold">Claimed</span> : null}
+    </div>
   );
 }

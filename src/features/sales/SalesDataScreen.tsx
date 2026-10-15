@@ -1,11 +1,10 @@
 "use client";
-import { ChevronRight, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
-import { Card, StatCard, cn } from "@river-apps/ui";
+import { StatCard, cn } from "@river-apps/ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
-import { TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -14,7 +13,8 @@ import { useShopChairs } from "@/lib/shop-chairs";
 import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats, locationStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
-import { BarberRanking, LocationCards, RangeChips, ServiceTable } from "./SalesParts";
+import { BarberRanking, LocationCards, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
+import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 
 type View = "overview" | "performance" | "services";
@@ -30,12 +30,12 @@ export function SalesDataScreen() {
   const shops = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
   const cloud = useChairRequests();
-  const deep = useSalesRows();
+  const [range, setRange] = useState<SalesRange>("today");
+  const deep = useSalesRows(range === "custom" ? 62 : 28);
   const all = deep ?? cloud.rows;
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
-  const [range, setRange] = useState<SalesRange>("today");
   const [view, setView] = useState<View>("overview");
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -57,6 +57,7 @@ export function SalesDataScreen() {
   const serviceByLoc = where === "all" && shops.enabled
     ? branches.map((b) => ({ loc: b.name, rows: serviceStats(all, range, b.id) }))
     : undefined;
+  const remit = useRemit(where);
   const branchName = shops.branches.find((b) => b.id === where)?.name;
   const place = where === "all" ? (shops.enabled ? "All locations" : profile.name) : `${profile.name} · ${branchName ?? ""}`;
 
@@ -89,50 +90,41 @@ export function SalesDataScreen() {
             </select>
           </label>
         ) : null}
-        <RangeChips value={range} onChange={setRange} />
+        <RangeChips value={range} onChange={setRange} allowCustom />
       </div>
 
       {view === "overview" ? (
         <>
-          <Overview report={report} rows={all} />
+          <Overview report={report} />
+          <UnclaimedCard className="mt-3" remit={remit.data} />
           {where === "all" && shops.enabled && shops.branches.length > 1 ? <LocationCards rows={locs} range={range} /> : null}
         </>
       ) : null}
-      {view === "performance" ? <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} /> : null}
+      {view === "performance" ? (
+        <>
+          <UnclaimedCard className="mt-4" remit={remit.data} />
+          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
+          <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
+            onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
+        </>
+      ) : null}
       {view === "services" ? <ServiceTable rows={services} split={serviceByLoc} /> : null}
     </div>
   );
 }
 
-function Overview({ report, rows }: { report: ReturnType<typeof salesReport>; rows: ReturnType<typeof useChairRequests>["rows"] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const openRow = open ? rows.find((r) => r.id === open) : undefined;
+function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
   return (
     <>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard className="col-span-2 pb-3 lg:col-span-1" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>} caption={report.delta} />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <StatCard className="col-span-2 pb-3" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>} caption={report.delta} />
+        <StatCard className="pb-3" label="Average" value={peso(report.average)} caption="Per cut" />
         <StatCard className="pb-3" label="Cuts" value={String(report.cuts)} caption={`${report.customers} customers`} />
-        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={report.unpaid > 0 ? `${peso(report.unpaid)} unpaid` : "All collected"} />
-        <StatCard className="col-span-2 pb-3 lg:col-span-1" label="Avg ticket" value={peso(report.average)} caption="Per cut" />
+        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption="Paid" />
+        <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
       </div>
       <SalesChartCard className="mt-3" series={report.series} kind={report.seriesKind} sales={report.sales} />
-      {report.recent.length ? (
-        <Card padding="none" className="mt-3 px-4 py-3">
-          <h2 className="px-0.5 pt-1 text-[16px] font-bold">Latest cuts</h2>
-          {openRow ? <TransactionSheet row={openRow} onClose={() => setOpen(null)} /> : null}
-          <ul>
-            {report.recent.map((item) => (
-              <li key={item.id} role="button" tabIndex={0} aria-label={`Open ${item.who}`} onClick={() => setOpen(item.id)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(item.id); }} className="flex cursor-pointer items-center gap-3 border-b border-line py-2.5 last:border-b-0">
-                <span aria-hidden className="flex size-9 flex-none items-center justify-center rounded-full bg-grey-100 text-[13px] font-extrabold">{(item.who.trim()[0] || "#").toUpperCase()}</span>
-                <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{item.who}</b><small className="text-[12.5px] font-semibold text-muted">{item.when ? `${item.service} · ${item.when}` : item.service}</small></span>
-                <b className="text-[14px] tabular-nums">{peso(item.sales)}</b>
-                <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
-      <Link href="/history" className="mt-4 inline-flex min-h-11 items-center text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]">See each visit in History</Link>
+      <p className="mt-4 text-center"><Link href="/history" className="text-[13.5px] font-semibold text-muted underline decoration-grey-300 underline-offset-[3px]">See each visit in History</Link></p>
     </>
   );
 }
