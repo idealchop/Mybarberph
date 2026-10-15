@@ -41,7 +41,7 @@ export async function remitSummary(shopId: string, loc: string) {
     map.set(id, u);
   }
   const unclaimed = [...map.values()].sort((a, b) => b.amount - a.amount);
-  return { unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), claims: claims.filter((c) => loc === "all" || c.locationId === loc).slice(0, 100).map(({ bookingIds, ...c }) => ({ ...c, count: bookingIds.length })) };
+  return { unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), claims: claims.filter((c) => loc === "all" || c.locationId === loc).slice(0, 100).map((c) => ({ ...c, count: c.bookingIds.length })) };
 }
 
 /** Owner marks a barber's cash as received: every unclaimed paid-cash visit for that barber at that location, up to now. A lock doc serialises claims so a double tap can't claim twice. */

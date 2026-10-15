@@ -12,7 +12,7 @@ import { useShopChairs } from "@/lib/shop-chairs";
 import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
-import { BarberCards, BarberRanking, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
+import { BarberCards, BarberRanking, ClaimHistory, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 
@@ -98,6 +98,7 @@ export function SalesDataScreen() {
           <Overview report={report} />
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
+          <ClaimHistory remit={remit.data} locName={locName} />
           <BarberCards rows={barbers} range={range} showLoc={shops.enabled} />
         </>
       ) : null}
@@ -107,6 +108,7 @@ export function SalesDataScreen() {
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
+          <ClaimHistory remit={remit.data} locName={locName} />
         </>
       ) : null}
       {view === "services" ? <ServiceTable rows={services} split={serviceByLoc} /> : null}

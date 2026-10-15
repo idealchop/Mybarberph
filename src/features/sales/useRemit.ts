@@ -1,10 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/cloud";
 import { useSession } from "@/lib/session";
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; count: number; oldest: number }
-export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string }
+export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[] }
 export interface Remit { unclaimed: UnclaimedRow[]; total: number; claims: ClaimRow[] }
 
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
@@ -31,5 +31,11 @@ export function useRemit(loc: string) {
       await load();
     } catch (e) { setError((e as Error).message); } finally { setBusy(""); }
   };
-  return { data, claim, busy, error };
+  /** bookingId → the claim that covered it (claimed cash stays in every total; only the outstanding figure drops). */
+  const claimOf = useMemo(() => {
+    const m = new Map<string, ClaimRow>();
+    for (const c of data?.claims ?? []) for (const id of c.bookingIds ?? []) m.set(id, c);
+    return (bookingId: string) => m.get(bookingId);
+  }, [data]);
+  return { data, claim, busy, error, claimOf };
 }

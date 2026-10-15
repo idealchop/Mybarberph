@@ -64,7 +64,7 @@ function Bookings({ rows, loading, max, placeFor, locationId }: { rows: ChairReq
       {shown.length === 0 ? (
         <EmptyBookings locationId={locationId} />
       ) : (
-        <div className="grid grid-cols-2 items-start gap-3">
+        <div className="flex flex-col gap-3">
           {shown.map((row) => <BookingCard key={row.id} row={row} place={placeFor?.(row)} />)}
         </div>
       )}

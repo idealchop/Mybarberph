@@ -133,6 +133,31 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
   );
 }
 
+/** Claimed remit history: date, barber, amount. Claimed cash stays counted in Sales and Collected. */
+export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5 }: { remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
+  const [all, setAll] = useState(false);
+  const rows = (remit?.claims ?? []).filter((c) => (!barberId || c.barberId === barberId) && (!locationId || c.locationId === locationId));
+  if (!rows.length) return null;
+  const shown = all ? rows : rows.slice(0, max);
+  return (
+    <section className={cn("mt-4", className)} aria-label="Claimed remit">
+      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Claimed</h2>
+      <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
+        {shown.map((c) => (
+          <li key={c.id} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
+            <span className="min-w-0">
+              <b className="block truncate text-[14px]">{barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName}</b>
+              <small className="flex items-center gap-1 truncate text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" />Claimed by owner · {day(c.claimedAt)}{!barberId && locName?.(c.locationId) ? ` · ${locName(c.locationId)}` : ""}</small>
+            </span>
+            <b className="flex-none text-[14.5px] tabular-nums">{peso(c.amount)}</b>
+          </li>
+        ))}
+      </ul>
+      {rows.length > max ? <button type="button" onClick={() => setAll(!all)} className="mt-1.5 w-full py-1.5 text-center text-[12.5px] font-bold text-muted">{all ? "Show less" : `Show all ${rows.length}`}</button> : null}
+    </section>
+  );
+}
+
 export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
   if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>;
   return (

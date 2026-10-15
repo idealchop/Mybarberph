@@ -11,6 +11,7 @@ import type { SalesRange } from "@/lib/sales-report";
 import { inRange } from "@/lib/sales-stats";
 import { RangeChips } from "@/features/sales/SalesParts";
 import { useSalesRows } from "@/features/sales/useSalesRows";
+import { useRemit } from "@/features/sales/useRemit";
 
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -28,6 +29,7 @@ export function HistoryScreen() {
   const done = inRange(all, range, where).filter((row) => row.status === "done")
     .sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt));
   const nameOf = (id?: string) => shops.branches.find((b) => b.id === (id || HOME_LOCATION_ID))?.name;
+  const remit = useRemit("all");
   const total = done.reduce((s2, r) => s2 + (r.price || 0), 0);
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
@@ -44,14 +46,14 @@ export function HistoryScreen() {
         ) : null}
         <RangeChips value={range} onChange={setRange} allowCustom />
       </div>
-      {done.length ? <VisitList rows={done} placeOf={where === "all" && shops.enabled ? (r) => nameOf(r.locationId) : undefined} /> : (
+      {done.length ? <VisitList rows={done} claimOf={remit.data ? remit.claimOf : undefined} placeOf={where === "all" && shops.enabled ? (r) => nameOf(r.locationId) : undefined} /> : (
         <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished visits in this range.</p>
       )}
     </div>
   );
 }
 
-function VisitList({ rows, placeOf }: { rows: ChairRequest[]; placeOf?: (r: ChairRequest) => string | undefined }) {
+function VisitList({ rows, placeOf, claimOf }: { rows: ChairRequest[]; placeOf?: (r: ChairRequest) => string | undefined; claimOf?: (id: string) => { claimedAt: number } | undefined }) {
   const [open, setOpen] = useState<ChairRequest | null>(null);
   return (
     <ul className="mt-2 flex flex-col gap-2">
@@ -61,6 +63,7 @@ function VisitList({ rows, placeOf }: { rows: ChairRequest[]; placeOf?: (r: Chai
           <span className="min-w-0">
             <b className="block truncate">{row.customerLabel || row.contact}</b>
             <small className="text-[12.5px] font-semibold text-muted">{row.serviceName} · {row.ref}{placeOf?.(row) ? ` · ${placeOf(row)}` : ""} · {when(row.completedAt ?? row.updatedAt)}</small>
+            {claimOf && row.paid && (row.payMethod ?? "cash") === "cash" && row.price ? (() => { const c = claimOf(row.id); return <small className="block text-[11.5px] font-bold text-muted">{c ? `Claimed by owner · ${when(c.claimedAt)}` : "Cash · to claim"}</small>; })() : null}
           </span>
           <span className="flex items-center gap-1.5"><b>{peso(row.price)}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
         </li>

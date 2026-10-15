@@ -11,7 +11,8 @@ import { useShopProfile } from "@/lib/shop-profile";
 import type { SalesRange } from "@/lib/sales-report";
 import { barberKey, barberStats, busyMinutes, dailySeries, inRange, locationStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
-import { RangeChips } from "./SalesParts";
+import { ClaimHistory, RangeChips } from "./SalesParts";
+import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 
 /** Personal detail page for one location or one barber: sales, cuts, cash/GCash, remit, completion, trends. */
@@ -47,6 +48,8 @@ export function SalesDetailScreen() {
   const util = kind === "barber" && busy ? Math.min(100, Math.round((busy / (days * 600)) * 100)) : null;
   const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} cuts` }));
   const services = serviceStats(scoped, range, loc).slice(0, 6);
+  const remit = useRemit(kind === "barber" ? (locHint || "all") : id || "all");
+  const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + u.amount, 0);
 
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
@@ -66,7 +69,7 @@ export function SalesDetailScreen() {
             <StatCard className="pb-3" label="Completion" value={stats.completionPct == null ? "–" : `${stats.completionPct}%`} />
             <StatCard className="pb-3" label="Cash" value={peso(stats.cash)} />
             <StatCard className="pb-3" label="GCash" value={peso(stats.gcash)} />
-            {"remit" in stats ? <StatCard className="col-span-2 pb-3" label="Remit (cash to hand over)" value={peso((stats as { remit: number }).remit)} /> : null}
+            {"remit" in stats ? <StatCard className="col-span-2 pb-3" label="Remit (cash collected)" value={peso((stats as { remit: number }).remit)} caption={remit.data ? (toClaim ? `${peso(toClaim)} still to claim` : "All claimed by owner") : undefined} /> : null}
             {busy ? <StatCard className="pb-3" label="Busy time" value={`${Math.floor(busy / 60)}h ${busy % 60}m`} /> : null}
             {util != null ? <StatCard className="pb-3" label="Utilization" value={`${util}%`} caption="of 10-h days" /> : null}
             {"unpaid" in stats && stats.unpaid ? <StatCard className="col-span-2 pb-3" label="Unpaid" value={peso(stats.unpaid)} /> : null}
@@ -85,6 +88,7 @@ export function SalesDetailScreen() {
               </ul>
             </section>
           ) : null}
+          <ClaimHistory remit={remit.data} barberId={kind === "barber" ? id : undefined} locationId={kind === "barber" ? locHint || undefined : undefined} max={10} />
         </>
       )}
     </div>
