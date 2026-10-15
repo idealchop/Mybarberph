@@ -115,7 +115,7 @@ export function CompanionScreen() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-[720px] flex-col pb-2">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[720px] flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-2 bg-canvas/95 px-4 backdrop-blur">
         <PageBack fallback="/home" />
         <CompanionAvatar size={36} state={c.busy ? "thinking" : "idle"} />
@@ -153,10 +153,12 @@ export function CompanionScreen() {
         ) : null}
         <div ref={end} />
       </div>
-      <form className="sticky bottom-[calc(env(safe-area-inset-bottom)+72px)] mx-4 mt-3 flex items-end gap-2 rounded-[22px] bg-surface p-1.5 pl-4 shadow-card lg:bottom-4" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <div className="sticky bottom-0 z-10 mt-auto bg-canvas/95 px-4 pb-[calc(env(safe-area-inset-bottom)+10px)] pt-2 backdrop-blur">
+      <form className="flex items-end gap-2 rounded-[22px] bg-surface p-1.5 pl-4 shadow-card" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <textarea
           aria-label="Message Companion" rows={1} value={text} maxLength={2000}
           onChange={(e) => setText(e.target.value)}
+          onFocus={() => window.setTimeout(() => end.current?.scrollIntoView({ block: "end" }), 250)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
           placeholder={c.signedIn ? "Itanong mo kahit ano…" : "Sign in to ask Companion"}
           className="max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-[15px] font-medium outline-none placeholder:text-muted"
@@ -165,6 +167,7 @@ export function CompanionScreen() {
           <ArrowUp size={18} strokeWidth={2.2} />
         </button>
       </form>
+      </div>
     </div>
   );
 }

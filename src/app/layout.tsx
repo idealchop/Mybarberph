@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Barbers.ph by River Apps. Customers book from the shop QR. The shop runs from Home, Queue, and Moments.",
   robots: { index: false, follow: false },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0A0A0A" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0A0A0A", interactiveWidget: "resizes-content" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

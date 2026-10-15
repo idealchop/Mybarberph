@@ -124,9 +124,28 @@ async function runTool(uid: string, data: T.ShopData, name: string, args: Record
   }
 }
 
+/** Menu prices; a ₱0 menu price falls back to what recent visits were actually charged. */
+function menuLine(shop: ShopDoc, data: T.ShopData) {
+  const items = shop.menu || [];
+  if (!items.length) return "not set";
+  return items.map((m) => {
+    if (m.price > 0) return `${m.name} ₱${m.price / 100}`;
+    const paid = data.bookings.filter((b) => b.status === "done" && (b.price || 0) > 0 && (b.serviceName || "").split(" · ").includes(m.name)).map((b) => b.price);
+    if (!paid.length) return `${m.name} (price not set)`;
+    const common = [...paid.reduce((mm, p) => mm.set(p, (mm.get(p) ?? 0) + 1), new Map<number, number>())].sort((x, y) => y[1] - x[1])[0]![0];
+    return `${m.name} ₱${common / 100} (as charged on recent visits; no price set in Services)`;
+  }).join(", ");
+}
+
+function snapshot(data: T.ShopData) {
+  const per = (id?: string) => { const t = T.getSales(data, { days: 1, locationId: id }), w = T.getSales(data, { days: 7, locationId: id }); return `today ₱${t.salesPhp} (${t.cuts} cuts), last 7 days ₱${w.salesPhp} (${w.cuts} cuts)`; };
+  const all = `All: ${per()}`;
+  return data.branches.length > 1 ? [all, ...data.branches.map((b) => `${b.name}: ${per(b.id)}`)].join("; ") : all;
+}
+
 function context(shop: ShopDoc, data: T.ShopData, plan: string, goals: T.Goal[]) {
   const today = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  return `\n\n## This shop\nName: ${data.shopName}\nArea: ${shop.area || shop.address || "Philippines"}\nPlan: ${plan}${isPaid(plan) ? "" : " (Partner: limited Companion)"}\nToday (Manila): ${today}\nBranches: ${data.branches.map((b) => `${b.name} (id ${b.id})`).join(", ")}\nBarbers: ${data.chairs.map((c) => c.barberName).join(", ") || "none added"}\nMenu: ${(shop.menu || []).map((m) => `${m.name} ₱${m.price / 100}`).join(", ") || "not set"}\nSaved goals: ${goals.map((g) => g.text).join("; ") || "none yet"}`;
+  return `\n\n## This shop\nName: ${data.shopName}\nArea: ${shop.area || shop.address || "Philippines"}\nPlan: ${plan}${isPaid(plan) ? "" : " (Partner: limited Companion)"}\nToday (Manila): ${today}\nBranches: ${data.branches.map((b) => `${b.name} (id ${b.id})`).join(", ")}\nBarbers: ${data.chairs.map((c) => c.barberName).join(", ") || "none added"}\nMenu (shop-wide, every branch): ${menuLine(shop, data)}\nSales snapshot (same numbers as the Sales screen, done visits by completion time, Manila): ${snapshot(data)}\nSaved goals: ${goals.map((g) => g.text).join("; ") || "none yet"}`;
 }
 
 /** One owner question → tool calls → answer. Returns the saved assistant message. */

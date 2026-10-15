@@ -36,7 +36,7 @@ function PartnerPlanCard() {
   );
 }
 
-const FOCUS = ["/queue/new", "/settings/edit"];
+const FOCUS = ["/queue/new", "/settings/edit", "/companion"];
 
 /** Home, Queue, and Moments. Paid shops get the QR card. Account is the avatar on Home. */
 export function ShopShell({ children }: { children: ReactNode }) {

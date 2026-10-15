@@ -41,11 +41,21 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
   return { shopName: shopName || profile?.name || "your shop", plan, bookings: snap.docs.map((d) => d.data() as ChairRequest), chairs, branches };
 }
 
-function scope(d: ShopData, locationId?: string) {
-  if (!locationId || locationId === "all") return d.bookings;
-  return d.bookings.filter((b) => (b.locationId || HOME) === locationId);
+/** Accepts a branch id or its name (the model often passes "San Antonio"); unknown → whole shop, never an empty filter. */
+export function resolveLocation(d: ShopData, locationId?: string): string | undefined {
+  if (!locationId || locationId === "all") return undefined;
+  const raw = String(locationId).trim(), low = raw.toLowerCase();
+  const hit = d.branches.find((b) => b.id === raw) ?? d.branches.find((b) => b.name.toLowerCase() === low)
+    ?? d.branches.find((b) => b.name.toLowerCase().includes(low) || low.includes(b.name.toLowerCase()));
+  return hit?.id;
 }
-const doneIn = (rows: ChairRequest[], from: number, to = Date.now()) =>
+function scope(d: ShopData, locationId?: string) {
+  const id = resolveLocation(d, locationId);
+  if (!id) return d.bookings;
+  // Single-shop accounts store visits without a location (= home).
+  return d.bookings.filter((b) => (b.locationId || HOME) === id || (d.branches.length === 1 && !b.locationId));
+}
+const doneIn = (rows: ChairRequest[], from: number, to = Date.now() + 1) =>
   rows.filter((b) => b.status === "done" && (b.completedAt ?? b.updatedAt) >= from && (b.completedAt ?? b.updatedAt) < to);
 const total = (rows: ChairRequest[]) => pesos(rows.reduce((s, b) => s + (b.price || 0), 0));
 const clampDays = (n: unknown, def = 7) => Math.max(1, Math.min(120, Math.round(Number(n) || def)));
@@ -56,15 +66,21 @@ function barberOf(d: ShopData, b: ChairRequest) {
   return c?.barberName || seat || "Unassigned";
 }
 
+/** Calendar-aligned like the Sales screen: "N days" = today plus the N-1 Manila days before it. */
+export function windowStart(days: number, now = Date.now()) {
+  return Date.parse(`${manilaDay(now)}T00:00:00+08:00`) - (days - 1) * DAY;
+}
+
 export function getSales(d: ShopData, a: { days?: number; locationId?: string }) {
   const days = clampDays(a.days);
   const rows = scope(d, a.locationId);
   const now = Date.now();
-  const cur = doneIn(rows, now - days * DAY);
-  const prev = doneIn(rows, now - 2 * days * DAY, now - days * DAY);
+  const start = windowStart(days, now);
+  const cur = doneIn(rows, start, now + 1);
+  const prev = doneIn(rows, start - days * DAY, start);
   const byDay: Record<string, { sales: number; cuts: number }> = {};
   for (const b of cur) { const k = manilaDay(b.completedAt ?? b.updatedAt); byDay[k] ??= { sales: 0, cuts: 0 }; byDay[k].sales += pesos(b.price); byDay[k].cuts++; }
-  const unpaid = rows.filter((b) => b.status === "done" && !b.paid && (b.completedAt ?? b.updatedAt) >= now - days * DAY);
+  const unpaid = rows.filter((b) => b.status === "done" && !b.paid && (b.completedAt ?? b.updatedAt) >= start);
   const s = total(cur);
   return { days, salesPhp: s, cuts: cur.length, avgTicketPhp: cur.length ? Math.round(s / cur.length) : 0, previousPeriodSalesPhp: total(prev), previousPeriodCuts: prev.length, unpaidPhp: total(unpaid), byDay };
 }
@@ -83,7 +99,7 @@ export function getBookings(d: ShopData, a: { days?: number; locationId?: string
 
 export function topServices(d: ShopData, a: { days?: number; locationId?: string; limit?: number }) {
   const days = clampDays(a.days, 30);
-  const rows = doneIn(scope(d, a.locationId), Date.now() - days * DAY);
+  const rows = doneIn(scope(d, a.locationId), windowStart(days));
   const m = new Map<string, { service: string; cuts: number; salesPhp: number }>();
   for (const b of rows) { const k = b.serviceName || "Service"; const r = m.get(k) ?? { service: k, cuts: 0, salesPhp: 0 }; r.cuts++; r.salesPhp += pesos(b.price); m.set(k, r); }
   return { days, services: [...m.values()].sort((x, y) => y.salesPhp - x.salesPhp).slice(0, Math.max(1, Math.min(20, a.limit ?? 10))) };
@@ -185,7 +201,8 @@ export function chairPerformance(d: ShopData, from: number, locationId?: string)
   }
   // Chairs with no visits in the window still show (zeros), so idle chairs are visible.
   for (const c of d.chairs) {
-    if (locationId && locationId !== "all" && c.locationId !== locationId) continue;
+    const want = resolveLocation(d, locationId);
+    if (want && c.locationId !== want) continue;
     const k = `${c.locationId}::${c.label}`;
     if (!m.has(k)) m.set(k, { chair: c.label, locationId: c.locationId, barber: c.barberName, cuts: 0, sales: 0, minutes: 0, days: new Set(), customers: new Set(), returned: new Set() });
   }
