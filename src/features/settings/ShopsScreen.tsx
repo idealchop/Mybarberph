@@ -25,6 +25,7 @@ export function ShopsScreen() {
   const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
   const { access } = useTier();
+  const [confirmMulti, setConfirmMulti] = useState<"on" | "off" | null>(null);
   const limit = maxLocations(access);
   const atLimit = branches.length >= limit;
   const next = planForLocations(branches.length + 1);
@@ -107,22 +108,46 @@ export function ShopsScreen() {
           </section>
           )}
 
-          <button
-            type="button"
-            className="mt-6 w-full rounded-card bg-surface px-4 py-3 text-left shadow-card"
-            onClick={() => { disable(); setNote("Multiple shops is off. This phone is back on the first shop."); }}
-          >
-            <b className="block text-[15px]">Turn off multiple shops</b>
-            <small className="text-[13px] font-medium text-muted">The other shops stay saved. Home, Queue, and links go back to the first shop.</small>
-          </button>
+          <div className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card">
+            <b className="block text-[15px]">Multiple shops is on</b>
+            <p className="mt-1 text-[13px] font-medium text-muted">You run {branches.length} location{branches.length === 1 ? "" : "s"} from this account.</p>
+            <button type="button" data-auth="action" onClick={() => setConfirmMulti("off")} className="mt-3 h-10 w-full rounded-pill border-2 border-[#D92D20] text-[14px] font-bold text-[#D92D20]">Turn off multiple shops</button>
+          </div>
         </>
       ) : (
         <div className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
           <b className="block text-[16px]">One shop</b>
           <p className="mt-1 text-[13.5px] font-medium text-muted">Turn this on when you run more than one shop. The shop you have now becomes the first one.</p>
-          <Button className="mt-4" fullWidth disabled={!profileReady} data-auth="action" onClick={() => { enable(profile); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
+          <Button className="mt-4" fullWidth disabled={!profileReady} data-auth="action" onClick={() => setConfirmMulti("on")}>Turn on multiple shops</Button>
         </div>
       )}
+      {confirmMulti ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setConfirmMulti(null)}>
+          <div role="dialog" aria-modal="true" aria-label={confirmMulti === "on" ? "Turn on multiple shops" : "Turn off multiple shops"} className="w-full max-w-[440px] rounded-t-[28px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-5 shadow-card sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+            <b className="block text-[19px] tracking-[-0.02em]">{confirmMulti === "on" ? "Turn on multiple shops?" : "Turn off multiple shops?"}</b>
+            {confirmMulti === "on" ? (
+              <ul className="mt-2 grid gap-1.5 text-[13.5px] font-medium text-ink-2">
+                <li>• The shop you have now becomes your first location.</li>
+                <li>• You can add more locations, each with its own address, barbers and booking QR.</li>
+                <li>• Home, Queue and Sales get a location switcher.</li>
+              </ul>
+            ) : (
+              <ul className="mt-2 grid gap-1.5 text-[13.5px] font-medium text-ink-2">
+                <li>• Your other locations are hidden. Home, Queue, links and Sales go back to the first shop.</li>
+                <li>• Nothing is deleted: locations, barbers, visits and sales stay saved and come back if you turn it on again.</li>
+              </ul>
+            )}
+            <div className="mt-5 flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setConfirmMulti(null)}>Cancel</Button>
+              {confirmMulti === "on" ? (
+                <Button className="flex-1" data-auth="action" disabled={!profileReady} onClick={() => { enable(profile); setConfirmMulti(null); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
+              ) : (
+                <button type="button" data-auth="action" onClick={() => { disable(); setConfirmMulti(null); setNote("Multiple shops is off. This phone is back on the first shop."); }} className="h-11 flex-1 rounded-pill bg-[#D92D20] px-4 text-[14px] font-bold text-white">Turn off</button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

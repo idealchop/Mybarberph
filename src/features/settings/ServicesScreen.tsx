@@ -1,9 +1,7 @@
 "use client";
 
 import { Camera, Check, ChevronLeft, Loader2, Plus } from "lucide-react";
-import { QrCode } from "@/components/common/QrCode";
-import { useOwnerLogo } from "@/lib/shop-profile";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, Input, Topbar } from "@river-apps/ui";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
@@ -136,27 +134,22 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
               const holder = holders[chair.label];
               const off = chair.active === false;
               return (
-                <li key={chair.id} className="rounded-card bg-surface px-3.5 py-3.5 shadow-card">
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1" style={{ opacity: off ? 0.55 : 1 }}>
-                      <button type="button" onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex min-w-0 max-w-full items-center gap-2.5 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
-                        <BarberPortrait chair={chair} size={36} />
-                        <span className="min-w-0">
-                          <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
-                          <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""}</small>
-                        </span>
-                      </button>
-                      <div className="mt-3 flex items-center gap-2.5">
-                        {off ? null : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
-                        <button type="button" role="switch" data-auth="action" aria-checked={!off} aria-label={`${chairBarberName(chair)} active`}
-                          onClick={() => { const e = saveChair({ ...chair, active: off }); if (e) setNote(e); }}
-                          className={`relative h-5 w-9 flex-none rounded-full transition ${off ? "bg-grey-300" : "bg-ink"}`}>
-                          <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${off ? "left-0.5" : "left-[18px]"}`} />
-                        </button>
-                        <small className="text-[11.5px] font-bold text-muted">{off ? "Off" : "Active"}</small>
-                      </div>
-                    </div>
-                    {off ? null : <BarberQr id={chair.id} name={chairBarberName(chair)} />}
+                <li key={chair.id} className="relative rounded-card bg-surface px-3.5 py-3.5 shadow-card">
+                  <button type="button" role="switch" data-auth="action" aria-checked={!off} aria-label={`${chairBarberName(chair)} active`}
+                    onClick={() => { const e = saveChair({ ...chair, active: off }); if (e) setNote(e); }}
+                    className={`absolute right-3.5 top-3.5 h-6 w-10 rounded-full transition ${off ? "bg-grey-300" : "bg-ink"}`}>
+                    <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${off ? "left-0.5" : "left-[18px]"}`} />
+                  </button>
+                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex min-w-0 max-w-[calc(100%-3.5rem)] items-center gap-3 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
+                    <BarberPortrait chair={chair} size={44} />
+                    <span className="min-w-0">
+                      <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
+                      <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""}</small>
+                    </span>
+                  </button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <a href={`/sales/detail?kind=barber&id=${encodeURIComponent(chair.barberId || chair.id)}&r=week&loc=${encodeURIComponent(chair.locationId || HOME_LOCATION_ID)}`} className="inline-flex h-9 items-center justify-center rounded-pill text-[13px] font-bold ring-1 ring-ink">Performance</a>
+                    {off ? <span className="inline-flex h-9 items-center justify-center rounded-pill bg-grey-100 text-[13px] font-bold text-muted">Inactive</span> : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
                   </div>
                 </li>
               );
@@ -226,7 +219,7 @@ const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop on
 function ShareBarberLink({ id, name }: { id: string; name: string }) {
   const [done, setDone] = useState(false);
   return (
-    <button type="button" data-auth="action" className="inline-flex h-8 items-center gap-1 rounded-pill px-3.5 text-[12.5px] font-bold ring-1 ring-ink"
+    <button type="button" data-auth="action" className="inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"
       onClick={async () => {
         const url = `${window.location.origin}${ensureChairLink(id)}`;
         try {
@@ -236,18 +229,6 @@ function ShareBarberLink({ id, name }: { id: string; name: string }) {
       }}>
       {done ? <><Check size={13} strokeWidth={3} /> Link copied</> : "Share to barber"}
     </button>
-  );
-}
-
-/** The barber's personal link as a QR, owner logo in the center (same box as the location cards). */
-function BarberQr({ id, name }: { id: string; name: string }) {
-  const logo = useOwnerLogo();
-  const [url, setUrl] = useState("");
-  useEffect(() => { const t = window.setTimeout(() => { const p = ensureChairLink(id); if (p) setUrl(`${window.location.origin}${p}`); }, 0); return () => window.clearTimeout(t); }, [id]);
-  return (
-    <div className="flex-none rounded-[12px] bg-white p-1 ring-1 ring-line">
-      {url ? <QrCode value={url} size={92} label={`Barber link QR for ${name}`} logo={logo || "/icon-192.png"} /> : <span className="block size-[92px]" />}
-    </div>
   );
 }
 
