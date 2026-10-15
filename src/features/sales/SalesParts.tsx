@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
-import type { BarberStat, LocStat, ServiceStat } from "@/lib/sales-stats";
+import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
 import type { Remit } from "./useRemit";
 
 const pct = (v: number | null) => (v == null ? "–" : `${v}%`);
@@ -55,21 +55,25 @@ function Mini({ k, v }: { k: string; v: string }) {
   return <div className="rounded-[12px] bg-grey-100 px-1 py-2 text-center"><dt className="text-[10.5px] font-bold text-muted">{k}</dt><dd className="text-[13.5px] font-extrabold tabular-nums">{v}</dd></div>;
 }
 
-/** Overview · All locations: one performance card per shop. Tap for that shop's page. */
-export function LocationCards({ rows, range }: { rows: LocStat[]; range: SalesRange }) {
+/** Overview: one performance card per barber (name first, location as subtext). Tap for the barber's page. */
+export function BarberCards({ rows, range, showLoc }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean }) {
+  if (!rows.length) return null;
   return (
-    <section className="mt-4" aria-label="Per location">
-      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Per location</h2>
+    <section className="mt-4" aria-label="Barbers">
+      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Barbers</h2>
       <ul className="mt-2 grid gap-2.5 lg:grid-cols-2">
-        {rows.map((l) => (
-          <li key={l.id}>
-            <Link href={href("location", l.id, range)} className="block rounded-card bg-surface px-4 py-3.5 shadow-card">
+        {rows.map((b) => (
+          <li key={`${b.id}@${b.locationId}`}>
+            <Link href={href("barber", b.id, range, b.locationId)} className="block rounded-card bg-surface px-4 py-3.5 shadow-card">
               <div className="flex items-center justify-between gap-3">
-                <b className="truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{l.name}</b>
-                <span className="flex items-center gap-1"><b className="text-[16px] tabular-nums">{peso(l.sales)}</b><ChevronRight size={17} className="text-subtle" aria-hidden /></span>
+                <span className="min-w-0">
+                  <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
+                  {showLoc && b.locationName ? <small className="block truncate text-[12px] font-semibold text-muted">{b.locationName}</small> : null}
+                </span>
+                <span className="flex flex-none items-center gap-1"><b className="text-[16px] tabular-nums">{peso(b.sales)}</b><ChevronRight size={17} className="text-subtle" aria-hidden /></span>
               </div>
               <dl className="mt-2.5 grid grid-cols-3 gap-2">
-                <Mini k="Cuts" v={String(l.cuts)} /><Mini k="Avg ticket" v={peso(l.avg)} /><Mini k="Completion" v={pct(l.completionPct)} />
+                <Mini k="Cuts" v={String(b.cuts)} /><Mini k="Avg ticket" v={peso(b.avg)} /><Mini k="Completion" v={pct(b.completionPct)} />
               </dl>
             </Link>
           </li>
@@ -82,13 +86,50 @@ export function LocationCards({ rows, range }: { rows: LocStat[]; range: SalesRa
 /** Barbers tab: ranked by sales, badge 1/2/3…, location under the name. Tap for the barber's page. */
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
-/** Total cash barbers hold that the owner hasn't marked received. */
-export function UnclaimedCard({ remit, className }: { remit: Remit | null; className?: string }) {
+/** Total cash barbers hold that the owner hasn't marked received. Claim: one barber → claim now; several → sheet with a Claim per barber. */
+export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: { remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const rows = remit?.unclaimed ?? [];
+  const one = rows.length === 1 ? rows[0] : null;
+  const busy = (u: { barberId: string; locationId: string }) => claiming === `${u.barberId}@${u.locationId}`;
   return (
-    <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
-      <span><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (remit.unclaimed.length ? `${remit.unclaimed.reduce((s, u) => s + u.count, 0)} cash cuts · ${remit.unclaimed.length} barber${remit.unclaimed.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small></span>
-      <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
-    </div>
+    <>
+      <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
+        <span className="min-w-0"><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (rows.length ? `${rows.reduce((s, u) => s + u.count, 0)} cash cuts · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small></span>
+        <span className="flex flex-none items-center gap-2.5">
+          <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
+          {onClaim && rows.length ? (
+            <button type="button" data-auth="action" disabled={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))}
+              className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{one && busy(one) ? "Claiming…" : "Claim"}</button>
+          ) : null}
+        </span>
+      </div>
+      {open && onClaim ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-label="Claim remit" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-4 pb-6 pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
+            <div className="flex items-center justify-between"><b className="text-[17px]">Claim remit</b><button type="button" onClick={() => setOpen(false)} className="text-[13px] font-bold text-muted">Done</button></div>
+            {rows.length ? (
+              <ul className="mt-3 grid gap-2">
+                {rows.map((u) => (
+                  <li key={`${u.barberId}@${u.locationId}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-grey-100 px-3.5 py-3">
+                    <span className="min-w-0">
+                      <b className="block truncate text-[15px]">{u.barberName}</b>
+                      <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
+                    </span>
+                    <span className="flex flex-none items-center gap-2.5">
+                      <b className="text-[15px] tabular-nums">{peso(u.amount)}</b>
+                      <button type="button" data-auth="action" disabled={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)}
+                        className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy(u) ? "Claiming…" : "Claim"}</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-4 text-center text-[13.5px] font-semibold text-muted">All cash received.</p>}
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

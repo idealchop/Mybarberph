@@ -1,8 +1,7 @@
 "use client";
 import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
-import { StatCard, cn } from "@river-apps/ui";
-import Link from "next/link";
+import { Button, StatCard, cn } from "@river-apps/ui";
 import { useEffect, useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
 import { useChairRequests } from "@/lib/chair-bookings";
@@ -11,9 +10,9 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
-import { barberStats, locationStats, serviceStats } from "@/lib/sales-stats";
+import { barberStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
-import { BarberRanking, LocationCards, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
+import { BarberCards, BarberRanking, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
 
@@ -51,13 +50,14 @@ export function SalesDataScreen() {
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   const report = salesReport(rows, unpaid, range);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
-  const locs = useMemo(() => locationStats(all, range, branches), [all, range, branches]);
   const barbers = useMemo(() => barberStats(all, range, where, branches, chairs), [all, range, where, branches, chairs]);
   const services = useMemo(() => serviceStats(all, range, where), [all, range, where]);
   const serviceByLoc = where === "all" && shops.enabled
     ? branches.map((b) => ({ loc: b.name, rows: serviceStats(all, range, b.id) }))
     : undefined;
   const remit = useRemit(where);
+  const claim = (id: string, l: string) => void remit.claim(id, l);
+  const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
   const branchName = shops.branches.find((b) => b.id === where)?.name;
   const place = where === "all" ? (shops.enabled ? "All locations" : profile.name) : `${profile.name} · ${branchName ?? ""}`;
 
@@ -96,19 +96,21 @@ export function SalesDataScreen() {
       {view === "overview" ? (
         <>
           <Overview report={report} />
-          <UnclaimedCard className="mt-3" remit={remit.data} />
-          {where === "all" && shops.enabled && shops.branches.length > 1 ? <LocationCards rows={locs} range={range} /> : null}
+          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
+          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
+          <BarberCards rows={barbers} range={range} showLoc={shops.enabled} />
         </>
       ) : null}
       {view === "performance" ? (
         <>
-          <UnclaimedCard className="mt-4" remit={remit.data} />
+          <UnclaimedCard className="mt-4" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
         </>
       ) : null}
       {view === "services" ? <ServiceTable rows={services} split={serviceByLoc} /> : null}
+      <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>
     </div>
   );
 }
@@ -124,7 +126,6 @@ function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
         <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
       </div>
       <SalesChartCard className="mt-3" series={report.series} kind={report.seriesKind} sales={report.sales} />
-      <p className="mt-4 text-center"><Link href="/history" className="text-[13.5px] font-semibold text-muted underline decoration-grey-300 underline-offset-[3px]">See each visit in History</Link></p>
     </>
   );
 }
