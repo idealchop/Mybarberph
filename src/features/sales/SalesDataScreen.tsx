@@ -17,7 +17,7 @@ import { barberStats } from "@/lib/sales-stats";
 import { BarberRanking, ClaimHistory, BarberSalesRanking, RangeChips, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
-import { PerformanceDashboard } from "./PerformanceDashboard";
+import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./PerformanceDashboard";
 
 type View = "overview" | "performance" | "services";
 const VIEWS: { value: View; label: string }[] = [
@@ -39,6 +39,7 @@ export function SalesDataScreen() {
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
   const [view, setView] = useState<View>("overview");
+  const [pf, setPf] = useState<PerfFilters>({});
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const t = window.setTimeout(() => {
@@ -89,7 +90,7 @@ export function SalesDataScreen() {
             </select>
           </label>
         ) : null}
-        <RangeChips value={range} onChange={setRange} allowCustom />
+        <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
       </div>
 
       {view === "overview" ? (
@@ -109,7 +110,7 @@ export function SalesDataScreen() {
       ) : null}
       {view === "services" ? (
         <>
-          <PerformanceDashboard all={all} range={range} where={where} branches={branches} chairs={chairs} />
+          <PerformanceDashboard f={pf} all={all} range={range} where={where} branches={branches} chairs={chairs} />
         </>
       ) : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>

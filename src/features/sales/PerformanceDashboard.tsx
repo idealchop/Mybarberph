@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@river-apps/ui";
-import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronRight, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { ChairRequest } from "@/lib/chair-bookings";
@@ -11,6 +11,51 @@ import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { SalesChartCard } from "./SalesChart";
 
 const DAY = 86_400_000;
+export interface PerfFilters { fb?: string; fc?: string; fp?: string; fs?: string }
+
+/** One filter icon (next to the calendar) → a sheet with every Performance filter. Badge = active count. */
+export function PerfFilterButton({ value, onChange, all, chairs }: { value: PerfFilters; onChange: (f: PerfFilters) => void; all: ChairRequest[]; chairs: Chair[] }) {
+  const [open, setOpen] = useState(false);
+  const [d, setD] = useState<PerfFilters>(value);
+  const count = Object.values(value).filter(Boolean).length;
+  const barberOpts = [...new Map(chairs.filter((c) => (c as { active?: boolean }).active !== false).map((c) => [c.barberId || c.id, c.barberName?.trim() || c.label || "Barber"])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const svcOpts = [...new Set(all.map((r) => (r.serviceName || "").trim()).filter(Boolean))].sort();
+  const sel = (label: string, k: keyof PerfFilters, opts: [string, string][]) => (
+    <label className="block">
+      <span className="text-[12px] font-bold text-muted">{label}</span>
+      <select value={d[k] ?? ""} onChange={(e) => setD({ ...d, [k]: e.target.value })} className="mt-1 h-11 w-full rounded-[12px] bg-grey-100 px-3 text-[14px] font-semibold text-ink outline-none">
+        {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </label>
+  );
+  return (
+    <>
+      <button type="button" aria-label={count ? `Filters, ${count} on` : "Filters"} onClick={() => { setD(value); setOpen(true); }}
+        className={cn("relative inline-flex size-8 flex-none items-center justify-center rounded-pill", count ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>
+        <SlidersHorizontal size={14} strokeWidth={2.2} />
+        {count ? <span className="absolute -right-1 -top-1 inline-flex size-4 items-center justify-center rounded-full bg-[#D92D20] text-[10px] font-extrabold text-white">{count}</span> : null}
+      </button>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-label="Filters" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
+            <b className="block text-[18px]">Filters</b>
+            <div className="mt-3 grid gap-3">
+              {sel("Barber", "fb", [["", "All barbers"], ...barberOpts])}
+              {sel("Channel", "fc", [["", "All channels"], ["walk-in", "Walk-in"], ["online", "Online"]])}
+              {sel("Payment", "fp", [["", "All payments"], ["cash", "Cash"], ["gcash", "GCash"], ["online", "Paid online"], ["unpaid", "Unpaid"]])}
+              {sel("Service", "fs", [["", "All services"], ...svcOpts.map((x) => [x, x] as [string, string])])}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { onChange({}); setOpen(false); }} className="h-11 rounded-pill text-[14px] font-bold ring-1 ring-ink">Clear</button>
+              <button type="button" onClick={() => { onChange(d); setOpen(false); }} className="h-11 rounded-pill bg-ink text-[14px] font-bold text-on-ink">Apply</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
 const MEDAL = ["🥇", "🥈", "🥉"];
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string };
@@ -34,26 +79,14 @@ function stats(rows: ChairRequest[]) {
 }
 
 /** Shop performance for the chosen location + dates: trends, timing, mix, rankings. */
-export function PerformanceDashboard({ all, range, where, branches, chairs, solo = false }: { all: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean }) {
-  const [fb, setFb] = useState(""), [fc, setFc] = useState(""), [fp, setFp] = useState(""), [fs, setFs] = useState("");
-  const barberOpts = [...new Map(chairs.map((c) => [c.barberId || c.id, c.barberName?.trim() || c.label || "Barber"])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  const svcOpts = [...new Set(all.map((r) => (r.serviceName || "").trim()).filter(Boolean))].sort();
+export function PerformanceDashboard({ all, range, where, branches, chairs, solo = false, f }: { all: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean; f?: PerfFilters }) {
+  const { fb = "", fc = "", fp = "", fs = "" } = f ?? {};
   const extraOk = (r: ChairRequest) =>
     (!fb || barberKey(r, chairs) === fb) &&
     (!fc || (fc === "online" ? r.channel === "online" : r.channel !== "online")) &&
     (!fp || (fp === "unpaid" ? !r.paid : r.paid && (r.payMethod ?? "cash") === fp)) &&
     (!fs || (r.serviceName || "").trim() === fs);
   const locOk = (r: ChairRequest) => (where === "all" || (r.locationId || HOME_LOCATION_ID) === where) && extraOk(r);
-  const filtered = Boolean(fb || fc || fp || fs);
-  const filters = (
-    <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Filters">
-      <Pick label="Barber" value={fb} onChange={setFb} opts={[["", "All barbers"], ...barberOpts]} />
-      <Pick label="Channel" value={fc} onChange={setFc} opts={[["", "All channels"], ["walk-in", "Walk-in"], ["online", "Online"]]} />
-      <Pick label="Payment" value={fp} onChange={setFp} opts={[["", "All payments"], ["cash", "Cash"], ["gcash", "GCash"], ["online", "Paid online"], ["unpaid", "Unpaid"]]} />
-      <Pick label="Service" value={fs} onChange={setFs} opts={[["", "All services"], ...svcOpts.map((s) => [s, s] as [string, string])]} />
-      {filtered ? <button type="button" onClick={() => { setFb(""); setFc(""); setFp(""); setFs(""); }} className="h-8 rounded-pill px-2.5 text-[12.5px] font-bold text-muted underline">Clear</button> : null}
-    </div>
-  );
   const cur = windowKeys(range), prev = windowKeys(range, 1);
   const rows = all.filter((r) => locOk(r) && cur.has(dayKey(at(r))));
   const before = all.filter((r) => locOk(r) && prev.has(dayKey(at(r))));
@@ -111,8 +144,8 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   const multiLoc = branches.length > 1 && where === "all";
 
   if (!rows.length && !before.length) {
-    return (<>{solo ? null : filters}
-      <div className="mt-3 rounded-card bg-surface px-6 py-10 text-center shadow-card">
+    return (<>
+      <div className="mt-4 rounded-card bg-surface px-6 py-10 text-center shadow-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons3d/bar-chart.png" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
         <b className="mt-2 block text-[16px]">No visits in this range yet</b>
@@ -121,8 +154,8 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
     );
   }
 
-  return (<>{solo ? null : filters}
-    <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-2">
+  return (<>
+    <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-2">
       <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0 lg:col-span-2 lg:grid-cols-4">
         <Kpi k="Sales" v={peso(now.sales)} d={delta(now.sales, was.sales)} />
         <Kpi k="Cuts" v={String(now.cuts)} d={delta(now.cuts, was.cuts)} />
@@ -192,16 +225,6 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   );
 }
 
-function Pick({ label, value, onChange, opts }: { label: string; value: string; onChange: (v: string) => void; opts: [string, string][] }) {
-  return (
-    <label className={cn("relative inline-flex h-8 max-w-[48%] items-center rounded-pill px-3 text-[12.5px] font-bold", value ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>
-      <span className="truncate">{opts.find((o) => o[0] === value)?.[1] ?? label}</span><span aria-hidden className="ml-1 text-[10px]">▾</span>
-      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
-        {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-    </label>
-  );
-}
 
 function delta(a: number, b: number) { if (!b) return a ? null : 0; return Math.round(((a - b) / b) * 100); }
 
