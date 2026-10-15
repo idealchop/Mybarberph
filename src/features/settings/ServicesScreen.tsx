@@ -114,10 +114,10 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       {note ? <p className="mt-3 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
 
       {sharedSetup ? <p className="mt-3 px-1 text-[13px] font-semibold text-muted">Barbers belong to each shop. Open a shop in Manage Locations to set My Barbers there.</p> : null}
-      {sharedSetup ? null : <section className="mt-5">
+      {sharedSetup ? null : <section className={embedded ? "mt-2" : "mt-5"}>
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
-            <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">My Barbers</h2>
+            {embedded ? null : <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">My Barbers</h2>}
             <p className="mt-1 text-[13px] font-medium text-ink-2">Each barber gets their own link to take walk-ins and finish cuts.</p>
           </div>
           <Button data-auth="action" size="sm" leadingIcon={<Plus size={15} strokeWidth={2.2} />} onClick={() => {

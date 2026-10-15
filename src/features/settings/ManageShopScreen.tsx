@@ -80,7 +80,11 @@ function Editor({ branch }: { branch: ShopBranch }) {
       </div>
       {note ? <p className="mt-3 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold" role="status">{note}</p> : null}
 
-      <Card className="mt-4 grid gap-3 px-4 py-4">
+      <div className="mt-4">
+        <ServicesScreen locationId={branch.id} embedded />
+      </div>
+
+      <Card className="mt-6 grid gap-3 px-4 py-4">
         <b className="text-[16px]">Shop details</b>
         <Input label="Shop name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} disabled={busy} />
         <Input label="Address" value={address} maxLength={300} onChange={(e) => setAddress(e.target.value)} disabled={busy} placeholder="Street, barangay, city" />
@@ -92,10 +96,6 @@ function Editor({ branch }: { branch: ShopBranch }) {
         <LocationPicker value={pin} onChange={setPin} disabled={busy} />
         <p className="text-[12.5px] font-semibold text-muted">Brand name, logo, hours and facades are in <a href="/settings/edit" className="font-bold underline underline-offset-[3px]">Shop profile</a>.</p>
       </Card>
-
-      <div className="mt-6">
-        <ServicesScreen locationId={branch.id} embedded />
-      </div>
 
       {branch.id === HOME_LOCATION_ID ? null : (
         <Card className="mt-6 px-4 py-4">
