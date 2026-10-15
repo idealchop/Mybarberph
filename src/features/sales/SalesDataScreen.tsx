@@ -1,5 +1,6 @@
 "use client";
-import { MapPin } from "lucide-react";
+import { MapPin, Trophy } from "lucide-react";
+import Link from "next/link";
 import { CoinIcon } from "@river-apps/icons";
 import { Button, StatCard, cn } from "@river-apps/ui";
 import { useEffect, useMemo, useState } from "react";
@@ -64,6 +65,7 @@ export function SalesDataScreen() {
           <h1 className="flex items-center gap-1.5 text-[28px] font-extrabold leading-none tracking-[-0.03em]">
             <CoinIcon size={28} /> Sales
           </h1>
+          <Link href="/sales/barbers" aria-label="My Barbers leaderboard" title="My Barbers" className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><Trophy size={19} strokeWidth={2} /></Link>
         </div>
       </header>
 
