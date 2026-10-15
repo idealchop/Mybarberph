@@ -14,7 +14,7 @@ import {
 import { copyMenuToLocation } from "@/lib/shop-services";
 import { useCloud } from "@/lib/cloud";
 import { bookingUrl } from "@/lib/chair-bookings";
-import { useShopProfile, type ShopLocation } from "@/lib/shop-profile";
+import { useOwnerLogo, useShopProfile, type ShopLocation } from "@/lib/shop-profile";
 import { maxLocations, planForLocations, planInfo } from "@/lib/plans";
 import { useTier } from "@/lib/tier";
 import { LocationPicker } from "./LocationPicker";
@@ -130,10 +130,11 @@ export function ShopsScreen() {
 /** This shop's booking QR, right on its card. Tap to open the printable QR page. */
 function BranchQr({ branchId, name }: { branchId: string; name: string }) {
   const cloud = useCloud();
+  const logo = useOwnerLogo();
   const url = cloud.shopId && typeof window !== "undefined" ? bookingUrl(window.location.origin, cloud.shopId, branchId) : "";
   return (
     <a href={`/qr?loc=${encodeURIComponent(branchId)}`} className="flex-none rounded-[12px] bg-white p-1 ring-1 ring-line" aria-label={`Booking QR for ${name}. Open to print or share.`}>
-      {url ? <QrCode value={url} size={92} label={`Booking QR for ${name}`} /> : <span className="block size-[92px]" />}
+      {url ? <QrCode value={url} size={92} label={`Booking QR for ${name}`} logo={logo || "/icon-192.png"} /> : <span className="block size-[92px]" />}
     </a>
   );
 }

@@ -101,3 +101,10 @@ export function useGreeting() {
   }, []);
   return greeting;
 }
+
+/** The owner's shop logo — the one mark used on every location's QR. Falls back to the public shop doc. Empty if none. */
+export function useOwnerLogo(): string {
+  const { profile } = useShopProfile();
+  const cloud = useCloud();
+  return profile.logoUrl || cloud.shop?.logoUrl || "";
+}

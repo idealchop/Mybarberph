@@ -9,7 +9,7 @@ import { PageBack } from "@/components/shell/PageBack";
 import { useCloud } from "@/lib/cloud";
 import { HOW_IT_WORKS, bookingUrl } from "@/lib/chair-bookings";
 import { useShopLocations } from "@/lib/shop-locations";
-import { useShopProfile } from "@/lib/shop-profile";
+import { useOwnerLogo, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
 
 /** Paid shop page: one QR customers scan to book. */
@@ -18,6 +18,7 @@ export function QrScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
   const cloud = useCloud();
+  const ownerLogo = useOwnerLogo();
   const shopId = cloud.shopId;
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
@@ -48,7 +49,7 @@ export function QrScreen() {
     setMaking(true);
     try {
       const place = (fromUrl ? fromUrl.name : "") || (shops.enabled ? shops.branch?.name : "") || profile.area || "";
-      const blob = await makeQrPoster({ url, shopName: profile.name, place, logoUrl: profile.logoUrl || undefined });
+      const blob = await makeQrPoster({ url, shopName: profile.name, place, logoUrl: ownerLogo || undefined });
       const href = URL.createObjectURL(blob);
       if (mode === "download") {
         const a = document.createElement("a"); a.href = href; a.download = `${(profile.name || "shop").replace(/[^\w]+/g, "-")}${place ? `-${place.replace(/[^\w]+/g, "-")}` : ""}-QR-poster.png`; a.click();
@@ -75,7 +76,7 @@ export function QrScreen() {
           <b className="text-[16px]">Booking</b>
           <p className="mt-1 max-w-[280px] text-[13px] font-medium text-muted">{shops.viewingAll ? "This code stays blank until one shop is open." : !listed ? "Add the shop name and save your haircut in Services. Then your QR appears here." : `One code for ${who}.`}</p>
           <div className="mt-4 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
-            {url ? <QrCode value={url} size={220} label="Booking QR code" logo={profile.logoUrl || "/icon-192.png"} /> : <span className="block size-[220px]" />}
+            {url ? <QrCode value={url} size={220} label="Booking QR code" logo={ownerLogo || "/icon-192.png"} /> : <span className="block size-[220px]" />}
           </div>
           <p className="mt-3 max-w-[260px] truncate font-mono text-[11px] font-medium text-subtle" title={url}>{url ? url.replace(/^https?:\/\//, "") : " "}</p>
           {shops.viewingAll ? <Button size="sm" className="mt-3" href="/settings/shops">Manage Locations</Button> : (
