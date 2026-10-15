@@ -10,17 +10,17 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { SALES_RANGES, salesReport, type SalesRange } from "@/lib/sales-report";
-import { barberStats, serviceStats } from "@/lib/sales-stats";
-import { SalesChartCard } from "./SalesChart";
-import { BarberRanking, ClaimHistory, ClaimRanking, RangeChips, ServiceTable, UnclaimedCard } from "./SalesParts";
+import { barberStats } from "@/lib/sales-stats";
+import { BarberRanking, ClaimHistory, ClaimRanking, RangeChips, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
 import { useSalesRows } from "./useSalesRows";
+import { PerformanceDashboard } from "./PerformanceDashboard";
 
 type View = "overview" | "performance" | "services";
 const VIEWS: { value: View; label: string }[] = [
   { value: "overview", label: "Overview" },
   { value: "performance", label: "Barbers" },
-  { value: "services", label: "Services" },
+  { value: "services", label: "Performance" },
 ];
 
 /** Sales: Overview / Barbers / Services, filtered by location and a compact date chip. */
@@ -30,7 +30,7 @@ export function SalesDataScreen() {
   const { chairs } = useShopChairs({ all: true });
   const cloud = useChairRequests();
   const [range, setRange] = useState<SalesRange>("today");
-  const deep = useSalesRows(range === "custom" ? 62 : 28);
+  const deep = useSalesRows(range === "custom" ? 124 : 28);
   const all = deep ?? cloud.rows;
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
@@ -51,10 +51,6 @@ export function SalesDataScreen() {
   const report = salesReport(rows, unpaid, range);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => barberStats(all, range, where, branches, chairs), [all, range, where, branches, chairs]);
-  const services = useMemo(() => serviceStats(all, range, where), [all, range, where]);
-  const serviceByLoc = where === "all" && shops.enabled
-    ? branches.map((b) => ({ loc: b.name, rows: serviceStats(all, range, b.id) }))
-    : undefined;
   const remit = useRemit(where);
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
@@ -110,8 +106,7 @@ export function SalesDataScreen() {
       ) : null}
       {view === "services" ? (
         <>
-          <SalesChartCard className="mt-4" series={report.series} kind={report.seriesKind} sales={report.sales} />
-          <ServiceTable rows={services} split={serviceByLoc} />
+          <PerformanceDashboard all={all} range={range} where={where} branches={branches} chairs={chairs} />
         </>
       ) : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>

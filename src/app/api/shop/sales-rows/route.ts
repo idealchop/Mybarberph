@@ -4,11 +4,11 @@ import type { ChairRequest } from "@/lib/booking-types";
 
 export const dynamic = "force-dynamic";
 
-/** Owner: visits from the last N Manila days (default 28, max 62), trimmed to what Sales needs. */
+/** Owner: visits from the last N Manila days (default 28, max 124), trimmed to what Sales needs. */
 export async function GET(req: Request) {
   const me = await getCaller(req);
   if (!me) return unauthorized();
-  const days = Math.min(62, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 28));
+  const days = Math.min(124, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 28));
   const from = manilaDayStart() - (days - 1) * 86_400_000;
   const snap = await shopRef(me.uid).collection("bookings").where("createdAt", ">=", from - 86_400_000).limit(5000).get();
   const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating"] as const;
