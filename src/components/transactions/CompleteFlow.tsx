@@ -17,6 +17,13 @@ export function completeCut(row: ChairRequest) {
 export function CompleteFlowHost() {
   const [row, setRow] = useState<ChairRequest | null>(null);
   const [details, setDetails] = useState<ChairRequest | null>(null);
+  // Pause live CSS animations while the page is hidden (battery).
+  useEffect(() => {
+    const sync = () => { if (document.hidden) document.documentElement.dataset.hidden = "1"; else delete document.documentElement.dataset.hidden; };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
   useEffect(() => {
     const on = (e: Event) => setRow((e as CustomEvent<ChairRequest>).detail);
     window.addEventListener(EVT, on);
