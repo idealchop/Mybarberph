@@ -11,8 +11,10 @@ export async function makeQrPoster({ url, shopName, place, logoUrl }: { url: str
   const font = (w: number, px: number) => `${w} ${px}px "Plus Jakarta Sans", Inter, system-ui, -apple-system, sans-serif`;
   const center = (t: string, y: number, f: string, color = "#0A0A0A") => { g.font = f; g.fillStyle = color; g.textAlign = "center"; g.fillText(fit(g, t, W - M * 3), W / 2, y); };
 
-  const logo = await load(logoUrl || "/icon-192.png").catch(() => (logoUrl ? load("/icon-192.png").catch(() => null) : null));
-  void shopName; void place;
+  // Center icon: the shop's own logo; Barbers.ph icon only when there's no logo (or it can't be loaded).
+  const logo = (logoUrl ? await loadLogo(logoUrl) : null) ?? (await load("/icon-192.png").catch(() => null));
+  const label = [shopName?.trim(), place?.trim()].filter(Boolean).join(" · ");
+  if (label) center(label, 440, font(600, 44), "#6B6B73");
   center("Scan to join the waitlist", 560, font(800, 104));
   center("Book your haircut, no app needed", 650, font(600, 54), "#3A3A40");
 
@@ -43,4 +45,20 @@ export async function makeQrPoster({ url, shopName, place, logoUrl }: { url: str
 
 function round(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.roundRect(x, y, w, h, r); }
 function fit(g: CanvasRenderingContext2D, t: string, max: number) { let s = t; while (g.measureText(s).width > max && s.length > 4) s = s.slice(0, -2); return s === t ? t : `${s.trimEnd()}…`; }
+/** Load an image as a same-origin data/blob URL so the canvas stays untainted. Direct CORS fetch first, then our proxy. */
+async function loadLogo(src: string): Promise<HTMLImageElement | null> {
+  if (src.startsWith("/") || src.startsWith("data:")) return load(src).catch(() => null);
+  const tries = [src, `/api/public/logo-proxy?url=${encodeURIComponent(src)}`];
+  for (const t of tries) {
+    try {
+      const r = await fetch(t, { mode: "cors", cache: "force-cache" });
+      if (!r.ok) continue;
+      const b = await r.blob();
+      if (!b.type.startsWith("image/")) continue;
+      const obj = URL.createObjectURL(b);
+      try { return await load(obj); } finally { setTimeout(() => URL.revokeObjectURL(obj), 0); }
+    } catch { /* try next */ }
+  }
+  return null;
+}
 function load(src: string) { return new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
