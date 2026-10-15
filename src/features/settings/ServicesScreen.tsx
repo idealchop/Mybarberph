@@ -110,7 +110,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
 
   return (
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6"}>
-      {embedded ? <h2 className="px-1 text-[18px] font-extrabold tracking-[-0.02em]">Services &amp; My Barbers</h2> : <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title={sharedSetup ? "Shared setup" : "Services"} subtitle={sharedSetup ? "Defined once for every shop. Each shop uses these unless you change them there." : place ? `${place}: uses the shared setup. Turn items off, change a price, or add services only this shop sells.` : "One haircut, the other services you add, and My Barbers."} />}
+      {embedded ? <h2 className="px-1 text-[18px] font-extrabold tracking-[-0.02em]">My Barbers</h2> : <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title={sharedSetup ? "Shared setup" : "Services"} subtitle={shops.enabled ? "Services apply to every location." : "One haircut, the other services you add, and My Barbers."} />}
       {note ? <p className="mt-3 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
 
       {sharedSetup ? <p className="mt-3 px-1 text-[13px] font-semibold text-muted">Barbers belong to each shop. Open a shop in Manage Locations to set My Barbers there.</p> : null}
@@ -155,6 +155,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
         )}
       </section>}
 
+      {forLoc ? null : <>
       <section className="mt-6">
         <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Haircut</h2>
         <div className="mt-2 flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
@@ -204,6 +205,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
           </ul>
         )}
       </section>
+      </>}
     </div>
   );
 }

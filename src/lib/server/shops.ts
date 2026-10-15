@@ -5,7 +5,6 @@ import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import type { ChairRequest } from "@/lib/booking-types";
-import { allOverrides, effectiveMenu, type MenuFile } from "@/lib/menu-model";
 
 /**
  * Firestore layout (database from FIRESTORE_DATABASE_ID):
@@ -146,14 +145,8 @@ export async function putState(shopId: string, key: string, raw: string) {
       }
       return items;
     };
-    // Master list + per-location overrides (legacy full copies are migrated by the same model).
-    const file = { haircut: parsed.haircut ?? { name: "Haircut", durationMins: 30, icon: "clipper" }, treatments: Array.isArray(parsed.treatments) ? parsed.treatments : [], overrides: parsed.overrides, byLocation: parsed.byLocation } as MenuFile;
+    // Services are shop-wide; clear any old per-location menus.
     const byLocation: Record<string, ShopDoc["menu"]> = {};
-    for (const id of Object.keys(allOverrides(file)).slice(0, 50)) {
-      if (!/^[\w-]{1,60}$/.test(id)) continue;
-      const eff = effectiveMenu(file, id);
-      byLocation[id] = toItems({ haircut: eff.haircut, treatments: eff.treatments } as unknown as Record<string, unknown>);
-    }
     // Replace the whole map so removed branches don't keep stale menus.
     batch.update(shopRef(shopId), { menu: toItems(parsed), menuByLocation: byLocation, updatedAt: now });
   }
@@ -313,9 +306,10 @@ export async function chairLink(token: string) {
 }
 
 /** Public view used by the booking page and River Mobile. Never includes owner-only data. */
-/** The menu a branch sells: its own when it has one, else the first shop's. */
+/** Services are shop-wide: every location sells the main Services list. */
 export function menuFor(s: ShopDoc, locationId?: string | null): ShopDoc["menu"] {
-  return (locationId && s.menuByLocation?.[locationId]) || s.menu || [];
+  void locationId;
+  return s.menu || [];
 }
 
 export function publicShop(id: string, s: ShopDoc) {
@@ -323,7 +317,7 @@ export function publicShop(id: string, s: ShopDoc) {
     id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null, hoursWeek: s.hoursWeek ?? null,
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null })),
-    servicesByLocation: Object.fromEntries(Object.entries(s.menuByLocation ?? {}).map(([k, menu]) => [k, menu.map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null }))])),
+    servicesByLocation: {} as Record<string, never[]>,
     plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
     updatedAt: s.updatedAt,
   };

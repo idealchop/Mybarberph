@@ -91,7 +91,9 @@ export type MenuScope = "master" | string;
 export function useShopMenu(explicitId?: MenuScope) {
   const loc = useShopLocations();
   const scope = explicitId || (loc.enabled ? (loc.viewingAll ? "master" : loc.scopeId || HOME_LOCATION_ID) : "master");
-  const atLocation = scope !== "master" && loc.enabled;
+  // Services are shop-wide: every location uses (and edits) the main list; old per-location overrides are ignored.
+  const atLocation = false as boolean;
+  void loc;
   const [file, setFile] = useState<MenuFile>({ haircut: defaultHaircut, treatments: [], overrides: {} });
   useEffect(() => {
     const pull = () => setFile(readFile());
