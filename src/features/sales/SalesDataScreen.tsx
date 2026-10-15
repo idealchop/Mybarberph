@@ -12,7 +12,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
-import { salesReport, type SalesRange } from "@/lib/sales-report";
+import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats } from "@/lib/sales-stats";
 import { BarberRanking, ClaimHistory, BarberSalesRanking, RangeChips, UnclaimedCard } from "./SalesParts";
 import { useRemit } from "./useRemit";
@@ -33,7 +33,7 @@ export function SalesDataScreen() {
   const { chairs } = useShopChairs({ all: true });
   const cloud = useChairRequests();
   const [range, setRange] = useState<SalesRange>("today");
-  const deep = useSalesRows(range === "custom" ? 124 : 28);
+  const deep = useSalesRows(rangeFetchDays(range));
   const all = deep ?? cloud.rows;
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");

@@ -2,13 +2,22 @@
 
 import type { ChairRequest } from "@/lib/chair-bookings";
 
-export type SalesRange = "today" | "week" | "month" | "custom";
+export type SalesRange = "today" | "week" | "month" | "all" | "custom";
 export type SalesView = "overview" | "services" | "payments" | "shop";
 
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "week", label: "7d" },
+  { value: "all", label: "All time" },
 ];
+
+let earliest = 0;
+/** Oldest visit seen (ms); "All time" spans from its Manila day to today. */
+export function noteEarliest(rows: { createdAt?: number; completedAt?: number; updatedAt?: number }[]) {
+  for (const r of rows) { const t = Math.min(r.createdAt || Infinity, r.completedAt || Infinity, r.updatedAt || Infinity); if (Number.isFinite(t) && t > 0 && (!earliest || t < earliest)) earliest = t; }
+}
+/** How many days of rows a range needs from the server. */
+export function rangeFetchDays(range: SalesRange) { return range === "all" ? 3650 : range === "custom" ? 124 : 28; }
 
 let custom: { from: string; to: string } | null = null;
 /** Sets the dates used when the range is "custom" (YYYY-MM-DD, Manila, inclusive). */
@@ -19,6 +28,7 @@ export function rangeWindow(range: SalesRange, now = Date.now()) {
     const f = Date.parse(`${custom.from}T12:00:00+08:00`), t = Date.parse(`${custom.to}T12:00:00+08:00`);
     return { end: Math.min(t, now), span: Math.max(1, Math.min(62, Math.round((Math.min(t, now) - f) / 86_400_000) + 1)) };
   }
+  if (range === "all") return { end: now, span: Math.max(1, Math.min(3650, earliest ? Math.ceil((now - earliest) / 86_400_000) + 1 : 28)) };
   return { end: now, span: range === "today" ? 1 : range === "week" ? 7 : 28 };
 }
 
@@ -151,8 +161,8 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
   const delta = rangeSales === 0
     ? "No sales yet"
     : previousSales > 0
-      ? `${rangeSales >= previousSales ? "+" : "−"}${Math.round((Math.abs(rangeSales - previousSales) / previousSales) * 100)}% vs previous ${span === 1 ? "day" : `${span} days`}`
-      : "First sales on record";
+      && range !== "all" ? `${rangeSales >= previousSales ? "+" : "−"}${Math.round((Math.abs(rangeSales - previousSales) / previousSales) * 100)}% vs previous ${span === 1 ? "day" : `${span} days`}`
+      : range === "all" ? "All time" : "First sales on record";
 
   return {
     delta,

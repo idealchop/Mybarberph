@@ -22,7 +22,7 @@ export function HistoryScreen() {
   const shops = useShopLocations();
   const cloud = useChairRequests();
   const [range, setRange] = useState<SalesRange>("week");
-  const deep = useSalesRows(range === "custom" ? 62 : 28, true);
+  const deep = useSalesRows(range === "all" ? 3650 : range === "custom" ? 62 : 28, true);
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const fresh = new Map(cloud.rows.map((r) => [r.id, r]));

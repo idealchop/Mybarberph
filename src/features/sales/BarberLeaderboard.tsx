@@ -1,14 +1,14 @@
 "use client";
 import { ListSkeleton } from "@/components/common/Skeleton";
 import { cn } from "@river-apps/ui";
-import { ChevronRight, MapPin } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/PageBack";
 import { BarberPortrait } from "@/features/settings/SeatList";
 import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
-import type { SalesRange } from "@/lib/sales-report";
+import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
 import { barberKey, inRange } from "@/lib/sales-stats";
 import { chairBarberName, useShopChairs, type ShopChair } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -16,7 +16,7 @@ import { RangeChips } from "./SalesParts";
 import { useSalesRows } from "./useSalesRows";
 
 type Sort = "sales" | "productivity" | "completion" | "speed" | "cuts";
-const SORTS: [Sort, string][] = [["sales", "Overall sales"], ["productivity", "Productivity"], ["completion", "Completion rate"], ["speed", "Fastest"], ["cuts", "Cuts"]];
+const SORTS: [Sort, string][] = [["sales", "Sales"], ["productivity", "Productivity"], ["completion", "Completion"], ["speed", "Fastest"], ["cuts", "Cuts"]];
 const MEDAL = ["🥇", "🥈", "🥉"];
 
 interface Row { key: string; id: string; loc: string; locName: string; name: string; chair?: ShopChair; sales: number; cuts: number; declined: number; completion: number | null; avgMin: number | null; perHour: number | null }
@@ -26,13 +26,13 @@ export function BarberLeaderboard() {
   const shops = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
   const [range, setRange] = useState<SalesRange>("week");
-  const [loc, setLoc] = useState("");
+  const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("sales");
   const [page, setPage] = useState(0);
-  const deep = useSalesRows(range === "custom" ? 124 : 28);
+  const deep = useSalesRows(rangeFetchDays(range));
   const cloud = useChairRequests();
   const all = deep ?? cloud.rows;
-  const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
+  const where = "all"; // Leaderboard always ranks every location.
   const locName = (id: string) => (shops.enabled ? shops.branches.find((b) => b.id === id)?.name ?? "" : "");
 
   const rows = useMemo(() => {
@@ -67,11 +67,14 @@ export function BarberLeaderboard() {
   }, [all, chairs, range, where, shops.branches]);
 
   const val = (r: Row): number => sort === "sales" ? r.sales : sort === "cuts" ? r.cuts : sort === "completion" ? (r.completion ?? -1) : sort === "productivity" ? (r.perHour ?? -1) : (r.avgMin == null ? -Infinity : -r.avgMin);
-  const sorted = [...rows].sort((a, b) => val(b) - val(a) || b.sales - a.sales || a.name.localeCompare(b.name));
+  const needle = q.trim().toLowerCase();
+  const sorted = [...rows].filter((r) => !needle || r.name.toLowerCase().includes(needle)).sort((a, b) => val(b) - val(a) || b.sales - a.sales || a.name.localeCompare(b.name));
   const pages = Math.max(1, Math.ceil(sorted.length / 10));
   const p = Math.min(page, pages - 1);
   const shown = sorted.slice(p * 10, p * 10 + 10);
   const hasScore = (r: Row) => val(r) > 0 || (sort === "speed" && r.avgMin != null);
+
+  const shownVal = (r: Row) => sort === "cuts" ? `${r.cuts} cut${r.cuts === 1 ? "" : "s"}` : sort === "completion" ? (r.completion == null ? "–" : `${r.completion}%`) : sort === "productivity" ? (r.perHour == null ? "–" : `${r.perHour}/hr`) : sort === "speed" ? (r.avgMin == null ? "–" : `${r.avgMin} min/cut`) : peso(r.sales);
 
   if (!deep && !cloud.ready) return <ListSkeleton />;
   return (
@@ -80,26 +83,21 @@ export function BarberLeaderboard() {
         <PageBack fallback="/sales" />
         <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">My Barbers</h1>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {shops.enabled && shops.branches.length > 1 ? (
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-pill bg-surface px-3 shadow-card">
-            <MapPin size={14} className="flex-none text-muted" aria-hidden />
-            <select aria-label="Location" value={where} onChange={(e) => { setLoc(e.target.value); setPage(0); }} className="min-w-0 flex-1 bg-transparent text-[12.5px] font-bold outline-none">
-              <option value="all">All locations</option>
-              {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </label>
-        ) : null}
+      <label className="mt-3 flex h-10 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-card">
+        <Search size={16} className="flex-none text-muted" aria-hidden />
+        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search barber" aria-label="Search barber by name" className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold outline-none placeholder:text-muted" />
+      </label>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <RangeChips value={range} onChange={(v) => { setRange(v); setPage(0); }} allowCustom />
       </div>
-      <div role="radiogroup" aria-label="Rank by" className="-mx-4 mt-2.5 flex gap-1.5 overflow-x-auto px-4 pb-1">
+      <div role="radiogroup" aria-label="Rank by" className="mt-2.5 grid grid-cols-5 gap-1">
         {SORTS.map(([v, l]) => (
           <button key={v} type="button" role="radio" aria-checked={sort === v} onClick={() => { setSort(v); setPage(0); }}
-            className={cn("h-8 flex-none rounded-pill px-3 text-[12.5px] font-bold", sort === v ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{l}</button>
+            className={cn("h-8 min-w-0 truncate rounded-pill px-1 text-[12px] font-bold", sort === v ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{l}</button>
         ))}
       </div>
 
-      {!sorted.length ? (
+      {!sorted.length && needle ? <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barber named “{q.trim()}”.</p> : !sorted.length ? (
         <div className="mt-4 rounded-card bg-surface px-6 py-10 text-center shadow-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons3d/bar-chart.png" alt="" width={52} height={52} className="mx-auto size-[52px] object-contain" />
@@ -118,13 +116,8 @@ export function BarberLeaderboard() {
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[15px]">{r.name}</b>
                     <small className="block truncate text-[12px] font-semibold text-muted">{[r.locName, `${r.cuts} cut${r.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
-                    <span className="mt-1 flex flex-wrap gap-1 text-[11px] font-bold">
-                      <Chip on={sort === "completion"}>{r.completion == null ? "–" : `${r.completion}%`} done</Chip>
-                      <Chip on={sort === "speed"}>{r.avgMin == null ? "–" : `${r.avgMin} min`}/cut</Chip>
-                      <Chip on={sort === "productivity"}>{r.perHour == null ? "–" : r.perHour}/hr</Chip>
-                    </span>
                   </span>
-                  <span className="flex-none text-right"><b className="block text-[15px] tabular-nums">{peso(r.sales)}</b></span>
+                  <span className="flex-none text-right"><b className="block text-[15px] tabular-nums">{shownVal(r)}</b></span>
                   <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
                 </Link>
               </li>
@@ -143,6 +136,3 @@ export function BarberLeaderboard() {
   );
 }
 
-function Chip({ on, children }: { on: boolean; children: React.ReactNode }) {
-  return <span className={cn("rounded-pill px-1.5 py-0.5 tabular-nums", on ? "bg-ink text-on-ink" : "bg-grey-100 text-ink-2")}>{children}</span>;
-}

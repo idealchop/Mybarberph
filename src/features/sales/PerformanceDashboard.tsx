@@ -34,8 +34,26 @@ function stats(rows: ChairRequest[]) {
 }
 
 /** Shop performance for the chosen location + dates: trends, timing, mix, rankings. */
-export function PerformanceDashboard({ all, range, where, branches, chairs }: { all: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[] }) {
-  const locOk = (r: ChairRequest) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where;
+export function PerformanceDashboard({ all, range, where, branches, chairs, solo = false }: { all: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean }) {
+  const [fb, setFb] = useState(""), [fc, setFc] = useState(""), [fp, setFp] = useState(""), [fs, setFs] = useState("");
+  const barberOpts = [...new Map(chairs.map((c) => [c.barberId || c.id, c.barberName?.trim() || c.label || "Barber"])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const svcOpts = [...new Set(all.map((r) => (r.serviceName || "").trim()).filter(Boolean))].sort();
+  const extraOk = (r: ChairRequest) =>
+    (!fb || barberKey(r, chairs) === fb) &&
+    (!fc || (fc === "online" ? r.channel === "online" : r.channel !== "online")) &&
+    (!fp || (fp === "unpaid" ? !r.paid : r.paid && (r.payMethod ?? "cash") === fp)) &&
+    (!fs || (r.serviceName || "").trim() === fs);
+  const locOk = (r: ChairRequest) => (where === "all" || (r.locationId || HOME_LOCATION_ID) === where) && extraOk(r);
+  const filtered = Boolean(fb || fc || fp || fs);
+  const filters = (
+    <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Filters">
+      <Pick label="Barber" value={fb} onChange={setFb} opts={[["", "All barbers"], ...barberOpts]} />
+      <Pick label="Channel" value={fc} onChange={setFc} opts={[["", "All channels"], ["walk-in", "Walk-in"], ["online", "Online"]]} />
+      <Pick label="Payment" value={fp} onChange={setFp} opts={[["", "All payments"], ["cash", "Cash"], ["gcash", "GCash"], ["online", "Paid online"], ["unpaid", "Unpaid"]]} />
+      <Pick label="Service" value={fs} onChange={setFs} opts={[["", "All services"], ...svcOpts.map((s) => [s, s] as [string, string])]} />
+      {filtered ? <button type="button" onClick={() => { setFb(""); setFc(""); setFp(""); setFs(""); }} className="h-8 rounded-pill px-2.5 text-[12.5px] font-bold text-muted underline">Clear</button> : null}
+    </div>
+  );
   const cur = windowKeys(range), prev = windowKeys(range, 1);
   const rows = all.filter((r) => locOk(r) && cur.has(dayKey(at(r))));
   const before = all.filter((r) => locOk(r) && prev.has(dayKey(at(r))));
@@ -92,32 +110,32 @@ export function PerformanceDashboard({ all, range, where, branches, chairs }: { 
   const multiLoc = branches.length > 1 && where === "all";
 
   if (!rows.length && !before.length) {
-    return (
-      <div className="mt-4 rounded-card bg-surface px-6 py-10 text-center shadow-card">
+    return (<>{solo ? null : filters}
+      <div className="mt-3 rounded-card bg-surface px-6 py-10 text-center shadow-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons3d/bar-chart.png" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
         <b className="mt-2 block text-[16px]">No visits in this range yet</b>
         <p className="mt-1 text-[13px] font-semibold text-muted">Finish a few cuts and your shop’s performance shows up here: peak hours, busiest days, service mix and top barbers.</p>
-      </div>
+      </div></>
     );
   }
 
-  return (
-    <div className="mt-4 grid gap-3 lg:grid-cols-2">
-      <div className="grid grid-cols-2 gap-3 lg:col-span-2 lg:grid-cols-4">
+  return (<>{solo ? null : filters}
+    <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0 lg:col-span-2 lg:grid-cols-4">
         <Kpi k="Sales" v={peso(now.sales)} d={delta(now.sales, was.sales)} />
         <Kpi k="Cuts" v={String(now.cuts)} d={delta(now.cuts, was.cuts)} />
         <Kpi k="Avg ticket" v={now.cuts ? peso(Math.round(now.sales / now.cuts)) : "–"} d={delta(now.cuts ? now.sales / now.cuts : 0, was.cuts ? was.sales / was.cuts : 0)} />
         <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} cut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
       </div>
 
-      <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />
-      {multiLoc ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
+      {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
+      {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
 
       <Panel title="Busiest days" sub={byDay.some((d) => d.cuts) ? `Most on ${WD[byDay.reduce((b, d, i) => (d.cuts > byDay[b]!.cuts ? i : b), 0)]}` : "By weekday and hour"}>
-        <div className="mt-3 overflow-x-auto">
-          <div className="grid min-w-[300px] gap-[3px]" style={{ gridTemplateColumns: `28px repeat(${HOURS.length}, minmax(0,1fr))` }} role="img" aria-label="Cuts by weekday and hour">
+        <div className="mt-3 w-full max-w-full overflow-x-auto">
+          <div className="grid min-w-0 gap-[2px]" style={{ gridTemplateColumns: `26px repeat(${HOURS.length}, minmax(0,1fr))` }} role="img" aria-label="Cuts by weekday and hour">
             {WD.map((w, d) => (
               <div key={w} className="contents">
                 <span className="text-[10.5px] font-bold leading-[16px] text-muted">{w}</span>
@@ -161,7 +179,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs }: { 
         <ul className="mt-2 grid gap-2.5">
           {services.map((s) => (
             <li key={s.name}>
-              <div className="flex items-baseline justify-between gap-3 text-[13.5px]"><b className="truncate">{s.name}</b><b className="tabular-nums">{peso(s.sales)}</b></div>
+              <div className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]"><b className="min-w-0 truncate">{s.name}</b><b className="tabular-nums">{peso(s.sales)}</b></div>
               <div className="mt-1 h-1.5 rounded-full bg-grey-100"><div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(3, (s.sales / svcMax) * 100)}%` }} /></div>
               <small className="text-[11.5px] font-semibold text-muted">{s.cuts} cut{s.cuts === 1 ? "" : "s"} · avg {peso(s.avg)}</small>
             </li>
@@ -169,7 +187,18 @@ export function PerformanceDashboard({ all, range, where, branches, chairs }: { 
         </ul>
       </Panel>
 
-    </div>
+    </div></>
+  );
+}
+
+function Pick({ label, value, onChange, opts }: { label: string; value: string; onChange: (v: string) => void; opts: [string, string][] }) {
+  return (
+    <label className={cn("relative inline-flex h-8 max-w-[48%] items-center rounded-pill px-3 text-[12.5px] font-bold", value ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>
+      <span className="truncate">{opts.find((o) => o[0] === value)?.[1] ?? label}</span><span aria-hidden className="ml-1 text-[10px]">▾</span>
+      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+        {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -231,7 +260,7 @@ function Rank({ title, rows: all }: { title: string; rows: { key: string; name: 
               <Link href={r.href} className="flex items-center gap-3 px-4 py-2.5">
                 <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full font-extrabold", i < 3 ? "text-[20px]" : "bg-grey-100 text-[13px] text-muted")}>{i < 3 ? MEDAL[i] : i + 1}</span>
                 <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{r.name}</b><small className="block truncate text-[12px] font-semibold text-muted">{r.sub}</small></span>
-                <b className="tabular-nums">{peso(r.v)}</b><ChevronRight size={16} className="text-subtle" aria-hidden />
+                <b className="flex-none tabular-nums">{peso(r.v)}</b><ChevronRight size={16} className="flex-none text-subtle" aria-hidden />
               </Link>
             </li>
           ); })}

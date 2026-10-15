@@ -9,7 +9,8 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import type { SalesRange } from "@/lib/sales-report";
+import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
+import { BarberDetail } from "./BarberDetail";
 import { barberKey, barberStats, busyMinutes, dailySeries, inRange, locationStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./SalesChart";
 import { ClaimHistory, RangeChips } from "./SalesParts";
@@ -26,7 +27,7 @@ export function SalesDetailScreen() {
   const shops = useShopLocations();
   const { profile } = useShopProfile();
   const { chairs } = useShopChairs({ all: true });
-  const deep = useSalesRows();
+  const deep = useSalesRows(rangeFetchDays(range));
   const cloud = useChairRequests();
   const all = deep ?? cloud.rows;
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
@@ -45,11 +46,11 @@ export function SalesDetailScreen() {
   const mine = (r: (typeof all)[number]) => kind !== "barber" || barberKey(r, chairs) === id;
   const scoped = all.filter(mine);
   const busy = busyMinutes(inRange(scoped, range, loc));
-  const days = range === "today" ? 1 : range === "week" ? 7 : 28;
+  const days = range === "today" ? 1 : range === "week" ? 7 : 28; // utilization (location view only)
   const util = kind === "barber" && busy ? Math.min(100, Math.round((busy / (days * 600)) * 100)) : null;
   const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} cuts` }));
   const services = serviceStats(scoped, range, loc).slice(0, 6);
-  const remit = useRemit(kind === "barber" ? (locHint || "all") : id || "all");
+  const remit = useRemit(kind === "barber" ? "all" : id || "all");
   const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + u.amount, 0);
 
   if (!deep && !cloud.ready) return <DashboardSkeleton />;
@@ -62,8 +63,8 @@ export function SalesDetailScreen() {
           {sub ? <p className="text-[13px] font-semibold text-muted">{sub}</p> : null}
         </div>
       </div>
-      <RangeChips className="mt-3" value={range} onChange={setRange} />
-      {!stats ? <p className="mt-6 text-[14px] font-semibold text-muted">No finished cuts in this range.</p> : (
+      <RangeChips className="mt-3" value={range} onChange={setRange} allowCustom />
+      {kind === "barber" ? <BarberDetail id={id} all={all} range={range} chairs={chairs} branches={branches} remit={remit.data} /> : !stats ? <p className="mt-6 text-[14px] font-semibold text-muted">No finished cuts in this range.</p> : (
         <>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <StatCard className="col-span-2 pb-3" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(stats.sales)}</span>} caption={`${stats.cuts} cut${stats.cuts === 1 ? "" : "s"}`} />
@@ -90,7 +91,7 @@ export function SalesDetailScreen() {
               </ul>
             </section>
           ) : null}
-          <ClaimHistory remit={remit.data} barberId={kind === "barber" ? id : undefined} locationId={kind === "barber" ? locHint || undefined : undefined} max={10} />
+          <ClaimHistory remit={remit.data} barberId={undefined} max={10} />
         </>
       )}
     </div>
