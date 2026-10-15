@@ -51,6 +51,7 @@ export function BarberLeaderboard() {
       if (id.startsWith("seat:")) continue;
       const l = r.locationId || HOME_LOCATION_ID, k = `${id}@${l}`;
       const chair = chairs.find((c) => (c.barberId || c.id) === id);
+      if (chair?.active === false) continue;
       const x = map.get(k) ?? blank(id, l, r.barberName || (chair ? chairBarberName(chair) : "Barber"), chair);
       if (r.status === "declined") x.declined += 1;
       else {

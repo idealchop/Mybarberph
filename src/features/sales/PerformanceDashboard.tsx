@@ -99,6 +99,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   for (const r of now.done) {
     const id = barberKey(r, chairs), loc = r.locationId || HOME_LOCATION_ID, k = `${id}@${loc}`;
     const chair = chairs.find((c) => (c.barberId || c.id) === id);
+    if ((chair as { active?: boolean } | undefined)?.active === false) continue;
     const x = bMap.get(k) ?? { id, loc, name: r.barberName || chair?.barberName?.trim() || chair?.label || "Barber", sales: 0, cuts: 0 };
     x.sales += r.price || 0; x.cuts += 1; bMap.set(k, x);
   }

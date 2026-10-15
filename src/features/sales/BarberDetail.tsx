@@ -1,7 +1,8 @@
 "use client";
 import { cn } from "@river-apps/ui";
 import { Star } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { saveChair, chairBarberName } from "@/lib/shop-chairs";
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import type { SalesRange } from "@/lib/sales-report";
@@ -19,13 +20,17 @@ const MEDAL = ["🥇", "🥈", "🥉"];
 export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: string; all: ChairRequest[]; range: SalesRange; chairs: ShopChair[]; branches: { id: string; name: string }[]; remit: Remit | null }) {
   const mine = useMemo(() => all.filter((r) => barberKey(r, chairs) === id), [all, chairs, id]);
   const chair = chairs.find((c) => (c.barberId || c.id) === id);
+  const [ask, setAsk] = useState(false);
+  const [err, setErr] = useState("");
+  const off = chair?.active === false;
+  const setActive = (on: boolean) => { if (!chair) return; const e = saveChair({ ...chair, active: on }); setErr(e || ""); setAsk(false); };
   const cur = inRange(mine, range, "all").filter((r) => r.status === "done");
 
   // Rank among every barber by sales in this range.
   const ranking = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of chairs) if (c.active !== false) m.set(c.barberId || c.id, 0);
-    for (const r of inRange(all, range, "all")) if (r.status === "done") { const k = barberKey(r, chairs); if (!k.startsWith("seat:")) m.set(k, (m.get(k) ?? 0) + (r.price || 0)); }
+    for (const r of inRange(all, range, "all")) if (r.status === "done") { const k = barberKey(r, chairs); if (!k.startsWith("seat:") && !chairs.some((c) => (c.barberId || c.id) === k && c.active === false)) m.set(k, (m.get(k) ?? 0) + (r.price || 0)); }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   }, [all, chairs, range]);
   const rank = ranking.findIndex(([k]) => k === id);
@@ -46,7 +51,37 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
 
   return (
     <>
-      <section className="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card">
+      {chair ? (
+        <section className="mt-4 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
+          <span className="min-w-0">
+            <b className="block text-[15px]">{off ? "Inactive" : "Active"}</b>
+            <small className="block text-[12.5px] font-semibold text-muted">{off ? "Link turned off · hidden from rankings" : "Barber link works · shows in rankings"}</small>
+          </span>
+          <button type="button" role="switch" aria-checked={!off} aria-label="Active" data-auth="action" onClick={() => (off ? setActive(true) : setAsk(true))}
+            className={cn("relative h-7 w-12 flex-none rounded-full transition", off ? "bg-grey-300" : "bg-ink")}>
+            <span className={cn("absolute top-0.5 size-6 rounded-full bg-white shadow transition-all", off ? "left-0.5" : "left-[22px]")} />
+          </button>
+        </section>
+      ) : null}
+      {err ? <p className="mt-2 text-[13px] font-semibold">{err}</p> : null}
+      {ask && chair ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setAsk(false)}>
+          <div role="dialog" aria-label="Deactivate barber" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
+            <b className="block text-[18px]">Deactivate {chairBarberName(chair)}?</b>
+            <ul className="mt-2 list-disc pl-5 text-[13.5px] font-semibold text-muted">
+              <li>Their barber link stops working right away.</li>
+              <li>They’re hidden from rankings and can’t take walk-ins.</li>
+              <li>Past sales and remit are kept. Turn them back on anytime here.</li>
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAsk(false)} className="h-11 rounded-pill text-[14px] font-bold ring-1 ring-ink">Cancel</button>
+              <button type="button" data-auth="action" onClick={() => setActive(false)} className="h-11 rounded-pill bg-[#D92D20] text-[14px] font-bold text-white">Deactivate</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <section className="mt-3 flex items-center gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card">
         {chair ? <BarberPortrait chair={chair} size={52} /> : null}
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-muted">Rank among {ranking.length} barber{ranking.length === 1 ? "" : "s"}</p>

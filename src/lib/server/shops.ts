@@ -173,7 +173,8 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
     const keep = new Set<string>();
     for (const c of chairs) {
       const token = str(c.linkToken, 40);
-      if (!token || !/^[a-z0-9]{8,40}$/.test(token)) continue;
+      // Inactive barbers: their link stops working (token kept on the chair, restored on reactivate).
+      if (!token || c.active === false || !/^[a-z0-9]{8,40}$/.test(token)) continue;
       keep.add(token);
       batch.set(db().collection("chairLinks").doc(token), { shopId, chairId: str(c.id, 60), expiresAt: Number(c.linkExpiresAt) || 0 });
     }

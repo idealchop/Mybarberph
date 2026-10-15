@@ -1,4 +1,7 @@
 "use client";
+import { chairBarberName } from "@/lib/shop-chairs";
+import { BarberPortrait } from "@/features/settings/SeatList";
+import { ShareBarberLink } from "@/features/settings/ServicesScreen";
 import { FormSkeleton } from "@/components/common/Skeleton";
 import Link from "next/link";
 import { QrCode } from "@/components/common/QrCode";
@@ -73,7 +76,7 @@ export function ShopsScreen() {
           <PageBack fallback="/settings" />
           <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Manage Locations</h1>
         </div>
-        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Each shop has its own QR. Tap Edit Shop for its details, pin and services." : "Turn this on when you run more than one shop."}</p>
+        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Each shop has its own QR. Tap Edit Shop for its details, pin and barbers." : "Turn this on when you run more than one shop."}</p>
       </header>
       {note ? <p className="mt-3 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
@@ -91,6 +94,7 @@ export function ShopsScreen() {
                   </div>
                   <BranchQr branchId={branch.id} name={branch.name} />
                 </div>
+                <BranchBarbers locationId={branch.id} />
               </li>
             ))}
           </ul>
@@ -165,5 +169,23 @@ function BranchQr({ branchId, name }: { branchId: string; name: string }) {
     <a href={`/qr?loc=${encodeURIComponent(branchId)}`} className="flex-none rounded-[12px] bg-white p-1 ring-1 ring-line" aria-label={`Booking QR for ${name}. Open to print or share.`}>
       {url ? <QrCode value={url} size={92} label={`Booking QR for ${name}`} logo={logo || "/icon-192.png"} /> : <span className="block size-[92px]" />}
     </a>
+  );
+}
+
+/** Compact barber list on a location card: avatar + name, Share only (manage them in Edit Shop). */
+function BranchBarbers({ locationId }: { locationId: string }) {
+  const { chairs } = useShopChairs({ all: true });
+  const mine = chairs.filter((c) => (c.locationId || HOME_LOCATION_ID) === locationId && c.active !== false);
+  if (!mine.length) return <p className="mt-3 border-t border-line pt-2.5 text-[12.5px] font-semibold text-muted">No barbers yet. Add them in Edit Shop.</p>;
+  return (
+    <ul className="mt-3 grid gap-2 border-t border-line pt-2.5">
+      {mine.map((c) => (
+        <li key={c.id} className="flex items-center gap-2.5">
+          <BarberPortrait chair={c} size={28} />
+          <b className="min-w-0 flex-1 truncate text-[13.5px]">{chairBarberName(c)}</b>
+          <ShareBarberLink compact id={c.id} name={chairBarberName(c)} />
+        </li>
+      ))}
+    </ul>
   );
 }

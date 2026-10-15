@@ -134,21 +134,15 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
               const off = chair.active === false;
               return (
                 <li key={chair.id} className="relative rounded-card bg-surface px-3.5 py-3.5 shadow-card">
-                  <button type="button" role="switch" data-auth="action" aria-checked={!off} aria-label={`${chairBarberName(chair)} active`}
-                    onClick={() => { const e = saveChair({ ...chair, active: off }); if (e) setNote(e); }}
-                    className={`absolute right-3.5 top-3.5 h-6 w-10 rounded-full transition ${off ? "bg-grey-300" : "bg-ink"}`}>
-                    <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${off ? "left-0.5" : "left-[18px]"}`} />
-                  </button>
-                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex min-w-0 max-w-[calc(100%-3.5rem)] items-center gap-3 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
+                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex w-full min-w-0 items-center gap-3 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
                     <BarberPortrait chair={chair} size={44} />
                     <span className="min-w-0">
                       <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
                       <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""}</small>
                     </span>
                   </button>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <a href={`/sales/detail?kind=barber&id=${encodeURIComponent(chair.barberId || chair.id)}&r=week&loc=${encodeURIComponent(chair.locationId || HOME_LOCATION_ID)}`} className="inline-flex h-9 items-center justify-center rounded-pill text-[13px] font-bold ring-1 ring-ink">Performance</a>
-                    {off ? <span className="inline-flex h-9 items-center justify-center rounded-pill bg-grey-100 text-[13px] font-bold text-muted">Inactive</span> : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
+                  <div className="mt-3 grid">
+                    {off ? <span className="inline-flex h-9 items-center justify-center rounded-pill bg-grey-100 text-[13px] font-bold text-muted">Inactive · turn on in Performance</span> : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
                   </div>
                 </li>
               );
@@ -215,11 +209,11 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
 const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop only" } as const;
 
 /** Outlined pill: opens the phone share sheet (or copies) with that barber's own link. */
-function ShareBarberLink({ id, name }: { id: string; name: string }) {
+export function ShareBarberLink({ id, name, compact = false }: { id: string; name: string; compact?: boolean }) {
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
   return (
-    <button type="button" data-auth="action" className="inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"
+    <button type="button" data-auth="action" className={compact ? "inline-flex h-7 flex-none items-center justify-center gap-1 rounded-pill px-3 text-[12px] font-bold ring-1 ring-ink" : "inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"}
       disabled={pending} aria-busy={pending}
       onClick={async () => {
         setPending(true);
@@ -229,7 +223,7 @@ function ShareBarberLink({ id, name }: { id: string; name: string }) {
           else { await navigator.clipboard.writeText(url); setDone(true); window.setTimeout(() => setDone(false), 1500); }
         } catch { /* share sheet closed */ } finally { setPending(false); }
       }}>
-      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : "Share to barber"}
+      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : compact ? "Share" : "Share to barber"}
     </button>
   );
 }
