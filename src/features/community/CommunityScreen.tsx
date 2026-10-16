@@ -1,6 +1,7 @@
 "use client";
 
 import { PageBack } from "@/components/shell/PageBack";
+import { Sk } from "@/components/common/Skeleton";
 import { Composer } from "./Composer";
 import { useCommunityFeed } from "./feed";
 import { PostCard } from "./PostCard";
@@ -35,7 +36,16 @@ export function CommunityScreen() {
           </li>
         ))}
       </ul>
-      {feed.loading ? <p className="px-1 py-10 text-center text-[14px] font-semibold text-muted">Loading posts…</p> : feed.posts.length === 0 ? (
+      {feed.loading ? (
+        <div role="status" aria-label="Loading posts" className="divide-y divide-line">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex gap-3 px-1 py-4">
+              <Sk className="size-10 flex-none rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2"><Sk className="h-4 w-1/3" /><Sk className="h-3.5 w-full" /><Sk className="h-3.5 w-4/5" />{i === 0 ? <Sk className="mt-2 h-44 w-full rounded-[16px]" /> : null}</div>
+            </div>
+          ))}
+        </div>
+      ) : feed.posts.length === 0 ? (
         <div className="px-1 py-12 text-center">
           <b className="block text-[16px]">No posts yet</b>
           <p className="mt-1 text-[14px] font-medium text-muted">Be the first shop to share a tip, a cut, or a question.</p>

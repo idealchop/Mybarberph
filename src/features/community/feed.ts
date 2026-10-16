@@ -62,8 +62,8 @@ export function useCommunityFeed() {
 
   const posts = useMemo(() => {
     const hidden = new Set(store.hidden);
-    return withSamples(raw).map((p) => (sampleLikes.includes(p.id) ? { ...p, liked: true, likes: p.likes + 1 } : p)).filter((p) => !hidden.has(p.id));
-  }, [raw, store, sampleLikes]);
+    return (loading ? [] : withSamples(raw)).map((p) => (sampleLikes.includes(p.id) ? { ...p, liked: true, likes: p.likes + 1 } : p)).filter((p) => !hidden.has(p.id));
+  }, [raw, store, sampleLikes, loading]);
   const sampleOnly = (id: string) => {
     if (!isSamplePost(id)) return false;
     flash("Halimbawang post lamang ito");

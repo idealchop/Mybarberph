@@ -17,8 +17,9 @@ export interface SessionUser {
   photoUrl?: string;
 }
 
-let snap: { ready: boolean; user: SessionUser | null } = { ready: false, user: null };
-const SERVER = { ready: false, user: null };
+/** `signingIn`: a Google redirect sign-in is being finished (page just came back from Google). */
+let snap: { ready: boolean; user: SessionUser | null; signingIn: boolean } = { ready: false, user: null, signingIn: false };
+const SERVER = { ready: false, user: null, signingIn: false };
 const listeners = new Set<() => void>();
 let started = false;
 let current: User | null = null;
@@ -39,10 +40,11 @@ function toUser(u: User): SessionUser {
 export function hydrateSession() {
   if (started || typeof window === "undefined") return;
   started = true;
-  if (!isFirebaseConfigured()) { snap = { ready: true, user: null }; emit(); return; }
+  if (!isFirebaseConfigured()) { snap = { ready: true, user: null, signingIn: false }; emit(); return; }
+  try { if (sessionStorage.getItem("bp.authRedirect")) snap = { ...snap, signingIn: true }; } catch { /* storage blocked */ }
   onAuthStateChanged(firebaseAuth(), (u) => {
     current = u;
-    snap = { ready: true, user: u ? toUser(u) : null };
+    snap = { ...snap, ready: true, user: u ? toUser(u) : null };
     emit();
   });
 }
@@ -62,6 +64,7 @@ export async function signInWithGoogle() {
     // Mobile Safari / in-app browsers can block or break the popup: fall back to a full-page redirect.
     if (code.includes("popup-blocked") || code.includes("operation-not-supported") || code.includes("web-storage-unsupported")) {
       sessionStorage.setItem("bp.authRedirect", location.pathname + location.search);
+      snap = { ...snap, signingIn: true }; emit();
       await signInWithRedirect(firebaseAuth(), provider);
       return;
     }
@@ -75,8 +78,14 @@ export async function finishRedirectSignIn(): Promise<string | null> {
   const back = sessionStorage.getItem("bp.authRedirect");
   if (!back) return null;
   sessionStorage.removeItem("bp.authRedirect");
-  const res = await getRedirectResult(firebaseAuth()).catch(() => null);
-  return res ? back : null;
+  try {
+    const res = await getRedirectResult(firebaseAuth()).catch(() => null);
+    return res ? back : null;
+  } finally {
+    // Keep the "Signing you in…" state until Firebase reports the user (or the redirect failed).
+    const done = () => { snap = { ...snap, signingIn: false }; emit(); };
+    if (firebaseAuth().currentUser || !snap.ready) { if (snap.ready) done(); else { const off = subscribe(() => { if (snap.ready) { off(); done(); } }); } } else done();
+  }
 }
 
 

@@ -6,6 +6,7 @@
  * once signed in, the same action is replayed so the guest continues where they were.
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 import { startCloud } from "@/lib/cloud";
 import { finishRedirectSignIn, useSession } from "@/lib/session";
 import { AuthGateSheet } from "./AuthGateSheet";
@@ -21,7 +22,7 @@ export function useAuthGate(): Ctx {
 const SELECTOR = '[data-auth="action"]';
 
 export function AuthGateProvider({ children }: { children: ReactNode }) {
-  const { user } = useSession();
+  const { user, signingIn } = useSession();
   const authed = Boolean(user);
   const authedRef = useRef(authed);
   useEffect(() => { authedRef.current = authed; }, [authed]);
@@ -83,7 +84,13 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   return (
     <AuthGateContext.Provider value={{ isAuthenticated: authed, requireAuth }}>
       {children}
-      <AuthGateSheet open={open} onClose={close} onAuthenticated={onAuthenticated} />
+      <AuthGateSheet open={open && !signingIn} onClose={close} onAuthenticated={onAuthenticated} />
+      {signingIn ? (
+        <div role="status" aria-live="polite" className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 bg-canvas/85 backdrop-blur-sm">
+          <Loader2 size={28} strokeWidth={2.2} className="animate-spin text-ink" aria-hidden />
+          <b className="text-[15px] font-extrabold">Signing you in…</b>
+        </div>
+      ) : null}
     </AuthGateContext.Provider>
   );
 }

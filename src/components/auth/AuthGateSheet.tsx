@@ -9,7 +9,7 @@ import { Button } from "@/components/common/Button";
 import { ArrowLeft, MessageSquareText, Phone, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { RiverMark } from "@/components/shell/Brand";
-import { authErrorMessage, confirmPhoneCode, sendPhoneCode, signInWithGoogle } from "@/lib/session";
+import { authErrorMessage, confirmPhoneCode, sendPhoneCode, signInWithGoogle, useSession } from "@/lib/session";
 
 type Step = "methods" | "phone" | "code";
 
@@ -35,6 +35,8 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
   const [e164, setE164] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [google, setGoogle] = useState(false);
+  const { signingIn } = useSession();
   const [error, setError] = useState<string | null>(null);
 
   async function run(fn: () => Promise<void>) {
@@ -102,10 +104,10 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
 
           {step === "methods" ? (
             <div className="mt-5 flex flex-col gap-2.5">
-              <Button type="button" fullWidth disabled={busy} leadingIcon={<GoogleMark />} onClick={() => void run(signInWithGoogle)}>
-                Continue with Google
+              <Button type="button" fullWidth disabled={busy || signingIn} loading={google || signingIn} leadingIcon={<GoogleMark />} onClick={() => { setGoogle(true); void run(signInWithGoogle).finally(() => setGoogle(false)); }}>
+                {google || signingIn ? "Signing you in…" : "Continue with Google"}
               </Button>
-              <Button type="button" fullWidth variant="secondary" disabled={busy} leadingIcon={<Phone size={18} strokeWidth={2.2} />} onClick={() => { setError(null); setStep("phone"); }}>
+              <Button type="button" fullWidth variant="secondary" disabled={busy || signingIn} leadingIcon={<Phone size={18} strokeWidth={2.2} />} onClick={() => { setError(null); setStep("phone"); }}>
                 Continue with phone
               </Button>
             </div>
@@ -119,7 +121,7 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
                 onChange={(f, v) => { setFormatted(f); setE164(v); setError(null); }}
                 autoFocus
               />
-              <Button id="auth-phone-send" type="submit" fullWidth disabled={!e164 || busy} leadingIcon={<MessageSquareText size={18} strokeWidth={2.2} />}>{busy ? "Sending…" : "Text me a code"}</Button>
+              <Button id="auth-phone-send" type="submit" fullWidth disabled={!e164 || busy} loading={busy} leadingIcon={<MessageSquareText size={18} strokeWidth={2.2} />}>{busy ? "Sending…" : "Text me a code"}</Button>
               <Button type="button" fullWidth variant="ghost" leadingIcon={<ArrowLeft size={18} strokeWidth={2.2} />} onClick={() => setStep("methods")}>Back</Button>
             </form>
           ) : null}
@@ -127,7 +129,7 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
           {step === "code" ? (
             <div className="mt-5 flex flex-col gap-3">
               <OtpInput value={code} onChange={setCode} onComplete={(v) => verify(v)} autoFocus />
-              <Button fullWidth disabled={code.length < 6 || busy} onClick={() => verify()}>{busy ? "Checking…" : "Verify & continue"}</Button>
+              <Button fullWidth disabled={code.length < 6 || busy} loading={busy} onClick={() => verify()}>{busy ? "Checking…" : "Verify & continue"}</Button>
               <Button fullWidth variant="ghost" onClick={() => { setCode(""); setStep("phone"); }}>Use a different number</Button>
             </div>
           ) : null}

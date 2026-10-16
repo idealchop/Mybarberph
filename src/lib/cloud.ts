@@ -101,12 +101,15 @@ export function startCloud() {
   const sync = () => {
     if (mode?.kind === "barber") return;
     const s = sessionSnapshot();
-    if (!s.ready) return;
+    // Still finishing a Google redirect: stay "not ready" so screens show skeletons, not the guest view.
+    if (!s.ready || s.signingIn) return;
     const next = s.user?.uid ?? null;
     if (next === uid && snap.ready) return;
     uid = next;
     if (!next) { mode = null; window.clearInterval(pollTimer); set({ ...EMPTY, ready: true }); return; }
     mode = { kind: "owner" };
+    // New owner (e.g. just signed in): drop the guest snapshot so nothing empty flashes before their data loads.
+    set({ ...EMPTY, ready: false, loading: true });
     void load().then(poll);
   };
   subscribeSession(sync);
