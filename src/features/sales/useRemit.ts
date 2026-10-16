@@ -11,10 +11,13 @@ export interface Remit { unclaimed: UnclaimedRow[]; total: number; claims: Claim
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
 export function useRemit(loc: string) {
   const { user } = useSession();
-  const [data, setData] = useState<Remit | null>(() => cached<Remit>(`remit:${loc}`) ?? null);
+  // Data is tagged with its location so a switch never shows the previous location's figures.
+  const [state, setState] = useState<{ loc: string; d: Remit } | null>(() => { const c = cached<Remit>(`remit:${loc}`); return c ? { loc, d: c } : null; });
+  const data: Remit | null = state?.loc === loc ? state.d : cached<Remit>(`remit:${loc}`) ?? null;
+  const setData = useCallback((d: Remit) => setState({ loc, d }), [loc]);
   const [busy, setBusy] = useState<string>("");
   const [error, setError] = useState("");
-  const load = useCallback((maxAge = 0) => fetchShared(`remit:${loc}`, () => api(`/api/shop/remit-claims?loc=${encodeURIComponent(loc)}`) as Promise<Remit>, maxAge).then((d) => setData(d)), [loc]);
+  const load = useCallback((maxAge = 0) => fetchShared(`remit:${loc}`, () => api(`/api/shop/remit-claims?loc=${encodeURIComponent(loc)}`) as Promise<Remit>, maxAge).then((d) => setData(d)), [loc, setData]);
   useEffect(() => {
     if (!user) return;
     let tries = 0;
@@ -39,5 +42,5 @@ export function useRemit(loc: string) {
     for (const c of data?.claims ?? []) for (const id of c.bookingIds ?? []) m.set(id, c);
     return (bookingId: string) => m.get(bookingId);
   }, [data]);
-  return { data, claim, busy, error, claimOf };
+  return { data, loading: Boolean(user) && !data, claim, busy, error, claimOf };
 }

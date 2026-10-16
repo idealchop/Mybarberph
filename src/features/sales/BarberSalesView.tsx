@@ -1,4 +1,5 @@
 "use client";
+import { Sk } from "@/components/common/Skeleton";
 import { Card, EmptyState, Input, SegmentedControl } from "@river-apps/ui";
 import { useEffect, useState } from "react";
 import type { BarberSales, BarberSalesRow } from "@/lib/barber-sales";
@@ -13,13 +14,15 @@ export function BarberSalesView({ loc, ranked }: { loc: string; ranked?: boolean
   const [range, setRange] = useState<Range>("week");
   const [from, setFrom] = useState(() => today().slice(0, 8) + "01");
   const [to, setTo] = useState(today);
-  const [data, setData] = useState<BarberSales | null>(null);
+  const [got, setGot] = useState<{ key: string; d: BarberSales } | null>(null);
+  const key = `${range}|${loc}|${range === "custom" ? `${from}|${to}` : ""}`;
+  const data = got?.key === key ? got.d : null;
   const [err, setErr] = useState("");
   useEffect(() => {
     let live = true;
     const qs = new URLSearchParams({ range, loc, ...(range === "custom" ? { from, to } : {}) });
     let retry = 0;
-    const get = () => void api(`/api/shop/barber-sales?${qs}`).then((d: BarberSales) => { if (live) { setData(d); setErr(""); } })
+    const get = () => void api(`/api/shop/barber-sales?${qs}`).then((d: BarberSales) => { if (live) { setGot({ key: `${range}|${loc}|${range === "custom" ? `${from}|${to}` : ""}`, d }); setErr(""); } })
       .catch((e: Error) => { if (!live) return; if (retry++ < 2) window.setTimeout(get, 1200); else setErr(e.message); });
     get();
     return () => { live = false; };
@@ -37,6 +40,7 @@ export function BarberSalesView({ loc, ranked }: { loc: string; ranked?: boolean
       ) : null}
       <p className="mt-3 px-1 text-[13px] font-semibold text-muted">{data?.label ?? ""}{range === "week" ? " · Mon–Sun" : ""} · Manila time</p>
       {err ? <p className="mt-3 text-[13.5px] font-semibold">{err}</p> : null}
+      {!data && !err ? <div role="status" aria-label="Loading" className="mt-3 flex flex-col gap-3">{[0, 1, 2].map((i) => <Sk key={i} className="h-24 w-full rounded-card" />)}</div> : null}
       {data && !data.barbers.length ? <EmptyState className="mt-4" title="No finished cuts" description="Cuts completed in this period show here per barber." /> : null}
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         {[...(data?.barbers ?? [])].sort((a, b) => b.gross - a.gross).map((b, i) => <BarberCard key={b.barberId} b={b} rank={ranked ? i + 1 : undefined} />)}

@@ -1,10 +1,11 @@
 "use client";
 import { HomeSkeleton } from "@/components/common/Skeleton";
+import { Sk } from "@/components/common/Skeleton";
 import { useRemit } from "@/features/sales/useRemit";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { ChevronDown, Plus, ScanLine } from "lucide-react";
+import { ChevronDown, Loader2, Plus, ScanLine } from "lucide-react";
 import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
 import Link from "next/link";
@@ -122,7 +123,7 @@ export function HomeScreen() {
                     {shops.enabled && shops.branches.length > 1 ? (
                       <label className="relative inline-flex max-w-[170px] items-center gap-0.5 text-[11.5px] font-semibold text-muted">
                         <span className="truncate">{shops.viewingAll ? "All locations" : shops.branch?.name ?? "Main"}</span>
-                        <ChevronDown size={13} strokeWidth={2.2} className="flex-none" aria-hidden />
+                        {remit.loading ? <Loader2 size={12} strokeWidth={2.4} className="flex-none animate-spin" aria-label="Loading" /> : <ChevronDown size={13} strokeWidth={2.2} className="flex-none" aria-hidden />}
                         <select aria-label="Switch location" value={shops.viewId} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
                           {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                           <option value={ALL_LOCATIONS}>All locations</option>
@@ -177,7 +178,7 @@ export function HomeScreen() {
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={peso(toClaim)} /></Link>
+          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
         <CompanionCard className="mx-4 mt-3" />
@@ -238,7 +239,7 @@ export function HomeScreen() {
         <div className="mt-5 grid grid-cols-3 gap-5">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={peso(toClaim)} /></Link>
+          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         <CompanionCard className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />
