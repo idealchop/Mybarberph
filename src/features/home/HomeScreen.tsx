@@ -3,7 +3,7 @@ import { HomeSkeleton } from "@/components/common/Skeleton";
 import { useRemit } from "@/features/sales/useRemit";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 
-import { SalesIcon } from "@/components/common/SalesIcon";
+import { CoinIcon } from "@river-apps/icons";
 import { ChevronDown, Plus, ScanLine } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
@@ -155,8 +155,9 @@ export function HomeScreen() {
                 </button>
               )}
             </div>
-            <Link href="/sales" aria-label="Sales" className="inline-flex size-11 flex-none items-center justify-center">
-              <SalesIcon size={34} />
+            <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-none flex-col items-center justify-center">
+              <CoinIcon size={30} />
+              <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
             </Link>
           </div>
         </header>
@@ -295,8 +296,9 @@ function DesktopBar({ brand, logoUrl, name, owner, greeting, dayLabel, photoUrl,
           <form className="hidden xl:flex" onSubmit={(e) => { e.preventDefault(); router.push(search.trim() ? `/scan?code=${encodeURIComponent(search.trim())}` : "/scan"); }}>
             <SearchInput className="w-[300px]" placeholder="Find ticket, e.g. BK-7K2Q9M" label="Find a ticket" value={search} onChange={(e) => setSearch(e.target.value)} />
           </form>
-          <Link href="/sales" aria-label="Sales" className="inline-flex size-11 items-center justify-center">
-            <SalesIcon size={38} />
+          <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-col items-center justify-center">
+            <CoinIcon size={32} />
+            <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
           </Link>
           {onSignIn ? (
             <Button size="sm" onClick={onSignIn}>Sign in</Button>
