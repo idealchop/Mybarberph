@@ -3,7 +3,7 @@ import { HomeSkeleton } from "@/components/common/Skeleton";
 import { useRemit } from "@/features/sales/useRemit";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
 
-import { CoinIcon } from "@river-apps/icons";
+import { SalesIcon } from "@/components/common/SalesIcon";
 import { ChevronDown, Plus, ScanLine } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
@@ -115,14 +115,7 @@ export function HomeScreen() {
   const dayTotal = figures.cuts + toAccept;
   const pct = dayTotal ? Math.round((figures.cuts / dayTotal) * 100) : 0;
 
-  if (!ready) return <HomeSkeleton />;
-  return (
-    <>
-      <div className="mx-auto w-full max-w-[402px] pb-4 lg:hidden">
-        <header className="px-4 pt-1">
-          <div className="flex h-16 items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center">
-              {user ? (
+  const brand = (
                 <div className="flex min-h-11 min-w-0 items-center gap-2 py-1 pl-1 pr-1.5">
                   <Link href="/settings" aria-label="My Account" className="flex-none">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -142,6 +135,16 @@ export function HomeScreen() {
                     ) : <span className="max-w-[170px] truncate text-[11.5px] font-semibold text-muted">{profile.area || profile.address.split(",")[0] || "Your shop"}</span>}
                   </span>
                 </div>
+  );
+  if (!ready) return <HomeSkeleton />;
+  return (
+    <>
+      <div className="mx-auto w-full max-w-[402px] pb-4 lg:hidden">
+        <header className="px-4 pt-1">
+          <div className="flex h-16 items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center">
+              {user ? (
+                brand
               ) : (
                 <button type="button" onClick={() => requireAuth()} className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5 text-left">
                   <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold">?</span>
@@ -153,7 +156,7 @@ export function HomeScreen() {
               )}
             </div>
             <Link href="/sales" aria-label="Sales" className="inline-flex size-11 flex-none items-center justify-center">
-              <CoinIcon size={36} />
+              <SalesIcon size={34} />
             </Link>
           </div>
         </header>
@@ -197,7 +200,7 @@ export function HomeScreen() {
       </div>
 
       <div className="mx-auto hidden w-full max-w-[1120px] px-4 pb-6 pt-4 lg:block lg:px-[30px] lg:pt-6">
-        <DesktopBar name={shopName} owner={owner} greeting={greeting} dayLabel={dayLabel} photoUrl={user?.photoUrl} onSignIn={user ? undefined : () => requireAuth()} />
+        <DesktopBar brand={user ? brand : null} logoUrl={profile.logoUrl} name={shopName} owner={owner} greeting={greeting} dayLabel={dayLabel} photoUrl={user?.photoUrl} onSignIn={user ? undefined : () => requireAuth()} />
         {needsSetup ? <SetupCard className="mt-5" /> : null}
         <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_286px]">
           <HeroBanner
@@ -277,12 +280,14 @@ function SetupCard({ className }: { className?: string }) {
   );
 }
 
-function DesktopBar({ name, owner, greeting, dayLabel, photoUrl, onSignIn }: { name: string; owner: string; greeting: string; dayLabel: string; photoUrl?: string; onSignIn?: () => void }) {
+function DesktopBar({ brand, logoUrl, name, owner, greeting, dayLabel, photoUrl, onSignIn }: { brand: React.ReactNode; logoUrl?: string; name: string; owner: string; greeting: string; dayLabel: string; photoUrl?: string; onSignIn?: () => void }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   return (
+    <div className="flex items-center gap-4">
+    {brand ? <div className="flex-none border-r border-line pr-4">{brand}</div> : null}
     <Topbar
-      className="px-1"
+      className="min-w-0 flex-1 px-1"
       title={owner ? `${greeting}, ${owner}` : greeting}
       subtitle={`${dayLabel} · ${name}`}
       actions={
@@ -291,18 +296,22 @@ function DesktopBar({ name, owner, greeting, dayLabel, photoUrl, onSignIn }: { n
             <SearchInput className="w-[300px]" placeholder="Find ticket, e.g. BK-7K2Q9M" label="Find a ticket" value={search} onChange={(e) => setSearch(e.target.value)} />
           </form>
           <Link href="/sales" aria-label="Sales" className="inline-flex size-11 items-center justify-center">
-            <CoinIcon size={40} />
+            <SalesIcon size={38} />
           </Link>
           {onSignIn ? (
             <Button size="sm" onClick={onSignIn}>Sign in</Button>
           ) : (
             <Link href="/settings" aria-label="Settings" className="rounded-full">
-              <Avatar name={owner || "Me"} src={photoUrl} preset="sky" size={44} decorative={false} />
+              {logoUrl
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={logoUrl} alt={`${name} logo`} width={44} height={44} className="size-11 rounded-[13px] object-cover ring-1 ring-line" />
+                : <Avatar name={owner || "Me"} src={photoUrl} preset="sky" size={44} decorative={false} />}
             </Link>
           )}
         </>
       }
     />
+    </div>
   );
 }
 
