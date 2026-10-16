@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Check, ChevronLeft, Loader2, Plus } from "lucide-react";
+import { Camera, Check, ChevronLeft, Loader2, Plus, Pencil } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Input, Topbar } from "@river-apps/ui";
 import { Button, Spinner } from "@/components/common/Button";
@@ -134,16 +134,15 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
               const off = chair.active === false;
               return (
                 <li key={chair.id} className="relative rounded-card bg-surface px-3.5 py-3.5 shadow-card">
-                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex w-full min-w-0 items-center gap-3 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
+                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex w-full min-w-0 items-center gap-3 pr-11 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
                     <BarberPortrait chair={chair} size={44} />
                     <span className="min-w-0">
                       <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
                       <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""}</small>
                     </span>
                   </button>
-                  <div className="mt-3 grid">
-                    {off ? <span className="inline-flex h-9 items-center justify-center rounded-pill bg-grey-100 text-[13px] font-bold text-muted">Inactive · turn on in Performance</span> : <ShareBarberLink id={chair.id} name={chairBarberName(chair)} />}
-                  </div>
+                  <button type="button" aria-label={`Edit ${chairBarberName(chair)}`} title="Edit barber" onClick={() => setEditing({ kind: "chair", chair, fresh: false })}
+                    className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-ink"><Pencil size={16} strokeWidth={2} /></button>
                 </li>
               );
             })}
@@ -223,7 +222,7 @@ export function ShareBarberLink({ id, name, compact = false }: { id: string; nam
           else { await navigator.clipboard.writeText(url); setDone(true); window.setTimeout(() => setDone(false), 1500); }
         } catch { /* share sheet closed */ } finally { setPending(false); }
       }}>
-      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : compact ? "Share" : "Share to barber"}
+      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : compact ? "Share to Barber" : "Share to barber"}
     </button>
   );
 }
