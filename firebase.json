@@ -82,7 +82,7 @@
         {
           "source": "**",
           "run": {
-            "serviceId": "barbers-ph-dev",
+            "serviceId": "barbers-ph",
             "region": "asia-southeast1",
             "pinTag": false
           }
