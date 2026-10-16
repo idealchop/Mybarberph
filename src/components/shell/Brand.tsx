@@ -22,7 +22,7 @@ export function Brand({ size = 34, sub = true }: { size?: number; sub?: boolean 
     <span className="inline-flex items-center gap-2.5">
       <RiverMark size={size} />
       <span className="flex flex-col leading-none">
-        <span className="text-[19px] font-extrabold tracking-[-0.02em]">Barbers<span className="font-semibold text-subtle">.ph</span></span>
+        <span className="text-[19px] font-extrabold tracking-[-0.02em]">Barbers.ph</span>
         {sub ? <span className="mt-[3px] text-[11px] font-semibold text-muted">by River Apps</span> : null}
       </span>
     </span>
