@@ -9,12 +9,13 @@ import { QrScanner } from "@/components/scan/QrScanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
-import { BarChart3, ChevronLeft, ChevronRight, History, Plus, ScanLine } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
+import { mapsLink } from "@/lib/home-service-model";
 import { BarberChair, BarberIcon } from "@/components/art";
 import { startBarberCloud, useCloud } from "@/lib/cloud";
 import {
-  acceptOnChair, completionLabel, elapsedLabel, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
+  acceptOnChair, completionLabel, elapsedLabel, patchRequest, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, chairLinkExpired, linkExpiryLabel, useShopChairs } from "@/lib/shop-chairs";
@@ -183,8 +184,12 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const mine = (row: ChairRequest) => here(row) && (row.seatLabel === chair.label || row.chairLabel === chair.label);
   const current = rows.find((row) => row.status === "in_chair" && row.chairLabel === chair.label && here(row));
   const waiting = rows
-    .filter((row) => here(row) && (row.status === "requested" || row.status === "accepted") && !row.chairLabel)
+    .filter((row) => here(row) && !row.home && (row.status === "requested" || row.status === "accepted") && !row.chairLabel)
     .sort((a, b) => a.createdAt - b.createdAt);
+  const myId = chair.barberId || chair.id;
+  const homeVisits = rows
+    .filter((row) => here(row) && row.home && (row.status === "requested" || row.status === "accepted" || row.status === "in_chair") && (!row.barberId || row.barberId === myId))
+    .sort((a, b) => (a.scheduledAt ?? a.createdAt) - (b.scheduledAt ?? b.createdAt));
   const done = rows
     .filter((row) => row.status === "done" && mine(row) && row.completedAt)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
@@ -344,6 +349,15 @@ export function BarberLinkScreen({ token }: { token: string }) {
       />
 
 
+      {homeVisits.length ? (
+        <section className="mt-5">
+          <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Home visits</h2>
+          <ul className="mt-2 flex flex-col gap-3">
+            {homeVisits.map((row) => <HomeVisitCard key={row.id} row={row} seat={chair.label} />)}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="mt-5">
         <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Waiting</h2>
         {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current cut before you accept the next one.</p> : null}
@@ -383,6 +397,33 @@ export function BarberLinkScreen({ token }: { token: string }) {
       </>
       )}
     </main>
+  );
+}
+
+/** One home visit: address, Navigate, and On the way → Arrived → Done (the customer sees each step in River Mobile). */
+function HomeVisitCard({ row, seat }: { row: ChairRequest; seat: string }) {
+  const [busy, setBusy] = useState(false);
+  const step = row.homeStatus === "arrived" ? 2 : row.homeStatus === "on_the_way" ? 1 : 0;
+  const go = (patch: Partial<ChairRequest>) => { setBusy(true); patchRequest(row.id, patch); window.setTimeout(() => setBusy(false), 600); };
+  const home = row.home!;
+  return (
+    <li className="rounded-card bg-surface px-4 py-3.5 shadow-card">
+      <div className="flex items-center justify-between gap-2">
+        <b className="truncate text-[15.5px]">{row.customerLabel || "Customer"}</b>
+        <span className="inline-flex h-5 flex-none items-center rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold uppercase text-on-ink">Home</span>
+      </div>
+      <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.slotLabel}{row.price ? ` · ₱${(row.price / 100).toLocaleString("en-PH")}` : ""}</p>
+      <p className="mt-2 rounded-[12px] bg-grey-100 px-3 py-2 text-[13px] font-semibold">{home.address}<span className="block text-[12px] text-muted">{home.distanceKm} km{home.notes ? ` · ${home.notes}` : ""}{row.contact ? ` · ${row.contact}` : ""}</span></p>
+      <ol className="mt-3 flex items-center gap-1.5 text-[11.5px] font-bold" aria-label="Visit steps">
+        {["On the way", "Arrived", "Done"].map((label, i) => <li key={label} className={`flex-1 rounded-pill py-1 text-center ${i < step ? "bg-ink text-on-ink" : i === step ? "bg-grey-200" : "bg-grey-100 text-muted"}`}>{label}</li>)}
+      </ol>
+      <div className="mt-3 flex gap-2">
+        <a href={mapsLink(home.lat, home.lng)} target="_blank" rel="noreferrer" className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-pill bg-grey-100 text-[13.5px] font-bold"><Navigation size={15} strokeWidth={2.2} aria-hidden />Navigate</a>
+        {step === 0 ? <Button size="sm" className="flex-1" loading={busy} onClick={() => go({ status: "accepted", homeStatus: "on_the_way" })}>On the way</Button>
+          : step === 1 ? <Button size="sm" className="flex-1" loading={busy} onClick={() => go({ status: "in_chair", homeStatus: "arrived", startedAt: Date.now(), seatLabel: seat })}>Arrived</Button>
+          : <Button size="sm" className="flex-1" onClick={() => completeCut(row)}>Done</Button>}
+      </div>
+    </li>
   );
 }
 

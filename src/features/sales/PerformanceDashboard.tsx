@@ -142,6 +142,10 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   const services = [...svc.entries()].map(([name, v]) => ({ name, ...v, avg: Math.round(v.sales / v.cuts) })).sort((a, b) => b.sales - a.sales);
   const svcMax = Math.max(1, ...services.map((s) => s.sales));
   const multiLoc = branches.length > 1 && where === "all";
+  // Shop vs home-service sales (home price includes the home fee).
+  const homeDone = now.done.filter((r) => r.home);
+  const homeSales = homeDone.reduce((s, r) => s + (r.price || 0), 0);
+  const homeFees = homeDone.reduce((s, r) => s + (r.homeFee || 0), 0);
   // Customer ratings for rated, finished cuts in range (same location/filters).
   const rated = now.done.filter((r) => r.rating && r.rating > 0);
   const ratingAvg = rated.length ? rated.reduce((s, r) => s + r.rating!, 0) / rated.length : null;
@@ -172,6 +176,13 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
       {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rN ? `★ ${(b.rSum / b.rN).toFixed(1)} (${b.rN})` : ""].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
       {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
+
+      <Panel title="Shop vs home" sub={homeDone.length ? `${homeDone.length} home visit${homeDone.length === 1 ? "" : "s"} · ${peso(homeFees)} in home fees` : "No home visits in this range"}>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Box k="In shop" v={peso(now.sales - homeSales)} sub={`${now.cuts - homeDone.length} cut${now.cuts - homeDone.length === 1 ? "" : "s"}`} />
+          <Box k="Home service" v={peso(homeSales)} sub={`${homeDone.length} visit${homeDone.length === 1 ? "" : "s"}`} />
+        </div>
+      </Panel>
 
       <Panel title="Ratings" sub={rated.length ? `${rated.length} rating${rated.length === 1 ? "" : "s"} from customers` : "No ratings in this range yet"}>
         {rated.length ? (<>

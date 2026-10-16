@@ -75,13 +75,13 @@ async function contactsFor(shopId: string, locationId: string): Promise<{ owner:
 }
 
 /** New online booking → owner (and that location's active barbers). Never throws; no-op without a provider. */
-export async function notifyNewOnlineBooking(shopId: string, b: { ref: string; customerLabel?: string; serviceName?: string; slotLabel?: string; locationId?: string; shopName?: string }) {
+export async function notifyNewOnlineBooking(shopId: string, b: { ref: string; customerLabel?: string; serviceName?: string; slotLabel?: string; locationId?: string; shopName?: string; homeAddress?: string }) {
   try {
     const p = provider();
     if (!p.sms && !p.email) return;
     const { owner, barbers } = await contactsFor(shopId, b.locationId || "home");
-    const text = `${b.shopName ? `${b.shopName}: ` : ""}New online booking ${b.ref} from ${b.customerLabel || "Customer"}, ${b.serviceName || "Service"}${b.slotLabel ? `, ${b.slotLabel}` : ""}. Open Barbers.ph to accept.`;
-    const subject = `New booking ${b.ref}${b.shopName ? ` · ${b.shopName}` : ""}`;
+    const text = `${b.shopName ? `${b.shopName}: ` : ""}New ${b.homeAddress ? "Home service" : "online"} booking ${b.ref} from ${b.customerLabel || "Customer"}, ${b.serviceName || "Service"}${b.slotLabel ? `, ${b.slotLabel}` : ""}${b.homeAddress ? `. Address: ${b.homeAddress}` : ""}. Open Barbers.ph to accept.`;
+    const subject = `${b.homeAddress ? "Home service" : "New booking"} ${b.ref}${b.shopName ? ` · ${b.shopName}` : ""}`;
     const to = [owner, ...barbers];
     const phones = [...new Set(to.map((c) => c.phone?.trim()).filter(Boolean) as string[])];
     const emails = [...new Set(to.map((c) => c.email?.trim()).filter(Boolean) as string[])];

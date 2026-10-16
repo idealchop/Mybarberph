@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   if (!me) return unauthorized();
   const days = Math.min(3650, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 28));
   const from = manilaDayStart() - (days - 1) * 86_400_000;
-  const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating", "feedback", "feedbackAt"] as const;
+  const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating", "feedback", "feedbackAt", "home", "homeFee", "homeStatus", "scheduledAt"] as const;
   const full = new URL(req.url).searchParams.get("full") === "1";
   const base = shopRef(me.uid).collection("bookings").where("createdAt", ">=", from - 86_400_000);
   // Trimmed reads fetch only the fields Sales uses.

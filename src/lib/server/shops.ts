@@ -24,6 +24,7 @@ export const STATE_KEYS: Record<string, string> = {
   "barbers.shop-chairs": "chairs",
   "barbers.shop-locations": "locations",
   "barbers.community.v1": "community",
+  "barbers.home-service": "home",
 };
 /** Keys a barber link may write. */
 /** State a chair link may write directly: none. Barbers change only their own name (setBarberName). */
@@ -60,6 +61,8 @@ export interface ShopDoc {
   menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string }[];
   /** Menus for branches other than the first shop, keyed by location id. */
   menuByLocation?: Record<string, ShopDoc["menu"]>;
+  /** Home service settings (River Mobile only), mirrored from the "barbers.home-service" state. */
+  homeService?: import("@/lib/home-service-model").HomeServiceFile;
   listed: boolean;
   createdAt: number;
   updatedAt: number;
@@ -152,6 +155,10 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
     // Replace the whole map so removed branches don't keep stale menus.
     batch.update(shopRef(shopId), { menu: toItems(parsed), menuByLocation: byLocation, updatedAt: now });
   }
+  if (docId === "home") {
+    const { parseHomeFile } = await import("@/lib/home-service-model");
+    batch.set(shopRef(shopId), { homeService: parseHomeFile(parsed), updatedAt: now }, { merge: true });
+  }
   if (docId === "locations") {
     // Plan limit: Partner and Pro run 1 shop, Lifetime 1–5 up to 5, Lifetime 5+ unlimited.
     const cur = ((await shopRef(shopId).get()).data() ?? {}) as ShopDoc;
@@ -202,6 +209,7 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
   if (typeof b.notes === "string") out.notes = str(b.notes, 500);
+  if (b.homeStatus === "on_the_way" || b.homeStatus === "arrived") out.homeStatus = b.homeStatus;
   return out;
 }
 
@@ -266,6 +274,8 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     if (cur?.status === "declined" && clean.status !== "declined") return { saved: cur, before: cur, wrote: false };
     if (cur?.rating) { clean.rating = cur.rating; clean.feedback = cur.feedback; clean.feedbackAt = cur.feedbackAt; if (!clean.feedback) delete clean.feedback; if (!clean.feedbackAt) delete clean.feedbackAt; }
     if (cur?.scheduledAt && !clean.scheduledAt) clean.scheduledAt = cur.scheduledAt;
+    // Home-service fields are set by the River API only; the app can't change the address or fee.
+    if (cur?.home) { clean.home = cur.home; if (cur.homeFee != null) clean.homeFee = cur.homeFee; }
     tx.set(ref, clean);
     return { saved: clean, before: cur, wrote: true };
   });
@@ -438,6 +448,8 @@ export function publicBooking(b: ChairRequest) {
     slotLabel: b.slotLabel, payWhere: b.payWhere, paid: Boolean(b.paid), chairLabel: b.chairLabel ?? null, payPref: b.payPref ?? null,
     payMethod: b.paid ? b.payMethod ?? null : null, rating: b.rating ?? null, completedAt: b.completedAt ?? null, barberName: b.barberName ?? null,
     locationId: b.locationId ?? null, verifiedAt: b.verifiedAt ?? null, createdAt: b.createdAt, updatedAt: b.updatedAt,
+    scheduledAt: b.scheduledAt ?? null, barberId: b.barberId ?? null,
+    homeService: b.home ? { address: b.home.address, lat: b.home.lat, lng: b.home.lng, distanceKm: b.home.distanceKm, fee: b.homeFee ?? 0, step: b.status === "done" ? "done" : b.homeStatus ?? (b.status === "declined" ? "declined" : "scheduled") } : null,
   };
 }
 

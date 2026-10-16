@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { Input, Topbar } from "@river-apps/ui";
 import { Button, Spinner } from "@/components/common/Button";
 import { BarberIcon } from "@/components/art";
+import { HomeServiceCard, HomeToggle } from "@/features/settings/HomeServiceCard";
 import { PageBack } from "@/components/shell/PageBack";
 import { fileToDataUrl } from "@/features/community/posts";
 import { BarberPortrait } from "@/features/settings/SeatList";
@@ -159,6 +160,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
             <b className="block text-[15.5px]">{haircut.name}</b>
             <small className="text-[12.5px] font-semibold text-muted">{haircut.price ? `₱${haircut.price}` : "Set a price"}{atLocation ? ` · ${SOURCE[haircut.source]}` : ""}</small>
           </span>
+          <HomeToggle serviceId="haircut" name={haircut.name} />
           {atLocation && haircut.source === "changed" ? <Button data-auth="action" size="sm" variant="secondary" onClick={resetHaircut}>Use shared</Button> : null}
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "haircut" })}>Edit</Button>
         </div>
@@ -191,6 +193,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
                     </button>
                   ) : null}
                   <span className="flex gap-2">
+                    <HomeToggle serviceId={treatment.id} name={treatment.name} />
                     {atLocation && treatment.source === "changed" ? <Button data-auth="action" size="sm" variant="secondary" onClick={() => resetTreatment(treatment.id)}>Use shared</Button> : null}
                     <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment, fresh: false })}>Edit</Button>
                   </span>
@@ -199,6 +202,12 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-6">
+        <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Home service</h2>
+        <p className="mt-1 px-1 text-[13px] font-medium text-ink-2">River Mobile customers can book a barber to their home. Tap “Home” on the services you offer, then set each location’s fee, distance, barbers and hours.</p>
+        {(shops.enabled && shops.branches.length ? shops.branches : [{ id: HOME_LOCATION_ID, name: "" }]).map((b) => <HomeServiceCard key={b.id} locationId={b.id} place={b.name || undefined} />)}
       </section>
       </>}
     </div>

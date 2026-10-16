@@ -46,6 +46,12 @@ export interface ChairRequest {
   /** Barber who did the cut (snapshot at the time; for salary and remittance). */
   barberId?: string;
   barberName?: string;
+  /** Home service (River Mobile): where the barber goes. Price already includes homeFee. */
+  home?: { address: string; lat: number; lng: number; distanceKm: number; notes?: string };
+  /** Home-service fee in centavos (part of price). */
+  homeFee?: number;
+  /** Home visit progress shown to the customer: on_the_way → arrived → (status done). */
+  homeStatus?: "on_the_way" | "arrived";
   /** Scheduled visit time (epoch ms) from the customer's Schedule page. Missing = "Now". */
   scheduledAt?: number;
   /** When the shop scanned the customer's code. */

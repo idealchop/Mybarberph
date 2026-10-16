@@ -1,7 +1,8 @@
 "use client";
 import { ListSkeleton } from "@/components/common/Skeleton";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Home as HomeIcon, MapPin } from "lucide-react";
+import { mapsLink } from "@/lib/home-service-model";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
@@ -33,6 +34,26 @@ function matches(row: ChairRequest, q: string) {
 }
 
 function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string) => void }) {
+  // Home visits never take a chair: Accept confirms, the barber link moves it On the way → Arrived, anyone can finish it.
+  if (row.home) {
+    if (row.status === "requested") {
+      return (
+        <div className="mt-3 flex gap-2 border-t border-dashed border-[#E8E8EC] pt-3">
+          <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "declined")}>Decline</Button>
+          <Button size="sm" className="flex-1" data-auth="action" onClick={() => setRequestStatus(row.id, "accepted")}>Accept</Button>
+        </div>
+      );
+    }
+    if (row.status === "accepted" || row.status === "in_chair") {
+      return (
+        <div className="mt-3 flex items-center gap-2 border-t border-dashed border-[#E8E8EC] pt-3">
+          <span className="flex-1 text-[12.5px] font-bold text-muted">{row.homeStatus === "arrived" ? "Barber arrived" : row.homeStatus === "on_the_way" ? "Barber on the way" : "Confirmed"}</span>
+          <Button size="sm" data-auth="action" onClick={() => completeCut(row)}>Done</Button>
+        </div>
+      );
+    }
+    return null;
+  }
   if (row.status === "requested" || row.status === "accepted") {
     return (
       <div className="mt-3 flex gap-2 border-t border-dashed border-[#E8E8EC] pt-3">
@@ -65,7 +86,7 @@ function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: stri
       <div role="button" tabIndex={0} aria-label={`Open order ${row.ref}`} onClick={() => setOpen(true)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(true); }} className="flex cursor-pointer items-center gap-3">
         <BarberIcon name={row.serviceId === "haircut" ? haircut.icon : "scissors"} size={40} title={row.serviceName} />
         <div className="flex min-w-0 flex-1 flex-col leading-[1.3]">
-          <b className="truncate text-[15.5px] tracking-[-0.01em]">{who}</b>
+          <b className="flex min-w-0 items-center gap-1.5 text-[15.5px] tracking-[-0.01em]"><span className="truncate">{who}</span>{row.home ? <span className="inline-flex h-5 flex-none items-center gap-0.5 rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold uppercase text-on-ink"><HomeIcon size={11} strokeWidth={2.4} aria-hidden />Home</span> : null}</b>
           <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.scheduledAt ? `Scheduled ${row.slotLabel}` : where}{row.scheduledAt && row.barberName ? ` · with ${row.barberName}` : ""}{place ? ` · ${place}` : ""}</span>
           <span className="mt-0.5 truncate text-[12.5px] font-semibold text-muted">
             {row.ref} · {pay}{row.status === "done" && row.completedAt ? ` · Completed ${completionLabel(row.completedAt)}` : ""}
@@ -74,6 +95,13 @@ function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: stri
         <b className="text-[14px]">{row.price ? peso(row.price) : statusLabel(row.status)}</b>
         <ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden />
       </div>
+      {row.home ? (
+        <div className="mt-2 flex items-start gap-2 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-semibold">
+          <MapPin size={14} strokeWidth={2.2} className="mt-0.5 flex-none" aria-hidden />
+          <span className="min-w-0 flex-1"><span className="block">{row.home.address}</span><span className="text-muted">{row.home.distanceKm} km away{row.homeFee ? ` · Home fee ${peso(row.homeFee)} (in total)` : ""}</span></span>
+          <a href={mapsLink(row.home.lat, row.home.lng)} target="_blank" rel="noreferrer" className="flex-none font-extrabold underline underline-offset-2">Map</a>
+        </div>
+      ) : null}
       <Actions row={row} onFull={onFull} />
       {open ? <TransactionSheet row={row} onClose={() => setOpen(false)} /> : null}
     </li>
