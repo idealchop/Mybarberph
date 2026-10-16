@@ -5,10 +5,9 @@ import { EmptyBookings } from "@/components/common/EmptyBookings";
 
 import { CoinIcon } from "@river-apps/icons";
 import { ChevronDown, Plus, ScanLine } from "lucide-react";
-import { Avatar, Badge, Card, CardHeader, HeroBanner, ProgressRing, SearchInput, SectionHeader, StatCard, Topbar } from "@river-apps/ui";
+import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BarberChair } from "@/components/art";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
@@ -106,9 +105,6 @@ export function HomeScreen() {
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
   const { user } = useSession();
   const { requireAuth } = useAuthGate();
-  // Phone sign-ins have no name (it falls back to the number): greet with the shop instead.
-  const realName = user && !/^[+\d]/.test(user.name) ? user.name : "";
-  const owner = realName ? (realName.split(" ")[0] || realName) : (user ? profile.name : "");
   const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
   const needsSetup = Boolean(user) && ready && !profile.name;
   const dayLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" });
@@ -201,7 +197,7 @@ export function HomeScreen() {
       </div>
 
       <div className="mx-auto hidden w-full max-w-[1120px] px-4 pb-6 pt-4 lg:block lg:px-[30px] lg:pt-6">
-        <DesktopBar brand={user ? brand : null} logoUrl={profile.logoUrl} name={shopName} owner={owner} greeting={greeting} dayLabel={dayLabel} photoUrl={user?.photoUrl} onSignIn={user ? undefined : () => requireAuth()} />
+        <DesktopBar brand={user ? brand : null} onSignIn={user ? undefined : () => requireAuth()} />
         {needsSetup ? <SetupCard className="mt-5" /> : null}
         <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_286px]">
           <HeroBanner
@@ -281,38 +277,17 @@ function SetupCard({ className }: { className?: string }) {
   );
 }
 
-function DesktopBar({ brand, logoUrl, name, owner, greeting, dayLabel, photoUrl, onSignIn }: { brand: React.ReactNode; logoUrl?: string; name: string; owner: string; greeting: string; dayLabel: string; photoUrl?: string; onSignIn?: () => void }) {
-  const router = useRouter();
-  const [search, setSearch] = useState("");
+function DesktopBar({ brand, onSignIn }: { brand: React.ReactNode; onSignIn?: () => void }) {
   return (
-    <div className="flex items-center gap-4">
-    {brand ? <div className="flex-none border-r border-line pr-4">{brand}</div> : null}
-    <Topbar
-      className="min-w-0 flex-1 px-1"
-      title={owner ? `${greeting}, ${owner}` : greeting}
-      subtitle={`${dayLabel} · ${name}`}
-      actions={
-        <>
-          <form className="hidden xl:flex" onSubmit={(e) => { e.preventDefault(); router.push(search.trim() ? `/scan?code=${encodeURIComponent(search.trim())}` : "/scan"); }}>
-            <SearchInput className="w-[300px]" placeholder="Find ticket, e.g. BK-7K2Q9M" label="Find a ticket" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </form>
-          <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-col items-center justify-center">
-            <CoinIcon size={32} />
-            <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
-          </Link>
-          {onSignIn ? (
-            <Button size="sm" onClick={onSignIn}>Sign in</Button>
-          ) : (
-            <Link href="/settings" aria-label="Settings" className="rounded-full">
-              {logoUrl
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={logoUrl} alt={`${name} logo`} width={44} height={44} className="size-11 rounded-[13px] object-cover ring-1 ring-line" />
-                : <Avatar name={owner || "Me"} src={photoUrl} preset="sky" size={44} decorative={false} />}
-            </Link>
-          )}
-        </>
-      }
-    />
+    <div className="flex min-h-16 items-center justify-between gap-4 px-1">
+      <div className="min-w-0">{brand}</div>
+      <div className="flex flex-none items-center gap-3">
+        <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-col items-center justify-center">
+          <CoinIcon size={32} />
+          <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
+        </Link>
+        {onSignIn ? <Button size="sm" onClick={onSignIn}>Sign in</Button> : null}
+      </div>
     </div>
   );
 }
