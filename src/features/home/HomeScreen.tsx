@@ -10,7 +10,6 @@ import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatC
 import { Button } from "@/components/common/Button";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarberChair } from "@/components/art";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
@@ -173,7 +172,7 @@ export function HomeScreen() {
               <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
             </div>
           </div>
-          <div aria-hidden className="relative z-0 w-[88px] flex-none"><BarberChair size={88} /></div>
+          <div aria-hidden className="relative z-0 w-[88px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-pole.webp" alt="" width={88} height={88} className="size-[88px] rounded-[18px] object-cover shadow-[0_6px_16px_rgba(0,0,0,0.35)] ring-1 ring-white/10" /></div>
         </section>
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
@@ -214,7 +213,8 @@ export function HomeScreen() {
                 <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
               </div>
             }
-            illustration={<BarberChair size={220} />}
+            // eslint-disable-next-line @next/next/no-img-element
+            illustration={<img src="/barber-pole.webp" alt="" width={200} height={200} className="size-[200px] rounded-[36px] object-cover shadow-[0_10px_28px_rgba(0,0,0,0.4)] ring-1 ring-white/10" />}
             illustrationClassName="right-[34px] bottom-3"
           />
           <StatCard

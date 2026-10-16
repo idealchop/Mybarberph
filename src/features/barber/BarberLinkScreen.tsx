@@ -12,7 +12,7 @@ import { Button } from "@/components/common/Button";
 import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
-import { BarberChair, BarberIcon } from "@/components/art";
+import { BarberIcon } from "@/components/art";
 import { startBarberCloud, useCloud } from "@/lib/cloud";
 import {
   acceptOnChair, completionLabel, elapsedLabel, patchRequest, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
@@ -128,7 +128,7 @@ function ActiveCard({
           )}
         </div>
       </div>
-      <div aria-hidden className="relative z-0 w-[88px] flex-none"><BarberChair size={88} /></div>
+      <div aria-hidden className="relative z-0 w-[88px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-pole.webp" alt="" width={88} height={88} className="size-[88px] rounded-[18px] object-cover shadow-[0_6px_16px_rgba(0,0,0,0.35)] ring-1 ring-white/10" /></div>
     </section>
   );
 }
