@@ -97,6 +97,7 @@ export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className, o
         pins={[]}
         fitCoords={pin ? [{ latitude: pin.lat, longitude: pin.lng }] : [{ latitude: centre.lat, longitude: centre.lng }]}
         gestures="cooperative"
+        attribution={false}
       >
         {(map) => (
           <>
@@ -106,6 +107,7 @@ export function RiverPinMap({ pin, fallbackCenter, onPin, disabled, className, o
           </>
         )}
       </RiverMap>
+      <a href="/settings/map-credits" aria-label="Map credits: © OpenStreetMap contributors" title="© OpenStreetMap contributors" className="absolute bottom-1.5 right-1.5 z-[2] inline-flex size-5 items-center justify-center rounded-full bg-white/85 text-[11px] font-bold text-ink-2 shadow-sm">ⓘ</a>
       {children}
     </div>
   );

@@ -150,7 +150,7 @@ export function SettingsScreen() {
           <span aria-hidden> · </span>
           <Link href="/privacy" className="hover:underline">Privacy</Link>
           <span aria-hidden> · </span>
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="hover:underline">© OpenStreetMap contributors</a>
+          <Link href="/settings/map-credits" className="hover:underline">Map credits</Link>
         </p>
       </div>
     </div>
