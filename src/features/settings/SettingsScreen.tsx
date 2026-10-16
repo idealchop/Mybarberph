@@ -2,12 +2,12 @@
 
 import { FormSkeleton } from "@/components/common/Skeleton";
 import { useCloud } from "@/lib/cloud";
-import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, Scissors } from "lucide-react";
+import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { NotificationBell } from "@/features/activity/ActivityScreen";
-import { Badge, Card, ListItem, Topbar, cn } from "@river-apps/ui";
+import { Card, ListItem, Topbar, cn } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
 import { BarberChair } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
@@ -122,36 +122,17 @@ export function SettingsScreen() {
           </ul>
         </Card>
 
-        <Card padding="none" className="overflow-visible px-2 py-1.5">
-          <b className="block px-2.5 pt-3 text-[16px]">Features</b>
-          {paid ? (
-            <div className="relative mx-1.5 mb-1 mt-11 rounded-card bg-grey-100 px-4 pb-4 pt-[78px] lg:hidden">
+        {paid ? (
+          <Card padding="none" className="overflow-visible px-2 py-1.5">
+            <b className="block px-2.5 pt-3 text-[16px]">Features</b>
+            <div className="relative mx-1.5 mb-1 mt-11 rounded-card bg-grey-100 px-4 pb-4 pt-[78px]">
               <div className="absolute inset-x-0 -top-9 flex justify-center"><BarberChair size={150} /></div>
               <b className="block text-[14.5px]">Shop QR code</b>
               <small className="mb-3 mt-0.5 block text-[12.5px] font-semibold text-ink/55">Customers scan to book</small>
               <Button size="sm" fullWidth href="/qr">Get QR code</Button>
             </div>
-          ) : null}
-          {paid ? (
-            <Link href="/queue/new" className="flex min-h-[60px] items-center gap-3 rounded-tile px-1.5 py-2">
-              <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><Scissors size={18} strokeWidth={1.75} /></span>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[15px]">Walk-in</b>
-                <small className="block truncate text-[13px] font-medium text-muted">Add someone at the chair</small>
-              </span>
-              <Badge variant="soft" size="sm">Included</Badge>
-            </Link>
-          ) : (
-            <Link href="/queue/new" className="flex min-h-[60px] items-center gap-3 rounded-tile px-1.5 py-2">
-              <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><Scissors size={18} strokeWidth={1.75} /></span>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[15px]">Walk-in</b>
-                <small className="block truncate text-[13px] font-medium text-muted">Walk-ins: 10/day on Partner</small>
-              </span>
-              <Badge variant="soft" size="sm">10/day</Badge>
-            </Link>
-          )}
-        </Card>
+          </Card>
+        ) : null}
 
         {user ? <button
           type="button"
