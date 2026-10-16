@@ -9,10 +9,10 @@ const s = (n: number, name: string, meta: string, avatar: CommunityPost["author"
 });
 
 export const SAMPLE_POSTS: CommunityPost[] = [
-  s(1, "Gupit ni Mang Tonyo", "Maynila", "sky", "Bagong gupit, bagong araw! Malinis na fade para kay Kuya Jun ngayong umaga. Salamat sa tiwala, suki!", 25, 34, ["/community/clippers.svg"]),
+  s(1, "Gupit ni Mang Tonyo", "Maynila", "sky", "Bagong gupit, bagong araw! Malinis na fade para kay Kuya Jun ngayong umaga. Salamat sa tiwala, suki!", 25, 34, ["/moments-samples/clippers.svg"]),
   s(2, "Barberya Bayanihan", "Lungsod Quezon", "mint", "Promo ngayong linggo: libreng ahit ng balbas sa bawat gupit. Hanggang Linggo lamang, kaya dumaan na kayo!", 70, 52),
-  s(3, "Tabas Pinoy", "Lungsod Cebu", "lilac", "Mababang fade na may malinis na guhit sa gilid. Isa sa mga paborito naming gawin. Ano ang gusto ninyong susunod?", 160, 41, ["/community/chairs.svg"]),
-  s(4, "Gunting at Suklay", "Lungsod Davao", "butter", "Dalawampung taon na ang aming munting barberya. Mula sa iisang upuan, ngayon ay may lima na. Maraming salamat sa inyong lahat!", 300, 88, ["/community/shopfront.svg"]),
+  s(3, "Tabas Pinoy", "Lungsod Cebu", "lilac", "Mababang fade na may malinis na guhit sa gilid. Isa sa mga paborito naming gawin. Ano ang gusto ninyong susunod?", 160, 41, ["/moments-samples/chairs.svg"]),
+  s(4, "Gunting at Suklay", "Lungsod Davao", "butter", "Dalawampung taon na ang aming munting barberya. Mula sa iisang upuan, ngayon ay may lima na. Maraming salamat sa inyong lahat!", 300, 88, ["/moments-samples/shopfront.svg"]),
   s(5, "Kanto Barbero", "Pasig", "peach", "Payo ng barbero: hugasan ang buhok gamit ang malamig na tubig pagkatapos magpagupit para manatiling maayos ang ayos.", 480, 27),
   s(6, "Ahit Hari", "Lungsod Iloilo", "indigo", "Unang gupit ng batang si Migo ngayong araw. Medyo kinabahan siya pero ang tapang niya! Ang guwapo mo, iho.", 720, 63),
   s(7, "Barberya ni Aling Rosa", "Baguio", "rose", "Malamig man dito sa amin, mainit naman ang pagtanggap namin sa inyo. Bukas kami mula ikasiyam ng umaga hanggang ikawalo ng gabi.", 1100, 39),
