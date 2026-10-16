@@ -151,9 +151,9 @@ export function HomeScreen() {
                 </button>
               )}
             </div>
-            <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-none flex-col items-center justify-center">
-              <CoinIcon size={30} />
-              <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
+            <Link href="/sales" aria-label="Sales" className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line py-1 pl-1 pr-3">
+              <CoinIcon size={26} />
+              <span className="text-[13px] font-bold leading-none text-ink">Sales</span>
             </Link>
           </div>
         </header>
@@ -282,9 +282,9 @@ function DesktopBar({ brand, onSignIn }: { brand: React.ReactNode; onSignIn?: ()
     <div className="flex min-h-16 items-center justify-between gap-4 px-1">
       <div className="min-w-0">{brand}</div>
       <div className="flex flex-none items-center gap-3">
-        <Link href="/sales" aria-label="Sales" className="inline-flex min-w-11 flex-col items-center justify-center">
-          <CoinIcon size={32} />
-          <span className="mt-0.5 text-[10px] font-bold leading-none text-ink">Sales</span>
+        <Link href="/sales" aria-label="Sales" className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line py-1 pl-1 pr-3">
+          <CoinIcon size={26} />
+          <span className="text-[13px] font-bold leading-none text-ink">Sales</span>
         </Link>
         {onSignIn ? <Button size="sm" onClick={onSignIn}>Sign in</Button> : null}
       </div>

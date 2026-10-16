@@ -1,7 +1,7 @@
 "use client";
 import { ListSkeleton } from "@/components/common/Skeleton";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
@@ -110,55 +110,45 @@ export function QueueBoard() {
   if (!ready) return <ListSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
-      <header className="relative flex flex-wrap items-end gap-x-6 border-b border-line px-1">
-        {shops.enabled && shops.branches.length > 1 ? (
-          <label className="absolute right-1 top-1 inline-flex max-w-[150px] items-center gap-0.5 text-[13px] font-bold text-ink">
-            <span className="truncate">{shops.viewingAll ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
-            <ChevronDown size={14} strokeWidth={2.2} className="flex-none" aria-hidden />
-            <select aria-label="Location" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
-              {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              <option value={ALL_LOCATIONS}>All locations</option>
-            </select>
-          </label>
-        ) : null}
-        <div className="flex items-center gap-1 pb-3">
-          <PageBack fallback="/home" />
-          <div>
-            <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Queue</h1>
+      <header className="flex items-center justify-between gap-3 border-b border-line px-1 pb-3">
+        <div className="flex min-w-0 items-center gap-1">
+          {channel === "online" ? (
+            <button type="button" aria-label="Back to queue" onClick={() => setChannel("walk-ins")} className="inline-flex size-11 flex-none items-center justify-center rounded-full">
+              <ChevronLeft size={24} strokeWidth={2.2} aria-hidden />
+            </button>
+          ) : <PageBack fallback="/home" />}
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">{channel === "online" ? "Online orders" : "Queue"}</h1>
             <p className="mt-0.5 text-[14px] font-semibold text-muted">
               {inChair ? `${inChair} in service · ` : ""}{toAcceptCount} waiting
             </p>
           </div>
         </div>
-        <div role="tablist" aria-label="Queue channel" className="flex items-end gap-6">
-          {([
-            ["walk-ins", "Walk-ins", walkIns.length],
-            ["online", "Online", online.length],
-          ] as const).map(([value, label, count]) => {
-            const on = channel === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setChannel(value)}
-                className={cn(
-                  "-mb-px min-h-11 border-b-2 px-0.5 pb-2.5 pt-2 text-[15px]",
-                  on ? "border-ink font-bold text-ink" : "border-transparent font-semibold text-muted",
-                )}
-              >
-                {label}
-                {count ? <span className="ml-1.5 tabular-nums">{count}</span> : null}
-              </button>
-            );
-          })}
-        </div>
+        {channel === "walk-ins" ? (
+          <button type="button" onClick={() => setChannel("online")} aria-label={`Online orders${online.length ? `, ${online.length}` : ""}`} className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-bold text-ink">
+            Online
+            {online.length ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-ink px-1.5 text-[11.5px] font-bold tabular-nums leading-5 text-on-ink">{online.length}</span> : null}
+          </button>
+        ) : null}
       </header>
 
       <div className="mt-4 flex items-center justify-between gap-3 px-1">
-        <p className="text-[13px] font-bold text-muted">Today{shops.enabled ? ` · ${allLocs ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}` : ""}</p>
-        <QueueWalkInButton locationId={queueLoc} />
+        <p className="flex min-w-0 items-center text-[13px] font-bold text-muted">
+          Today
+          {shops.enabled ? (
+            shops.branches.length > 1 ? (
+              <label className="relative ml-1 inline-flex min-w-0 items-center gap-0.5 text-ink">
+                <span className="truncate">· {shops.viewingAll ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
+                <ChevronDown size={14} strokeWidth={2.2} className="flex-none" aria-hidden />
+                <select aria-label="Location" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+                  {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  <option value={ALL_LOCATIONS}>All locations</option>
+                </select>
+              </label>
+            ) : <span className="ml-1 truncate">· {allLocs ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
+          ) : null}
+        </p>
+        {channel === "walk-ins" ? <QueueWalkInButton locationId={queueLoc} /> : null}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
