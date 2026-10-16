@@ -3,13 +3,15 @@
 import { CoinIcon } from "@river-apps/icons";
 import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
-import { Check, ChevronRight, Plus, Wallet, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Plus, Wallet, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BarberIcon, type BarberIconName } from "@/components/art";
+import { Sk } from "@/components/common/Skeleton";
 import { Brand } from "@/components/shell/Brand";
 import { ACTIVE_BOOKING_KEY, parseContact } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
+import { ScheduleScreen, type ScheduleRequest } from "./ScheduleScreen";
 import { RequestStatus } from "./RequestStatus";
 import { PoweredBy, ShopHeader } from "./ShopBrand";
 import { usePublicShop } from "./usePublicShop";
@@ -37,13 +39,13 @@ export function BookScreen() {
   const [contact, setContact] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [more, setMore] = useState(false);
-  const [when, setWhen] = useState<"Now" | "Tomorrow">("Now");
+  const [sched, setSched] = useState<ScheduleRequest | null>(null);
   const [pay, setPay] = useState<"cash" | "gcash">("cash");
   const [error, setError] = useState("");
   const [ask, setAsk] = useState(false);
   const [sending, setSending] = useState(false);
   const [ticket, setTicket] = useState<string | null>(null);
-  const [view, setView] = useState<"form" | "ticket">("form");
+  const [view, setView] = useState<"form" | "ticket" | "schedule">("form");
   useEffect(() => {
     const t = savedTicket(shopId);
     if (!t) return;
@@ -64,12 +66,15 @@ export function BookScreen() {
       const res = await fetch("/api/public/bookings", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ shopId, locationId: loc || undefined, contact: who || undefined, customerLabel: who || undefined, slotLabel: when === "Now" ? "Now" : "Tomorrow", serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], payWhere: "shop", payPref: pay }),
+        body: JSON.stringify({ shopId, locationId: loc || undefined, contact: who || undefined, customerLabel: who || undefined, ...(sched
+          ? { scheduledAt: sched.scheduledAt, barberId: sched.barberId, serviceIds: sched.serviceIds, payPref: sched.pay }
+          : { slotLabel: "Now", serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], payPref: pay }), payWhere: "shop" }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Couldn’t send the request.");
       localStorage.setItem(ticketKey(shopId), d.booking.id);
       setAsk(false);
+      setSched(null);
       setTicket(d.booking.id);
       setView("ticket");
     } catch (e) {
@@ -88,8 +93,38 @@ export function BookScreen() {
       </main>
     );
   }
+  const sheet = ask ? (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="contact-title">
+      <button type="button" aria-label="Dismiss" className="absolute inset-0 bg-ink/45" onClick={() => { if (!sending) setAsk(false); }} />
+      <div className="relative w-full max-w-[440px] rounded-t-[28px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-5 sm:rounded-[28px]">
+        <button type="button" aria-label="Close" onClick={() => { if (!sending) setAsk(false); }} className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-grey-100"><X size={16} /></button>
+        <h2 id="contact-title" className="pr-10 text-[20px] font-extrabold tracking-[-0.02em]">Stay updated?</h2>
+        <p className="mt-1 text-[13.5px] font-medium text-muted">Add your email or mobile so the shop can update you about your visit and follow up. Optional.</p>
+        <div className="mt-4"><Input label="Email or mobile (optional)" placeholder="you@email.com or 09…" value={contact} onChange={(e) => setContact(e.target.value)} /></div>
+        {error ? <p className="mt-2 text-[13px] font-semibold">{error}</p> : null}
+        <Button className="mt-4" fullWidth disabled={sending} loading={sending} onClick={() => void send(contact)}>{sending ? "Sending…" : contact.trim() ? "Send request" : "Send without contact"}</Button>
+        <button type="button" disabled={sending} onClick={() => void send("")} className="mt-2 w-full py-2 text-[13.5px] font-bold text-muted">Skip</button>
+      </div>
+    </div>
+  ) : null;
+
+  if (view === "schedule" && shop) {
+    return (
+      <>
+        <ScheduleScreen shop={shop} locationId={loc} sending={sending} error={ask ? "" : error}
+          onBack={() => { setSched(null); setView("form"); }}
+          onSend={(r) => { setError(""); setSched(r); setAsk(true); }} />
+        {sheet}
+      </>
+    );
+  }
   if (view === "ticket" && ticket) return <RequestStatus bookingId={ticket} shopId={shopId} shop={shop ?? null} branchName={branch?.name} onBookAnother={() => setView("form")} />;
-  if (shop === undefined) return <main className="mx-auto min-h-dvh max-w-[402px] px-6 pt-10"><p className="text-[14px] font-semibold text-muted">Loading the shop…</p></main>;
+  if (shop === undefined) return (
+    <main role="status" aria-label="Loading the shop" className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas">
+      <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3"><Sk className="size-12 rounded-full" /><span className="flex-1 space-y-1.5"><Sk className="h-4 w-32" /><Sk className="h-3 w-20" /></span><Sk className="h-10 w-28 rounded-pill" /></div>
+      <div className="space-y-3 px-4 pt-5"><Sk className="h-7 w-48" /><Sk className="h-16 w-full rounded-[16px]" /><Sk className="h-12 w-full rounded-[14px]" /><Sk className="h-24 w-full rounded-card" /><Sk className="h-12 w-full rounded-pill" /></div>
+    </main>
+  );
   if (!shop || !haircut) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col justify-center px-6 py-12">
@@ -102,7 +137,11 @@ export function BookScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-6">
-      <ShopHeader shop={shop} branchName={branch?.name} />
+      <ShopHeader shop={shop} branchName={branch?.name} trailing={
+        <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-grey-100 px-3.5 text-[13.5px] font-bold text-ink">
+          <CalendarDays size={17} strokeWidth={2.1} aria-hidden /> Schedule
+        </button>
+      } />
       <div className="px-4">
         {ticket ? (
           <button type="button" onClick={() => setView("ticket")} className="mt-4 flex w-full items-center justify-between rounded-card bg-ink px-4 py-3 text-left text-on-ink">
@@ -144,18 +183,6 @@ export function BookScreen() {
           </ul>
         ) : null}
 
-        <p className="mt-5 text-[13px] font-bold">When</p>
-        <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="When">
-          {([["Now", "Now", "Today, next free barber"], ["Tomorrow", "Tomorrow", "Any time tomorrow"]] as const).map(([v, label, sub]) => (
-            <button key={v} type="button" role="radio" aria-checked={when === v} onClick={() => setWhen(v)}
-              className={`rounded-[14px] px-3 py-2.5 text-left ${when === v ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>
-              <b className="block text-[14.5px]">{label}</b>
-              <small className={`text-[12px] font-semibold ${when === v ? "text-on-ink/70" : "text-muted"}`}>{sub}</small>
-            </button>
-          ))}
-        </div>
-
-
         <p className="mt-5 text-[13px] font-bold">How will you pay?</p>
         <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="How will you pay">
           {([["cash", "Cash", <CoinIcon key="c" size={28} />], ["gcash", "GCash", <Wallet key="g" size={24} strokeWidth={1.75} />]] as const).map(([v, label, ic]) => (
@@ -176,23 +203,10 @@ export function BookScreen() {
           </div>
         </div>
         {error && !ask ? <p className="mt-2 text-[13px] font-semibold">{error}</p> : null}
-        <Button className="mt-4" fullWidth disabled={sending} onClick={() => { setError(""); setAsk(true); }}>Send request · {peso(total)}</Button>
+        <Button className="mt-4" fullWidth disabled={sending} onClick={() => { setError(""); setSched(null); setAsk(true); }}>Send request · {peso(total)}</Button>
       </div>
       <PoweredBy />
-      {ask ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="contact-title">
-          <button type="button" aria-label="Dismiss" className="absolute inset-0 bg-ink/45" onClick={() => { if (!sending) setAsk(false); }} />
-          <div className="relative w-full max-w-[440px] rounded-t-[28px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-5 sm:rounded-[28px]">
-            <button type="button" aria-label="Close" onClick={() => { if (!sending) setAsk(false); }} className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-grey-100"><X size={16} /></button>
-            <h2 id="contact-title" className="pr-10 text-[20px] font-extrabold tracking-[-0.02em]">Stay updated?</h2>
-            <p className="mt-1 text-[13.5px] font-medium text-muted">Add your email or mobile so the shop can update you about your visit and follow up. Optional.</p>
-            <div className="mt-4"><Input label="Email or mobile (optional)" placeholder="you@email.com or 09…" value={contact} onChange={(e) => setContact(e.target.value)} /></div>
-            {error ? <p className="mt-2 text-[13px] font-semibold">{error}</p> : null}
-            <Button className="mt-4" fullWidth disabled={sending} onClick={() => void send(contact)}>{sending ? "Sending…" : contact.trim() ? "Send request" : "Send without contact"}</Button>
-            <button type="button" disabled={sending} onClick={() => void send("")} className="mt-2 w-full py-2 text-[13.5px] font-bold text-muted">Skip</button>
-          </div>
-        </div>
-      ) : null}
+      {sheet}
     </main>
   );
 }

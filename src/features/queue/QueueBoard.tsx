@@ -66,7 +66,7 @@ function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: stri
         <BarberIcon name={row.serviceId === "haircut" ? haircut.icon : "scissors"} size={40} title={row.serviceName} />
         <div className="flex min-w-0 flex-1 flex-col leading-[1.3]">
           <b className="truncate text-[15.5px] tracking-[-0.01em]">{who}</b>
-          <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {where}{place ? ` · ${place}` : ""}</span>
+          <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.scheduledAt ? `Scheduled ${row.slotLabel}` : where}{row.scheduledAt && row.barberName ? ` · with ${row.barberName}` : ""}{place ? ` · ${place}` : ""}</span>
           <span className="mt-0.5 truncate text-[12.5px] font-semibold text-muted">
             {row.ref} · {pay}{row.status === "done" && row.completedAt ? ` · Completed ${completionLabel(row.completedAt)}` : ""}
           </span>

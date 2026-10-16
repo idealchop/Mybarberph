@@ -198,7 +198,7 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
     payWhere: b.payWhere === "online" ? "online" : "shop", createdAt: Number(b.createdAt) || now, updatedAt: now,
   };
   for (const k of ["chairLabel", "seatLabel", "locationId", "source", "barberId", "barberName"] as const) if (typeof b[k] === "string") (out as unknown as Record<string, unknown>)[k] = str(b[k], 80);
-  for (const k of ["startedAt", "completedAt", "verifiedAt"] as const) if (typeof b[k] === "number") (out as unknown as Record<string, unknown>)[k] = b[k];
+  for (const k of ["startedAt", "completedAt", "verifiedAt", "scheduledAt"] as const) if (typeof b[k] === "number") (out as unknown as Record<string, unknown>)[k] = b[k];
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
   if (typeof b.notes === "string") out.notes = str(b.notes, 500);
@@ -348,8 +348,18 @@ export function refCode() {
   return `BK-${s}`;
 }
 
+/** Active barbers at one location for the customer Schedule page (name + photo only). */
+export async function publicBarbers(shopId: string, locationId: string) {
+  const chairs = JSON.parse((await loadState(shopId, ["barbers.shop-chairs"]))["barbers.shop-chairs"] || "[]") as { id: string; barberId?: string; barberName?: string; label?: string; photoUrl?: string; active?: boolean; locationId?: string }[];
+  const seen = new Set<string>();
+  return chairs
+    .filter((c) => c.active !== false && (c.locationId || "home") === locationId && c.barberName?.trim())
+    .map((c) => ({ id: c.barberId || c.id, name: c.barberName!.trim().slice(0, 60), photoUrl: c.photoUrl || null }))
+    .filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
+}
+
 /** Creates a customer booking (public booking page or River Mobile). */
-export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; payPref?: string; locationId?: string; source: "qr" | "river"; externalId?: string }) {
+export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; payPref?: string; locationId?: string; source: "qr" | "river"; externalId?: string; scheduledAt?: number; barberId?: string }) {
   const shop = await getPublicShop(shopId);
   if (!shop) throw new Error("Shop not found");
   const ids = (Array.isArray(input.serviceIds) && input.serviceIds.length ? input.serviceIds : [input.serviceId]).filter(Boolean);
@@ -373,6 +383,20 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
     row.locationId = str(input.locationId, 60);
   }
   if (input.externalId) row.externalId = str(input.externalId, 120);
+  // Scheduled visit: within the next 15 days, labelled in Manila time; an optional barber from that location.
+  if (input.scheduledAt != null) {
+    const at = Number(input.scheduledAt);
+    if (!Number.isFinite(at) || at < now - 10 * 60_000 || at > now + 15 * 86_400_000) throw new Error("Pick a time in the next two weeks.");
+    row.scheduledAt = at;
+    row.slotLabel = new Date(at).toLocaleString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  if (input.barberId) {
+    const barbers = await publicBarbers(shopId, row.locationId || "home");
+    const b = barbers.find((x) => x.id === input.barberId);
+    if (!b) throw new Error("That barber isn’t available. Pick another or Any barber.");
+    row.barberId = b.id;
+    row.barberName = b.name;
+  }
   if (input.payPref === "cash" || input.payPref === "gcash") row.payPref = input.payPref;
   await shopRef(shopId).collection("bookings").doc(id).set(row);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,

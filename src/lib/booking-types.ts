@@ -46,6 +46,8 @@ export interface ChairRequest {
   /** Barber who did the cut (snapshot at the time; for salary and remittance). */
   barberId?: string;
   barberName?: string;
+  /** Scheduled visit time (epoch ms) from the customer's Schedule page. Missing = "Now". */
+  scheduledAt?: number;
   /** When the shop scanned the customer's code. */
   verifiedAt?: number;
   createdAt: number;

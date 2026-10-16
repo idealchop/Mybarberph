@@ -7,6 +7,7 @@ export interface PublicShop {
   address: string;
   area: string;
   hours: string | null;
+  hoursWeek?: import("@/lib/shop-hours").WeekHours | null;
   location: { lat: number; lng: number; formattedAddress: string } | null;
   photoUrls: string[];
   logoUrl: string | null;
