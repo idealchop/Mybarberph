@@ -128,13 +128,13 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   // Rankings.
   const nameOfLoc = (id: string) => branches.find((b) => b.id === id)?.name ?? "";
   const locRank = branches.map((b) => { const d = now.done.filter((r) => (r.locationId || HOME_LOCATION_ID) === b.id); return { id: b.id, name: b.name, sales: d.reduce((s, r) => s + r.price, 0), cuts: d.length }; }).sort((a, b) => b.sales - a.sales);
-  const bMap = new Map<string, { id: string; loc: string; name: string; sales: number; cuts: number }>();
+  const bMap = new Map<string, { id: string; loc: string; name: string; sales: number; cuts: number; rSum: number; rN: number }>();
   for (const r of now.done) {
     const id = barberKey(r, chairs), loc = r.locationId || HOME_LOCATION_ID, k = `${id}@${loc}`;
     const chair = chairs.find((c) => (c.barberId || c.id) === id);
     if ((chair as { active?: boolean } | undefined)?.active === false) continue;
-    const x = bMap.get(k) ?? { id, loc, name: r.barberName || chair?.barberName?.trim() || chair?.label || "Barber", sales: 0, cuts: 0 };
-    x.sales += r.price || 0; x.cuts += 1; bMap.set(k, x);
+    const x = bMap.get(k) ?? { id, loc, name: r.barberName || chair?.barberName?.trim() || chair?.label || "Barber", sales: 0, cuts: 0, rSum: 0, rN: 0 };
+    x.sales += r.price || 0; x.cuts += 1; if (r.rating && r.rating > 0) { x.rSum += r.rating; x.rN += 1; } bMap.set(k, x);
   }
   const barberRank = [...bMap.values()].sort((a, b) => b.sales - a.sales);
   const svc = new Map<string, { cuts: number; sales: number }>();
@@ -142,6 +142,12 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   const services = [...svc.entries()].map(([name, v]) => ({ name, ...v, avg: Math.round(v.sales / v.cuts) })).sort((a, b) => b.sales - a.sales);
   const svcMax = Math.max(1, ...services.map((s) => s.sales));
   const multiLoc = branches.length > 1 && where === "all";
+  // Customer ratings for rated, finished cuts in range (same location/filters).
+  const rated = now.done.filter((r) => r.rating && r.rating > 0);
+  const ratingAvg = rated.length ? rated.reduce((s, r) => s + r.rating!, 0) / rated.length : null;
+  const ratingDist = [5, 4, 3, 2, 1].map((n) => ({ n, c: rated.filter((r) => Math.round(r.rating!) === n).length }));
+  const ratingMax = Math.max(1, ...ratingDist.map((d) => d.c));
+  const comments = rated.filter((r) => r.feedback?.trim()).sort((a, b) => (b.feedbackAt ?? 0) - (a.feedbackAt ?? 0)).slice(0, 5);
 
   if (!rows.length && !before.length) {
     return (<>
@@ -163,9 +169,42 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
         <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} cut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
       </div>
 
-      {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
+      {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rN ? `★ ${(b.rSum / b.rN).toFixed(1)} (${b.rN})` : ""].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
       {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
+
+      <Panel title="Ratings" sub={rated.length ? `${rated.length} rating${rated.length === 1 ? "" : "s"} from customers` : "No ratings in this range yet"}>
+        {rated.length ? (<>
+          <div className="mt-3 flex items-center gap-4">
+            <div className="flex-none text-center">
+              <b className="block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{ratingAvg!.toFixed(1)}</b>
+              <span className="mt-1 block text-[13px] text-[#F5B301]" aria-label={`${ratingAvg!.toFixed(1)} of 5 stars`}>{"★".repeat(Math.round(ratingAvg!))}<span className="text-grey-300">{"★".repeat(5 - Math.round(ratingAvg!))}</span></span>
+            </div>
+            <ul className="min-w-0 flex-1 space-y-1" aria-label="Star distribution">
+              {ratingDist.map((d) => (
+                <li key={d.n} className="flex items-center gap-2 text-[12px] font-semibold">
+                  <span className="w-5 flex-none tabular-nums text-muted">{d.n}★</span>
+                  <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-grey-100"><span className="block h-full rounded-full bg-[#F5B301]" style={{ width: `${(d.c / ratingMax) * 100}%` }} /></span>
+                  <span className="w-6 flex-none text-right tabular-nums">{d.c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {comments.length ? (
+            <ul className="mt-4 space-y-2.5 border-t border-line pt-3" aria-label="Recent comments">
+              {comments.map((r) => (
+                <li key={r.id}>
+                  <div className="flex items-center justify-between gap-2 text-[12px] font-semibold text-muted">
+                    <span className="truncate">{r.customerLabel || "Customer"}{r.barberName ? ` · ${r.barberName}` : ""}</span>
+                    <span className="flex-none text-[#F5B301]">{"★".repeat(r.rating!)}<span className="text-grey-300">{"★".repeat(5 - r.rating!)}</span></span>
+                  </div>
+                  <p className="mt-0.5 text-[13.5px] font-semibold">“{r.feedback}”</p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>) : <p className="mt-2 text-[13px] font-semibold text-muted">Customers can rate a visit from their ticket page once the cut is done.</p>}
+      </Panel>
 
       <Panel title="Busiest days" sub={byDay.some((d) => d.cuts) ? `Most on ${WD[byDay.reduce((b, d, i) => (d.cuts > byDay[b]!.cuts ? i : b), 0)]}` : "By weekday and hour"}>
         <div className="mt-3 w-full max-w-full overflow-x-auto">

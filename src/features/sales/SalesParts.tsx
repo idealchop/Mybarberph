@@ -170,7 +170,7 @@ export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }
               <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i === 0 ? "bg-ink text-on-ink" : i < 3 ? "bg-grey-200" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i + 1}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
-                <small className="block truncate text-[12.5px] font-semibold text-muted">{[showLoc ? b.locationName : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
+                <small className="block truncate text-[12.5px] font-semibold text-muted">{[showLoc ? b.locationName : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].filter(Boolean).join(" · ")}</small>
               </span>
               <b className="text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />

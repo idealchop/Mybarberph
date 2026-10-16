@@ -264,6 +264,8 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     const cur = (await tx.get(ref)).data() as ChairRequest | undefined;
     if (cur && RANK[clean.status]! < RANK[cur.status]!) return { saved: cur, before: cur, wrote: false };
     if (cur?.status === "declined" && clean.status !== "declined") return { saved: cur, before: cur, wrote: false };
+    if (cur?.rating) { clean.rating = cur.rating; clean.feedback = cur.feedback; clean.feedbackAt = cur.feedbackAt; if (!clean.feedback) delete clean.feedback; if (!clean.feedbackAt) delete clean.feedbackAt; }
+    if (cur?.scheduledAt && !clean.scheduledAt) clean.scheduledAt = cur.scheduledAt;
     tx.set(ref, clean);
     return { saved: clean, before: cur, wrote: true };
   });

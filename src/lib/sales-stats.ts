@@ -25,6 +25,8 @@ export interface ServiceStat {
 }
 export interface BarberStat {
   id: string; name: string; locationId: string; locationName: string; sales: number; cuts: number; avg: number; cash: number; gcash: number; unpaid: number; remit: number; completionPct: number | null;
+  /** Average customer rating (1–5) for rated cuts in range, and how many. */
+  rating: number | null; ratings: number;
 }
 
 function doneAt(r: ChairRequest) { return r.completedAt ?? r.updatedAt ?? r.createdAt; }
@@ -86,12 +88,13 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
     const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === bl);
     const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
     const name = r.barberName || seat?.barberName?.trim() || (r.seatLabel ? `${r.seatLabel}` : "No barber");
-    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, unpaid: 0, remit: 0, completionPct: null };
+    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, unpaid: 0, remit: 0, completionPct: null, rating: null, ratings: 0 };
     row.cuts += 1; row.sales += r.price || 0;
     if (!r.paid) row.unpaid += r.price || 0;
     else if (r.payMethod === "gcash") row.gcash += r.price || 0;
     else row.cash += r.price || 0;
     row.remit = row.cash;
+    if (r.rating && r.rating > 0) { row.rating = ((row.rating ?? 0) * row.ratings + r.rating) / (row.ratings + 1); row.ratings += 1; }
     map.set(`${id}@${bl}`, row);
   }
   for (const row of map.values()) {

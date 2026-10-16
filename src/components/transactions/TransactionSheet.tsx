@@ -128,6 +128,10 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
                 <div className="flex items-center justify-between"><b className="text-[16px]">Customer feedback</b><span className="text-[16px] font-extrabold text-[#F5B301]" aria-label={`${row.rating} of 5 stars`}>{"★".repeat(row.rating)}<span className="text-grey-300">{"★".repeat(5 - row.rating)}</span></span></div>
                 {row.feedback ? <p className="mt-1.5 whitespace-pre-wrap text-[14px] font-medium text-ink-2">“{row.feedback}”</p> : <p className="mt-1.5 text-[13px] font-semibold text-muted">No comment.</p>}
               </Card>
+            ) : row.status === "done" ? (
+              <Card className="mt-4 px-4 py-3.5">
+                <div className="flex items-center justify-between"><b className="text-[16px]">Customer feedback</b><span className="text-[13px] font-semibold text-muted">No rating yet</span></div>
+              </Card>
             ) : null}
             {row.notes ? (
               <Card className="mt-4 px-4 py-3.5">
