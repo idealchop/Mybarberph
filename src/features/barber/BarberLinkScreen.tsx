@@ -128,7 +128,7 @@ function ActiveCard({
           )}
         </div>
       </div>
-      <div aria-hidden className="relative z-0 w-[88px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-pole-cutout.webp" alt="" width={88} height={71} className="h-auto w-[88px] object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.22)] drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]" /></div>
+      <div aria-hidden className="relative z-0 w-[88px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-pole.webp" alt="" width={88} height={88} className="size-[88px] rounded-[18px] object-cover shadow-[0_6px_16px_rgba(0,0,0,0.35)] ring-1 ring-white/10" /></div>
     </section>
   );
 }
