@@ -11,6 +11,9 @@ import { PageBack } from "@/components/shell/PageBack";
 import { api } from "@/lib/cloud";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useSession } from "@/lib/session";
+import { useShopProfile } from "@/lib/shop-profile";
+import { Input } from "@river-apps/ui";
+import { Button } from "@/components/common/Button";
 
 interface Entry { id: string; at: number; type: string; text: string; actor: { name: string; role: string }; locationId?: string; read?: boolean }
 
@@ -110,6 +113,7 @@ function Notifications() {
   const nameOf = (id?: string) => (shops.enabled ? shops.branches.find((b) => b.id === (id || HOME_LOCATION_ID))?.name : undefined);
   return (
     <>
+      <AlertContacts />
       <div className="mt-3 flex items-center justify-between px-1">
         <span className="text-[13px] font-semibold text-muted">{data ? (data.unread ? `${data.unread} unread` : "All caught up") : ""}</span>
         {data?.unread ? <button type="button" onClick={() => void markAll()} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">Mark all read</button> : null}
@@ -154,5 +158,29 @@ export function NotificationBell() {
       <Bell size={20} strokeWidth={2} />
       {n ? <span className="absolute -right-0.5 -top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#D92D20] px-1 text-[10.5px] font-extrabold text-white">{n > 99 ? "99+" : n}</span> : null}
     </a>
+  );
+}
+
+/** Owner alert contacts (SMS/email), saved on the shop profile. Sending starts once a provider is configured. */
+function AlertContacts() {
+  const { profile, save } = useShopProfile();
+  const [phone, setPhone] = useState(profile.notifyPhone ?? "");
+  const [email, setEmail] = useState(profile.notifyEmail ?? "");
+  const [note, setNote] = useState("");
+  const dirty = phone.trim() !== (profile.notifyPhone ?? "") || email.trim() !== (profile.notifyEmail ?? "");
+  return (
+    <section className="mt-3 rounded-card bg-surface px-4 py-4 shadow-card">
+      <b className="block text-[15px]">Alert me by text or email</b>
+      <p className="mt-0.5 text-[12.5px] font-semibold text-muted">New online bookings. Optional.</p>
+      <div className="mt-3 grid gap-3">
+        <Input label="Mobile number" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 16))} />
+        <Input label="Email" type="email" inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value.trim().slice(0, 120))} />
+      </div>
+      {note ? <p className="mt-2 text-[12.5px] font-semibold">{note}</p> : null}
+      {dirty ? <Button className="mt-3" size="sm" fullWidth data-auth="action" onClick={() => {
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setNote("Check the email address."); return; }
+        save({ ...profile, notifyPhone: phone.trim() || undefined, notifyEmail: email || undefined }); setNote("Saved.");
+      }}>Save</Button> : null}
+    </section>
   );
 }

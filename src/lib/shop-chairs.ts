@@ -14,6 +14,9 @@ export interface ShopChair {
   barberName?: string;
   /** Portrait of that barber, stored as a compressed data URL. */
   photoUrl?: string;
+  /** Optional contact for alerts (new online bookings). */
+  phone?: string;
+  email?: string;
   /** false = barber is off (not offered for new walk-ins/bookings). Missing = active. */
   active?: boolean;
   /** Set while someone is in the seat. */
@@ -163,6 +166,8 @@ export function saveChair(chair: ShopChair): string {
     label: name,
     barberId: chair.barberId || prev?.barberId || `b-${chair.id}`,
     photoUrl: chair.photoUrl || undefined,
+    phone: chair.phone?.trim() || undefined,
+    email: chair.email?.trim() || undefined,
     linkToken,
     linkExpiresAt,
     locationId,
@@ -170,7 +175,7 @@ export function saveChair(chair: ShopChair): string {
   const exists = Boolean(prev);
   const next = exists
     ? cur.map((c) => c.id === chair.id
-      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, active: saved.active, linkToken: saved.linkToken, linkExpiresAt: saved.linkExpiresAt, locationId: saved.locationId }
+      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, phone: saved.phone, email: saved.email, active: saved.active, linkToken: saved.linkToken, linkExpiresAt: saved.linkExpiresAt, locationId: saved.locationId }
       : c)
     : [...cur, saved];
   try {

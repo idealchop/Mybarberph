@@ -269,6 +269,8 @@ function ChairEditor({
 }) {
   const [name, setName] = useState(chair.barberName?.trim() || (fresh ? "" : chairBarberName(chair) === "No barber" ? "" : chairBarberName(chair)));
   const [photo, setPhoto] = useState(chair.photoUrl ?? "");
+  const [phone, setPhone] = useState(chair.phone ?? "");
+  const [email, setEmail] = useState(chair.email ?? "");
   const [error, setError] = useState("");
   const [up, setUp] = useState<"" | "uploading" | "done">("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -311,9 +313,15 @@ function ChairEditor({
         </div>
       </div>
       {photo ? <button type="button" className="text-[12.5px] font-bold text-muted underline underline-offset-2" onClick={() => setPhoto("")}>Remove photo</button> : null}
+      <div className="mt-4 grid gap-3">
+        <Input label="Mobile number (optional)" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 16))} />
+        <Input label="Email (optional)" type="email" inputMode="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value.trim().slice(0, 120))} />
+        <p className="px-1 text-[12px] font-semibold text-muted">For booking alerts when SMS/email is turned on.</p>
+      </div>
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
       <Button data-auth="action" className="mt-6" fullWidth disabled={up === "uploading"} onClick={() => {
-        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined });
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Check the email address."); return; }
+        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined, phone: phone.trim() || undefined, email: email || undefined });
         if (error) setError(error);
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={() => {

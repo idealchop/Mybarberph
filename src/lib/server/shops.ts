@@ -377,6 +377,7 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   await shopRef(shopId).collection("bookings").doc(id).set(row);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,
     text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "river" ? " (River app)" : " (QR)"}` }, true);
+  void (await import("./notify")).notifyNewOnlineBooking(shopId, { ref: row.ref, customerLabel: row.customerLabel, serviceName: row.serviceName, slotLabel: row.slotLabel, locationId: row.locationId, shopName: shop.name });
   return row;
 }
 

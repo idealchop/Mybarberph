@@ -27,6 +27,9 @@ export interface ShopProfile {
   hours: string;
   /** Tap-to-set hours; `hours` is its formatted line. */
   hoursWeek?: import("@/lib/shop-hours").WeekHours | null;
+  /** Owner alert contacts (optional; used once an SMS/email provider is configured). */
+  notifyPhone?: string;
+  notifyEmail?: string;
 }
 
 const KEY = "barbers.shop-profile";

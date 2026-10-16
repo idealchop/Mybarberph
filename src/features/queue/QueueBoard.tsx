@@ -9,7 +9,6 @@ import { payLabel, TransactionSheet } from "@/components/transactions/Transactio
 import { Plus } from "lucide-react";
 import { EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BarberIcon } from "@/components/art";
@@ -163,9 +162,7 @@ export function QueueBoard() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
-        <Link href="/queue/seats" aria-label="Barbers busy" className="block rounded-card">
-          <StatCard className="pb-3" label="Busy barbers" value={String(inChair)} />
-        </Link>
+        <StatCard className="pb-3" label="Collection" value={peso(figures.extra.filter((r) => r.paid).reduce((s, r) => s + (r.price || 0), 0))} caption="Paid today" />
         <StatCard className="pb-3" label="Waiting" value={String(toAcceptCount)} />
         <StatCard className="pb-3" label="Done" value={String(rows.filter((r) => r.status === "done").length)} />
       </div>
