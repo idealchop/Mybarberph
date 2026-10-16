@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useCloud } from "@/lib/cloud";
 import { useShopProfile } from "@/lib/shop-profile";
+import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { isSamplePost, withSamples } from "./samplePosts";
 import { updateCommunityStore, useCommunityStore, useNow, type CommunityPost, type PostAuthor } from "./posts";
 
@@ -25,6 +26,7 @@ export function useCommunityFeed() {
     () => ({ name: profile.name, meta: profile.area.split(",").pop()?.trim() || undefined, photoUrl: profile.logoUrl || undefined }),
     [profile.name, profile.area, profile.logoUrl],
   );
+  const { requireAuth } = useAuthGate();
   const store = useCommunityStore();
   const now = useNow();
   const [raw, setRaw] = useState<CommunityPost[]>(cache ?? []);
@@ -85,6 +87,20 @@ export function useCommunityFeed() {
     }
   };
 
+  const likeNow = (id: string) => {
+    if (isSamplePost(id)) { setSampleLikes((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])); return; }
+    setRaw((cur) => cur.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p)));
+    void op({ op: "like", id });
+  };
+  const repostNow = (p: CommunityPost) => {
+    if (sampleOnly(p.id)) return;
+    void op({ op: "repost", id: p.id }, p.reposted ? undefined : "Reposted");
+  };
+  const replyNow = (p: CommunityPost, body: string) => {
+    if (sampleOnly(p.id)) return;
+    void op({ op: "reply", id: p.id, body });
+  };
+
   return {
     me,
     now,
@@ -103,20 +119,10 @@ export function useCommunityFeed() {
       })();
       return true;
     },
-    like(id: string) {
-      if (isSamplePost(id)) { setSampleLikes((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])); return; }
-      setRaw((cur) => cur.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p)));
-      void op({ op: "like", id });
-    },
-    repost(p: CommunityPost) {
-      if (sampleOnly(p.id)) return;
-      void op({ op: "repost", id: p.id }, p.reposted ? undefined : "Reposted");
-    },
+    like(id: string) { requireAuth(() => likeNow(id)); },
+    repost(p: CommunityPost) { requireAuth(() => repostNow(p)); },
     share,
-    reply(p: CommunityPost, body: string) {
-      if (sampleOnly(p.id)) return;
-      void op({ op: "reply", id: p.id, body });
-    },
+    reply(p: CommunityPost, body: string) { requireAuth(() => replyNow(p, body)); },
     remove(p: CommunityPost) {
       if (sampleOnly(p.id)) return;
       void op({ op: "delete", id: p.id }, "Post deleted");

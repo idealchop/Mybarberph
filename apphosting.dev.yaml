@@ -16,3 +16,6 @@ env:
   # Plan limits (walk-in cap, QR, shops, Companion questions). "0" = test phase: all features for every plan.
   - variable: PLAN_LIMITS_ENABLED
     value: "0"
+  # Brevo transactional SMS + email for new online bookings (dev only for now).
+  - variable: BREVO_API_KEY
+    secret: BREVO_API_KEY

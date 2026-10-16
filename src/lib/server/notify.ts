@@ -30,7 +30,35 @@ function envProvider(): NotifyProvider {
     ...(mail ? { email: (to: string, subject: string, text: string) => post(mail, { to, subject, text }) } : {}),
   };
 }
-const provider = () => custom ?? envProvider();
+/** PH mobile → +63XXXXXXXXXX (Brevo wants digits with country code). Other numbers pass through. */
+export function normalizePhone(raw: string): string | null {
+  const d = raw.replace(/[^\d+]/g, "");
+  if (/^\+639\d{9}$/.test(d)) return d;
+  if (/^639\d{9}$/.test(d)) return `+${d}`;
+  if (/^09\d{9}$/.test(d)) return `+63${d.slice(1)}`;
+  if (/^9\d{9}$/.test(d)) return `+63${d}`;
+  return /^\+\d{8,15}$/.test(d) ? d : null;
+}
+
+/** Brevo transactional SMS + email, enabled when BREVO_API_KEY is set. */
+function brevoProvider(key: string): NotifyProvider {
+  const call = async (path: string, body: unknown) => {
+    const r = await fetch(`https://api.brevo.com/v3${path}`, { method: "POST", headers: { "api-key": key, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(`brevo ${path} ${r.status} ${(await r.text().catch(() => "")).slice(0, 200)}`);
+  };
+  return {
+    async sms(to, text) {
+      const recipient = normalizePhone(to);
+      if (!recipient) throw new Error("brevo sms: invalid number");
+      await call("/transactionalSMS/sms", { sender: "BarbersPH", recipient: recipient.replace(/^\+/, ""), content: text, type: "transactional" });
+    },
+    async email(to, subject, text) {
+      await call("/smtp/email", { sender: { email: "customers@riverph.com", name: "Barbers.ph" }, to: [{ email: to }], subject, textContent: text });
+    },
+  };
+}
+
+const provider = () => custom ?? (process.env.BREVO_API_KEY ? brevoProvider(process.env.BREVO_API_KEY) : envProvider());
 export const notifyConfigured = () => { const p = provider(); return Boolean(p.sms || p.email); };
 
 interface Contact { phone?: string; email?: string }
@@ -52,14 +80,15 @@ export async function notifyNewOnlineBooking(shopId: string, b: { ref: string; c
     const p = provider();
     if (!p.sms && !p.email) return;
     const { owner, barbers } = await contactsFor(shopId, b.locationId || "home");
-    const text = `New booking ${b.ref}: ${b.customerLabel || "Customer"} · ${b.serviceName || "Service"}${b.slotLabel ? ` · ${b.slotLabel}` : ""}. Open Barbers.ph to accept.`;
+    const text = `${b.shopName ? `${b.shopName}: ` : ""}New online booking ${b.ref} from ${b.customerLabel || "Customer"}, ${b.serviceName || "Service"}${b.slotLabel ? `, ${b.slotLabel}` : ""}. Open Barbers.ph to accept.`;
     const subject = `New booking ${b.ref}${b.shopName ? ` · ${b.shopName}` : ""}`;
     const to = [owner, ...barbers];
     const phones = [...new Set(to.map((c) => c.phone?.trim()).filter(Boolean) as string[])];
     const emails = [...new Set(to.map((c) => c.email?.trim()).filter(Boolean) as string[])];
-    await Promise.allSettled([
+    const results = await Promise.allSettled([
       ...(p.sms ? phones.map((n) => p.sms!(n, text)) : []),
       ...(p.email ? emails.map((e) => p.email!(e, subject, text)) : []),
     ]);
-  } catch { /* alerts are best-effort */ }
+    for (const r of results) if (r.status === "rejected") console.error("[notify]", (r.reason as Error)?.message ?? r.reason);
+  } catch (e) { console.error("[notify] failed", (e as Error)?.message); /* alerts are best-effort */ }
 }
