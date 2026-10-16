@@ -169,8 +169,10 @@ export function useQueueRequests() {
   const data = useChairRequests();
   const loc = useShopLocations();
   const locationId = queueLocation(loc);
-  const rows = data.ready && loc.ready ? data.rows.filter((row) => requestLocation(row) === locationId) : [];
-  return { rows, ready: data.ready && loc.ready, locationId };
+  // All locations: every shop's tickets (walk-ins still add to queueLocation).
+  const all = loc.enabled && loc.viewingAll;
+  const rows = data.ready && loc.ready ? data.rows.filter((row) => all || requestLocation(row) === locationId) : [];
+  return { rows, ready: data.ready && loc.ready, locationId, all };
 }
 
 export function useChairRequests() {

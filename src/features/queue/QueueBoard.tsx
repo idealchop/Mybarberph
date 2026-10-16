@@ -1,7 +1,7 @@
 "use client";
 import { ListSkeleton } from "@/components/common/Skeleton";
 import { EmptyBookings } from "@/components/common/EmptyBookings";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/CompleteFlow";
 
@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/PageBack";
 import { peso } from "@/lib/format";
-import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { ALL_LOCATIONS, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import {
   completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
@@ -54,7 +54,7 @@ function Actions({ row, onFull }: { row: ChairRequest; onFull: (message: string)
   return null;
 }
 
-function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => void }) {
+function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: string) => void; place?: string }) {
   const { haircut } = useShopMenu();
   const who = row.customerLabel || row.contact || "Walk-in";
   const where = row.status === "in_chair" && row.chairLabel ? row.chairLabel : row.slotLabel;
@@ -66,7 +66,7 @@ function Row({ row, onFull }: { row: ChairRequest; onFull: (message: string) => 
         <BarberIcon name={row.serviceId === "haircut" ? haircut.icon : "scissors"} size={40} title={row.serviceName} />
         <div className="flex min-w-0 flex-1 flex-col leading-[1.3]">
           <b className="truncate text-[15.5px] tracking-[-0.01em]">{who}</b>
-          <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {where}</span>
+          <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {where}{place ? ` · ${place}` : ""}</span>
           <span className="mt-0.5 truncate text-[12.5px] font-semibold text-muted">
             {row.ref} · {pay}{row.status === "done" && row.completedAt ? ` · Completed ${completionLabel(row.completedAt)}` : ""}
           </span>
@@ -87,7 +87,8 @@ export function QueueBoard() {
   const [search, setSearch] = useState("");
   const [full, setFull] = useState("");
   const shops = useShopLocations();
-  const { rows: loaded, ready, locationId: queueLoc } = useQueueRequests();
+  const { rows: loaded, ready, locationId: queueLoc, all: allLocs } = useQueueRequests();
+  const placeOf = (r: ChairRequest) => (allLocs ? shops.branches.find((b) => b.id === (r.locationId || HOME_LOCATION_ID))?.name ?? "" : "");
   const rows = loaded.filter((r) => r.status !== "declined");
   const figures = todayFigures(loaded);
 
@@ -109,13 +110,23 @@ export function QueueBoard() {
   if (!ready) return <ListSkeleton />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
-      <header className="flex flex-wrap items-end gap-x-6 border-b border-line px-1">
+      <header className="relative flex flex-wrap items-end gap-x-6 border-b border-line px-1">
+        {shops.enabled && shops.branches.length > 1 ? (
+          <label className="absolute right-1 top-1 inline-flex max-w-[150px] items-center gap-0.5 text-[13px] font-bold text-ink">
+            <span className="truncate">{shops.viewingAll ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
+            <ChevronDown size={14} strokeWidth={2.2} className="flex-none" aria-hidden />
+            <select aria-label="Location" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+              {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <option value={ALL_LOCATIONS}>All locations</option>
+            </select>
+          </label>
+        ) : null}
         <div className="flex items-center gap-1 pb-3">
           <PageBack fallback="/home" />
           <div>
             <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Queue</h1>
             <p className="mt-0.5 text-[14px] font-semibold text-muted">
-              {inChair ? `${inChair} barber${inChair === 1 ? "" : "s"} busy` : "Barbers free"} · {toAcceptCount} waiting
+              {inChair ? `${inChair} in service · ` : ""}{toAcceptCount} waiting
             </p>
           </div>
         </div>
@@ -144,20 +155,9 @@ export function QueueBoard() {
           })}
         </div>
       </header>
-      {shops.enabled && shops.branches.length > 1 ? (
-        <div className="mt-3">
-          {shops.viewingAll ? <p className="px-1 text-[12.5px] font-semibold text-muted">The queue is per shop. Showing the main shop; pick one:</p> : null}
-          <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Shop">
-            {shops.branches.map((b) => (
-              <button key={b.id} type="button" aria-pressed={!shops.viewingAll && queueLoc === b.id} onClick={() => shops.setView(b.id)}
-                className={cn("h-9 flex-none rounded-pill px-3.5 text-[13px] font-bold", !shops.viewingAll && queueLoc === b.id ? "bg-ink text-on-ink" : "bg-surface shadow-card")}>{b.name}</button>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       <div className="mt-4 flex items-center justify-between gap-3 px-1">
-        <p className="text-[13px] font-bold text-muted">Today{shops.enabled ? ` · ${shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}` : ""}</p>
+        <p className="text-[13px] font-bold text-muted">Today{shops.enabled ? ` · ${allLocs ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}` : ""}</p>
         <QueueWalkInButton locationId={queueLoc} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -186,20 +186,20 @@ export function QueueBoard() {
           : <EmptyBookings className="mt-4" icon="ticket" title="No walk-ins yet" subtitle="Add a walk-in, or share your QR so customers can book" locationId={queueLoc} />
       ) : null}
 
-      <Section title="Now" rows={open} onFull={(message) => setFull(message)} />
-      <Section title="Done today" rows={done} onFull={(message) => setFull(message)} />
+      <Section title="Now" rows={open} onFull={(message) => setFull(message)} placeOf={placeOf} />
+      <Section title="Done today" rows={done} onFull={(message) => setFull(message)} placeOf={placeOf} />
 
     </div>
   );
 }
 
-function Section({ title, rows, onFull }: { title: string; rows: ChairRequest[]; onFull: (message: string) => void }) {
+function Section({ title, rows, onFull, placeOf }: { title: string; rows: ChairRequest[]; onFull: (message: string) => void; placeOf?: (r: ChairRequest) => string }) {
   if (rows.length === 0) return null;
   return (
     <div className="mt-5">
       <p className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">{title}</p>
       <ul className="mt-3 flex flex-col gap-3" aria-label={title}>
-        {rows.map((row) => <Row key={row.id} row={row} onFull={onFull} />)}
+        {rows.map((row) => <Row key={row.id} row={row} onFull={onFull} place={placeOf?.(row)} />)}
       </ul>
     </div>
   );
