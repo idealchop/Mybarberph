@@ -68,5 +68,26 @@
         "vendor/river-maps/docs"
       ]
     }
+  ],
+  "hosting": [
+    {
+      "site": "barbersph",
+      "public": "hosting-public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "README.txt"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "run": {
+            "serviceId": "barbers-ph-dev",
+            "region": "asia-southeast1",
+            "pinTag": false
+          }
+        }
+      ]
+    }
   ]
 }
