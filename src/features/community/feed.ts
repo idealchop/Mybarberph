@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useCloud } from "@/lib/cloud";
 import { useShopProfile } from "@/lib/shop-profile";
+import { isSamplePost, withSamples } from "./samplePosts";
 import { updateCommunityStore, useCommunityStore, useNow, type CommunityPost, type PostAuthor } from "./posts";
 
 let cache: CommunityPost[] | null = null;
@@ -28,6 +29,7 @@ export function useCommunityFeed() {
   const now = useNow();
   const [raw, setRaw] = useState<CommunityPost[]>(cache ?? []);
   const [loading, setLoading] = useState(cache === null);
+  const [sampleLikes, setSampleLikes] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -58,8 +60,13 @@ export function useCommunityFeed() {
 
   const posts = useMemo(() => {
     const hidden = new Set(store.hidden);
-    return raw.filter((p) => !hidden.has(p.id));
-  }, [raw, store]);
+    return withSamples(raw).map((p) => (sampleLikes.includes(p.id) ? { ...p, liked: true, likes: p.likes + 1 } : p)).filter((p) => !hidden.has(p.id));
+  }, [raw, store, sampleLikes]);
+  const sampleOnly = (id: string) => {
+    if (!isSamplePost(id)) return false;
+    flash("Halimbawang post lamang ito");
+    return true;
+  };
 
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
@@ -97,17 +104,21 @@ export function useCommunityFeed() {
       return true;
     },
     like(id: string) {
+      if (isSamplePost(id)) { setSampleLikes((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])); return; }
       setRaw((cur) => cur.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p)));
       void op({ op: "like", id });
     },
     repost(p: CommunityPost) {
+      if (sampleOnly(p.id)) return;
       void op({ op: "repost", id: p.id }, p.reposted ? undefined : "Reposted");
     },
     share,
     reply(p: CommunityPost, body: string) {
+      if (sampleOnly(p.id)) return;
       void op({ op: "reply", id: p.id, body });
     },
     remove(p: CommunityPost) {
+      if (sampleOnly(p.id)) return;
       void op({ op: "delete", id: p.id }, "Post deleted");
     },
     hide(id: string) {
