@@ -10,7 +10,6 @@ import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatC
 import { Button } from "@/components/common/Button";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarberChair } from "@/components/art";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
@@ -173,7 +172,7 @@ export function HomeScreen() {
               <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
             </div>
           </div>
-          <div aria-hidden className="relative z-0 w-[88px] flex-none"><BarberChair size={88} /></div>
+          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
         </section>
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
@@ -214,8 +213,8 @@ export function HomeScreen() {
                 <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
               </div>
             }
-            illustration={<BarberChair size={220} />}
-            illustrationClassName="right-[34px] bottom-3"
+            illustration={<img src="/barber-hero.webp" alt="" width={230} height={220} className="h-auto w-[230px]" />}
+            illustrationClassName="right-[30px] top-1/2 -translate-y-1/2"
           />
           <StatCard
             className="px-5 pb-4 pt-[18px]"
