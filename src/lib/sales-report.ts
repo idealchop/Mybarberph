@@ -4,7 +4,6 @@ import type { ChairRequest } from "@/lib/chair-bookings";
 import { PAY_LABEL, payBucket, paySplit, type PaySplit } from "@/lib/pay-split";
 
 export type SalesRange = "today" | "week" | "month" | "all" | "custom";
-export type SalesView = "overview" | "services" | "payments" | "shop";
 
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "today", label: "Today" },

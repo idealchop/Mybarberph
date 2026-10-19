@@ -11,22 +11,22 @@ import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
-import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
+import { useShopChairs } from "@/lib/shop-chairs";
 import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats, rankedBarbers } from "@/lib/sales-stats";
-import { BarberRanking, ClaimHistory, BarberSalesRanking, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
+import { BarberRanking, ClaimHistory, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
 
-type View = "overview" | "performance" | "services";
+// Two tabs (Jimboy, 2026-10-20): Collection (default) and Performance. Old ?view=overview links land on Collection.
+type View = "performance" | "services";
 const VIEWS: { value: View; label: string }[] = [
-  { value: "overview", label: "Overview" },
   { value: "performance", label: "Collection" },
   { value: "services", label: "Performance" },
 ];
 
-/** Sales: Overview / Barbers / Services, filtered by location and a compact date chip. */
+/** Sales: Collection / Performance, filtered by location and a compact date chip. */
 export function SalesDataScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
@@ -38,13 +38,13 @@ export function SalesDataScreen() {
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>("performance");
   const [pf, setPf] = useState<PerfFilters>({});
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const t = window.setTimeout(() => {
-      if (q.get("view") === "performance" || q.get("view") === "barbers") setView("performance");
-      if (q.get("view") === "services") setView("services");
+      // Anything but "services" (incl. the old overview tab) opens Collection.
+      setView(q.get("view") === "services" || q.get("tab") === "services" ? "services" : "performance");
       if (q.get("loc")) setLoc(q.get("loc")!);
       if (q.get("r") === "week" || q.get("r") === "month" || q.get("r") === "today") setRange(q.get("r") as SalesRange);
     }, 0);
@@ -56,7 +56,6 @@ export function SalesDataScreen() {
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
-  const roster = useMemo(() => chairs.filter((c) => c.active !== false).map((c) => { const l = c.locationId || HOME_LOCATION_ID; return { id: c.barberId || c.id, name: chairBarberName(c), locationId: l, locationName: branches.find((b) => b.id === l)?.name ?? "" }; }), [chairs, branches]);
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
 
@@ -93,15 +92,12 @@ export function SalesDataScreen() {
         <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
       </div>
 
-      {view === "overview" ? (
-        <>
-          <Overview report={report} />
-          <BarberSalesRanking barbers={barbers} roster={roster} range={range} showLoc={shops.enabled && where === "all"} where={where} />
-        </>
-      ) : null}
       {view === "performance" ? (
         <>
-          <StatCard className="mt-4 pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} />} />
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
+            <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
+          </div>
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
@@ -119,18 +115,3 @@ export function SalesDataScreen() {
   );
 }
 
-function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
-  return (
-    <>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <StatCard className="col-span-2 pb-3" label="Sales" caption={report.delta} value={
-          <span className="flex w-full items-baseline justify-between gap-3">
-            <span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>
-            <span className="text-right text-[15px] font-extrabold tabular-nums">{report.cuts} <small className="text-[12px] font-semibold text-muted">cut{report.cuts === 1 ? "" : "s"}</small></span>
-          </span>} />
-        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
-        <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
-      </div>
-    </>
-  );
-}

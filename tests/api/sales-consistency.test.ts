@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeFirestore } from "../stubs/fake-firestore";
 import type { ChairRequest } from "@/lib/booking-types";
 
-// One fixture, every view: owner client stats (Overview, Collection ranking, Performance) and the barber link's
+// One fixture, every view: owner client stats (Collection, Performance, leaderboard ranking) and the barber link's
 // server numbers (My sales, /sales). Modelled on Jimboy's report of 2026-10-19: Keith has chairs in two branches.
 const fs = fakeFirestore();
 vi.mock("@/lib/firebase/admin", () => ({ adminDb: () => fs, adminAuth: () => ({}) }));
@@ -42,7 +42,7 @@ beforeEach(() => {
 const branches = [{ id: "sa", name: "San Antonio" }, { id: "pacita", name: "Bossing - Pacita Branch" }];
 
 describe("Sales: every view agrees for the same shop, location and period", () => {
-  it("TC-SALES-HP-01 San Antonio today: owner Overview = ranking = Keith's link My sales (₱800, 2 cuts)", async () => {
+  it("TC-SALES-HP-01 San Antonio today: owner Collection = ranking = Keith's link My sales (₱800, 2 cuts)", async () => {
     const sa = visits.filter((x) => x.locationId === "sa");
     const overview = salesReport(sa, 0, "today");
     expect(overview).toMatchObject({ sales: 80_000, cuts: 2, collected: 80_000, collectedSplit: { cash: 25_000, gcash: 55_000, online: 0, other: 0 } });

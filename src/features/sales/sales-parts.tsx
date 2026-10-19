@@ -68,34 +68,6 @@ function Mini({ k, v }: { k: string; v: string }) {
   return <div className="rounded-[12px] bg-grey-100 px-1 py-2 text-center"><dt className="text-[10.5px] font-bold text-muted">{k}</dt><dd className="text-[13.5px] font-extrabold tabular-nums">{v}</dd></div>;
 }
 
-/** Overview: one performance card per barber (name first, location as subtext). Tap for the barber's page. */
-export function BarberCards({ rows, range, showLoc }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean }) {
-  if (!rows.length) return null;
-  return (
-    <section className="mt-4" aria-label="Barbers">
-      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Barbers</h2>
-      <ul className="mt-2 grid gap-2.5 lg:grid-cols-2">
-        {rows.map((b) => (
-          <li key={`${b.id}@${b.locationId}`}>
-            <Link href={href("barber", b.id, range, b.locationId)} className="block rounded-card bg-surface px-4 py-3.5 shadow-card">
-              <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0">
-                  <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
-                  {showLoc && b.locationName ? <small className="block truncate text-[12px] font-semibold text-muted">{b.locationName}</small> : null}
-                </span>
-                <span className="flex flex-none items-center gap-1"><b className="text-[16px] tabular-nums">{peso(b.sales)}</b><ChevronRight size={17} className="text-subtle" aria-hidden /></span>
-              </div>
-              <dl className="mt-2.5 grid grid-cols-3 gap-2">
-                <Mini k="Cuts" v={String(b.cuts)} /><Mini k="Avg ticket" v={peso(b.avg)} /><Mini k="Completion" v={pct(b.completionPct)} />
-              </dl>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 /** Barbers tab: ranked by sales, badge 1/2/3…, location under the name. Tap for the barber's page. */
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
@@ -238,44 +210,5 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
           className="inline-flex h-8 flex-none items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
       ) : last ? <span className="flex-none rounded-pill bg-grey-100 px-2.5 py-1 text-[11.5px] font-bold">Claimed</span> : null}
     </div>
-  );
-}
-
-const MEDAL = ["🥇", "🥈", "🥉"];
-
-/** Overview · My Barbers: every barber (incl. 0 sales) ranked by sales for the period. Unassigned visits get a small note. */
-export function BarberSalesRanking({ barbers, roster, range, showLoc, where }: { barbers: BarberStat[]; roster: { id: string; name: string; locationId: string; locationName: string }[]; range: SalesRange; showLoc: boolean; where: string }) {
-  const map = new Map<string, { id: string; name: string; loc: string; locName: string; sales: number; cuts: number }>();
-  for (const b of roster) if (where === "all" || b.locationId === where) map.set(`${b.id}@${b.locationId}`, { id: b.id, name: b.name, loc: b.locationId, locName: b.locationName, sales: 0, cuts: 0 });
-  let unassigned = 0, unCuts = 0;
-  for (const b of barbers) {
-    if (b.id.startsWith("seat:") || b.name === "No barber") { unassigned += b.sales; unCuts += b.cuts; continue; }
-    const k = `${b.id}@${b.locationId}`;
-    const r = map.get(k) ?? { id: b.id, name: b.name, loc: b.locationId, locName: b.locationName, sales: 0, cuts: 0 };
-    r.sales += b.sales; r.cuts += b.cuts; map.set(k, r);
-  }
-  const rows = [...map.values()].sort((a, b) => b.sales - a.sales || b.cuts - a.cuts || a.name.localeCompare(b.name));
-  return (
-    <section className="mt-4" aria-label="My Barbers">
-      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">My Barbers</h2>
-      {!rows.length ? <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add them in Manage Shop.</p> : (
-        <ol className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
-          {rows.map((r, i) => (
-            <li key={`${r.id}@${r.loc}`} className="border-b border-line last:border-b-0">
-              <Link href={href("barber", r.id, range, r.loc)} className="flex items-center gap-3 px-4 py-3">
-                <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full font-extrabold", i < 3 && r.sales > 0 ? "text-[20px]" : "bg-grey-100 text-[13.5px] text-muted")} aria-label={`Rank ${i + 1}`}>{i < 3 && r.sales > 0 ? MEDAL[i] : i + 1}</span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[15px]">{r.name}</b>
-                  <small className="block truncate text-[12px] font-semibold text-muted">{[showLoc ? r.locName : "", `${r.cuts} cut${r.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
-                </span>
-                <b className="flex-none text-[15px] tabular-nums">{peso(r.sales)}</b>
-                <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ol>
-      )}
-      {unassigned > 0 ? <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">Unassigned {peso(unassigned)} · {unCuts} cut{unCuts === 1 ? "" : "s"}</p> : null}
-    </section>
   );
 }
