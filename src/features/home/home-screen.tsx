@@ -15,7 +15,7 @@ import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { SalesChartCard } from "@/features/sales";
-import { elapsedLabel, markInChair, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
+import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
@@ -92,7 +92,7 @@ export function HomeScreen() {
   const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
   const todays = rows.filter((row) => row.createdAt >= today0 && row.status !== "declined");
   const customers = todays.length;
-  const online = todays.filter((row) => row.channel === "online").length;
+  const online = onlineOpenToday(rows).length;
   const remit = useRemit(shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const toClaim = remit.data?.total ?? 0;
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);

@@ -20,7 +20,9 @@ import { useShopMenu } from "@/lib/shop-services";
 import {
   completionLabel, markInChair, requestLocation, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
   type ChairRequest,
+  onlineOpenToday,
 } from "@/lib/chair-bookings";
+import { CountBadge } from "@/components/common/count-badge";
 import { RangeChips, useSalesRows } from "@/features/sales";
 import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
 import { doneInRange, doneLabel } from "@/lib/done-range";
@@ -128,6 +130,7 @@ export function QueueBoard() {
 
   const walkIns = useMemo(() => rows.filter((r) => r.channel === "walk-in"), [rows]);
   const online = useMemo(() => rows.filter((r) => r.channel === "online"), [rows]);
+  const onlineCount = onlineOpenToday(loaded).length;
   const walkInList = useMemo(() => walkIns.filter((r) => matches(r, search)), [walkIns, search]);
   const onlineList = useMemo(() => online.filter((r) => matches(r, search)), [online, search]);
   const inChair = rows.filter((r) => r.status === "in_chair").length;
@@ -162,9 +165,9 @@ export function QueueBoard() {
           </div>
         </div>
         {channel === "walk-ins" ? (
-          <button type="button" onClick={() => setChannel("online")} aria-label={`Online orders${online.length ? `, ${online.length}` : ""}`} className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-bold text-ink">
+          <button type="button" onClick={() => setChannel("online")} aria-label={`Online orders${onlineCount ? `, ${onlineCount} today` : ""}`} className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-bold text-ink">
             Online
-            {online.length ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-ink px-1.5 text-[11.5px] font-bold tabular-nums leading-5 text-on-ink">{online.length}</span> : null}
+            <CountBadge count={onlineCount} />
           </button>
         ) : null}
       </header>

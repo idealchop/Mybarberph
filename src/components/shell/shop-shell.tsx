@@ -6,7 +6,7 @@ import { AppShell, Sidebar } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { AuthGateProvider } from "@/components/auth/auth-gate-provider";
 import { BarberChair } from "@/components/art";
-import { useQueueRequests } from "@/lib/chair-bookings";
+import { onlineOpenToday, useQueueRequests } from "@/lib/chair-bookings";
 import { useTier } from "@/lib/tier";
 import { Brand } from "./brand";
 import { ClientNav } from "./client-nav";
@@ -43,7 +43,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const { tier } = useTier();
   const paid = tier === "paid";
-  const waiting = useQueueRequests().rows.filter((r) => r.channel === "online" && r.status === "requested").length;
+  const waiting = onlineOpenToday(useQueueRequests().rows).length;
   const focus = FOCUS.some((r) => pathname === r || pathname.startsWith(`${r}/`));
   const active = activeKeyFor(pathname);
   const items = appNav(active, 26).map((item) => item.key === "queue" && waiting > 0 ? { ...item, badge: waiting } : item);

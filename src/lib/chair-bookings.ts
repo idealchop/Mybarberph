@@ -255,3 +255,14 @@ export function elapsedLabel(from: number, now: number) {
   if (hours > 0) return `${hours}:${String(minutes % 60).padStart(2, "0")}:${ss}`;
   return `${minutes}:${ss}`;
 }
+
+const OPEN = new Set(["requested", "accepted", "in_chair"]);
+/**
+ * The one "Online" count (Jimboy, 2026-10-20): today's (Asia/Manila) online bookings that aren't finished.
+ * Done and declined (covers cancelled / no-show) never count. "Today" is the booked slot when there is one,
+ * else when it was made. Used by the Queue Online pill, Home's Online stat and the Queue nav badge.
+ */
+export function onlineOpenToday<T extends { channel: string; status: string; createdAt: number; scheduledAt?: number }>(rows: T[], now = Date.now()): T[] {
+  const today = manilaDay(now);
+  return rows.filter((r) => r.channel === "online" && OPEN.has(r.status) && manilaDay(r.scheduledAt ?? r.createdAt) === today);
+}
