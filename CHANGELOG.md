@@ -1,8 +1,17 @@
 # Changelog
 
-Built from the git history (newest first). Unreleased = on `main`, not yet deployed to DEV/PROD by this pass (the DEV deploy is blocked: expired Firebase/gcloud login).
+Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded). PROD is not deployed by this pass.
 
-## 2026-10-19 — River AI Rules 1.0.1 compliance pass (unreleased)
+## 2026-10-19 — Jimboy's decisions on the open items (DEV)
+
+- Docs: environments (dev branch, DB guard, accepted decisions), auth flow (links never expire, 6-month review, barber scope), API, roles, release runbook
+- Barber link: amount locked to the menu price; optional tip; 'Update information' link (`93df062`)
+- Barber My sales: Collected split (Cash / GCash, Online and Other when present) (`d0b8fac`)
+- Barber link: server enforces own bookings only; links resolve without expiry (`d1b385d`)
+- Barber links: never expire; owner confirms each link every 6 months (nudge only) (`3b5f67a`)
+- Firestore: no silent fallback to the PROD database (`b246f79`)
+
+## 2026-10-19 — River AI Rules 1.0.1 compliance pass
 
 - Tests: TC-STATE-HP-02 mutation then paired GET (04-test 'mutation without verified GET') (`6353753`)
 - Tests: architecture contract (no client Firestore/Storage SDK, Admin SDK server-only); npm run verify (`fd193f3`)

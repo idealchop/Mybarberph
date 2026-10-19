@@ -19,13 +19,17 @@ There is no separate `packages/` workspace yet. Splitting into `apps/web` + `pac
 ## Tenant wall
 
 - Owner routes: `shopId = (await getCaller(req)).uid`. No route accepts another shop id from an owner.
-- Barber routes: `shopId` comes from `chairLinks/{token}` on the server.
+- Barber routes: `shopId` comes from `chairLinks/{token}` on the server, and a link only reads/writes its own barber's visits plus open ones waiting at its location (`barberAccess`). The amount it saves is always the menu price (`barberPrice`).
 - Partner and public routes take `shopId` from the path but read only public fields of `listed` shops (partner) or the public profile (public).
 - Firestore and Storage security rules are the boundary for any direct client access: no client writes business data; public read only for listed shops' public fields; owner read of `private/*`. The server's Admin SDK bypasses them. The hardened rules in this repo are **not deployed yet** (open item: needs approval, since the same file goes to both databases).
 
 ## Validation
 
 Hand-written guards at each handler: type checks, string length caps (`slice`), enum allowlists (`STATE_KEYS`, booking statuses, pay methods), number clamps, size/type checks on uploads, regex on tokens. Zod is not a dependency; adopting it is an open item ("Zod or equivalent" — current guards are the equivalent).
+
+## Abuse controls
+
+No per-IP rate limiting and no Firebase App Check. **Accepted exception (Jimboy, 2026-10-19):** not needed at the current scale. What limits abuse today: unguessable ids/tokens as capabilities, server-side validation and size caps, the Partner walk-in limit, Companion quotas, and PayMongo/Brevo provider limits. Revisit if public booking spam or link scraping shows up.
 
 ## Errors
 

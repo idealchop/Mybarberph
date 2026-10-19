@@ -15,7 +15,20 @@ The browser loads only the Firebase Auth web SDK (`src/lib/firebase/client.ts`, 
 
 ## Barbers — chair links (no account)
 
-The owner gives each barber a link `/b/{token}`. Tokens (`[a-z0-9]{8,40}`) live on the chair in the `chairs` state and are mirrored to `chairLinks/{token} = { shopId, chairId, expiresAt }` on each save. `chairLink(token)` resolves the shop server-side; an unknown, replaced or expired token returns `404 { code: "not_found" }`. The link is a capability: anyone with it acts as that barber for that one shop.
+The owner gives each barber a link `/b/{token}`. Tokens (`[a-z0-9]{8,40}`) live on the chair in the `chairs` state and are mirrored to `chairLinks/{token} = { shopId, chairId }` on each save. `chairLink(token)` resolves the shop server-side; an unknown, replaced or turned-off token returns `404 { code: "not_found" }` with "This link was replaced or turned off." The link is a capability: anyone with it acts as that barber for that one shop.
+
+**Links never expire (Jimboy's accepted decision, 2026-10-19).** The same token keeps working until the owner resets or turns it off; the server has no expiry check and the app never rotates a token on its own.
+
+- **6-month review (nudge only).** Each chair has `linkReviewAt` (6 months after the link was made, reset, or last confirmed). When it is due, the owner sees "Keep {name}'s link active?" with **Confirm** on the barber's detail page, in Manage Shop › Barbers, and a "Barber links to review · N" notice in Settings. Confirm sets the next review 6 months out. If the owner never confirms, nothing happens: the link keeps working.
+- **Reset / turn off.** Barber detail › Barber link › **Reset link** issues a new token (the old link stops at once). Turning the barber off (`active: false`) also stops the link.
+- **Migration.** Old chairs with `linkExpiresAt` are read as `linkReviewAt` (no link breaks); old `chairLinks` docs with `expiresAt` still resolve, and the field is dropped on the next save.
+
+**What a link can see and change.** A barber link only sees and edits that barber's own visits (`barberAccess`, `src/lib/server/shops.ts`):
+
+- *own*: `barberId` is this barber; on old rows with no `barberId`, the visit's chair/seat is this barber's chair at their location;
+- *open*: an unassigned visit still waiting (`requested`/`accepted`, no chair) at the barber's location, so the shared Waiting → Accept flow keeps working. The first save stamps the barber, and from then on it is theirs only.
+
+Anything else is hidden from `GET /api/barber/:token` and a `PUT` answers `404`. The amount a link saves is always the menu price (server-enforced); only the owner can change it.
 
 ## Customers — no account
 
