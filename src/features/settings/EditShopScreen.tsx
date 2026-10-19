@@ -28,7 +28,7 @@ export function EditShopScreen() {
   );
 }
 
-function EditorBar({ dirty, busy, hold, onBack }: { dirty: boolean; busy: boolean; hold: string; onBack: () => void }) {
+function EditorBar({ hold, onBack }: { dirty: boolean; busy: boolean; hold: string; onBack: () => void }) {
   return (
     <>
       <div className="flex h-14 flex-none items-center justify-between gap-2 px-5 pt-1">

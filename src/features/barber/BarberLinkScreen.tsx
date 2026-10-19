@@ -128,7 +128,9 @@ function ActiveCard({
           )}
         </div>
       </div>
-      <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
+      <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
+            {/* eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP; next/image adds nothing here */}
+            <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
     </section>
   );
 }
@@ -271,6 +273,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
               return;
             }
             if (allowance.atLimit) { setNote(allowance.message); return; }
+            // eslint-disable-next-line react-hooks/purity -- runs inside the onClick handler, not during render
             const nowAt = Date.now();
             const chosen = treatments.filter((service) => picked.includes(service.id));
             const sat = seatWalkInOnChair({

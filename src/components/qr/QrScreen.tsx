@@ -25,6 +25,7 @@ export function QrScreen() {
   const [copied, setCopied] = useState(false);
   const [making, setMaking] = useState(false);
   const [urlLoc, setUrlLoc] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only values (origin, ?loc) read once after hydration to avoid an SSR mismatch
   useEffect(() => { setOrigin(window.location.origin); setUrlLoc(new URLSearchParams(window.location.search).get("loc")); }, []);
   const fromUrl = urlLoc && shops.branches.find((b) => b.id === urlLoc);
   const locationId = shops.enabled && fromUrl ? fromUrl.id : shops.enabled && shops.scopeId ? shops.scopeId : undefined;

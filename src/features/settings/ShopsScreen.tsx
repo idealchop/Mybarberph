@@ -11,10 +11,9 @@ import { PageBack } from "@/components/shell/PageBack";
 import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
 import { reverseGeocodePin } from "@/lib/geocode";
-import { removeChairsAt, useShopChairs, chairLocation } from "@/lib/shop-chairs";
+import { useShopChairs } from "@/lib/shop-chairs";
 import {
   HOME_LOCATION_ID, useShopLocations,
-  type ShopBranch,
 } from "@/lib/shop-locations";
 import { copyMenuToLocation } from "@/lib/shop-services";
 import { useCloud } from "@/lib/cloud";
@@ -28,8 +27,7 @@ import { LocationPicker } from "./LocationPicker";
 export function ShopsScreen() {
   const cloudReady = useCloud().ready;
   const { profile, ready: profileReady } = useShopProfile();
-  const { enabled, ready, branches, enable, disable, addBranch, updateBranch, removeBranch } = useShopLocations();
-  const { chairs } = useShopChairs({ all: true });
+  const { enabled, ready, branches, enable, disable, addBranch } = useShopLocations();
   const { access } = useTier();
   const [confirmMulti, setConfirmMulti] = useState<"on" | "off" | null>(null);
   const limit = maxLocations(access);

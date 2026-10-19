@@ -231,6 +231,7 @@ export function useShopChairs(options?: { all?: boolean; locationId?: string }) 
   useEffect(() => {
     const pull = () => setChairs(readChairs());
     pull();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial sync from the shared client store; later updates arrive via the subscribed events
     setReady(true);
     window.addEventListener(EVENT, pull);
     window.addEventListener("storage", pull);

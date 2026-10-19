@@ -100,6 +100,7 @@ export function useGreeting() {
   const [greeting, setGreeting] = useState("Good evening");
   useEffect(() => {
     const hour = new Date().getHours();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the local clock is read after hydration so server and client render the same first frame
     setGreeting(hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening");
   }, []);
   return greeting;

@@ -8,7 +8,7 @@ import { completeCut } from "@/components/transactions/CompleteFlow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/TransactionSheet";
 import { Plus } from "lucide-react";
-import { EmptyState, SearchInput, StatCard, cn } from "@river-apps/ui";
+import { EmptyState, SearchInput, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/Button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";

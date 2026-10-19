@@ -24,11 +24,6 @@ import { CompanionCard } from "@/features/companion/CompanionCard";
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
 
-function shortPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  const local = digits.startsWith("63") ? `0${digits.slice(2)}` : digits;
-  return local.length > 7 ? `${local.slice(0, 4)}•••${local.slice(-3)}` : phone;
-}
 
 function BookingCard({ row, place }: { row: ChairRequest; place?: string }) {
   const who = row.customerLabel || row.contact || "Customer";
@@ -172,7 +167,9 @@ export function HomeScreen() {
               <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
             </div>
           </div>
-          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
+          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
+            {/* eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP; next/image adds nothing here */}
+            <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
         </section>
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
@@ -213,6 +210,7 @@ export function HomeScreen() {
                 <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
               </div>
             }
+            // eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP
             illustration={<img src="/barber-hero.webp" alt="" width={230} height={220} className="h-auto w-[230px]" />}
             illustrationClassName="right-[30px] top-1/2 -translate-y-1/2"
           />
