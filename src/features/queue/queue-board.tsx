@@ -18,9 +18,12 @@ import { peso } from "@/lib/format";
 import { ALL_LOCATIONS, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import {
-  completionLabel, markInChair, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
+  completionLabel, markInChair, requestLocation, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
+import { RangeChips, useSalesRows } from "@/features/sales";
+import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
+import { doneInRange, doneLabel } from "@/lib/done-range";
 
 type Channel = "walk-ins" | "online";
 
@@ -119,6 +122,9 @@ export function QueueBoard() {
   const placeOf = (r: ChairRequest) => (allLocs ? shops.branches.find((b) => b.id === (r.locationId || HOME_LOCATION_ID))?.name ?? "" : "");
   const rows = loaded.filter((r) => r.status !== "declined");
   const figures = todayFigures(loaded);
+  // Done list: today (Manila) by default from the live queue; earlier days only when a date/range is picked.
+  const [doneRange, setDoneRange] = useState<SalesRange>("today");
+  const past = useSalesRows(rangeFetchDays(doneRange), true, doneRange !== "today");
 
   const walkIns = useMemo(() => rows.filter((r) => r.channel === "walk-in"), [rows]);
   const online = useMemo(() => rows.filter((r) => r.channel === "online"), [rows]);
@@ -133,7 +139,10 @@ export function QueueBoard() {
 
   const list = channel === "walk-ins" ? walkInList : onlineList;
   const open = list.filter((r) => r.status === "requested" || r.status === "accepted" || r.status === "in_chair");
-  const done = list.filter((r) => r.status === "done");
+  const live = new Set(loaded.map((r) => r.id));
+  const pastRows = doneRange === "today" ? [] : (past ?? []).filter((r) => !live.has(r.id) && (allLocs || requestLocation(r) === queueLoc));
+  const done = doneInRange([...list, ...pastRows.filter((r) => r.channel === (channel === "walk-ins" ? "walk-in" : "online") && matches(r, search))], doneRange);
+  const anyDone = list.some((r) => r.status === "done");
 
   if (!ready) return <ListSkeleton />;
   return (
@@ -182,7 +191,7 @@ export function QueueBoard() {
         <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
         <StatCard className="pb-3" label="Collection" value={peso(figures.extra.filter((r) => r.paid).reduce((s, r) => s + (r.price || 0), 0))} caption="Paid today" />
         <StatCard className="pb-3" label="Waiting" value={String(toAcceptCount)} />
-        <StatCard className="pb-3" label="Done" value={String(rows.filter((r) => r.status === "done").length)} />
+        <StatCard className="pb-3" label="Done" value={String(figures.cuts)} />
       </div>
 
       <div className="mt-4 flex items-center gap-2">
@@ -205,7 +214,23 @@ export function QueueBoard() {
       ) : null}
 
       <Section title="Now" rows={open} onFull={(message) => setFull(message)} placeOf={placeOf} />
-      <Section title="Done today" rows={done} onFull={(message) => setFull(message)} placeOf={placeOf} />
+      {anyDone || doneRange !== "today" ? (
+        <div className="mt-5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-1">
+            <p className="text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">{doneLabel(doneRange)}</p>
+            <RangeChips value={doneRange} onChange={setDoneRange} allowCustom />
+          </div>
+          {done.length ? (
+            <ul className="mt-3 flex flex-col gap-3" aria-label={doneLabel(doneRange)}>
+              {done.map((row) => <Row key={row.id} row={row} onFull={(message) => setFull(message)} place={placeOf(row)} />)}
+            </ul>
+          ) : (
+            <p className="mt-3 rounded-card bg-surface px-4 py-5 text-center text-[13.5px] font-semibold text-muted shadow-card">
+              {doneRange !== "today" && !past ? "Loading…" : doneRange === "today" ? "No finished visits yet today." : "No finished visits for this date."}
+            </p>
+          )}
+        </div>
+      ) : null}
 
     </div>
   );
