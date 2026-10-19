@@ -28,7 +28,7 @@ API contract tests call the real route handlers with the Firebase Admin SDK mock
 
 ## Execution log — River AI Rules 1.0.1 pass — 2026-10-19
 
-Run on the box, 2026-10-19 19:54–20:25 Asia/Manila (PHT). Unit + API + architecture: **62 / 62 PASS** (Vitest 3.2.7, Node 22). E2E on DEV: **14 PASS, 10 BLOCKED** (5 cases × 2 viewports). The blocked cases test changes made in this pass, which aren't on DEV yet because the DEV deploy is blocked (expired Firebase/gcloud login). Dev answered with the old behaviour (for example `404 {"error":"Booking not found"}` without `code`), which is what we'd expect before the deploy.
+Run on the box, 2026-10-19 19:54–20:05 Asia/Manila (PHT). Unit + API + architecture: **62 / 62 PASS** (Vitest 3.2.7, Node 22). E2E on DEV: **14 PASS, 10 BLOCKED** (5 cases × 2 viewports). The blocked cases test changes made in this pass, which aren't on DEV yet because the DEV deploy is blocked (expired Firebase/gcloud login). Dev answered with the old behaviour (for example `404 {"error":"Booking not found"}` without `code`), which is what we'd expect before the deploy.
 
 | Case ID | Case | Layer | Applied as | Env | Result |
 | :--- | :--- | :--- | :--- | :--- | :--- |
