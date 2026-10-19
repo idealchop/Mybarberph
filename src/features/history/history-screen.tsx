@@ -7,6 +7,7 @@ import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { Topbar } from "@river-apps/ui";
 import { PageBack } from "@/components/shell/page-back";
 import { peso } from "@/lib/format";
+import { payMethodLabel } from "@/lib/pay-split";
 import { useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import type { SalesRange } from "@/lib/sales-report";
 import { inRange } from "@/lib/sales-stats";
@@ -65,7 +66,12 @@ function VisitList({ rows, placeOf, claimOf }: { rows: ChairRequest[]; placeOf?:
           <span className="min-w-0">
             <b className="block truncate">{row.customerLabel || row.contact}</b>
             <small className="text-[12.5px] font-semibold text-muted">{row.serviceName} · {row.ref}{placeOf?.(row) ? ` · ${placeOf(row)}` : ""} · {when(row.completedAt ?? row.updatedAt)}</small>
-            {claimOf && row.paid && (row.payMethod ?? "cash") === "cash" && row.price ? (() => { const c = claimOf(row.id); return <small className="block text-[11.5px] font-bold text-muted">{c ? `Claimed by owner · ${when(c.claimedAt)}` : "Cash · to claim"}</small>; })() : null}
+            {row.paid ? (() => {
+              // Every paid visit shows its stored method (no method saved = "Other"). Remit cash (same rule as the server) also shows its claim state.
+              const remitCash = Boolean(claimOf) && (row.payMethod ?? "cash") === "cash" && Boolean(row.price);
+              const c = remitCash ? claimOf?.(row.id) : undefined;
+              return <small className="block text-[11.5px] font-bold text-muted">{[`Paid · ${payMethodLabel(row)}`, remitCash ? (c ? `Claimed by owner · ${when(c.claimedAt)}` : "to claim") : ""].filter(Boolean).join(" · ")}</small>;
+            })() : null}
           </span>
           <span className="flex items-center gap-1.5"><b>{peso(row.price)}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
         </li>

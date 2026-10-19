@@ -2,6 +2,7 @@
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { rangeWindow, type SalesRange } from "@/lib/sales-report";
+import { addToSplit } from "@/lib/pay-split";
 
 const DAY = 86_400_000;
 export const dayKey = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -18,13 +19,15 @@ export function inRange(rows: ChairRequest[], range: SalesRange, loc: string) {
 }
 
 export interface LocStat {
-  id: string; name: string; sales: number; cuts: number; avg: number; completionPct: number | null; cash: number; gcash: number; unpaid: number;
+  id: string; name: string; sales: number; cuts: number; avg: number; completionPct: number | null; cash: number; gcash: number; online: number; other: number; unpaid: number;
 }
 export interface ServiceStat {
   name: string; cuts: number; sales: number; avg: number; completionPct: number | null;
 }
 export interface BarberStat {
-  id: string; name: string; locationId: string; locationName: string; sales: number; cuts: number; avg: number; cash: number; gcash: number; unpaid: number; remit: number; completionPct: number | null;
+  id: string; name: string; locationId: string; locationName: string; sales: number; cuts: number; avg: number; cash: number; gcash: number; online: number; other: number; unpaid: number;
+  /** Cash to hand over: cash visits plus paid visits with no stored method (same rule as lib/server/remit.ts). */
+  remit: number; completionPct: number | null;
   /** Average customer rating (1–5) for rated cuts in range, and how many. */
   rating: number | null; ratings: number;
 }
@@ -48,13 +51,13 @@ export function locationStats(rows: ChairRequest[], range: SalesRange, branches:
     const done = inRange(rows, range, b.id).filter((r) => r.status === "done");
     const sales = done.reduce((s, r) => s + (r.price || 0), 0);
     const cuts = done.length;
-    let cash = 0, gcash = 0, unpaid = 0;
+    const split = { cash: 0, gcash: 0, online: 0, other: 0 };
+    let unpaid = 0;
     for (const r of done) {
       if (!r.paid) unpaid += r.price || 0;
-      else if (r.payMethod === "gcash") gcash += r.price || 0;
-      else cash += r.price || 0;
+      else addToSplit(split, r);
     }
-    return { id: b.id, name: b.name, sales, cuts, avg: cuts ? Math.round(sales / cuts) : 0, completionPct: completion(scoped(rows, range, b.id)), cash, gcash, unpaid };
+    return { id: b.id, name: b.name, sales, cuts, avg: cuts ? Math.round(sales / cuts) : 0, completionPct: completion(scoped(rows, range, b.id)), ...split, unpaid };
   }).sort((a, b) => b.sales - a.sales);
 }
 
@@ -88,12 +91,11 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
     const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === bl);
     const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
     const name = r.barberName || seat?.barberName?.trim() || (r.seatLabel ? `${r.seatLabel}` : "No barber");
-    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, unpaid: 0, remit: 0, completionPct: null, rating: null, ratings: 0 };
+    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, completionPct: null, rating: null, ratings: 0 };
     row.cuts += 1; row.sales += r.price || 0;
     if (!r.paid) row.unpaid += r.price || 0;
-    else if (r.payMethod === "gcash") row.gcash += r.price || 0;
-    else row.cash += r.price || 0;
-    row.remit = row.cash;
+    else addToSplit(row, r);
+    row.remit = row.cash + row.other;
     if (r.rating && r.rating > 0) { row.rating = ((row.rating ?? 0) * row.ratings + r.rating) / (row.ratings + 1); row.ratings += 1; }
     map.set(`${id}@${bl}`, row);
   }

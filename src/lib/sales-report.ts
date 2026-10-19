@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChairRequest } from "@/lib/chair-bookings";
+import { PAY_LABEL, payBucket, paySplit, type PaySplit } from "@/lib/pay-split";
 
 export type SalesRange = "today" | "week" | "month" | "all" | "custom";
 export type SalesView = "overview" | "services" | "payments" | "shop";
@@ -44,6 +45,8 @@ export interface SalesReport {
   sales: number;
   cuts: number;
   collected: number;
+  /** Collected money by stored payment method (no method = other). */
+  collectedSplit: PaySplit;
   unpaid: number;
   average: number;
   series: SalesRow[];
@@ -129,7 +132,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
 
   for (const extra of extras) {
     add(services, extra.serviceName || "Service", 1, extra.price);
-    add(payments, extra.paid ? ({ cash: "Cash", gcash: "GCash", online: "Online" } as const)[extra.payMethod ?? (extra.payWhere === "online" ? "online" : "cash")] : "Still unpaid", 1, extra.price);
+    add(payments, extra.paid ? PAY_LABEL[payBucket(extra)] : "Still unpaid", 1, extra.price);
     add(channels, extra.channel === "online" ? "Online" : "Walk-in", 1, extra.price);
     const chair = extra.seatLabel || extra.chairLabel;
     if (chair) add(byChair, chair, 1, extra.price);
@@ -169,6 +172,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     sales: rangeSales,
     cuts,
     collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price, 0),
+    collectedSplit: paySplit(extras),
     unpaid: unpaidCentavos,
     average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,

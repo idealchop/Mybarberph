@@ -1,4 +1,5 @@
 "use client";
+import { payBucket, paySplit } from "@/lib/pay-split";
 import { cn } from "@river-apps/ui";
 import { ArrowDownRight, ArrowUpRight, ChevronRight, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
@@ -84,7 +85,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   const extraOk = (r: ChairRequest) =>
     (!fb || barberKey(r, chairs) === fb) &&
     (!fc || (fc === "online" ? r.channel === "online" : r.channel !== "online")) &&
-    (!fp || (fp === "unpaid" ? !r.paid : r.paid && (r.payMethod ?? "cash") === fp)) &&
+    (!fp || (fp === "unpaid" ? !r.paid : r.paid && payBucket(r) === fp)) &&
     (!fs || (r.serviceName || "").trim() === fs);
   const locOk = (r: ChairRequest) => (where === "all" || (r.locationId || HOME_LOCATION_ID) === where) && extraOk(r);
   const cur = windowKeys(range), prev = windowKeys(range, 1);
@@ -97,9 +98,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   const service = avg(now.done.filter((r) => r.startedAt && r.completedAt && r.completedAt > r.startedAt).map((r) => Math.round((r.completedAt! - r.startedAt!) / 60_000)).filter((m) => m < 300));
   const wait = avg(rows.filter((r) => r.startedAt && r.startedAt > r.createdAt).map((r) => Math.round((r.startedAt! - r.createdAt) / 60_000)).filter((m) => m < 600));
   const walk = now.done.filter((r) => r.channel !== "online").length, online = now.cuts - walk;
-  const cash = now.done.filter((r) => r.paid && (r.payMethod ?? "cash") === "cash").reduce((s, r) => s + r.price, 0);
-  const gcash = now.done.filter((r) => r.paid && r.payMethod === "gcash").reduce((s, r) => s + r.price, 0);
-  const onlinePay = now.done.filter((r) => r.paid && r.payMethod === "online").reduce((s, r) => s + r.price, 0);
+  const { cash, gcash, online: onlinePay, other: otherPay } = paySplit(now.done);
   const unpaid = now.done.filter((r) => !r.paid).reduce((s, r) => s + r.price, 0);
 
   // Repeat vs new: a contact seen before this period (in what we loaded) or more than once in it.
@@ -255,7 +254,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
 
       <Panel title="Mix" sub="How customers came and paid">
         <Split className="mt-3" label="Channel" parts={[{ k: "Walk-in", v: walk, c: "bg-ink" }, { k: "Online", v: online, c: "bg-[#1b6b63]" }]} fmt={(n) => String(n)} />
-        <Split className="mt-3" label="Payment" parts={[{ k: "Cash", v: cash, c: "bg-ink" }, { k: "GCash", v: gcash, c: "bg-[#0a6cff]" }, { k: "Online", v: onlinePay, c: "bg-[#1b6b63]" }, { k: "Unpaid", v: unpaid, c: "bg-grey-300" }]} fmt={peso} />
+        <Split className="mt-3" label="Payment" parts={[{ k: "Cash", v: cash, c: "bg-ink" }, { k: "GCash", v: gcash, c: "bg-[#0a6cff]" }, { k: "Online", v: onlinePay, c: "bg-[#1b6b63]" }, ...(otherPay ? [{ k: "Other", v: otherPay, c: "bg-grey-500" }] : []), { k: "Unpaid", v: unpaid, c: "bg-grey-300" }]} fmt={peso} />
         {known.length ? <Split className="mt-3" label="Customers" parts={[{ k: "Repeat", v: repeat, c: "bg-ink" }, { k: "New", v: known.length - repeat, c: "bg-grey-300" }]} fmt={(n) => String(n)} /> : null}
       </Panel>
 

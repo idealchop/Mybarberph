@@ -72,6 +72,8 @@ export function SalesDetailScreen() {
             <StatCard className="pb-3" label="Completion" value={stats.completionPct == null ? "–" : `${stats.completionPct}%`} />
             <StatCard className="pb-3" label="Cash" value={peso(stats.cash)} />
             <StatCard className="pb-3" label="GCash" value={peso(stats.gcash)} />
+            {stats.online ? <StatCard className="pb-3" label="Online" value={peso(stats.online)} /> : null}
+            {stats.other ? <StatCard className="pb-3" label="Other" value={peso(stats.other)} caption="No method saved" /> : null}
             {"remit" in stats ? <StatCard className="col-span-2 pb-3" label="Remit (cash collected)" value={peso((stats as { remit: number }).remit)} caption={remit.data ? (toClaim ? `${peso(toClaim)} still to claim` : "All claimed by owner") : undefined} /> : null}
             {busy ? <StatCard className="pb-3" label="Busy time" value={`${Math.floor(busy / 60)}h ${busy % 60}m`} /> : null}
             {util != null ? <StatCard className="pb-3" label="Utilization" value={`${util}%`} caption="of 10-h days" /> : null}

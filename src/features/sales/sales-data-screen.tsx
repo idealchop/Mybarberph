@@ -14,7 +14,7 @@ import { useShopProfile } from "@/lib/shop-profile";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats } from "@/lib/sales-stats";
-import { BarberRanking, ClaimHistory, BarberSalesRanking, RangeChips, UnclaimedCard } from "./sales-parts";
+import { BarberRanking, ClaimHistory, BarberSalesRanking, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
@@ -101,7 +101,8 @@ export function SalesDataScreen() {
       ) : null}
       {view === "performance" ? (
         <>
-          <UnclaimedCard className="mt-4" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
+          <StatCard className="mt-4 pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} />} />
+          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
@@ -127,7 +128,7 @@ function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
             <span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>
             <span className="text-right text-[15px] font-extrabold tabular-nums">{report.cuts} <small className="text-[12px] font-semibold text-muted">cut{report.cuts === 1 ? "" : "s"}</small></span>
           </span>} />
-        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption="Paid" />
+        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
         <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
       </div>
     </>

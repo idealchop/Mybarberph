@@ -1,5 +1,6 @@
 "use client";
 import { Input } from "@river-apps/ui";
+import { payMethodLabel } from "@/lib/pay-split";
 import { Button } from "@/components/common/button";
 import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -112,7 +113,7 @@ function CompletedToast({ row, onClose, onDetails }: { row: ChairRequest; onClos
   const close = useRef(onClose);
   useEffect(() => { close.current = onClose; }, [onClose]);
   useEffect(() => { const t = window.setTimeout(() => close.current(), 3200); return () => window.clearTimeout(t); }, []);
-  const pay = !row.paid ? "Not paid yet" : row.payMethod === "gcash" ? "GCash" : row.payMethod === "online" ? "Paid online" : "Cash";
+  const pay = !row.paid ? "Not paid yet" : row.payMethod === "online" ? "Paid online" : payMethodLabel(row);
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[86] flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]" role="status" aria-live="polite">
       <div className="pointer-events-auto w-full max-w-[420px] overflow-hidden rounded-[22px] bg-ink text-on-ink shadow-card">

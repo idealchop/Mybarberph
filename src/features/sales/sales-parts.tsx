@@ -8,6 +8,18 @@ import { Spinner } from "@/components/common/button";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
 import type { Remit } from "./use-remit";
+import { splitParts, type PaySplit } from "@/lib/pay-split";
+
+/** Collected money by payment method. "lines": one row per method (stat cards); "inline": "Cash ₱X · GCash ₱Y". */
+export function PaySplitText({ split, layout = "inline", className }: { split: PaySplit; layout?: "lines" | "inline"; className?: string }) {
+  const parts = splitParts(split);
+  if (layout === "inline") return <span className={className}>{parts.map((p) => `${p.label} ${peso(p.value)}`).join(" · ")}</span>;
+  return (
+    <span className={cn("mt-0.5 flex flex-col gap-0.5", className)} aria-label="Collected by payment method">
+      {parts.map((p) => <span key={p.key} className="flex items-baseline justify-between gap-2"><span>{p.label}</span><b className="font-bold tabular-nums text-ink">{peso(p.value)}</b></span>)}
+    </span>
+  );
+}
 
 const pct = (v: number | null) => (v == null ? "–" : `${v}%`);
 
@@ -171,6 +183,7 @@ export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
                 <small className="block truncate text-[12.5px] font-semibold text-muted">{[showLoc ? b.locationName : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].filter(Boolean).join(" · ")}</small>
+                <PaySplitText split={b} className="block truncate text-[12px] font-semibold text-muted" />
               </span>
               <b className="text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />

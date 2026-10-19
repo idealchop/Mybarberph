@@ -4,16 +4,16 @@ import { Button } from "@/components/common/button";
 import { ArrowLeft, Phone, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
-import type { PayMethod } from "@/lib/booking-types";
+import { payMethodLabel } from "@/lib/pay-split";
 import { peso } from "@/lib/format";
 import { useShopMenu } from "@/lib/shop-services";
 
 const when = (ms?: number) => ms ? new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
-const METHOD: Record<PayMethod, string> = { cash: "Cash", gcash: "GCash", online: "Online" };
 
 export function payLabel(row: ChairRequest) {
   if (!row.paid) return row.payWhere === "online" ? "Pay online" : "Unpaid";
-  return `Paid · ${METHOD[row.payMethod ?? (row.payWhere === "online" ? "online" : "cash")]}`;
+  // Stored method only; a paid visit with no saved method shows "Other".
+  return `Paid · ${payMethodLabel(row)}`;
 }
 
 const isOnlinePaid = (row: ChairRequest) => Boolean(row.paid) && (row.payMethod === "online" || (!row.payMethod && row.payWhere === "online"));
