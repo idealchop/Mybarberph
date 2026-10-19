@@ -39,6 +39,8 @@ export async function GET(req: Request) {
   try {
     let hits: Hit[];
     try { hits = await photon(); } catch { hits = await nominatim(); }
+    // Bounded: drop the oldest entry so a stream of unique queries can't grow memory forever.
+    if (cache.size >= 500) cache.delete(cache.keys().next().value as string);
     cache.set(key, { at: Date.now(), hits });
     if (cache.size > 500) cache.delete(cache.keys().next().value as string);
     return json({ hits });
