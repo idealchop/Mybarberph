@@ -8,13 +8,15 @@ const verifyIdToken = vi.fn(async (t: string) => {
 vi.mock("@/lib/firebase/admin", () => ({ adminAuth: () => ({ verifyIdToken }) }));
 
 // Firestore-backed shop service: spies only, no network.
-const putState = vi.fn(async () => undefined);
+// In-memory stand-in so a PUT can be read back through the paired GET.
+const store = new Map<string, Record<string, string>>();
+const putState = vi.fn(async (shopId: string, key: string, raw: string) => { store.set(shopId, { ...(store.get(shopId) ?? {}), [key]: raw }); });
 const ensureShop = vi.fn(async () => ({}));
 vi.mock("@/lib/server/shops", () => ({
   STATE_KEYS: { "bp.services": true },
   putState,
   ensureShop,
-  loadState: vi.fn(async () => ({})),
+  loadState: vi.fn(async (shopId: string) => store.get(shopId) ?? {}),
   loadBookings: vi.fn(async () => []),
   effectivePlan: () => "partner",
   publicShop: (id: string) => ({ id }),
@@ -33,7 +35,20 @@ const put = (key: string, body: unknown, token?: string) =>
     { params: Promise.resolve({ key }) },
   );
 
-beforeEach(() => { putState.mockClear(); ensureShop.mockClear(); });
+beforeEach(() => { putState.mockClear(); ensureShop.mockClear(); store.clear(); });
+
+describe("owner API: mutation + paired GET", () => {
+  it("TC-STATE-HP-02 a saved key is returned by GET /api/shop for the same owner only", async () => {
+    const saved = JSON.stringify([{ id: "cut", name: "Haircut", price: 150 }]);
+    expect((await put("bp.services", { value: saved }, "good-token")).status).toBe(200);
+    const res = await getShop(new Request("http://local/api/shop", { headers: { authorization: "Bearer good-token" } }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.shopId).toBe("shop-a");
+    expect(body.values["bp.services"]).toBe(saved);
+    expect(store.has("shop-b")).toBe(false);
+  });
+});
 
 describe("owner API: auth + tenant wall", () => {
   it("TC-AUTH-NEG-01 GET /api/shop without a token is 401 unauthenticated", async () => {
