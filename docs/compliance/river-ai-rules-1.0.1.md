@@ -8,7 +8,7 @@
 | Author | agent (Grok Bot) for Jimboy Regalado |
 | Change size | **L** |
 | Shape | **A**, single-app variant (one Next.js app = UI + API route handlers) |
-| Overall | **DEV deployed, PASS on everything automated**: code, docs and 94 local + 24 DEV e2e tests pass. DEV deployed (2b7e328, 2026-10-19 22:04 PHT) and the hardened rules released (22:05 PHT). Still BLOCKED: signed-in manual checks (T11, R05). 1 FAIL (D09 Web Storage, needs a decision). 2 ACCEPTED (C24 Brevo, B07 rate limit). ' + str(len(OPEN)) + ' open items at the end. |
+| Overall | **DEV deployed, PASS on everything automated**: code, docs and 94 local + 24 DEV e2e tests pass. DEV deployed (2b7e328, 2026-10-19 22:04 PHT) and the hardened rules released (22:05 PHT). Still BLOCKED: signed-in manual checks (T11, R05). 1 FAIL (D09 Web Storage, needs a decision). 2 ACCEPTED (C24 Brevo, B07 rate limit). 18 open items at the end. |
 
 ## Scorecard (items per stage)
 
@@ -193,6 +193,7 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 | `93df062` | Barber link: amount locked to the menu price; optional tip; 'Update information' link |
 | `8d281a0` | Docs: dev branch (dev -> DEV, main -> PROD), DB guard, accepted decisions, barber link scope/review, amount lock and tip |
 | `2b7e328` | Sales: barber link My sales and /sales count only the link's location; ranking never drops sales |
+| `3eb45dc` | Compliance report: Jimboy's decisions recorded, DEV deploy + rules released, e2e 24/24 on DEV, sales cross-check |
 
 ## Feature requests from Jimboy (in this pass)
 
