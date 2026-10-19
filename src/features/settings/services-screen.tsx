@@ -6,6 +6,7 @@ import { Input, Topbar } from "@river-apps/ui";
 import { Button, Spinner } from "@/components/common/button";
 import { BarberIcon } from "@/components/art";
 import { HomeServiceCard, HomeToggle } from "@/features/settings/home-service-card";
+import { LinkReviewList } from "./link-review";
 import { PageBack } from "@/components/shell/page-back";
 import { fileToDataUrl } from "@/features/community";
 import { BarberPortrait } from "@/features/settings/seat-list";
@@ -126,6 +127,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
             setEditing({ kind: "chair", fresh: true, chair: { id: `c-${Date.now().toString(36)}`, number, label: `Barber ${number}`, barberId: "", barberName: "", vacantAt: Date.now(), locationId } });
           }}>Add barber</Button>
         </div>
+        <LinkReviewList chairIds={chairs.map((c) => c.id)} className="mt-2" />
         {chairs.length === 0 ? (
           <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add your first barber.</p>
         ) : (

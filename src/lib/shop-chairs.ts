@@ -28,7 +28,12 @@ export interface ShopChair {
   vacantAt?: number;
   /** Private code in the link the owner sends this barber. */
   linkToken?: string;
-  /** When that link stops working. A new link is needed each month. */
+  /**
+   * When the owner is next asked "Keep this link active?" (every 6 months). A nudge only:
+   * barber links never expire. Confirm moves it 6 months on; ignoring it changes nothing.
+   */
+  linkReviewAt?: number;
+  /** Legacy (monthly expiry, before Oct 2026). Read once as the review date, never written again. */
   linkExpiresAt?: number;
   /** Shop this chair belongs to. Missing means the first shop. */
   locationId?: string;
@@ -57,20 +62,13 @@ function readChairs(): ShopChair[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ShopChair[];
     if (!Array.isArray(parsed)) return [];
-    let stamped = false;
     const list = parsed
       .filter((c) => c && c.id && c.label && (c.barberName?.trim() || c.barberId))
       // Old saved occupancy is ignored (see occupyChair); seats show as used from their booking.
       .map(({ occupiedAt: _o, ticketId: _t, ...c }) => c as ShopChair)
-      .map((c) => {
-        if (c.linkToken && !c.linkExpiresAt) {
-          stamped = true;
-          return { ...c, linkExpiresAt: monthFrom(Date.now()) };
-        }
-        return c;
-      })
+      // Old monthly expiry becomes the review date (in memory; saved on the next owner save). No link breaks.
+      .map(({ linkExpiresAt, ...c }) => (c.linkToken && !c.linkReviewAt && linkExpiresAt ? { ...c, linkReviewAt: linkExpiresAt } : c) as ShopChair)
       .sort((a, b) => a.number - b.number);
-    if (stamped) writeChairs(list);
     return list;
   } catch {
     return [];
@@ -111,40 +109,48 @@ export function chairLinkPath(token: string) {
   return `/b/${token}`;
 }
 
-/** One month after the link was sent. */
-export function monthFrom(at: number) {
+/** How often the owner is asked to confirm each barber link. */
+export const LINK_REVIEW_MONTHS = 6;
+
+/** The next review date, LINK_REVIEW_MONTHS after `at`. */
+export function reviewFrom(at: number) {
   const next = new Date(at);
-  next.setMonth(next.getMonth() + 1);
+  next.setMonth(next.getMonth() + LINK_REVIEW_MONTHS);
   return next.getTime();
 }
 
-export function linkExpiryLabel(ms: number) {
-  return new Date(ms).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  });
+/** True when the owner should be asked "Keep this link active?". The link works either way. */
+export function linkReviewDue(chair: Pick<ShopChair, "linkToken" | "linkReviewAt" | "active">, now = Date.now()) {
+  return Boolean(chair.linkToken && chair.active !== false && chair.linkReviewAt && chair.linkReviewAt <= now);
 }
 
-export function chairLinkExpired(chair: Pick<ShopChair, "linkExpiresAt">, now = Date.now()) {
-  return Boolean(chair.linkExpiresAt && chair.linkExpiresAt <= now);
-}
-
-/** Returns this chair’s barber link. An expired link is replaced with a new month. */
+/** Returns this chair’s barber link. The token never expires; a new one is made only on first share or Reset. */
 export function ensureChairLink(id: string): string {
   const cur = readChairs();
   const chair = cur.find((c) => c.id === id);
   if (!chair) return "";
-  if (chair.linkToken && !chairLinkExpired(chair)) {
-    if (!chair.linkExpiresAt) {
-      writeChairs(cur.map((c) => c.id === id ? { ...c, linkExpiresAt: monthFrom(Date.now()) } : c));
-    }
+  if (chair.linkToken) {
+    if (!chair.linkReviewAt) writeChairs(cur.map((c) => c.id === id ? { ...c, linkReviewAt: reviewFrom(Date.now()) } : c));
     return chairLinkPath(chair.linkToken);
   }
   const linkToken = newLinkToken();
-  const linkExpiresAt = monthFrom(Date.now());
-  writeChairs(cur.map((c) => c.id === id ? { ...c, linkToken, linkExpiresAt } : c));
+  writeChairs(cur.map((c) => c.id === id ? { ...c, linkToken, linkReviewAt: reviewFrom(Date.now()) } : c));
+  return chairLinkPath(linkToken);
+}
+
+/** Owner confirms the link should stay active: next review in 6 months. Nothing else changes. */
+export function confirmChairLink(id: string) {
+  const cur = readChairs();
+  if (!cur.some((c) => c.id === id)) return;
+  writeChairs(cur.map((c) => c.id === id ? { ...c, linkReviewAt: reviewFrom(Date.now()) } : c));
+}
+
+/** Owner replaces the link: the old one stops working at once, the barber needs the new one. */
+export function resetChairLink(id: string): string {
+  const cur = readChairs();
+  if (!cur.some((c) => c.id === id)) return "";
+  const linkToken = newLinkToken();
+  writeChairs(cur.map((c) => c.id === id ? { ...c, linkToken, linkReviewAt: reviewFrom(Date.now()) } : c));
   return chairLinkPath(linkToken);
 }
 
@@ -158,7 +164,7 @@ export function saveChair(chair: ShopChair): string {
   const taken = cur.find((c) => c.id !== chair.id && chairLocation(c) === locationId && chairBarberName(c).toLowerCase() === name.toLowerCase());
   if (taken) return `${name} is already on ${taken.label}.`;
   const linkToken = chair.linkToken || prev?.linkToken || newLinkToken();
-  const linkExpiresAt = linkToken === prev?.linkToken && prev?.linkExpiresAt ? prev.linkExpiresAt : monthFrom(Date.now());
+  const linkReviewAt = linkToken === prev?.linkToken && prev?.linkReviewAt ? prev.linkReviewAt : reviewFrom(Date.now());
   const saved: ShopChair = {
     ...chair,
     barberName: name,
@@ -169,13 +175,13 @@ export function saveChair(chair: ShopChair): string {
     phone: chair.phone?.trim() || undefined,
     email: chair.email?.trim() || undefined,
     linkToken,
-    linkExpiresAt,
+    linkReviewAt,
     locationId,
   };
   const exists = Boolean(prev);
   const next = exists
     ? cur.map((c) => c.id === chair.id
-      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, phone: saved.phone, email: saved.email, active: saved.active, linkToken: saved.linkToken, linkExpiresAt: saved.linkExpiresAt, locationId: saved.locationId }
+      ? { ...c, label: saved.label, number: saved.number, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, phone: saved.phone, email: saved.email, active: saved.active, linkToken: saved.linkToken, linkReviewAt: saved.linkReviewAt, locationId: saved.locationId }
       : c)
     : [...cur, saved];
   try {

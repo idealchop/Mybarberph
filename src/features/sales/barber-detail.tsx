@@ -2,13 +2,13 @@
 import { cn } from "@river-apps/ui";
 import { Star } from "lucide-react";
 import { useMemo, useState } from "react";
-import { saveChair, chairBarberName } from "@/lib/shop-chairs";
+import { saveChair, chairBarberName, resetChairLink } from "@/lib/shop-chairs";
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import type { SalesRange } from "@/lib/sales-report";
 import { barberKey, dailySeries, inRange } from "@/lib/sales-stats";
 import type { ShopChair } from "@/lib/shop-chairs";
-import { BarberPortrait } from "@/features/settings";
+import { BarberPortrait, LinkReviewList, ShareBarberLink } from "@/features/settings";
 import { SalesChartCard } from "./sales-chart";
 import { ClaimHistory } from "./sales-parts";
 import { PerformanceDashboard } from "./performance-dashboard";
@@ -21,6 +21,8 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
   const mine = useMemo(() => all.filter((r) => barberKey(r, chairs) === id), [all, chairs, id]);
   const chair = chairs.find((c) => (c.barberId || c.id) === id);
   const [ask, setAsk] = useState(false);
+  const [askReset, setAskReset] = useState(false);
+  const [wasReset, setWasReset] = useState(false);
   const [err, setErr] = useState("");
   const off = chair?.active === false;
   const setActive = (on: boolean) => { if (!chair) return; const e = saveChair({ ...chair, active: on }); setErr(e || ""); setAsk(false); };
@@ -63,7 +65,35 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
           </button>
         </section>
       ) : null}
+      {chair && !off ? (
+        <section className="mt-2 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
+          <span className="min-w-0">
+            <b className="block text-[15px]">Barber link</b>
+            <small className="block text-[12.5px] font-semibold text-muted">{wasReset ? "New link ready. Send it to the barber." : "Never expires. Reset it if it was shared by mistake."}</small>
+          </span>
+          {wasReset ? <ShareBarberLink compact id={chair.id} name={chairBarberName(chair)} /> : (
+            <button type="button" data-auth="action" onClick={() => setAskReset(true)} className="inline-flex h-7 flex-none items-center rounded-pill px-3 text-[12px] font-bold ring-1 ring-ink">Reset link</button>
+          )}
+        </section>
+      ) : null}
+      {chair ? <LinkReviewList chairIds={[chair.id]} className="mt-2" /> : null}
       {err ? <p className="mt-2 text-[13px] font-semibold">{err}</p> : null}
+      {askReset && chair ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setAskReset(false)}>
+          <div role="dialog" aria-label="Reset barber link" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
+            <b className="block text-[18px]">Reset {chairBarberName(chair)}’s link?</b>
+            <ul className="mt-2 list-disc pl-5 text-[13.5px] font-semibold text-muted">
+              <li>The current link stops working right away.</li>
+              <li>Send the new link to {chairBarberName(chair)}.</li>
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAskReset(false)} className="h-11 rounded-pill text-[14px] font-bold ring-1 ring-ink">Cancel</button>
+              <button type="button" data-auth="action" onClick={() => { const p = resetChairLink(chair.id); setErr(p ? "" : "Couldn’t reset the link."); setWasReset(Boolean(p)); setAskReset(false); }} className="h-11 rounded-pill bg-ink text-[14px] font-bold text-on-ink">Reset link</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {ask && chair ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setAsk(false)}>
           <div role="dialog" aria-label="Deactivate barber" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>

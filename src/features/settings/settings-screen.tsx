@@ -16,6 +16,7 @@ import { ALL_LOCATIONS, useShopLocations } from "@/lib/shop-locations";
 import { locationCountLabel, useShopProfile } from "@/lib/shop-profile";
 import { signOut, useSession } from "@/lib/session";
 import { useTier } from "@/lib/tier";
+import { LinkReviewList } from "./link-review";
 
 const PAID_PER_MO = "₱499/mo";
 
@@ -94,6 +95,8 @@ export function SettingsScreen() {
           ) : null}
         </div>
       </section>
+
+      {user ? <LinkReviewList heading className="mt-4" /> : null}
 
 
       <LocationCard shops={shops} />

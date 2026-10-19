@@ -2,7 +2,9 @@
 export { BillingScreen } from "./billing-screen";
 export { EditShopScreen } from "./edit-shop-screen";
 export { ManageShopScreen } from "./manage-shop-screen";
+export { LinkReviewList } from "./link-review";
 export { BarberPortrait, SeatList } from "./seat-list";
+export { ShareBarberLink } from "./services-screen";
 export { ServicesScreen } from "./services-screen";
 export { SettingsScreen } from "./settings-screen";
 export { ShopsScreen } from "./shops-screen";
