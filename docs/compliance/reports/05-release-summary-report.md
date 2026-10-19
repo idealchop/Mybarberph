@@ -23,7 +23,7 @@
 ## Deploy
 | Env | API | FE | Result |
 | :--- | :--- | :--- | :--- |
-| Dev | barbers-ph-dev | same app | DEPLOYED 2026-10-19 22:04 PHT, commit 2b7e328 (`dev` = `main`); rules released 22:05 PHT (both databases + Storage, approved) |
+| Dev | barbers-ph-dev | same app | DEPLOYED 2026-10-20 00:20 PHT, commit 46fd4cb (earlier 2026-10-19 22:04, 2b7e328) (`dev` = `main`); rules released 22:05 PHT (both databases + Storage, approved) |
 | Prod | n/a | n/a | n/a |
 - Prod OK received: n/a
 - Deploy order API→FE: n/a (one deployable)
@@ -31,7 +31,7 @@
 ## Smoke
 | Env | HP smoke | Notes |
 | :--- | :--- | :--- |
-| Dev | PARTIAL | e2e 24/24 PASS; `/home` 200; link 404 text live; signed-in HP/Mutation smoke needs Jimboy |
+| Dev | PARTIAL | e2e 28/28 PASS; `/home` 200; link 404 text live; signed-in HP/Mutation smoke needs Jimboy |
 | Prod | n/a | |
 
 ## Rollback readiness

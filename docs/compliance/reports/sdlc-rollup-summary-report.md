@@ -19,9 +19,9 @@
 | 06 Operate | [06](./06-operate-summary-report.md) | operate | PASS |
 
 ## Outcomes
-- Shipped to: `main` and `dev` at 2b7e328; DEV deployed 2026-10-19 22:04 PHT; rules released 22:05 PHT
+- Shipped to: `main` = `dev`; DEV deployed 2026-10-20 00:20 PHT (46fd4cb); rules released 22:05 PHT
 - URLs: DEV https://barbers-ph-dev--mybarberph.asia-southeast1.hosted.app (old build)
-- Case execution: 94/94 local PASS; DEV e2e 24 PASS / 0 BLOCKED; 7 manual BLOCKED (signed-in session)
+- Case execution: 94/94 local PASS; DEV e2e 28 PASS / 0 BLOCKED; 8 manual BLOCKED (signed-in session)
 - Open follow-ups: [../river-ai-rules-1.0.1.md#open-items-for-jimboy](../river-ai-rules-1.0.1.md#open-items-for-jimboy)
 
 ## Lessons

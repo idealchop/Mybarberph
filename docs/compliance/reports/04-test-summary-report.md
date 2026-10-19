@@ -33,10 +33,10 @@
 | BDD / API | `npm test` (tests/api) | PASS |
 | Manual | test-plan "Manual checks" | BLOCKED (needs a signed-in owner session and a real barber link on DEV) |
 | Architecture contract | tests/unit/architecture-contract.test.ts | PASS |
-| Non-functional | `npm run test:e2e` on DEV (build 2b7e328, 22:05 PHT) | 24 PASS / 0 BLOCKED |
+| Non-functional | `npm run test:e2e` on DEV (build 46fd4cb, 2026-10-20 00:20 PHT) | 28 PASS / 0 BLOCKED |
 
 ## Test gate
-- [ ] PASS: automated 94/94 local + 24/24 DEV e2e PASS; 7 manual cases wait for a signed-in session (Jimboy)
+- [ ] PASS: automated 94/94 local + 28/28 DEV e2e PASS; 8 manual cases wait for a signed-in session (Jimboy)
 
 ## Gate
 - Test phase: BLOCKED

@@ -28,16 +28,14 @@ API contract tests call the real route handlers with the Firebase Admin SDK mock
 
 ## Execution log — River AI Rules 1.0.1 pass — 2026-10-19
 
-Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + API + architecture: **94 / 94 PASS** (Vitest 3.2.7, Node 22). E2E on DEV: **24 PASS, 0 BLOCKED** (5 cases × 2 viewports). All earlier BLOCKED e2e cases now pass on the deployed build (DEV deploy 22:04 PHT; hardened Firestore/Storage rules released 22:05 PHT).
+Run on the box, 2026-10-20 00:20 Asia/Manila (PHT), DEV build 46fd4cb. Unit + API + architecture: **94 / 94 PASS** (Vitest 3.2.7, Node 22). E2E on DEV: **28 PASS, 0 BLOCKED** (5 cases × 2 viewports). All earlier BLOCKED e2e cases now pass on the deployed build (DEV deploys 2026-10-19 22:04 and 2026-10-20 00:20 PHT; hardened Firestore/Storage rules released 2026-10-19 22:05 PHT).
 
 | Case ID | Case | Layer | Applied as | Env | Result |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| TC-BARBER-NEG-05 | a barber can't save a Haircut (₱250) as ₱240: the server saves the menu price | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
-| TC-BARBER-HP-04 | several services: the amount is the menu total, whatever the client sent | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
-| TC-BARBER-ODD-02 | a home visit keeps its fee on top of the menu price; a visit paid online keeps its paid amount | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
-| TC-TIP-HP-01 | a tip is saved as whole pesos in its own field and never changes the amount | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
-| TC-TIP-NEG-01 | a negative, zero or non-number tip is dropped | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
-| TC-BARBER-HP-05 | the owner can still set a custom amount (owner path, no barber) | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount-tip.test.ts` | local | PASS |
+| TC-BARBER-NEG-05 | a barber can't save a Haircut (₱250) as ₱240: the server saves the menu price | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount.test.ts` | local | PASS |
+| TC-BARBER-HP-04 | several services: the amount is the menu total, whatever the client sent | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount.test.ts` | local | PASS |
+| TC-BARBER-ODD-02 | a home visit keeps its fee on top of the menu price; a visit paid online keeps its paid amount | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount.test.ts` | local | PASS |
+| TC-BARBER-HP-05 | the owner can still set a custom amount (owner path, no barber) | API contract (route handler, mocked Admin SDK) | `tests/api/barber-amount.test.ts` | local | PASS |
 | TC-BARBER-HP-02 | GET returns only this barber's visits plus open ones waiting at their location | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
 | TC-BARBER-NEG-03 | PUT on another barber's visit is 404 and nothing is written | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
 | TC-BARBER-NEG-04 | PUT on a visit at another location, or an unassigned finished one, is 404 | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
@@ -45,7 +43,7 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-BARBER-ODD-01 | rule: barberId wins over a matching chair label | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
 | TC-LINK-HP-02 | a link with an old expiresAt (monthly expiry) still resolves | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
 | TC-LINK-NEG-01 | a reset, removed or deactivated link (doc deleted) is 404 with the new text | API contract (route handler, mocked Admin SDK) | `tests/api/barber-link-scope.test.ts` | local | PASS |
-| TC-PAY-HP-04 | cash, GCash, online and no-method (Other) are split; remit = cash + Other | API contract (route handler, mocked Admin SDK) | `tests/api/barber-sales.test.ts` | local | PASS |
+| TC-PAY-HP-04 | cash, GCash and online are split; a paid visit with no method counts as cash (remit too) | API contract (route handler, mocked Admin SDK) | `tests/api/barber-sales.test.ts` | local | PASS |
 | TC-CRON-NEG-01 | a wrong or missing secret is 401 and runs nothing | API contract (route handler, mocked Admin SDK) | `tests/api/cron.test.ts` | local | PASS |
 | TC-CRON-HP-01 | the right secret (Bearer or x-companion-cron) runs the tips | API contract (route handler, mocked Admin SDK) | `tests/api/cron.test.ts` | local | PASS |
 | TC-STATE-HP-02 | a saved key is returned by GET /api/shop for the same owner only | API contract (route handler, mocked Admin SDK) | `tests/api/owner-routes.test.ts` | local | PASS |
@@ -79,10 +77,17 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-SALES-NEG-02 | regression: the link's /sales 'mine' row is its own location, not the bigger branch | API contract (route handler, mocked Admin SDK) | `tests/api/sales-consistency.test.ts` | local | PASS |
 | TC-SALES-ODD-01 | all locations: owner total = sum of per-location barber rows = sum of both links | API contract (route handler, mocked Admin SDK) | `tests/api/sales-consistency.test.ts` | local | PASS |
 | TC-SALES-NEG-03 | regression: a turned-off chair hides only an empty row at that location; sales never drop out of the ranking | API contract (route handler, mocked Admin SDK) | `tests/api/sales-consistency.test.ts` | local | PASS |
+| TC-ACCT-HP-01 | a password account gets the form; Google-only and phone-only accounts don't | Unit | `tests/unit/account-password.test.ts` | local | PASS |
+| TC-ACCT-NEG-01 | new password checks before Firebase: length, confirm match, not the same as current | Unit | `tests/unit/account-password.test.ts` | local | PASS |
+| TC-ACCT-NEG-02 | clear messages for wrong password, weak password and requires-recent-login | Unit | `tests/unit/account-password.test.ts` | local | PASS |
 | TC-ARCH-NEG-01 | no source file imports the Firestore or Storage client SDK | Architecture contract (source scan) | `tests/unit/architecture-contract.test.ts` | local | PASS |
 | TC-ARCH-NEG-02 | the Admin SDK is imported only by server code | Architecture contract (source scan) | `tests/unit/architecture-contract.test.ts` | local | PASS |
 | TC-ARCH-HP-01 | every server module is marked server-only | Architecture contract (source scan) | `tests/unit/architecture-contract.test.ts` | local | PASS |
 | TC-ARCH-NEG-03 | client code never imports server modules | Architecture contract (source scan) | `tests/unit/architecture-contract.test.ts` | local | PASS |
+| TC-AUTH-HP-03 | dashboard pages auto-open for a signed-out visitor | Unit | `tests/unit/auto-login.test.ts` | local | PASS |
+| TC-AUTH-NEG-04 | never on guest pages: booking/schedule, ticket, barber link, Moments, privacy, terms, map credits | Unit | `tests/unit/auto-login.test.ts` | local | PASS |
+| TC-AUTH-ODD-01 | once per visit: the second chance in the same page load is refused | Unit | `tests/unit/auto-login.test.ts` | local | PASS |
+| TC-BARBER-HP-06 | menu total from the visit's services, plus a home fee; paid online keeps its amount | Unit | `tests/unit/barber-amount.test.ts` | local | PASS |
 | TC-BOOK-HP-01 | accepts a Philippine mobile in common formats | Unit | `tests/unit/contact-and-legal.test.ts` | local | PASS |
 | TC-BOOK-HP-02 | accepts and lower-cases an email | Unit | `tests/unit/contact-and-legal.test.ts` | local | PASS |
 | TC-BOOK-NEG-02 | rejects empty, malformed and non-mobile values | Unit | `tests/unit/contact-and-legal.test.ts` | local | PASS |
@@ -107,10 +112,10 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-LINK-ODD-01 | due only once the review date has passed | Unit | `tests/unit/link-review.test.ts` | local | PASS |
 | TC-LINK-NEG-02 | no prompt for a deactivated barber or a chair with no link yet | Unit | `tests/unit/link-review.test.ts` | local | PASS |
 | TC-PAY-HP-01 | splits paid visits into Cash and GCash from the stored method | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
-| TC-PAY-ODD-01 | a paid visit with no stored method is Other, never guessed as cash | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
+| TC-PAY-ODD-01 | a paid visit with no stored method counts and shows as Cash, as on the server (Jimboy, 2026-10-20) | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
 | TC-PAY-NEG-01 | unpaid visits are not collected and have no method label | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
 | TC-PAY-HP-02 | the sales report's collected total equals the sum of its split | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
-| TC-PAY-ODD-02 | per barber: split by method, remit = cash + no-method (server rule), online excluded | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
+| TC-PAY-ODD-02 | per barber: split by method; no-method is cash; remit = cash, online excluded | Unit | `tests/unit/pay-split.test.ts` | local | PASS |
 | TC-PLAN-HP-01 | known plans map to their tier and limits | Unit | `tests/unit/plans.test.ts` | local | PASS |
 | TC-PLAN-ODD-01 | legacy plan ids still resolve | Unit | `tests/unit/plans.test.ts` | local | PASS |
 | TC-PLAN-NEG-01 | unknown, empty or null plans fall back to Partner | Unit | `tests/unit/plans.test.ts` | local | PASS |
@@ -121,11 +126,6 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-SCAN-HP-02 | reads a bare code inside other text | Unit | `tests/unit/ticket-code.test.ts` | local | PASS |
 | TC-SCAN-ODD-01 | accepts older two-letter refs | Unit | `tests/unit/ticket-code.test.ts` | local | PASS |
 | TC-SCAN-NEG-01 | returns the trimmed, upper-cased input when nothing matches | Unit | `tests/unit/ticket-code.test.ts` | local | PASS |
-| TC-BARBER-HP-06 | menu total from the visit's services, plus a home fee; paid online keeps its amount | Unit | `tests/unit/tips-and-amount.test.ts` | local | PASS |
-| TC-TIP-ODD-01 | tip text becomes whole pesos (≥0) | Unit | `tests/unit/tips-and-amount.test.ts` | local | PASS |
-| TC-TIP-HP-02 | a tip counts under its payment's method; unpaid tips don't count yet | Unit | `tests/unit/tips-and-amount.test.ts` | local | PASS |
-| TC-TIP-HP-03 | barber ranking: sales and remit are service amounts; tips shown apart | Unit | `tests/unit/tips-and-amount.test.ts` | local | PASS |
-| TC-TIP-HP-04 | Sales Overview: Collected includes tips (incl. line), Sales doesn't | Unit | `tests/unit/tips-and-amount.test.ts` | local | PASS |
 | TC-HOME-HP-01 | Given a guest, when they open /, then Home renders with a sign-in entry and no errors | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-SEO-NF-03 | Given the app shell, then it is not indexable | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-HOME-HP-01 | Given a guest, when they open /, then Home renders with a sign-in entry and no errors | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
@@ -142,6 +142,10 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-BARBER-NF-03 | Given an invalid barber link, then the barber sees that the link was replaced or turned off | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-BOOK-NF-03 | Given an unknown shop code, when a customer opens /book, then they see Shop not found | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-BARBER-NF-03 | Given an invalid barber link, then the barber sees that the link was replaced or turned off | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
+| TC-AUTH-HP-04 | Given a signed-out visitor on Home, then the sign-in sheet opens by itself and can be dismissed | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
+| TC-AUTH-NEG-05 | Given a guest on Moments, then the sign-in sheet does not open by itself | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
+| TC-AUTH-HP-04 | Given a signed-out visitor on Home, then the sign-in sheet opens by itself and can be dismissed | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
+| TC-AUTH-NEG-05 | Given a guest on Moments, then the sign-in sheet does not open by itself | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/guest-and-public.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-SEC-HP-01 | Every page response carries the security headers | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/platform.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-AUTH-NEG-03 | Owner API without a token is 401 with a machine-readable code | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/platform.spec.ts` | DEV | PASS (320 + 1280) |
 | TC-BOOK-NEG-03 | An unknown public booking is 404 with code not_found | E2E (Playwright, Chrome, 320px + 1280px) | `tests/e2e/platform.spec.ts` | DEV | PASS (320 + 1280) |
@@ -158,6 +162,7 @@ Run on the box, 2026-10-19 22:05 Asia/Manila (PHT), DEV build 2b7e328. Unit + AP
 | TC-LINK-HP-03 | Barber detail and Manage Shop show "Keep {name}'s link active?" when due; Settings shows "Barber links to review · N"; Confirm clears it | Manual (visual) | This doc, section "Manual checks" | DEV | BLOCKED — needs a signed-in owner session on DEV (Jimboy's account or a DEV test phone); the agent has no owner sign-in. Logic covered by automated cases TC-LINK-HP-01/02, ODD-01, NEG-01/02 |
 | TC-BARBER-HP-07 | On a barber link: only that barber's visits (plus Waiting) show; Amount is read-only "Menu price" in Edit order and Complete; "Update information" sits under "Confirm & complete" as text | Manual (visual) | This doc, section "Manual checks" | DEV | BLOCKED — needs a real DEV barber link (tokens live in the owner's data; the agent can't read barbersdb-dev: gcloud login expired). Server rules covered by TC-BARBER-HP-02..06, NEG-03..05 |
 | TC-SALES-HP-02 | Same shop, location and day: owner Sales Overview, Collection ranking, Performance and the barber link's My sales show the same totals | Manual (data cross-check) | This doc, section "Manual checks" | DEV | BLOCKED — raw visits in barbersdb-dev can't be read (gcloud login expired; CLI tokens not reused). Code-level cross-check and regression: TC-SALES-HP-01, NEG-01/02/03, ODD-01 |
+| TC-ACCT-HP-02 | Settings › Account: a Google account sees "You sign in with Google", a phone account "You sign in with a text code", no password form | Manual (visual) | This doc, section "Manual checks" | DEV | BLOCKED — needs a signed-in owner session (Jimboy). Logic: TC-ACCT-HP-01, NEG-01/02 |
 
 Open FAIL: **none**. Skipped automated tests: `TC-SEO-HP-02` skips itself on non-DEV hosts (`test.skip` with reason "DEV-only expectation"); on DEV it runs.
 
@@ -170,5 +175,6 @@ Open FAIL: **none**. Skipped automated tests: `TC-SEO-HP-02` skips itself on non
 5. **Link review** — set a chair's review date in the past (or wait 6 months): barber detail shows "Keep {name}'s link active?", Settings shows "Barber links to review · 1". Confirm: both go away; the link keeps working either way. Turn the barber off: their link shows "This link was replaced or turned off."
 6. **Barber link** — open Keith's link: only Keith's visits and the shared Waiting list. Complete a cut: amount = menu price (read-only), "Update information" as a text link under the button. The owner can still change the amount.
 7. **Sales cross-check** — for one location and day, compare Sales Overview, Collection, Performance and the barber's My sales; they must agree (a barber with chairs in two branches sees each branch on its own link).
+8. **Account** — Settings › Account shows the sign-in method; no password form for Google/phone accounts.
 
 Record date, env and result here when run.
