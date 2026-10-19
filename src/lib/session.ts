@@ -3,7 +3,7 @@
  * Who is signed in (Firebase Auth). Guests browse freely; actions ask them to sign in.
  */
 import {
-  GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, onAuthStateChanged,
+  EmailAuthProvider, GoogleAuthProvider, RecaptchaVerifier, reauthenticateWithCredential, updatePassword, getRedirectResult, onAuthStateChanged,
   signInWithPhoneNumber, signInWithPopup, signInWithRedirect, signOut as fbSignOut, type ConfirmationResult, type User,
 } from "firebase/auth";
 import { useSyncExternalStore } from "react";
@@ -15,6 +15,8 @@ export interface SessionUser {
   phone?: string;
   email?: string;
   photoUrl?: string;
+  /** Firebase sign-in providers on the account: "google.com", "phone", "password". */
+  providers: string[];
 }
 
 /** `signingIn`: a Google redirect sign-in is being finished (page just came back from Google). */
@@ -33,6 +35,7 @@ function toUser(u: User): SessionUser {
     phone: u.phoneNumber ?? undefined,
     email: u.email ?? undefined,
     photoUrl: u.photoURL ?? undefined,
+    providers: u.providerData.map((p) => p.providerId),
   };
 }
 
@@ -109,6 +112,32 @@ export async function confirmPhoneCode(code: string) {
   confirmation = null;
 }
 
+/** How an account signs in, for Settings › Account. A password form is only offered when the account has one. */
+export function signInKind(providers: string[]): "password" | "google" | "phone" | "unknown" {
+  if (providers.includes("password")) return "password";
+  if (providers.includes("google.com")) return "google";
+  if (providers.includes("phone")) return "phone";
+  return "unknown";
+}
+
+export const MIN_PASSWORD = 8;
+
+/** Checks the new password before calling Firebase; returns an error message or null. */
+export function newPasswordError(next: string, confirm: string, current: string): string | null {
+  if (next.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
+  if (next !== confirm) return "The new passwords don’t match.";
+  if (next === current) return "Choose a password you haven’t used here.";
+  return null;
+}
+
+/** Re-authenticates with the current password, then sets the new one (Firebase Auth). */
+export async function changePassword(current: string, next: string) {
+  const u = firebaseAuth().currentUser;
+  if (!u?.email) throw Object.assign(new Error("This account has no email password."), { code: "auth/no-password" });
+  await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, current));
+  await updatePassword(u, next);
+}
+
 export async function signOut() {
   if (isFirebaseConfigured()) await fbSignOut(firebaseAuth());
 }
@@ -124,6 +153,10 @@ export function authErrorMessage(err: unknown): string {
   if (code.includes("operation-not-allowed")) return "This sign-in method isn’t turned on yet. Try another one.";
   if (code.includes("billing-not-enabled") || code.includes("quota")) return "Text codes aren’t available right now. Use Google instead.";
   if (code.includes("captcha")) return "Couldn’t confirm you’re not a robot. Reload and try again.";
+  if (code.includes("wrong-password") || code.includes("invalid-credential") || code.includes("invalid-login-credentials")) return "That’s not your current password.";
+  if (code.includes("weak-password")) return `That password is too weak. Use at least ${MIN_PASSWORD} characters with letters and numbers.`;
+  if (code.includes("requires-recent-login")) return "For your security, log out and sign in again, then change your password.";
+  if (code.includes("user-mismatch") || code.includes("user-not-found")) return "That password is for a different account.";
   if (code.includes("unauthorized-domain")) return "Sign-in isn’t allowed on this web address yet.";
   return (err as Error)?.message || "Something went wrong. Try again.";
 }

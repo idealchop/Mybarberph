@@ -8,3 +8,4 @@ export { ShareBarberLink } from "./services-screen";
 export { ServicesScreen } from "./services-screen";
 export { SettingsScreen } from "./settings-screen";
 export { ShopsScreen } from "./shops-screen";
+export { AccountScreen } from "./account-screen";

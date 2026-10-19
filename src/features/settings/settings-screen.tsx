@@ -2,7 +2,7 @@
 
 import { FormSkeleton } from "@/components/common/skeleton";
 import { useCloud } from "@/lib/cloud";
-import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil } from "lucide-react";
+import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -135,6 +135,17 @@ export function SettingsScreen() {
               <Button size="sm" fullWidth href="/qr">Get QR code</Button>
             </div>
           </Card>
+        ) : null}
+
+        {user ? (
+          <Link href="/settings/account" className="flex min-h-14 items-center gap-3 rounded-card bg-surface px-4 py-3 text-left shadow-card">
+            <span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><KeyRound size={18} strokeWidth={1.75} /></span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-[15px]">Account</b>
+              <small className="text-[13px] font-medium text-muted">Sign-in and password</small>
+            </span>
+            <ChevronRight size={20} strokeWidth={1.75} className="text-subtle" />
+          </Link>
         ) : null}
 
         {user ? <button
