@@ -56,3 +56,24 @@ test.describe("Public customer and barber links", () => {
     await expectNoHorizontalOverflow(page);
   });
 });
+
+test.describe("Sign-in sheet opens once per visit", () => {
+  test("TC-AUTH-HP-04 Given a signed-out visitor on Home, then the sign-in sheet opens by itself and can be dismissed", async ({ page }) => {
+    await open(page, "/home", "Sign in");
+    const sheet = page.getByRole("dialog", { name: "Sign up or log in" });
+    await expect(sheet).toBeVisible({ timeout: 15_000 });
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+    // Guest browsing still works after dismissing; the sheet doesn't come back in this visit.
+    await page.getByRole("link", { name: /Queue/ }).first().click();
+    await expect(page).toHaveURL(/\/queue/);
+    await page.waitForTimeout(1500);
+    await expect(page.getByRole("dialog", { name: "Sign up or log in" })).toHaveCount(0);
+  });
+
+  test("TC-AUTH-NEG-05 Given a guest on Moments, then the sign-in sheet does not open by itself", async ({ page }) => {
+    await page.goto("/moments", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(4000);
+    await expect(page.getByRole("dialog", { name: "Sign up or log in" })).toHaveCount(0);
+  });
+});

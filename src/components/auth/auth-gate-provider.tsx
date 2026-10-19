@@ -8,6 +8,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { startCloud } from "@/lib/cloud";
+import { usePathname } from "next/navigation";
+import { autoOpensLogin, takeAutoLoginTurn } from "@/lib/auto-login";
 import { finishRedirectSignIn, useSession } from "@/lib/session";
 import { AuthGateSheet } from "./auth-gate-sheet";
 
@@ -22,7 +24,8 @@ export function useAuthGate(): Ctx {
 const SELECTOR = '[data-auth="action"]';
 
 export function AuthGateProvider({ children }: { children: ReactNode }) {
-  const { user, signingIn } = useSession();
+  const { ready, user, signingIn } = useSession();
+  const pathname = usePathname() || "/";
   const authed = Boolean(user);
   const authedRef = useRef(authed);
   useEffect(() => { authedRef.current = authed; }, [authed]);
@@ -31,6 +34,15 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const replaying = useRef(false);
 
   useEffect(() => { startCloud(); void finishRedirectSignIn(); }, []);
+
+  // A signed-out visitor on a dashboard page sees the sign-in sheet once per visit. It stays dismissable
+  // (guests keep browsing; actions still ask). Never on guest pages or while a Google redirect is finishing.
+  useEffect(() => {
+    if (!ready || user || signingIn || !autoOpensLogin(pathname)) return;
+    if (!takeAutoLoginTurn()) return;
+    const t = window.setTimeout(() => setOpen(true), 0);
+    return () => window.clearTimeout(t);
+  }, [ready, user, signingIn, pathname]);
 
   const requireAuth = useCallback((after?: () => void) => {
     if (authedRef.current) { after?.(); return; }
