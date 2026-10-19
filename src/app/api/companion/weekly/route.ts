@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 /** Owner can re-run this week's tips (force) for their own shop. Used on Home and for QA. */
 export async function POST(req: Request) {
-  if (!companionEnabled()) return json({ error: "Not found" }, 404);
+  if (!companionEnabled()) return json({ error: "Not found", code: "not_found" }, 404);
   const me = await getCaller(req);
   if (!me) return unauthorized();
   const body = await req.json().catch(() => ({}));
@@ -17,6 +17,6 @@ export async function POST(req: Request) {
     return json(r);
   } catch (e) {
     console.error("[companion/weekly]", e);
-    return json({ error: "Couldn't generate tips right now." }, 502);
+    return json({ error: "Couldn't generate tips right now.", code: "upstream_error" }, 502);
   }
 }

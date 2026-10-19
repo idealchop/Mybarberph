@@ -19,3 +19,4 @@ public/maplibre/
 /test-results/
 /playwright-report/
 /coverage/
+firebase-debug.log

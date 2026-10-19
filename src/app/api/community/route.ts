@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { auditLog } from "@/lib/server/audit";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { badRequest, getCaller, json, notFound, unauthorized } from "@/lib/server/auth";
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     if (!text && !images.length) return badRequest("Write something or add a photo.");
     const pid = id();
     await posts().doc(pid).set({ shopId: me.uid, author, body: text, images, createdAt: Date.now(), likedBy: [], repostedBy: [], replies: [] });
+    auditLog({ action: "community.post_created", shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "post", id: pid } });
     return json({ id: pid }, 201);
   }
   if (!b.id) return badRequest("id is required");
@@ -52,16 +54,22 @@ export async function POST(req: Request) {
     const field = b.op === "like" ? "likedBy" : "repostedBy";
     const on = (p[field] ?? []).includes(me.uid);
     await ref.update({ [field]: on ? FieldValue.arrayRemove(me.uid) : FieldValue.arrayUnion(me.uid) });
+    auditLog({ action: `community.${b.op}${on ? "_removed" : ""}`, shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "post", id: b.id } });
     return json({ ok: true, on: !on });
   }
   if (b.op === "reply") {
     if (!text) return badRequest("Write a reply.");
     await ref.update({ replies: FieldValue.arrayUnion({ id: id(), author, body: text, createdAt: Date.now() }) });
+    auditLog({ action: "community.reply_added", shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "post", id: b.id } });
     return json({ ok: true });
   }
   if (b.op === "delete") {
-    if (p.shopId !== me.uid) return json({ error: "Not your post" }, 403);
+    if (p.shopId !== me.uid) {
+      auditLog({ action: "community.post_deleted", shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "post", id: b.id }, outcome: "denied" });
+      return json({ error: "Not your post", code: "forbidden" }, 403);
+    }
     await ref.delete();
+    auditLog({ action: "community.post_deleted", shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "post", id: b.id } });
     return json({ ok: true });
   }
   return badRequest("Unknown op");

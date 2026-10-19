@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { adminStorage, storageBucketName } from "@/lib/firebase/admin";
 import { badRequest, getCaller, json, unauthorized } from "@/lib/server/auth";
+import { auditLog } from "@/lib/server/audit";
 
 const MAX = 5 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -22,5 +23,6 @@ export async function POST(req: Request) {
     metadata: { cacheControl: "public, max-age=31536000", metadata: { firebaseStorageDownloadTokens: token } },
   });
   const url = `https://firebasestorage.googleapis.com/v0/b/${storageBucketName()}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+  auditLog({ action: "photo.uploaded", shopId: me.uid, actor: { role: "owner", id: me.uid }, resource: { type: "storage_object", id: path } });
   return json({ url, path });
 }

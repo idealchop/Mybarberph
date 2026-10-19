@@ -19,7 +19,7 @@ function authorized(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!companionEnabled()) return json({ error: "Not found" }, 404);
+  if (!companionEnabled()) return json({ error: "Not found", code: "not_found" }, 404);
   if (!authorized(req)) return unauthorized();
   const body = await req.json().catch(() => ({}));
   const force = Boolean(body.force);

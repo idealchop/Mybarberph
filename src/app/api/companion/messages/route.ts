@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** The shop's single Companion thread: newest page, or older with ?before=<createdAt ms>. */
 export async function GET(req: Request) {
-  if (!companionEnabled()) return json({ error: "Not found" }, 404);
+  if (!companionEnabled()) return json({ error: "Not found", code: "not_found" }, 404);
   const me = await getCaller(req);
   if (!me) return unauthorized();
   const sp = new URL(req.url).searchParams;

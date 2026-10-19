@@ -25,6 +25,8 @@ export async function POST(req: Request) {
     });
     return json({ checkoutUrl });
   } catch (e) {
-    return json({ error: (e as Error).message }, 502);
+    // Upstream detail stays in server logs (no keys or payloads); the client gets a safe message.
+    console.error(JSON.stringify({ level: "error", route: "billing/checkout", code: "upstream_error", shopId: me.uid, message: (e as Error).message }));
+    return json({ error: "Couldn't start the payment right now. Try again in a moment.", code: "upstream_error" }, 502);
   }
 }

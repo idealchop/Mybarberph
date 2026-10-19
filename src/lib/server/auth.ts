@@ -24,7 +24,7 @@ export function json(data: unknown, status = 200) {
  * Error model: `{ error, code }`. `error` is a safe, human-readable message; `code` is the stable
  * machine-readable value clients branch on. See docs/api-reference.md#errors.
  */
-export type ErrorCode = "unauthenticated" | "forbidden" | "bad_request" | "not_found" | "conflict" | "rate_limited" | "not_configured" | "upstream_error" | "internal";
+export type ErrorCode = "unauthenticated" | "forbidden" | "bad_request" | "not_found" | "conflict" | "rate_limited" | "plan_limit" | "not_configured" | "upstream_error" | "internal";
 export const apiError = (code: ErrorCode, error: string, status: number) => json({ error, code }, status);
 
 export const unauthorized = () => apiError("unauthenticated", "Sign in to continue.", 401);

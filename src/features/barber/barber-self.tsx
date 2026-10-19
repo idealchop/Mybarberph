@@ -25,8 +25,11 @@ export function BarberPerformanceView({ token, who, place, onBack }: { token: st
       .then((d: BarberPerformance) => { if (live) { setData(d); setErr(""); } })
       .catch((e: Error) => { if (live) setErr(e.message); });
     pull();
-    const t = window.setInterval(pull, 30_000);
-    return () => { live = false; window.clearInterval(t); };
+    // Refresh every 30s only while the tab is visible, and once when it comes back (river-ai-rules 03-build/performance).
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") pull(); }, 30_000);
+    const onVis = () => { if (document.visibilityState === "visible") pull(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { live = false; window.clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, [token, range, from, to]);
   const d = data;
   const maxHour = Math.max(1, ...(d?.hours.map((h) => h.cuts) ?? [1]));

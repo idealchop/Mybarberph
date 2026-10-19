@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  if (!companionEnabled()) return json({ error: "Not found" }, 404);
+  if (!companionEnabled()) return json({ error: "Not found", code: "not_found" }, 404);
   const me = await getCaller(req);
   if (!me) return unauthorized();
   const body = await req.json().catch(() => ({}));
@@ -24,6 +24,6 @@ export async function POST(req: Request) {
     return json({ limited: false, quota: r.quota, message: r.message, user: r.user });
   } catch (e) {
     console.error("[companion/chat]", e);
-    return json({ error: "Companion is busy right now. Try again in a moment." }, 502);
+    return json({ error: "Companion is busy right now. Try again in a moment.", code: "upstream_error" }, 502);
   }
 }
