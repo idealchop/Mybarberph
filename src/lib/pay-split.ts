@@ -11,7 +11,16 @@ export interface PaySplit { cash: number; gcash: number; online: number; other: 
 
 export const PAY_LABEL: Record<PayBucket, string> = { cash: "Cash", gcash: "GCash", online: "Online", other: "Other" };
 
-type Payable = { paid?: boolean; payMethod?: PayMethod | null; price?: number };
+type Payable = { paid?: boolean; payMethod?: PayMethod | null; price?: number; tip?: number };
+
+/** A paid visit's tip in centavos (tips are stored in whole pesos); 0 when unpaid or none. */
+export function tipCentavos(r: Payable): number {
+  const t = Math.floor(Number(r.tip) || 0);
+  return r.paid && t > 0 ? t * 100 : 0;
+}
+
+/** Tips (centavos) across paid visits. */
+export const tipsTotal = (rows: Payable[]) => rows.reduce((sum, r) => sum + tipCentavos(r), 0);
 
 /** Which bucket a paid visit's money belongs to. */
 export function payBucket(r: Payable): PayBucket {
@@ -25,14 +34,17 @@ export function payMethodLabel(r: Payable): string | null {
 
 export const emptySplit = (): PaySplit => ({ cash: 0, gcash: 0, online: 0, other: 0 });
 
-/** Adds one visit's price to the split when it is paid. */
-export function addToSplit(s: PaySplit, r: Payable) {
-  if (r.paid) s[payBucket(r)] += r.price || 0;
+/**
+ * Adds one paid visit's money to the split. Collected money includes the tip, under the same method as the
+ * payment; pass `withTips: false` for service-only figures (sales, remit).
+ */
+export function addToSplit(s: PaySplit, r: Payable, withTips = true) {
+  if (r.paid) s[payBucket(r)] += (r.price || 0) + (withTips ? tipCentavos(r) : 0);
   return s;
 }
 
-export function paySplit(rows: Payable[]): PaySplit {
-  return rows.reduce(addToSplit, emptySplit());
+export function paySplit(rows: Payable[], withTips = true): PaySplit {
+  return rows.reduce((s, r) => addToSplit(s, r, withTips), emptySplit());
 }
 
 /** Lines to show: Cash and GCash always; Online and Other only when there is money in them. */

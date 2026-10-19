@@ -8,6 +8,9 @@ import { markDone, type ChairRequest } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { TransactionSheet } from "./transaction-sheet";
 import { useShopMenu } from "@/lib/shop-services";
+import { useCloud } from "@/lib/cloud";
+import { lockedAmount, parseTip } from "@/lib/menu-amount";
+import { TipField } from "./tip-field";
 
 const EVT = "barbers-complete-cut";
 
@@ -43,28 +46,38 @@ export function CompleteFlowHost() {
 
 function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onClose: () => void; onDone: (r: ChairRequest) => void }) {
   const onlinePaid = Boolean(row.paid) && row.payWhere === "online";
+  // Barber link: the amount is the shop's menu price; only the owner can change it (the server enforces this too).
+  const barber = useCloud().mode === "barber";
   const { haircut, treatments } = useShopMenu(row.locationId || undefined);
+  const menu = [haircut, ...treatments];
   // Default amount: the booked amount, else the menu prices (this shop) of the services on the visit. Never empty.
   const names = (row.serviceName || "").split(" · ");
-  const menuTotal = Math.round(([haircut, ...treatments].filter((m) => names.includes(m.name)).reduce((s, m) => s + (m.price ?? 0), 0) || (haircut.price ?? 0)) * 100);
-  const base = row.price || menuTotal;
+  const menuTotal = Math.round((menu.filter((m) => names.includes(m.name)).reduce((s, m) => s + (m.price ?? 0), 0) || (haircut.price ?? 0)) * 100);
+  const base = barber ? lockedAmount(row, menu) : row.price || menuTotal;
   const [adjust, setAdjust] = useState(false);
   const [paid, setPaid] = useState(true);
   const [m, setM] = useState<"cash" | "gcash">("cash");
   const method = adjust ? m : "cash";
   const isPaid = adjust ? paid : true;
   const [amount, setAmount] = useState(String(base / 100));
+  const [tipOpen, setTipOpen] = useState(Boolean(row.tip));
+  const [tipText, setTipText] = useState(row.tip ? String(row.tip) : "");
+  const tip = parseTip(tipText);
   const [busy, setBusy] = useState(false);
   const typed = Math.round(Number(amount) * 100);
-  const cents = adjust && typed > 0 ? typed : base;
+  const cents = !barber && adjust && typed > 0 ? typed : base;
   /** One tap: paid at the default amount (cash unless the customer chose GCash). Change it after in order details. */
   const confirm = () => {
     if (busy) return;
     setBusy(true);
     const price = onlinePaid ? row.price : cents;
-    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method });
-    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
+    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method, tip });
+    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, tip: onlinePaid ? row.tip : tip || undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
   };
+  const adjustLabel = barber ? (adjust ? "Use default" : "Update information") : adjust ? "Use default" : "Adjust";
+  const hint = adjust
+    ? (isPaid ? `Saved as paid by ${method === "gcash" ? "GCash" : "cash"}.${method === "cash" ? " Cash counts toward the barber’s remit." : ""}` : "Saved as not paid. Mark it paid later in the order details.")
+    : barber ? "Paid in cash by default at the shop’s menu price. Tap Update information to mark it not paid or switch to GCash." : "Paid in cash by default. Tap Adjust to change the amount, mark it not paid, or switch to GCash.";
   return (
     <div className="fixed inset-0 z-[85] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="pay-title">
       <button type="button" className="absolute inset-0 bg-ink/45" aria-label="Dismiss" onClick={onClose} />
@@ -75,14 +88,14 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <h2 id="pay-title" className="text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(onlinePaid ? row.price : cents)}</h2>
-            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}</p>
+            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}{tip ? ` · Tip ${peso(tip * 100)}` : ""}</p>
           </div>
-          {onlinePaid ? null : <button type="button" onClick={() => setAdjust(!adjust)} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">{adjust ? "Use default" : "Adjust"}</button>}
+          {onlinePaid || barber ? null : <button type="button" onClick={() => setAdjust(!adjust)} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">{adjustLabel}</button>}
         </div>
         {adjust && !onlinePaid ? (
           <div className="mt-3">
-            <Input label="Amount (₱)" inputMode="decimal" value={amount} autoFocus onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
-            <p className="mt-3 text-[12px] font-bold text-muted">Payment</p>
+            {barber ? null : <Input label="Amount (₱)" inputMode="decimal" value={amount} autoFocus onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />}
+            <p className={`${barber ? "" : "mt-3 "}text-[12px] font-bold text-muted`}>Payment</p>
             <Seg label="Payment status" value={paid ? "paid" : "unpaid"} onChange={(v) => setPaid(v === "paid")} options={[["paid", "Paid"], ["unpaid", "Not paid"]]} />
             {paid ? <>
               <p className="mt-3 text-[12px] font-bold text-muted">Method</p>
@@ -90,8 +103,12 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
             </> : null}
           </div>
         ) : null}
-        {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{adjust ? (isPaid ? `Saved as paid by ${method === "gcash" ? "GCash" : "cash"}.${method === "cash" ? " Cash counts toward the barber’s remit." : ""}` : "Saved as not paid. Mark it paid later in the order details.") : "Paid in cash by default. Tap Adjust to change the amount, mark it not paid, or switch to GCash."}</p>}
+        {onlinePaid ? null : <TipField open={tipOpen} onOpen={() => setTipOpen(true)} value={tipText} onChange={setTipText} />}
+        {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{hint}</p>}
         <Button data-auth="action" className="mt-5" fullWidth loading={busy} onClick={confirm}>Confirm &amp; complete</Button>
+        {barber && !onlinePaid ? (
+          <button type="button" onClick={() => setAdjust(!adjust)} className="mx-auto mt-3 block text-[13.5px] font-bold text-ink-2 underline decoration-grey-300 underline-offset-[3px]">{adjustLabel}</button>
+        ) : null}
       </div>
     </div>
   );

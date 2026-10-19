@@ -70,8 +70,8 @@ function VisitList({ rows, placeOf, claimOf }: { rows: ChairRequest[]; placeOf?:
               // Every paid visit shows its stored method (no method saved = "Other"). Remit cash (same rule as the server) also shows its claim state.
               const remitCash = Boolean(claimOf) && (row.payMethod ?? "cash") === "cash" && Boolean(row.price);
               const c = remitCash ? claimOf?.(row.id) : undefined;
-              return <small className="block text-[11.5px] font-bold text-muted">{[`Paid · ${payMethodLabel(row)}`, remitCash ? (c ? `Claimed by owner · ${when(c.claimedAt)}` : "to claim") : ""].filter(Boolean).join(" · ")}</small>;
-            })() : null}
+              return <small className="block text-[11.5px] font-bold text-muted">{[`Paid · ${payMethodLabel(row)}`, row.tip ? `Tip ${peso(row.tip * 100)}` : "", remitCash ? (c ? `Claimed by owner · ${when(c.claimedAt)}` : "to claim") : ""].filter(Boolean).join(" · ")}</small>;
+            })() : row.tip ? <small className="block text-[11.5px] font-bold text-muted">Tip {peso(row.tip * 100)}</small> : null}
           </span>
           <span className="flex items-center gap-1.5"><b>{peso(row.price)}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
         </li>

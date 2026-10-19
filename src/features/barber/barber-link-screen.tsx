@@ -580,7 +580,7 @@ function ChairHistory({
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15px]">{row.customerLabel || row.contact || "Customer"}</b>
                 <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{visitOffer(row, haircut, treatments).label}</p>
-                <p className="mt-1 text-[12.5px] font-semibold text-muted">Completed {completionLabel(row.completedAt!)}</p>
+                <p className="mt-1 text-[12.5px] font-semibold text-muted">Completed {completionLabel(row.completedAt!)}{row.tip ? ` · Tip ₱${row.tip.toLocaleString("en-PH")}` : ""}</p>
               </span>
               <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
             </li>

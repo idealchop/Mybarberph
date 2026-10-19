@@ -1,4 +1,4 @@
-/** Tiny in-memory Firestore for API tests: doc/collection/where(==, >=, <)/orderBy/limit/get/getAll. No network. */
+/** Tiny in-memory Firestore for API tests: doc/collection/where(==, >=, <)/orderBy/limit/get/getAll/runTransaction. No network. */
 type Data = Record<string, unknown>;
 export function fakeFirestore(store: Record<string, Data> = {}) {
   const docRef = (path: string) => ({
@@ -30,5 +30,7 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     store,
     collection: (n: string) => coll(n),
     getAll: async (...refs: { get: () => Promise<unknown> }[]) => Promise.all(refs.map((r) => r.get())),
+    runTransaction: async <T>(fn: (tx: { get: (r: { get: () => Promise<unknown> }) => Promise<unknown>; set: (r: { set: (v: Data) => Promise<void> }, v: Data) => void }) => Promise<T>) =>
+      fn({ get: (r) => r.get(), set: (r, v) => { void r.set(v); } }),
   };
 }

@@ -101,7 +101,7 @@ export function SalesDataScreen() {
       ) : null}
       {view === "performance" ? (
         <>
-          <StatCard className="mt-4 pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} />} />
+          <StatCard className="mt-4 pb-3" label="Collected" value={peso(report.collected)} caption={<><PaySplitText split={report.collectedSplit} /><TipsLine tips={report.tips} /></>} />
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
@@ -119,6 +119,11 @@ export function SalesDataScreen() {
   );
 }
 
+/** "incl. ₱X tips" under a Collected figure; nothing when there are no tips. */
+function TipsLine({ tips }: { tips: number }) {
+  return tips > 0 ? <span className="mt-0.5 block text-[12px] font-semibold text-muted">incl. {peso(tips)} tips</span> : null;
+}
+
 function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
   return (
     <>
@@ -128,7 +133,7 @@ function Overview({ report }: { report: ReturnType<typeof salesReport> }) {
             <span className="text-[28px] leading-none tracking-[-0.03em]">{peso(report.sales)}</span>
             <span className="text-right text-[15px] font-extrabold tabular-nums">{report.cuts} <small className="text-[12px] font-semibold text-muted">cut{report.cuts === 1 ? "" : "s"}</small></span>
           </span>} />
-        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
+        <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<><PaySplitText split={report.collectedSplit} layout="lines" /><TipsLine tips={report.tips} /></>} />
         <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
       </div>
     </>

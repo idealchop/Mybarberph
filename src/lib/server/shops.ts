@@ -30,6 +30,7 @@ export const STATE_KEYS: Record<string, string> = {
 /** State a chair link may write directly: none. Barbers change only their own name (setBarberName). */
 export const BARBER_KEYS = new Set<string>();
 
+import { MAX_TIP_PESOS } from "@/lib/menu-amount";
 import { isRecurring, maxLocations, normalizePlan, walkInLimit, WALKIN_LIMIT_MESSAGE, type PlanId } from "@/lib/plans";
 
 /** Stored plan id; older records may still hold "monthly_950" / "lifetime_10000". */
@@ -210,8 +211,35 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
   if (typeof b.notes === "string") out.notes = str(b.notes, 500);
+  // Tip: whole pesos, kept apart from the service price (never folded into it).
+  const tip = Math.floor(Number(b.tip));
+  if (Number.isFinite(tip) && tip > 0) out.tip = Math.min(tip, MAX_TIP_PESOS);
   if (b.homeStatus === "on_the_way" || b.homeStatus === "arrived") out.homeStatus = b.homeStatus;
   return out;
+}
+
+
+/**
+ * Menu total (centavos) for a visit's services, matched by name ("Haircut · Beard trim").
+ * Null when none of the names are on the shop's menu.
+ */
+export function menuPrice(shop: ShopDoc | undefined, serviceName: string, locationId?: string): number | null {
+  if (!shop) return null;
+  const names = new Set(serviceName.split("·").map((n) => n.trim().toLowerCase()).filter(Boolean));
+  const hits = menuFor(shop, locationId).filter((m) => names.has(m.name.trim().toLowerCase()));
+  return hits.length ? hits.reduce((sum, m) => sum + (m.price || 0), 0) : null;
+}
+
+/**
+ * The amount a barber link saves: always the menu price of the visit's services (plus the home-service fee).
+ * Barbers can't change it; only the owner can. A visit already paid online keeps its paid amount.
+ */
+export function barberPrice(shop: ShopDoc | undefined, clean: ChairRequest, prev?: ChairRequest): number {
+  if (prev?.paid && (prev.payMethod === "online" || (!prev.payMethod && prev.payWhere === "online"))) return prev.price;
+  const listed = menuPrice(shop, clean.serviceName, clean.locationId);
+  if (listed != null) return listed + (prev?.homeFee ?? 0);
+  if (prev) return prev.price;
+  return (shop && menuFor(shop, clean.locationId).find((m) => m.id === (clean.serviceId || "haircut"))?.price) ?? 0;
 }
 
 /** Thrown when a Partner shop is over its daily walk-in limit (routes answer 402). */
@@ -243,10 +271,14 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   }
   const ref = shopRef(shopId).collection("bookings").doc(clean.id);
   const prev = (await ref.get()).data() as ChairRequest | undefined;
+  let shopDoc: Promise<ShopDoc | undefined> | null = null;
+  const getShopDoc = () => (shopDoc ??= shopRef(shopId).get().then((d) => d.data() as ShopDoc | undefined));
+  // Barber links can't change the amount: it is the menu price, whatever the client sent.
+  if (barber) clean.price = barberPrice(await getShopDoc(), clean, prev);
   if (!prev && clean.channel === "walk-in") {
     // Server time decides the day; a client can't backdate a walk-in around the limit.
     clean.createdAt = Date.now();
-    const shop = (await shopRef(shopId).get()).data() as ShopDoc | undefined;
+    const shop = await getShopDoc();
     // Walk-ins start unpaid at the menu price; payment is confirmed when the cut is completed.
     clean.paid = false;
     if (!clean.price && shop) clean.price = menuFor(shop, clean.locationId).find((m) => m.id === (clean.serviceId || "haircut"))?.price ?? 0;

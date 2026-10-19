@@ -7,6 +7,9 @@ import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "
 import { payMethodLabel } from "@/lib/pay-split";
 import { peso } from "@/lib/format";
 import { useShopMenu } from "@/lib/shop-services";
+import { useCloud } from "@/lib/cloud";
+import { lockedAmount, parseTip } from "@/lib/menu-amount";
+import { TipField } from "./tip-field";
 
 const when = (ms?: number) => ms ? new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
 
@@ -82,6 +85,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
                 <b className="text-[15px]">Total</b>
                 <b className="text-[22px] font-extrabold tracking-[-0.03em]">{peso(row.price ?? 0)}</b>
               </div>
+              {row.tip ? <p className="mt-1.5 flex items-baseline justify-between text-[14px] font-semibold text-ink-2"><b className="text-ink">Tip {peso(row.tip * 100)}</b><span className="text-[12.5px] text-muted">Separate from the service total</span></p> : null}
             </Card>
 
             <Card className="mt-4 px-4 py-3.5">
@@ -91,7 +95,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
               </div>
               {row.paid ? (
                 <>
-                  <p className="mt-2 text-[14px] font-medium text-muted">Paid {peso(row.price ?? 0)}{onlinePaid ? " online" : ""}. Thank you!</p>
+                  <p className="mt-2 text-[14px] font-medium text-muted">Paid {peso(row.price ?? 0)}{onlinePaid ? " online" : ""}{row.tip ? ` + Tip ${peso(row.tip * 100)}` : ""}. Thank you!</p>
                   {onlinePaid ? null : <Button data-auth="action" variant="secondary" size="md" fullWidth className="mt-3" onClick={() => setPay({ paid: false, payMethod: undefined })}>Mark unpaid</Button>}
                 </>
               ) : (
@@ -151,6 +155,8 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
 
 function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
   const { haircut, treatments } = useShopMenu(row.locationId);
+  // Barber link: Amount is read-only, the menu price of the chosen service (the server enforces this too).
+  const barber = useCloud().mode === "barber";
   const [name, setName] = useState(row.customerLabel);
   const [phone, setPhone] = useState(row.contact);
   const [service, setService] = useState(row.serviceName);
@@ -158,12 +164,16 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
   const [paid, setPaid] = useState(Boolean(row.paid));
   const [method, setMethod] = useState<"cash" | "gcash">(row.payMethod === "gcash" ? "gcash" : "cash");
   const [notes, setNotes] = useState(row.notes ?? "");
+  const [tipOpen, setTipOpen] = useState(Boolean(row.tip));
+  const [tipText, setTipText] = useState(row.tip ? String(row.tip) : "");
   const onlinePaid = isOnlinePaid(row);
   const services = [haircut.name, ...treatments.map((t) => t.name)];
+  const locked = barber ? lockedAmount(row, [haircut, ...treatments], service.trim() || row.serviceName) : null;
   const save = () => {
-    const cents = Math.max(0, Math.round(Number(price.replace(/[^\d.]/g, "")) * 100) || 0);
+    const cents = locked ?? (Math.max(0, Math.round(Number(price.replace(/[^\d.]/g, "")) * 100) || 0));
     patchRequest(row.id, {
       customerLabel: name.trim(), contact: phone.trim(), serviceName: service.trim() || row.serviceName, price: cents, notes: notes.trim() || undefined,
+      tip: parseTip(tipText) || undefined,
       ...(onlinePaid ? {} : paid ? { paid: true, payMethod: method, payWhere: "shop" as const } : { paid: false, payMethod: undefined }),
     });
     onDone();
@@ -180,7 +190,13 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
           {services.includes(service) ? null : <option value="__custom">{service}</option>}
         </select>
       </label>
-      <Input label="Amount (₱)" inputMode="decimal" value={price} placeholder="e.g. 150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
+      {locked != null ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-bold">Amount</span>
+          <p aria-label="Amount, set by the shop menu" className="flex h-12 items-center justify-between rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold text-ink-2"><b className="text-ink">{peso(locked)}</b><span className="text-[12.5px] text-muted">Menu price</span></p>
+        </div>
+      ) : <Input label="Amount (₱)" inputMode="decimal" value={price} placeholder="e.g. 150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />}
+      {onlinePaid ? null : <TipField className="self-start" open={tipOpen} onOpen={() => setTipOpen(true)} value={tipText} onChange={setTipText} />}
       {onlinePaid ? <p className="text-[13px] font-semibold text-muted">Paid online. Payment can’t be changed here.</p> : (
         <>
           <SegmentedControl label="Payment" value={paid ? "paid" : "unpaid"} onChange={(v: string) => setPaid(v === "paid")} options={[{ value: "paid", label: "Paid" }, { value: "unpaid", label: "Unpaid" }]} />

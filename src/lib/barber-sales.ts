@@ -28,6 +28,8 @@ export interface BarberPerformance {
   label: string; from: number; to: number;
   /** Collected by stored method. `other` = paid with no method saved (shown as "Other", never guessed). */
   cuts: number; sales: number; cash: number; gcash: number; online: number; other: number; unpaid: number; remit: number;
+  /** Tips (centavos) on paid visits: inside cash/gcash/online/other, not in sales or remit. */
+  tips: number;
   avg: number; completionPct: number | null; declined: number;
   walkIns: number; onlineBookings: number;
   claimedCash: number; unclaimedCash: number;
