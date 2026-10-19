@@ -21,7 +21,7 @@ test.describe("Platform", () => {
   });
 
   test("TC-BOOK-NEG-03 An unknown public booking is 404 with code not_found", async ({ request }) => {
-    const res = await request.get("/api/public/bookings/e2e-missing-booking");
+    const res = await request.get("/api/public/bookings/e2e-missing-booking?shop=e2e-missing-shop");
     expect(res.status()).toBe(404);
     expect(await res.json()).toMatchObject({ code: "not_found" });
   });
