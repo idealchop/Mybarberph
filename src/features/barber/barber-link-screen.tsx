@@ -18,7 +18,7 @@ import {
   acceptOnChair, completionLabel, elapsedLabel, patchRequest, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
-import { chairBarberName, chairLinkExpired, linkExpiryLabel, useShopChairs } from "@/lib/shop-chairs";
+import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
@@ -156,39 +156,41 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [picked, setPicked] = useState<string[]>([]);
   const chair = chairPreview;
   const allowance = useWalkInAllowance(chair?.locationId || HOME_LOCATION_ID);
+  useEffect(() => {
+    const on = (e: Event) => setNote((e as CustomEvent<string>).detail);
+    window.addEventListener("barbers-booking-gone", on);
+    return () => window.removeEventListener("barbers-booking-gone", on);
+  }, []);
 
   if (cloud.ready && cloud.error && !cloud.shopId) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
-        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link is not active</h1>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send a new barber link. Each link expires after one month.</p>
+        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link was replaced or turned off.</h1>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send you your current barber link.</p>
       </main>
     );
   }
   if (!chairsReady || !ready || !cloud.ready) {
     return <HomeSkeleton />;
   }
-  if (!chair || chairLinkExpired(chair)) {
+  if (!chair) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
-        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">{chair ? "This link expired" : "This link is not active"}</h1>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">
-          {chair
-            ? `It stopped on ${linkExpiryLabel(chair.linkExpiresAt!)}. Barber links expire each month. Ask the shop to send a new one.`
-            : "Ask the shop to send a new barber link. Each link expires after one month."}
-        </p>
+        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link was replaced or turned off.</h1>
+        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send you your current barber link.</p>
       </main>
     );
   }
 
   const placeId = chair.locationId || HOME_LOCATION_ID;
   const here = (row: ChairRequest) => requestLocation(row) === placeId;
-  const mine = (row: ChairRequest) => here(row) && (row.seatLabel === chair.label || row.chairLabel === chair.label);
+  const myId = chair.barberId || chair.id;
+  // Same rule as the server (barberAccess): a visit is mine by barberId, or by my chair on older rows without one.
+  const mine = (row: ChairRequest) => here(row) && (row.barberId ? row.barberId === myId : (row.seatLabel === chair.label || row.chairLabel === chair.label));
   const current = rows.find((row) => row.status === "in_chair" && row.chairLabel === chair.label && here(row));
   const waiting = rows
     .filter((row) => here(row) && !row.home && (row.status === "requested" || row.status === "accepted") && !row.chairLabel)
     .sort((a, b) => a.createdAt - b.createdAt);
-  const myId = chair.barberId || chair.id;
   const homeVisits = rows
     .filter((row) => here(row) && row.home && (row.status === "requested" || row.status === "accepted" || row.status === "in_chair") && (!row.barberId || row.barberId === myId))
     .sort((a, b) => (a.scheduledAt ?? a.createdAt) - (b.scheduledAt ?? b.createdAt));

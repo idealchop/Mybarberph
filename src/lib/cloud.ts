@@ -178,6 +178,13 @@ function sendBooking(row: ChairRequest) {
         set({ bookings: snap.bookings.filter((b) => b.id !== row.id) });
         if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("barbers-walkin-limit", { detail: e.message }));
       }
+      // Barber link: the server only lets a barber work their own visits. If another barber took this one first,
+      // drop it here and let the screen say so; the next poll shows the server's view.
+      if (e.status === 404 && mode?.kind === "barber") {
+        slot.next = null;
+        set({ bookings: snap.bookings.filter((b) => b.id !== row.id) });
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("barbers-booking-gone", { detail: "Another barber already has this customer." }));
+      }
     })
     .finally(() => {
       inflight.delete(row.id);

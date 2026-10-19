@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 /** A barber's own performance on their link: ?range=week|month|custom&from=YYYY-MM-DD&to=YYYY-MM-DD */
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const link = await chairLink((await params).token);
-  if (!link) return notFound("This link has expired.");
+  if (!link) return notFound("This link was replaced or turned off.");
   const me = await linkBarber(link.shopId, link.chairId);
   if (!me) return notFound();
   const sp = new URL(req.url).searchParams;

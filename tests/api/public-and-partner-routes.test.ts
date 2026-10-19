@@ -69,7 +69,7 @@ describe("public booking + barber link", () => {
     const res = await book(new Request("http://local/api/public/bookings", { method: "POST", body: "{oops" }));
     expect(res.status).toBe(400);
   });
-  it("TC-BARBER-NEG-01 an expired/unknown barber link is 404", async () => {
+  it("TC-BARBER-NEG-01 an unknown, reset or turned-off barber link is 404", async () => {
     const res = await barberState(new Request("http://local", { method: "PUT", body: JSON.stringify({ value: "[]" }) }), { params: Promise.resolve({ token: "old", key: "bp.chairBookings" }) });
     expect(res.status).toBe(404);
     expect(putState).not.toHaveBeenCalled();

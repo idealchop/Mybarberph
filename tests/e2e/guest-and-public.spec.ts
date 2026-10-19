@@ -50,8 +50,8 @@ test.describe("Public customer and barber links", () => {
     await expectNoHorizontalOverflow(page);
   });
 
-  test("TC-BARBER-NF-03 Given an invalid barber link, then the barber sees that the link is not active", async ({ page }) => {
-    await open(page, "/b/e2e-not-a-real-token", "This link is not active");
+  test("TC-BARBER-NF-03 Given an invalid barber link, then the barber sees that the link was replaced or turned off", async ({ page }) => {
+    await open(page, "/b/e2e-not-a-real-token", "This link was replaced or turned off.");
     await expectLandmarks(page);
     await expectNoHorizontalOverflow(page);
   });

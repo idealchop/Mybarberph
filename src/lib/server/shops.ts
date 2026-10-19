@@ -183,7 +183,8 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
       // Inactive barbers: their link stops working (token kept on the chair, restored on reactivate).
       if (!token || c.active === false || !/^[a-z0-9]{8,40}$/.test(token)) continue;
       keep.add(token);
-      batch.set(db().collection("chairLinks").doc(token), { shopId, chairId: str(c.id, 60), expiresAt: Number(c.linkExpiresAt) || 0 });
+      // Links never expire (owner reviews them every 6 months as a nudge). Set without merge, so any old expiresAt is dropped.
+      batch.set(db().collection("chairLinks").doc(token), { shopId, chairId: str(c.id, 60) });
     }
     existing.docs.forEach((d) => { if (!keep.has(d.id)) batch.delete(d.ref); });
   }
@@ -296,11 +297,46 @@ export async function findBookingByRef(shopId: string, ref: string) {
 }
 
 /** The barber on a chair link: id, name and shop location, from the shop's chairs. */
-export async function linkBarber(shopId: string, chairId: string) {
+export type LinkBarber = { barberId: string; barberName: string; locationId?: string; chairLabel?: string };
+
+export async function linkBarber(shopId: string, chairId: string): Promise<LinkBarber | undefined> {
   const chairs = JSON.parse((await loadState(shopId, ["barbers.shop-chairs"]))["barbers.shop-chairs"] || "[]") as { id: string; barberId?: string; barberName?: string; label?: string; locationId?: string }[];
   const c = chairs.find((x) => x.id === chairId);
   if (!c) return undefined;
-  return { barberId: c.barberId || c.id, barberName: (c.barberName || "").trim() || c.label || "Barber", locationId: c.locationId };
+  return { barberId: c.barberId || c.id, barberName: (c.barberName || "").trim() || c.label || "Barber", locationId: c.locationId, chairLabel: c.label };
+}
+
+const OPEN_STATUSES = new Set(["requested", "accepted"]);
+
+/**
+ * What a barber link may see and change (Jimboy, 2026-10-19: a link only works its own bookings).
+ * - "own": the visit is this barber's (barberId), or, on older rows with no barberId, it sits on this barber's chair.
+ * - "open": an unassigned visit still waiting at this barber's location. It stays visible so the barber can
+ *   accept it from Waiting; the first write stamps this barber on it, and then it's theirs only.
+ * Anything else (another barber's visit, another location, an unassigned visit already started or finished) is hidden.
+ */
+export function barberAccess(b: ChairRequest, me: LinkBarber): "own" | "open" | null {
+  if ((b.locationId || "home") !== (me.locationId || "home")) return null;
+  if (b.barberId) return b.barberId === me.barberId ? "own" : null;
+  const seat = b.chairLabel || b.seatLabel;
+  if (seat) return me.chairLabel && seat === me.chairLabel ? "own" : null;
+  return OPEN_STATUSES.has(b.status) ? "open" : null;
+}
+
+/** Bookings for a barber link: their own (newest 200) plus open ones waiting at their location. */
+export async function loadBarberBookings(shopId: string, me: LinkBarber): Promise<ChairRequest[]> {
+  const col = shopRef(shopId).collection("bookings");
+  // Equality-only query: no composite index needed. Recent shop rows cover open visits and older chair-only rows.
+  const [recent, mine] = await Promise.all([
+    col.orderBy("createdAt", "desc").limit(150).get(),
+    col.where("barberId", "==", me.barberId).limit(300).get(),
+  ]);
+  const byId = new Map<string, ChairRequest>();
+  for (const d of [...recent.docs, ...mine.docs]) { const b = d.data() as ChairRequest; if (b?.id) byId.set(b.id, b); }
+  const rows = [...byId.values()].filter((b) => barberAccess(b, me)).sort((a, b) => b.createdAt - a.createdAt);
+  const own = rows.filter((b) => barberAccess(b, me) === "own").slice(0, 200);
+  const open = rows.filter((b) => barberAccess(b, me) === "open");
+  return [...own, ...open].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /** A barber renames themself on their own link. Only that chair's barberName changes. */
@@ -321,9 +357,11 @@ export async function setBarberName(shopId: string, chairId: string, name: strin
 export async function chairLink(token: string) {
   if (!/^[a-z0-9]{8,40}$/.test(token)) return null;
   const s = await db().collection("chairLinks").doc(token).get();
-  const d = s.data() as { shopId: string; chairId: string; expiresAt: number } | undefined;
-  if (!d || (d.expiresAt && d.expiresAt < Date.now())) return null;
-  return d;
+  // No expiry: a link works until the owner resets it, deactivates the barber or removes the chair
+  // (each of those deletes this doc). A legacy expiresAt field is ignored, so no existing link breaks.
+  const d = s.data() as { shopId: string; chairId: string } | undefined;
+  if (!d?.shopId || !d.chairId) return null;
+  return { shopId: d.shopId, chairId: d.chairId };
 }
 
 /** Public view used by the booking page and River Mobile. Never includes owner-only data. */
