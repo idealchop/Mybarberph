@@ -5,6 +5,9 @@ const kit = "./vendor/river-apps-ui-kit/packages";
 // River Maps (MapLibre + PMTiles) is a git submodule consumed from source too.
 const maps = "./vendor/river-maps/packages/river-map/src";
 
+// One id per build: inlined into client and server so /api/version can tell open tabs a new deploy is live.
+const BUILD_ID = process.env.BUILD_ID_OVERRIDE || Date.now().toString(36);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -12,6 +15,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // AI Companion switch (see src/lib/companion-flag.ts): on only where COMPANION_ENABLED=1.
   env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
     NEXT_PUBLIC_COMPANION_ENABLED: process.env.COMPANION_ENABLED === "1" ? "1" : "0",
     // Plan limits switch (src/lib/entitlements.ts): off unless PLAN_LIMITS_ENABLED=1.
     NEXT_PUBLIC_PLAN_LIMITS_ENABLED: process.env.PLAN_LIMITS_ENABLED === "1" ? "1" : "0",
