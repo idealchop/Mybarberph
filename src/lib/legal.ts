@@ -163,3 +163,11 @@ export const PRIVACY: LegalDoc = {
     ] }] },
   ],
 };
+
+/**
+ * Escapes everything, then re-allows only <b>…</b>. The legal copy is our own static text in
+ * src/lib/legal.ts, but the sink stays safe even if someone later pastes other markup into it.
+ */
+export function boldOnly(html: string): string {
+  return html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&lt;(\/?)b&gt;/g, "<$1b>");
+}

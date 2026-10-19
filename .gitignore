@@ -14,3 +14,8 @@ __pycache__/
 !.env.example
 tmp/
 public/maplibre/
+
+# test output
+/test-results/
+/playwright-report/
+/coverage/

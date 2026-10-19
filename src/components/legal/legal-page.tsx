@@ -1,13 +1,5 @@
 import Link from "next/link";
-import { LEGAL_DRAFT_NOTICE, type LegalDoc } from "@/lib/legal";
-
-/**
- * Escapes everything, then re-allows only <b>…</b>. The legal copy is our own static text in
- * src/lib/legal.ts, but the sink stays safe even if someone later pastes other markup into it.
- */
-export function boldOnly(html: string): string {
-  return html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&lt;(\/?)b&gt;/g, "<$1b>");
-}
+import { boldOnly, LEGAL_DRAFT_NOTICE, type LegalDoc } from "@/lib/legal";
 
 /** Terms / Privacy page. Content is our own static text (simple <b> markup only). */
 export function LegalPage({ doc }: { doc: LegalDoc }) {
