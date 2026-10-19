@@ -12,6 +12,8 @@ import { Button } from "@/components/common/button";
 import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { InstallPanel } from "@/components/pwa/install-panel";
 import { isStandalone } from "@/lib/pwa";
+import { Footprints, Zap } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
 import { BarberIcon } from "@/components/art";
@@ -24,6 +26,14 @@ import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
+
+/** Install view (Jimboy, 2026-10-20): barber-focused lines. */
+const BARBER_FEATURES = [
+  { icon: Footprints, text: "Take walk-ins in a tap" },
+  { icon: ScanLine, text: "Scan customer tickets" },
+  { icon: BarChart3, text: "See my sales and cuts" },
+  { icon: Zap, text: "Opens straight to my link" },
+];
 
 const PILL = "relative h-8 gap-1 rounded-pill px-3 text-[13px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
 
@@ -208,7 +218,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
     return (
       <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-4">
         <button type="button" onClick={() => setInstall(false)} aria-label="Back" className="inline-flex size-11 items-center justify-center rounded-full"><ChevronLeft size={22} /></button>
-        <InstallPanel subtitle="Open your barber link from the home screen, like an app." back={<button type="button" onClick={() => setInstall(false)} className="hover:underline">Back to my link</button>} />
+        <InstallPanel token={token} features={BARBER_FEATURES} />
       </main>
     );
   }

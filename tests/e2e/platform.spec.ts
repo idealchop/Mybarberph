@@ -63,6 +63,9 @@ test.describe("Install app and updates (PWA)", () => {
     await expect(page.getByRole("heading", { name: /Install Barbers\.ph|Installed!/ })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: "Install the app" })).toBeVisible();
     await expect(page.getByRole("img", { name: "Barbers.ph app icon" })).toBeVisible();
+    await expect(page.getByLabel("App stats")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Rate & send feedback|You rated/ })).toBeVisible();
+    await expect(page.getByText("Not now")).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
   });
 });
