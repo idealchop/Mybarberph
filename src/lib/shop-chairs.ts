@@ -145,15 +145,6 @@ export function confirmChairLink(id: string) {
   writeChairs(cur.map((c) => c.id === id ? { ...c, linkReviewAt: reviewFrom(Date.now()) } : c));
 }
 
-/** Owner replaces the link: the old one stops working at once, the barber needs the new one. */
-export function resetChairLink(id: string): string {
-  const cur = readChairs();
-  if (!cur.some((c) => c.id === id)) return "";
-  const linkToken = newLinkToken();
-  writeChairs(cur.map((c) => c.id === id ? { ...c, linkToken, linkReviewAt: reviewFrom(Date.now()) } : c));
-  return chairLinkPath(linkToken);
-}
-
 /** Saves a created chair. A barber can sit on one chair. */
 export function saveChair(chair: ShopChair): string {
   const name = chair.barberName?.trim() ?? "";

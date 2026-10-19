@@ -22,7 +22,7 @@ Barbers.ph has no staff accounts. A shop is owned by one Firebase user; barbers 
 | Sales, performance, activity, notifications | ✅ | own sales/performance only | ❌ | ❌ | — |
 | Claim remit (mark cash received) | ✅ | ❌ (sees claims) | ❌ | ❌ | — |
 | Change a visit's amount | ✅ any amount | ❌ always the menu price (+ home fee) | — | — | — |
-| Reset / confirm a barber link | ✅ Barber detail › Reset link; 6-month "Keep {name}'s link active?" | ❌ | — | — | — |
+| Confirm / turn off a barber link | ✅ 6-month "Keep {name}'s link active?"; turning the barber off (Active switch) stops the link | ❌ | — | — | — |
 | Change barber's own name | owner via chairs state | ❌ (`PUT /api/barber/:token/name` → 403 forbidden) | — | — | — |
 | Upload shop photo | ✅ | ❌ | ❌ | ❌ | — |
 | Community feed (shared across shops) | read, post, like, repost, reply; delete **own** posts | ❌ | ❌ | ❌ | — |

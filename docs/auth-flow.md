@@ -20,10 +20,10 @@ The browser loads only the Firebase Auth web SDK (`src/lib/firebase/client.ts`, 
 
 The owner gives each barber a link `/b/{token}`. Tokens (`[a-z0-9]{8,40}`) live on the chair in the `chairs` state and are mirrored to `chairLinks/{token} = { shopId, chairId }` on each save. `chairLink(token)` resolves the shop server-side; an unknown, replaced or turned-off token returns `404 { code: "not_found" }` with "This link was replaced or turned off." The link is a capability: anyone with it acts as that barber for that one shop.
 
-**Links never expire (Jimboy's accepted decision, 2026-10-19).** The same token keeps working until the owner resets or turns it off; the server has no expiry check and the app never rotates a token on its own.
+**Links never expire (Jimboy's accepted decision, 2026-10-19).** The same token keeps working until the owner turns the barber off (or removes the chair); the server has no expiry check and the app never rotates a token on its own.
 
-- **6-month review (nudge only).** Each chair has `linkReviewAt` (6 months after the link was made, reset, or last confirmed). When it is due, the owner sees "Keep {name}'s link active?" with **Confirm** on the barber's detail page, in Manage Shop › Barbers, and a "Barber links to review · N" notice in Settings. Confirm sets the next review 6 months out. If the owner never confirms, nothing happens: the link keeps working.
-- **Reset / turn off.** Barber detail › Barber link › **Reset link** issues a new token (the old link stops at once). Turning the barber off (`active: false`) also stops the link.
+- **6-month review (nudge only).** Each chair has `linkReviewAt` (6 months after the link was made or last confirmed). When it is due, the owner sees "Keep {name}'s link active?" with **Confirm** on the barber's detail page, in Manage Shop › Barbers, and a "Barber links to review · N" notice in Settings. Confirm sets the next review 6 months out. If the owner never confirms, nothing happens: the link keeps working.
+- **Turn off.** Turning the barber off on their detail page (Active switch, `active: false`) stops the link at once; turning them back on restores it. There is no separate Reset link button (removed on Jimboy's request, 2026-10-20).
 - **Migration.** Old chairs with `linkExpiresAt` are read as `linkReviewAt` (no link breaks); old `chairLinks` docs with `expiresAt` still resolve, and the field is dropped on the next save.
 
 **What a link can see and change.** A barber link only sees and edits that barber's own visits (`barberAccess`, `src/lib/server/shops.ts`):
