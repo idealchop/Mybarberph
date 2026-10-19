@@ -24,7 +24,7 @@
 | 11 | **Fix (Jimboy):** Queue "Done today" = today in Manila; date chip | FE | 01-plan/acceptance-criteria | `4731e9f` |
 | 12 | Constant-time cron secret; bounded geocode cache | BE | 03-build/security, performance | `a992239`, `98dc715` |
 | 13 | Docs set, adoption files, env.example, compliance report | docs | 00-core §2, 06-operate/documentation | see report |
-| 14 | CI workflow | infra | 05-release/lint-and-health | see report |
+| 14 | Deploy-prep gate `npm run verify` (CI workflow not added: needs a repo secret, open item) | infra | 05-release/lint-and-health | `fd193f3` |
 
 ## Core AC
 

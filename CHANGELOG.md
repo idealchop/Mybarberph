@@ -4,6 +4,10 @@ Built from the git history (newest first). Unreleased = on `main`, not yet deplo
 
 ## 2026-10-19 — River AI Rules 1.0.1 compliance pass (unreleased)
 
+- Tests: TC-STATE-HP-02 mutation then paired GET (04-test 'mutation without verified GET') (`6353753`)
+- Tests: architecture contract (no client Firestore/Storage SDK, Admin SDK server-only); npm run verify (`fd193f3`)
+- Docs: full app doc set per River AI Rules 00-core §2 and 06-operate (`35ffeb6`)
+- Adopt River AI Rules 1.0.1: AGENTS.md, Cursor rules, PR template, env.example (`a3e5b41`)
 - e2e: TC-BOOK-NEG-03 passes the required ?shop= so it tests the 404, not the 400 (`9390f35`)
 - Geocode: cap the in-memory search cache at 500 entries (`98dc715`)
 - Companion cron: constant-time secret check (`a992239`)
