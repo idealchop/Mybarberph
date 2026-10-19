@@ -1,6 +1,7 @@
 import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { barberRange, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
+import { payBucket } from "@/lib/pay-split";
 import { loadState, shopRef } from "./shops";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string };
@@ -62,7 +63,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; bookingIds: string[]; claimedAt: number }).sort((a, b) => b.claimedAt - a.claimedAt);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));
   const out: BarberPerformance = {
-    label: r.label, from: r.from, to: r.to, cuts: 0, sales: 0, cash: 0, gcash: 0, online: 0, unpaid: 0, remit: 0, avg: 0, completionPct: null, declined: 0,
+    label: r.label, from: r.from, to: r.to, cuts: 0, sales: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, avg: 0, completionPct: null, declined: 0,
     walkIns: 0, onlineBookings: 0, claimedCash: 0, unclaimedCash: 0, hours: [], days: [], services: [],
     claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
@@ -76,16 +77,19 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     const p = b.price || 0;
     out.cuts += 1; out.sales += p;
     if (!b.paid) out.unpaid += p;
-    else if (b.payMethod === "gcash") out.gcash += p;
-    else if (b.payMethod === "online") out.online += p;
-    else { out.cash += p; if (claimed.has(b.id)) out.claimedCash += p; else out.unclaimedCash += p; }
+    else {
+      const k = payBucket(b);
+      out[k] += p;
+      // Cash to hand over: cash, plus paid visits with no method (the server remit rule, lib/server/remit.ts).
+      if (k === "cash" || k === "other") { if (claimed.has(b.id)) out.claimedCash += p; else out.unclaimedCash += p; }
+    }
     if (b.channel === "online") out.onlineBookings += 1; else out.walkIns += 1;
     const local = new Date(b.completedAt + 8 * 3600_000);
     hours.set(local.getUTCHours(), (hours.get(local.getUTCHours()) ?? 0) + 1);
     const wd = WD[local.getUTCDay()]!; const dd = days.get(wd) ?? { cuts: 0, sales: 0 }; dd.cuts += 1; dd.sales += p; days.set(wd, dd);
     const name = (b.serviceName || "Service").trim(); const s = svc.get(name) ?? { cuts: 0, sales: 0 }; s.cuts += 1; s.sales += p; svc.set(name, s);
   }
-  out.remit = out.cash;
+  out.remit = out.cash + out.other;
   out.avg = out.cuts ? Math.round(out.sales / out.cuts) : 0;
   out.completionPct = out.cuts + out.declined ? Math.round((out.cuts / (out.cuts + out.declined)) * 100) : null;
   out.hours = [...hours.entries()].map(([hour, cuts]) => ({ hour, cuts })).sort((a, b) => a.hour - b.hour);

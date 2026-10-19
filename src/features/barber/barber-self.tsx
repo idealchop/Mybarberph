@@ -3,6 +3,7 @@ import { Check, ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { BarberPerformance } from "@/lib/barber-sales";
 import { peso } from "@/lib/format";
+import { PaySplitText } from "@/features/sales";
 
 type Range = "week" | "month" | "custom";
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -62,8 +63,11 @@ export function BarberPerformanceView({ token, who, place, onBack }: { token: st
         <Stat wide k="Sales" v={d ? peso(d.sales) : "–"} sub={d ? `${d.cuts} cut${d.cuts === 1 ? "" : "s"}` : undefined} />
         <Stat k="Avg ticket" v={d ? peso(d.avg) : "–"} />
         <Stat k="Completion" v={d?.completionPct == null ? "–" : `${d.completionPct}%`} />
-        <Stat k="Cash collected" v={d ? peso(d.cash) : "–"} />
-        <Stat k="GCash" v={d ? peso(d.gcash) : "–"} />
+        <div className="col-span-2 rounded-[14px] bg-surface px-3 py-2.5 shadow-card">
+          <p className="text-[12px] font-semibold text-muted">Collected</p>
+          <b className="text-[24px] tracking-[-0.03em]">{d ? peso(d.cash + d.gcash + d.online + (d.other ?? 0)) : "–"}</b>
+          {d ? <PaySplitText split={{ cash: d.cash, gcash: d.gcash, online: d.online, other: d.other ?? 0 }} layout="lines" className="text-[13px] font-semibold text-muted" /> : null}
+        </div>
         <Stat k="Walk-ins" v={d ? String(d.walkIns) : "–"} />
         <Stat k="Online" v={d ? String(d.onlineBookings) : "–"} />
       </div>

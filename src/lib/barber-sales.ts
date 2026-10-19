@@ -26,7 +26,8 @@ export function barberRange(range?: string | null, from?: string | null, to?: st
 
 export interface BarberPerformance {
   label: string; from: number; to: number;
-  cuts: number; sales: number; cash: number; gcash: number; online: number; unpaid: number; remit: number;
+  /** Collected by stored method. `other` = paid with no method saved (shown as "Other", never guessed). */
+  cuts: number; sales: number; cash: number; gcash: number; online: number; other: number; unpaid: number; remit: number;
   avg: number; completionPct: number | null; declined: number;
   walkIns: number; onlineBookings: number;
   claimedCash: number; unclaimedCash: number;
