@@ -10,9 +10,13 @@ export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("url");
   let u: URL;
   try { u = new URL(raw || ""); } catch { return new Response("Bad url", { status: 400 }); }
-  if (u.protocol !== "https:" || !ALLOWED.some((r) => r.test(u.hostname))) return new Response("Host not allowed", { status: 400 });
-  const r = await fetch(u, { redirect: "follow" }).catch(() => null);
+  if (u.protocol !== "https:" || !ALLOWED.some((re) => re.test(u.hostname))) return new Response("Host not allowed", { status: 400 });
+  const allowed = (url: URL) => url.protocol === "https:" && ALLOWED.some((re) => re.test(url.hostname));
+  const r = await fetch(u, { redirect: "follow", signal: AbortSignal.timeout(8000) }).catch(() => null);
   if (!r || !r.ok) return new Response("Fetch failed", { status: 502 });
+  // SSRF guard: a redirect must still land on an allowed host (river-ai-rules 03-build/security, SSRF row).
+  if (r.url && !allowed(new URL(r.url))) return new Response("Host not allowed", { status: 400 });
+  if (Number(r.headers.get("content-length") || 0) > MAX) return new Response("Too large", { status: 413 });
   const type = r.headers.get("content-type") || "";
   if (!type.startsWith("image/")) return new Response("Not an image", { status: 415 });
   const buf = await r.arrayBuffer();

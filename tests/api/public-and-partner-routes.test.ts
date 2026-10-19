@@ -102,3 +102,35 @@ describe("River Mobile partner API key", () => {
     expect(riverAuth(new Request("http://local", { headers: { authorization: "Bearer rk_test" } }))).toBeNull();
   });
 });
+
+describe("GET /api/public/logo-proxy (SSRF guard)", () => {
+  it("TC-SEC-NEG-01 rejects a host outside the allowlist without fetching it", async () => {
+    const { GET } = await import("@/app/api/public/logo-proxy/route");
+    const spy = vi.spyOn(globalThis, "fetch");
+    const { NextRequest } = await import("next/server");
+    const res = await GET(new NextRequest("http://localhost/api/public/logo-proxy?url=" + encodeURIComponent("http://169.254.169.254/latest/meta-data")));
+    expect(res.status).toBe(400);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("TC-SEC-NEG-02 rejects an allowed host that redirects to a disallowed one", async () => {
+    const { GET } = await import("@/app/api/public/logo-proxy/route");
+    const fake = new Response("x", { status: 200, headers: { "content-type": "image/png" } });
+    Object.defineProperty(fake, "url", { value: "https://evil.example.com/a.png" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(fake);
+    const { NextRequest } = await import("next/server");
+    const res = await GET(new NextRequest("http://localhost/api/public/logo-proxy?url=" + encodeURIComponent("https://firebasestorage.googleapis.com/v0/b/x/o/a.png")));
+    expect(res.status).toBe(400);
+  });
+
+  it("TC-SEC-HP-02 proxies an image from an allowed host", async () => {
+    const { GET } = await import("@/app/api/public/logo-proxy/route");
+    const ok = new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } });
+    Object.defineProperty(ok, "url", { value: "https://firebasestorage.googleapis.com/v0/b/x/o/a.png" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok);
+    const { NextRequest } = await import("next/server");
+    const res = await GET(new NextRequest("http://localhost/api/public/logo-proxy?url=" + encodeURIComponent("https://firebasestorage.googleapis.com/v0/b/x/o/a.png")));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+  });
+});
