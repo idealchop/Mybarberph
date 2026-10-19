@@ -1,4 +1,4 @@
-import { TicketSkeleton } from "@/components/common/Skeleton";
+import { TicketSkeleton } from "@/components/common/skeleton";
 
 export default function Loading() {
   return <TicketSkeleton />;

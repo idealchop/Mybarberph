@@ -1,4 +1,4 @@
-import { FormSkeleton } from "@/components/common/Skeleton";
+import { FormSkeleton } from "@/components/common/skeleton";
 
 export default function Loading() {
   return <FormSkeleton />;

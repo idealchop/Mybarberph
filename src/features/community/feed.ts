@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useCloud } from "@/lib/cloud";
 import { useShopProfile } from "@/lib/shop-profile";
-import { useAuthGate } from "@/components/auth/AuthGateProvider";
-import { isSamplePost, withSamples } from "./samplePosts";
+import { useAuthGate } from "@/components/auth/auth-gate-provider";
+import { isSamplePost, withSamples } from "./sample-posts";
 import { updateCommunityStore, useCommunityStore, useNow, type CommunityPost, type PostAuthor } from "./posts";
 
 let cache: CommunityPost[] | null = null;

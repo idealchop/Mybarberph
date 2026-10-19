@@ -1,5 +1,5 @@
 import type { NavItem } from "@river-apps/ui";
-import { NavIcon3D } from "./NavIcon3D";
+import { NavIcon3D } from "./nav-icon3d";
 
 /** Lucide stroke used by older screen headers that are no longer in the nav. */
 export const ic = { size: 20, strokeWidth: 1.75 } as const;

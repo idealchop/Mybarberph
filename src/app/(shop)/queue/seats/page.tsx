@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SeatsScreen } from "@/features/queue/SeatsScreen";
+import { SeatsScreen } from "@/features/queue";
 
 export const metadata: Metadata = { title: "My Barbers" };
 

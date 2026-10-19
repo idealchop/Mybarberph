@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HomeScreen } from "@/features/home/HomeScreen";
+import { HomeScreen } from "@/features/home";
 
 export const metadata: Metadata = { title: "Home" };
 

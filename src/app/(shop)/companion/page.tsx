@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CompanionScreen } from "@/features/companion/CompanionScreen";
+import { CompanionScreen } from "@/features/companion";
 import { companionEnabled } from "@/lib/companion-flag";
 
 export const metadata: Metadata = { title: "Companion" };

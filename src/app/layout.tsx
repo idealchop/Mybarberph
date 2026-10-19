@@ -1,4 +1,4 @@
-import { CompleteFlowHost } from "@/components/transactions/CompleteFlow";
+import { CompleteFlowHost } from "@/components/transactions/complete-flow";
 import type { Metadata, Viewport } from "next";
 import "@river-apps/tokens/fonts.css";
 import "./globals.css";

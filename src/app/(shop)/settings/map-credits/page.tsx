@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageBack } from "@/components/shell/PageBack";
+import { PageBack } from "@/components/shell/page-back";
 
 export const metadata: Metadata = { title: "Map credits · Barbers.ph" };
 

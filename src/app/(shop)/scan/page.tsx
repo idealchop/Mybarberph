@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { FindTicket } from "@/features/scan/FindTicket";
+import { FindTicket } from "@/features/scan";
 
 export const metadata: Metadata = { title: "Scan QR" };
 

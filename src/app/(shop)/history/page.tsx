@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HistoryScreen } from "@/features/history/HistoryScreen";
+import { HistoryScreen } from "@/features/history";
 
 export const metadata: Metadata = { title: "History" };
 

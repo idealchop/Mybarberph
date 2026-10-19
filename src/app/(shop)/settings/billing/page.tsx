@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { BillingScreen } from "@/features/settings/BillingScreen";
+import { BillingScreen } from "@/features/settings";
 
 export const metadata: Metadata = { title: "Plan & billing" };
 

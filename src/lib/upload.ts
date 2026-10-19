@@ -1,5 +1,5 @@
 "use client";
-import { fileToDataUrl } from "@/features/community/posts";
+import { fileToDataUrl } from "@/features/community";
 import { api } from "@/lib/cloud";
 
 /** Resizes a photo in the browser and uploads it to the shop's Storage folder. Returns the public URL. */

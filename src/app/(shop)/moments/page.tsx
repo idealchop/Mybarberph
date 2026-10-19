@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CommunityScreen } from "@/features/community/CommunityScreen";
+import { CommunityScreen } from "@/features/community";
 
 export const metadata: Metadata = { title: "Moments" };
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BarberLinkScreen } from "@/features/barber/BarberLinkScreen";
+import { BarberLinkScreen } from "@/features/barber";
 
 export const metadata: Metadata = { title: "Barber link" };
 
