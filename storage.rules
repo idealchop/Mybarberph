@@ -1,17 +1,13 @@
 rules_version = '2';
 
 // Bucket mybarberph-shop-photos. Shop photos and logos are public (shown on the booking page and in
-// River Mobile). Only the shop owner (uid == shopId) may write, images only, max 5 MB.
-// The app uploads through /api/shop/photos (Admin SDK); these rules cover direct client access.
+// River Mobile). The app uploads only through /api/shop/photos (Admin SDK: owner auth, JPEG/PNG/WebP,
+// max 5 MB), so direct client writes are closed (river-ai-rules 03-build/integrations).
 service firebase.storage {
   match /b/{bucket}/o {
     match /shops/{shopId}/photos/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.uid == shopId
-        && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp)');
-      allow delete: if request.auth != null && request.auth.uid == shopId;
+      allow write: if false;
     }
     match /{allPaths=**} {
       allow read, write: if false;

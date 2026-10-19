@@ -1,3 +1,4 @@
+import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { barberRange, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
 import { loadState, shopRef } from "./shops";

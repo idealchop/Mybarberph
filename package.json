@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
-    "node": ">=20.9"
+    "node": "22.x"
   },
   "scripts": {
     "kit:build": "node scripts/kit-build.mjs",
@@ -44,5 +44,8 @@
     "eslint-config-next": "16.3.8",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

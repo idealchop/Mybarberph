@@ -25,7 +25,7 @@ export default function MapCreditsPage() {
           <li key={c.name} className="rounded-card bg-surface px-4 py-3.5 shadow-card">
             <b className="block text-[15px]">{c.name}</b>
             <p className="mt-0.5 text-[13.5px] font-medium text-ink-2">{c.what}</p>
-            <a href={c.href} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[13px] font-bold underline underline-offset-2">{c.link}</a>
+            <a href={c.href} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[13px] font-bold underline underline-offset-2">{c.link}</a>
           </li>
         ))}
       </ul>

@@ -135,7 +135,7 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
           ) : null}
 
           {error ? <p role="alert" className="mt-3 text-[13.5px] font-semibold text-[#C2410C]">{error}</p> : null}
-          <p className="mt-4 text-center text-[12px] font-medium text-muted">By continuing you agree to our <a href="/terms" target="_blank" rel="noopener" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a>.</p>
+          <p className="mt-4 text-center text-[12px] font-medium text-muted">By continuing you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a>.</p>
         </div>
       </div>
     </div>

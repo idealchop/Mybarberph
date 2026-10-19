@@ -18,6 +18,24 @@ const nextConfig: NextConfig = {
   },
   // Same-origin Firebase Auth handler (Safari blocks cross-site redirect storage). Used when
   // NEXT_PUBLIC_AUTH_SAME_ORIGIN=1 and the host's /__/auth/handler is an authorized OAuth redirect URI.
+  // Baseline security headers on every response (river-ai-rules 03-build/security-and-vulnerabilities).
+  // No CSP yet: Firebase Auth popups/redirects, reCAPTCHA and map tiles need an allowlist that is tested
+  // first in Report-Only mode (see docs/compliance open items).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          // Camera: QR scanner. Geolocation: map pin. Nothing else is used.
+          { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), browsing-topics=()" },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [{ source: "/__/auth/:path*", destination: "https://mybarberph.firebaseapp.com/__/auth/:path*" }];
   },

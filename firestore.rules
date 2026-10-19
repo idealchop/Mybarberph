@@ -3,13 +3,15 @@ rules_version = '2';
 // Barbers.ph Firestore rules. Deployed to both named databases: barbersdb-dev and barbersdb.
 //
 // The web app reads and writes through its own server (Admin SDK, which bypasses these rules).
-// These rules are the boundary for any direct client access:
+// The browser never uses the Firestore SDK (only Firebase Auth), so no client may write business data
+// (river-ai-rules 00-core §1). These rules are the boundary for any direct client access:
 //   * shops/{shopId}            shopId == the owner's Firebase Auth uid.
 //                               Public read only when the shop is listed (profile, address, pin,
 //                               photos, services: what River Mobile needs). Plan/billing fields are
 //                               set by the server only, so clients can never write this document.
-//   * shops/{shopId}/private/*  owner only.
-//   * shops/{shopId}/bookings/* owner only (customers and River Mobile go through the API).
+//   * shops/{shopId}/private/*  owner may read; writes are server-only.
+//   * shops/{shopId}/bookings/* owner may read; writes are server-only (owner app, customers and
+//                               River Mobile all go through the API).
 //   * community_posts/*         readable by anyone, written by the server only.
 //   * everything else           closed.
 service cloud.firestore {
@@ -22,7 +24,8 @@ service cloud.firestore {
       allow write: if false;
 
       match /private/{key} {
-        allow read, write: if isOwner(shopId);
+        allow read: if isOwner(shopId);
+        allow write: if false;
       }
 
       // AI Companion: chat, goals, usage and quota (server writes; owner may read).
@@ -38,10 +41,7 @@ service cloud.firestore {
 
       match /bookings/{bookingId} {
         allow read: if isOwner(shopId);
-        allow create, update: if isOwner(shopId)
-          && request.resource.data.shopId == shopId
-          && request.resource.data.id == bookingId;
-        allow delete: if isOwner(shopId);
+        allow write: if false;
       }
     }
 

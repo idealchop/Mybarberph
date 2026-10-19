@@ -99,7 +99,7 @@ function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: stri
         <div className="mt-2 flex items-start gap-2 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-semibold">
           <MapPin size={14} strokeWidth={2.2} className="mt-0.5 flex-none" aria-hidden />
           <span className="min-w-0 flex-1"><span className="block">{row.home.address}</span><span className="text-muted">{row.home.distanceKm} km away{row.homeFee ? ` · Home fee ${peso(row.homeFee)} (in total)` : ""}</span></span>
-          <a href={mapsLink(row.home.lat, row.home.lng)} target="_blank" rel="noreferrer" className="flex-none font-extrabold underline underline-offset-2">Map</a>
+          <a href={mapsLink(row.home.lat, row.home.lng)} target="_blank" rel="noopener noreferrer" className="flex-none font-extrabold underline underline-offset-2">Map</a>
         </div>
       ) : null}
       <Actions row={row} onFull={onFull} />

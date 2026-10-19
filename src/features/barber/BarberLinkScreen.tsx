@@ -421,7 +421,7 @@ function HomeVisitCard({ row, seat }: { row: ChairRequest; seat: string }) {
         {["On the way", "Arrived", "Done"].map((label, i) => <li key={label} className={`flex-1 rounded-pill py-1 text-center ${i < step ? "bg-ink text-on-ink" : i === step ? "bg-grey-200" : "bg-grey-100 text-muted"}`}>{label}</li>)}
       </ol>
       <div className="mt-3 flex gap-2">
-        <a href={mapsLink(home.lat, home.lng)} target="_blank" rel="noreferrer" className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-pill bg-grey-100 text-[13.5px] font-bold"><Navigation size={15} strokeWidth={2.2} aria-hidden />Navigate</a>
+        <a href={mapsLink(home.lat, home.lng)} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-pill bg-grey-100 text-[13.5px] font-bold"><Navigation size={15} strokeWidth={2.2} aria-hidden />Navigate</a>
         {step === 0 ? <Button size="sm" className="flex-1" loading={busy} onClick={() => go({ status: "accepted", homeStatus: "on_the_way" })}>On the way</Button>
           : step === 1 ? <Button size="sm" className="flex-1" loading={busy} onClick={() => go({ status: "in_chair", homeStatus: "arrived", startedAt: Date.now(), seatLabel: seat })}>Arrived</Button>
           : <Button size="sm" className="flex-1" onClick={() => completeCut(row)}>Done</Button>}
