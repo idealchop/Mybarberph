@@ -5,13 +5,16 @@
 The browser loads only the Firebase Auth web SDK (`src/lib/firebase/client.ts`, `src/lib/session.ts`). No Firestore/Storage client SDK is used.
 
 1. **Guest first.** `/` → `/home` works signed out. Actions that need an account (`data-auth="action"`) open the sign-in sheet (`requireAuth`).
+   - **Opens once per visit (2026-10-20).** A signed-out visitor on a shop-app page (Home, Queue, Sales, Settings…) sees the sign-in sheet by itself once per page load (`src/lib/auto-login.ts`). It is dismissable and guest browsing keeps working. It never opens on booking/schedule (`/book`), the customer ticket, barber links (`/b/…`), Moments, privacy, terms or map credits, nor while "Signing you in…" (Google redirect return).
+   - **No email/password sign-in.** The sheet offers Google and a text code only, so there is no "Forgot password?" link (it would need an email/password method first; open item).
 2. **Sign-in methods**
    - **Google**: `signInWithPopup`; when the popup is blocked or unsupported (mobile Safari, in-app browsers) it falls back to `signInWithRedirect`, keeping the return path in `sessionStorage["bp.authRedirect"]` (removed after `getRedirectResult`). With `NEXT_PUBLIC_AUTH_SAME_ORIGIN=1` on `*.hosted.app` / `*.web.app`, the auth domain is the current host so the redirect handler is same-origin.
    - **Phone (SMS OTP)**: `signInWithPhoneNumber` with an invisible reCAPTCHA, then `confirmPhoneCode`.
    - **Test mode (DEV only)**: when `NEXT_PUBLIC_AUTH_TEST_MODE=1` *and* the browser has opted in with `localStorage["bp.authTest"]="1"`, reCAPTCHA is skipped so Firebase **test phone numbers** can sign in for automated checks. Real numbers still need reCAPTCHA. It is set in `apphosting.dev.yaml` only (open item: whether to keep it on hosted DEV).
-3. **Calling the API.** `api()` in `src/lib/cloud.ts` adds `Authorization: Bearer <Firebase ID token>` (`getIdToken()`, refreshed by the SDK).
-4. **Server check.** `getCaller(req)` (`src/lib/server/auth.ts`) verifies the token with `adminAuth().verifyIdToken`. Invalid or missing → `401 { code: "unauthenticated" }`. The caller's `uid` is the tenant (`shopId`); `ensureShop(uid)` creates an empty `shops/{uid}` on first use.
-5. **Sign-out.** `signOut()` (Firebase). No server session or cookie is used (`SESSION_COOKIE_NAME` in `apphosting.yaml` is unused).
+3. **Settings › Account** (`/settings/account`). Shows how the owner signs in: "You sign in with Google" or "You sign in with a text code", with no password form. An account that has an email password (`password` provider) gets **Change password**: current, new (≥ 8 characters) and confirm. It re-authenticates with the current password (`reauthenticateWithCredential`), then calls `updatePassword`. Errors: wrong password, weak password, requires-recent-login.
+4. **Calling the API.** `api()` in `src/lib/cloud.ts` adds `Authorization: Bearer <Firebase ID token>` (`getIdToken()`, refreshed by the SDK).
+5. **Server check.** `getCaller(req)` (`src/lib/server/auth.ts`) verifies the token with `adminAuth().verifyIdToken`. Invalid or missing → `401 { code: "unauthenticated" }`. The caller's `uid` is the tenant (`shopId`); `ensureShop(uid)` creates an empty `shops/{uid}` on first use.
+6. **Sign-out.** `signOut()` (Firebase). No server session or cookie is used (`SESSION_COOKIE_NAME` in `apphosting.yaml` is unused).
 
 ## Barbers — chair links (no account)
 
