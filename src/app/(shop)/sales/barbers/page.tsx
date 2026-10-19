@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { BarberLeaderboard } from "@/features/sales";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "My Barbers" };
-
+// The leaderboard is now the My Barbers tab on Sales.
 export default function BarberLeaderboardPage() {
-  return <BarberLeaderboard />;
+  redirect("/sales?view=barbers");
 }

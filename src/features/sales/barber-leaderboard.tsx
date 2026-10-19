@@ -1,19 +1,15 @@
 "use client";
-import { ListSkeleton } from "@/components/common/skeleton";
 import { cn } from "@river-apps/ui";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PageBack } from "@/components/shell/page-back";
 import { BarberPortrait } from "@/features/settings";
-import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
-import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
+import type { SalesRange } from "@/lib/sales-report";
+import type { ChairRequest } from "@/lib/chair-bookings";
 import { barberKey, inRange } from "@/lib/sales-stats";
 import { chairBarberName, useShopChairs, type ShopChair } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
-import { RangeChips } from "./sales-parts";
-import { useSalesRows } from "./use-sales-rows";
 
 type Sort = "sales" | "productivity" | "completion" | "speed" | "cuts";
 const SORTS: [Sort, string][] = [["sales", "Sales"], ["productivity", "Productivity"], ["completion", "Completion"], ["speed", "Fastest"], ["cuts", "Cuts"]];
@@ -21,18 +17,13 @@ const MEDAL = ["🥇", "🥈", "🥉"];
 
 interface Row { key: string; id: string; loc: string; locName: string; name: string; chair?: ShopChair; sales: number; cuts: number; declined: number; completion: number | null; avgMin: number | null; perHour: number | null }
 
-/** Sales → My Barbers: leaderboard of every barber with sortable metrics. */
-export function BarberLeaderboard() {
+/** Sales → My Barbers tab: leaderboard with sortable metrics. Date range, location and rows come from the Sales screen. */
+export function BarberLeaderboard({ range, where, all }: { range: SalesRange; where: string; all: ChairRequest[] }) {
   const shops = useShopLocations();
   const { chairs } = useShopChairs({ all: true });
-  const [range, setRange] = useState<SalesRange>("week");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("sales");
   const [page, setPage] = useState(0);
-  const deep = useSalesRows(rangeFetchDays(range));
-  const cloud = useChairRequests();
-  const all = deep ?? cloud.rows;
-  const where = "all"; // Leaderboard always ranks every location.
   const locName = (id: string) => (shops.enabled ? shops.branches.find((b) => b.id === id)?.name ?? "" : "");
 
   const rows = useMemo(() => {
@@ -77,25 +68,19 @@ export function BarberLeaderboard() {
 
   const shownVal = (r: Row) => sort === "cuts" ? `${r.cuts} cut${r.cuts === 1 ? "" : "s"}` : sort === "completion" ? (r.completion == null ? "–" : `${r.completion}%`) : sort === "productivity" ? (r.perHour == null ? "–" : `${r.perHour}/hr`) : sort === "speed" ? (r.avgMin == null ? "–" : `${r.avgMin} min/cut`) : peso(r.sales);
 
-  if (!deep && !cloud.ready) return <ListSkeleton />;
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-10 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
-      <div className="flex items-center gap-1">
-        <PageBack fallback="/sales" />
-        <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">My Barbers</h1>
-      </div>
-      <label className="mt-3 flex h-10 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-card">
-        <Search size={16} className="flex-none text-muted" aria-hidden />
-        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search barber" aria-label="Search barber by name" className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold outline-none placeholder:text-muted" />
-      </label>
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <RangeChips value={range} onChange={(v) => { setRange(v); setPage(0); }} allowCustom />
-      </div>
-      <div role="radiogroup" aria-label="Rank by" className="mt-2.5 grid grid-cols-5 gap-1">
-        {SORTS.map(([v, l]) => (
-          <button key={v} type="button" role="radio" aria-checked={sort === v} onClick={() => { setSort(v); setPage(0); }}
-            className={cn("h-8 min-w-0 truncate rounded-pill px-1 text-[12px] font-bold", sort === v ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{l}</button>
-        ))}
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-card">
+          <Search size={16} className="flex-none text-muted" aria-hidden />
+          <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search barber" aria-label="Search barber by name" className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold outline-none placeholder:text-muted" />
+        </label>
+        <label className="relative flex h-10 w-[112px] flex-none items-center rounded-pill bg-surface shadow-card">
+          <select aria-label="Rank by" value={sort} onChange={(e) => { setSort(e.target.value as Sort); setPage(0); }} className="h-full w-full appearance-none truncate rounded-pill bg-transparent pl-3.5 pr-8 text-[13px] font-bold outline-none">
+            {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <ChevronDown size={15} className="pointer-events-none absolute right-3 text-muted" aria-hidden />
+        </label>
       </div>
 
       {!sorted.length && needle ? <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barber named “{q.trim()}”.</p> : !sorted.length ? (

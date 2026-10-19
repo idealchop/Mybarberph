@@ -1,7 +1,6 @@
 "use client";
 import { DashboardSkeleton } from "@/components/common/skeleton";
-import { MapPin, Trophy } from "lucide-react";
-import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
 import { StatCard, cn } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
@@ -17,13 +16,15 @@ import { barberStats, rankedBarbers } from "@/lib/sales-stats";
 import { BarberRanking, ClaimHistory, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
+import { BarberLeaderboard } from "./barber-leaderboard";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
 
-// Two tabs (Jimboy, 2026-10-20): Collection (default) and Performance. Old ?view=overview links land on Collection.
-type View = "performance" | "services";
+// Three tabs (Jimboy, 2026-10-20): Collection (default), Performance, My Barbers. Old ?view=overview links land on Collection.
+type View = "performance" | "services" | "barbers";
 const VIEWS: { value: View; label: string }[] = [
   { value: "performance", label: "Collection" },
   { value: "services", label: "Performance" },
+  { value: "barbers", label: "My Barbers" },
 ];
 
 /** Sales: Collection / Performance, filtered by location and a compact date chip. */
@@ -44,7 +45,8 @@ export function SalesDataScreen() {
     const q = new URLSearchParams(window.location.search);
     const t = window.setTimeout(() => {
       // Anything but "services" (incl. the old overview tab) opens Collection.
-      setView(q.get("view") === "services" || q.get("tab") === "services" ? "services" : "performance");
+      const v = q.get("view") ?? q.get("tab");
+      setView(v === "services" ? "services" : v === "barbers" ? "barbers" : "performance");
       if (q.get("loc")) setLoc(q.get("loc")!);
       if (q.get("r") === "week" || q.get("r") === "month" || q.get("r") === "today") setRange(q.get("r") as SalesRange);
     }, 0);
@@ -68,7 +70,6 @@ export function SalesDataScreen() {
           <h1 className="flex items-center gap-1.5 text-[28px] font-extrabold leading-none tracking-[-0.03em]">
             <CoinIcon size={28} /> Sales
           </h1>
-          <Link href="/sales/barbers" aria-label="My Barbers leaderboard" title="My Barbers" className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><Trophy size={19} strokeWidth={2} /></Link>
         </div>
       </header>
 
@@ -110,6 +111,7 @@ export function SalesDataScreen() {
           <PerformanceDashboard f={pf} all={all} range={range} where={where} branches={branches} chairs={chairs} />
         </>
       ) : null}
+      {view === "barbers" ? <BarberLeaderboard range={range} where={where} all={all} /> : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>
     </div>
   );

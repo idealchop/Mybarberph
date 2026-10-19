@@ -8,7 +8,7 @@ test.describe("Guest owner app", () => {
   test("TC-HOME-HP-01 Given a guest, when they open /, then Home renders with a sign-in entry and no errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await open(page, "/", "Sign in");
+    await open(page, "/", "Sign up or log in");
     await expect(page).toHaveURL(/\/home$/);
     await expect(page).toHaveTitle(/Home · Barbers\.ph/);
     await expectLandmarks(page);
@@ -18,7 +18,7 @@ test.describe("Guest owner app", () => {
   });
 
   test("TC-SEO-NF-03 Given the app shell, then it is not indexable", async ({ page }) => {
-    await open(page, "/home", "Sign in");
+    await open(page, "/home", "Sign up or log in");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   });
 });
@@ -59,7 +59,7 @@ test.describe("Public customer and barber links", () => {
 
 test.describe("Sign-in sheet opens once per visit", () => {
   test("TC-AUTH-HP-04 Given a signed-out visitor on Home, then the sign-in sheet opens by itself and can be dismissed", async ({ page }) => {
-    await open(page, "/home", "Sign in");
+    await open(page, "/home", "Sign up or log in");
     const sheet = page.getByRole("dialog", { name: "Sign up or log in" });
     await expect(sheet).toBeVisible({ timeout: 15_000 });
     await sheet.getByRole("button", { name: "Close" }).click();
@@ -75,5 +75,21 @@ test.describe("Sign-in sheet opens once per visit", () => {
     await page.goto("/moments", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(4000);
     await expect(page.getByRole("dialog", { name: "Sign up or log in" })).toHaveCount(0);
+  });
+});
+
+test.describe("Sales › My Barbers tab", () => {
+  test("TC-SALES-HP-05 Given the old leaderboard link, then it opens the My Barbers tab with search and a Rank by dropdown on one line", async ({ page }) => {
+    await page.goto("/sales/barbers", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/sales\?view=barbers/);
+    await expect(page.getByRole("tab", { name: "My Barbers" })).toHaveAttribute("aria-selected", "true", { timeout: 20_000 });
+    const search = page.getByRole("searchbox", { name: /Search barber/ });
+    const sort = page.getByRole("combobox", { name: "Rank by" });
+    await expect(sort).toBeVisible();
+    const [a, b] = [await search.boundingBox(), await sort.boundingBox()];
+    expect(Math.abs((a!.y + a!.height / 2) - (b!.y + b!.height / 2))).toBeLessThan(4);
+    expect(b!.x).toBeGreaterThan(a!.x);
+    await expect(page.getByRole("radiogroup", { name: "Rank by" })).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
   });
 });

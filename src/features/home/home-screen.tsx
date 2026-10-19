@@ -5,7 +5,7 @@ import { useRemit } from "@/features/sales";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { ChevronDown, Loader2, Plus, ScanLine } from "lucide-react";
+import { ChevronDown, Loader2, Plus, ScanLine, User } from "lucide-react";
 import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
@@ -140,9 +140,9 @@ export function HomeScreen() {
                 brand
               ) : (
                 <button type="button" onClick={() => requireAuth()} className="flex min-h-11 items-center gap-2 rounded-[14px] py-1 pl-1 pr-1.5 text-left">
-                  <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold">?</span>
+                  <span aria-hidden className="inline-flex size-9 flex-none items-center justify-center rounded-full bg-grey-100 text-ink"><User size={18} strokeWidth={2.2} /></span>
                   <span className="flex min-w-0 flex-col leading-[1.2]">
-                    <span className="text-[13px] font-bold">Sign in</span>
+                    <span className="text-[13px] font-bold">Sign up or log in</span>
                     <span className="text-[11px] font-medium text-muted">Save your shop</span>
                   </span>
                 </button>
@@ -286,7 +286,7 @@ function DesktopBar({ brand, onSignIn }: { brand: React.ReactNode; onSignIn?: ()
           <CoinIcon size={26} />
           <span className="text-[13px] font-bold leading-none text-ink">Sales</span>
         </Link>
-        {onSignIn ? <Button size="sm" onClick={onSignIn}>Sign in</Button> : null}
+        {onSignIn ? <Button size="sm" onClick={onSignIn}>Sign up or log in</Button> : null}
       </div>
     </div>
   );
