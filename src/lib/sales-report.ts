@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChairRequest } from "@/lib/chair-bookings";
-import { PAY_LABEL, payBucket, paySplit, tipCentavos, tipsTotal, type PaySplit } from "@/lib/pay-split";
+import { PAY_LABEL, payBucket, paySplit, type PaySplit } from "@/lib/pay-split";
 
 export type SalesRange = "today" | "week" | "month" | "all" | "custom";
 export type SalesView = "overview" | "services" | "payments" | "shop";
@@ -47,8 +47,6 @@ export interface SalesReport {
   collected: number;
   /** Collected money by stored payment method (no method = other). */
   collectedSplit: PaySplit;
-  /** Tips (centavos) in `collected`. */
-  tips: number;
   unpaid: number;
   average: number;
   series: SalesRow[];
@@ -173,10 +171,8 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     delta,
     sales: rangeSales,
     cuts,
-    // Collected money includes tips (under the payment's method); sales, services and barbers don't.
-    collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price + tipCentavos(r), 0),
+    collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price, 0),
     collectedSplit: paySplit(extras),
-    tips: tipsTotal(extras),
     unpaid: unpaidCentavos,
     average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,

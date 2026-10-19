@@ -27,7 +27,7 @@ git rev-parse origin/main origin/dev   # same commit
 | Automated | `CHROME_PATH=/opt/google/chrome/chrome npm run test:e2e` (DEV only) | all PASS |
 | Auth | sign in with a test persona (Firebase test phone on DEV) | lands on Home signed in |
 | HP | create a walk-in, move it to Done, see it under "Done today" and in Sales | shows in both |
-| Money | complete one cut paid cash and one GCash, one with "+ Add tip" | Collected shows the Cash/GCash split and "incl. ₱X tips"; Sales doesn't include the tip |
+| Money | complete one cut paid cash and one GCash | Collected shows the Cash/GCash split; a paid visit with no method shows as Cash |
 | Barber link | open a barber link; try to change the amount | Amount is read-only "Menu price"; only that barber's visits show |
 | Mutation + GET | edit a service price in Settings, reload | new price shown |
 | No secrets | view-source / network tab of `/home` | no keys besides the public Firebase web config |

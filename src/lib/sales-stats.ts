@@ -2,7 +2,7 @@
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { rangeWindow, type SalesRange } from "@/lib/sales-report";
-import { addToSplit, payBucket, tipCentavos } from "@/lib/pay-split";
+import { addToSplit, payBucket } from "@/lib/pay-split";
 
 const DAY = 86_400_000;
 export const dayKey = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -28,8 +28,6 @@ export interface BarberStat {
   id: string; name: string; locationId: string; locationName: string; sales: number; cuts: number; avg: number; cash: number; gcash: number; online: number; other: number; unpaid: number;
   /** Cash to hand over: cash visits plus paid visits with no stored method (same rule as lib/server/remit.ts). */
   remit: number; completionPct: number | null;
-  /** Tips (centavos) on paid visits; included in cash/gcash/online/other, not in sales or remit. */
-  tips: number;
   /** Average customer rating (1–5) for rated cuts in range, and how many. */
   rating: number | null; ratings: number;
 }
@@ -93,13 +91,11 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
     const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === bl);
     const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
     const name = r.barberName || seat?.barberName?.trim() || (r.seatLabel ? `${r.seatLabel}` : "No barber");
-    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, tips: 0, completionPct: null, rating: null, ratings: 0 };
+    const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, completionPct: null, rating: null, ratings: 0 };
     row.cuts += 1; row.sales += r.price || 0;
     if (!r.paid) row.unpaid += r.price || 0;
     else {
-      // Collected split includes tips; remit (cash to hand over) and sales stay service amounts.
       addToSplit(row, r);
-      row.tips += tipCentavos(r);
       const k = payBucket(r);
       if (k === "cash" || k === "other") row.remit += r.price || 0;
     }

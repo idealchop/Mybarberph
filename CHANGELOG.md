@@ -5,7 +5,7 @@ Built from the git history (newest first). `main` → PROD, `dev` → DEV (same 
 ## 2026-10-19 — Jimboy's decisions on the open items (DEV)
 
 - Docs: environments (dev branch, DB guard, accepted decisions), auth flow (links never expire, 6-month review, barber scope), API, roles, release runbook
-- Barber link: amount locked to the menu price; optional tip; 'Update information' link (`93df062`)
+- Barber link: amount locked to the menu price; 'Update information' link (`93df062`; its optional tip was removed again on 2026-10-20)
 - Barber My sales: Collected split (Cash / GCash, Online and Other when present) (`d0b8fac`)
 - Barber link: server enforces own bookings only; links resolve without expiry (`d1b385d`)
 - Barber links: never expire; owner confirms each link every 6 months (nudge only) (`3b5f67a`)

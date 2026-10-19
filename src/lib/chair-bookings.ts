@@ -120,8 +120,7 @@ export function acceptOnChair(id: string, chairLabel: string, locationId?: strin
   return chairLabel;
 }
 
-/** `tip`: whole pesos, kept apart from `price` (centavos). */
-export type DonePayment = { price: number; paid: boolean; method: "cash" | "gcash"; tip?: number };
+export type DonePayment = { price: number; paid: boolean; method: "cash" | "gcash" };
 
 /** Finishes the visit with the payment confirmed in the Complete popup. An online payment stays as the customer left it. */
 export function markDone(id: string, pay?: DonePayment) {
@@ -131,8 +130,8 @@ export function markDone(id: string, pay?: DonePayment) {
   patchRequest(id, {
     status: "done",
     ...(onlinePaid || !pay ? { paid: Boolean(row?.paid) } : pay.paid
-      ? { price: pay.price, paid: true, payMethod: pay.method, payWhere: "shop" as const, tip: pay.tip || undefined }
-      : { price: pay.price, paid: false, payMethod: undefined, tip: pay.tip || undefined }),
+      ? { price: pay.price, paid: true, payMethod: pay.method, payWhere: "shop" as const }
+      : { price: pay.price, paid: false, payMethod: undefined }),
     completedAt: Date.now(),
     seatLabel: row?.seatLabel || row?.chairLabel,
     chairLabel: undefined,

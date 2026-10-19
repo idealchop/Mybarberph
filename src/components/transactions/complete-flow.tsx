@@ -9,8 +9,7 @@ import { peso } from "@/lib/format";
 import { TransactionSheet } from "./transaction-sheet";
 import { useShopMenu } from "@/lib/shop-services";
 import { useCloud } from "@/lib/cloud";
-import { lockedAmount, parseTip } from "@/lib/menu-amount";
-import { TipField } from "./tip-field";
+import { lockedAmount } from "@/lib/menu-amount";
 
 const EVT = "barbers-complete-cut";
 
@@ -60,9 +59,6 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
   const method = adjust ? m : "cash";
   const isPaid = adjust ? paid : true;
   const [amount, setAmount] = useState(String(base / 100));
-  const [tipOpen, setTipOpen] = useState(Boolean(row.tip));
-  const [tipText, setTipText] = useState(row.tip ? String(row.tip) : "");
-  const tip = parseTip(tipText);
   const [busy, setBusy] = useState(false);
   const typed = Math.round(Number(amount) * 100);
   const cents = !barber && adjust && typed > 0 ? typed : base;
@@ -71,8 +67,8 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
     if (busy) return;
     setBusy(true);
     const price = onlinePaid ? row.price : cents;
-    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method, tip });
-    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, tip: onlinePaid ? row.tip : tip || undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
+    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method });
+    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
   };
   const adjustLabel = barber ? (adjust ? "Use default" : "Update information") : adjust ? "Use default" : "Adjust";
   const hint = adjust
@@ -88,7 +84,7 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <h2 id="pay-title" className="text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(onlinePaid ? row.price : cents)}</h2>
-            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}{tip ? ` · Tip ${peso(tip * 100)}` : ""}</p>
+            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}</p>
           </div>
           {onlinePaid || barber ? null : <button type="button" onClick={() => setAdjust(!adjust)} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">{adjustLabel}</button>}
         </div>
@@ -103,7 +99,6 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
             </> : null}
           </div>
         ) : null}
-        {onlinePaid ? null : <TipField open={tipOpen} onOpen={() => setTipOpen(true)} value={tipText} onChange={setTipText} />}
         {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{hint}</p>}
         <Button data-auth="action" className="mt-5" fullWidth loading={busy} onClick={confirm}>Confirm &amp; complete</Button>
         {barber && !onlinePaid ? (

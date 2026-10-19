@@ -30,7 +30,6 @@ export const STATE_KEYS: Record<string, string> = {
 /** State a chair link may write directly: none. Barbers change only their own name (setBarberName). */
 export const BARBER_KEYS = new Set<string>();
 
-import { MAX_TIP_PESOS } from "@/lib/menu-amount";
 import { isRecurring, maxLocations, normalizePlan, walkInLimit, WALKIN_LIMIT_MESSAGE, type PlanId } from "@/lib/plans";
 
 /** Stored plan id; older records may still hold "monthly_950" / "lifetime_10000". */
@@ -211,9 +210,6 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
   if (typeof b.notes === "string") out.notes = str(b.notes, 500);
-  // Tip: whole pesos, kept apart from the service price (never folded into it).
-  const tip = Math.floor(Number(b.tip));
-  if (Number.isFinite(tip) && tip > 0) out.tip = Math.min(tip, MAX_TIP_PESOS);
   if (b.homeStatus === "on_the_way" || b.homeStatus === "arrived") out.homeStatus = b.homeStatus;
   return out;
 }

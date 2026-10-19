@@ -67,7 +67,6 @@ export function BarberPerformanceView({ token, who, place, onBack }: { token: st
           <p className="text-[12px] font-semibold text-muted">Collected</p>
           <b className="text-[24px] tracking-[-0.03em]">{d ? peso(d.cash + d.gcash + d.online + (d.other ?? 0)) : "–"}</b>
           {d ? <PaySplitText split={{ cash: d.cash, gcash: d.gcash, online: d.online, other: d.other ?? 0 }} layout="lines" className="text-[13px] font-semibold text-muted" /> : null}
-          {d?.tips ? <p className="mt-0.5 text-[12px] font-semibold text-muted">incl. {peso(d.tips)} tips</p> : null}
         </div>
         <Stat k="Walk-ins" v={d ? String(d.walkIns) : "–"} />
         <Stat k="Online" v={d ? String(d.onlineBookings) : "–"} />

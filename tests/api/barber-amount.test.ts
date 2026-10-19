@@ -30,7 +30,7 @@ beforeEach(() => {
 const put = (booking: Record<string, unknown>) =>
   PUT(new Request("http://local", { method: "PUT", body: JSON.stringify({ booking }) }), { params: Promise.resolve({ token: "keithtoken1", id: booking.id }) } as never);
 
-describe("Barber link: amount is the menu price; tip is separate", () => {
+describe("Barber link: amount is the menu price", () => {
   it("TC-BARBER-NEG-05 a barber can't save a Haircut (₱250) as ₱240: the server saves the menu price", async () => {
     const res = await put(row("v-w1", { price: 24_000 }));
     expect(res.status).toBe(200);
@@ -51,18 +51,7 @@ describe("Barber link: amount is the menu price; tip is separate", () => {
     expect(saved("paid1").price).toBe(22_000);
   });
 
-  it("TC-TIP-HP-01 a tip is saved as whole pesos in its own field and never changes the amount", async () => {
-    fs.store["shops/shop-a/bookings/v-t1"] = { ...row("v-t1"), shopId: "shop-a", barberId: "b-keith", price: 25_000 };
-    await put(row("v-t1", { status: "done", paid: true, payMethod: "cash", price: 25_000, tip: "50.9" }));
-    expect(saved("v-t1")).toMatchObject({ price: 25_000, tip: 50, paid: true, payMethod: "cash" });
-  });
 
-  it("TC-TIP-NEG-01 a negative, zero or non-number tip is dropped", async () => {
-    for (const [id, tip] of [["v-n1", -5], ["v-n2", 0], ["v-n3", "abc"]] as const) {
-      await put(row(id, { tip }));
-      expect(saved(id)).not.toHaveProperty("tip");
-    }
-  });
 
   it("TC-BARBER-HP-05 the owner can still set a custom amount (owner path, no barber)", async () => {
     await putBooking("shop-a", row("v-o1", { price: 24_000 }));

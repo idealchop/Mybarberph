@@ -56,7 +56,7 @@ Every error is `{ "error": "<human message>", "code": "<ErrorCode>" }` (`apiErro
 | Method & path | Purpose |
 | :--- | :--- |
 | `GET /api/barber/:token` | Shop name, menu, chairs, locations, and **only this barber's visits** (newest 200) plus unassigned visits still waiting at their location. Unknown/replaced/turned-off token → `404` "This link was replaced or turned off." (links never expire) |
-| `PUT /api/barber/:token/bookings/:id` | Create a walk-in, or update one of this barber's visits (or claim an open waiting one). Another barber's visit → `404` "This visit is with another barber." Server stamps `barberId` and location from the chair, and **overrides `price` with the menu total** of the visit's services (+ home fee; a visit paid online keeps its amount). `tip` (whole pesos, 0–100000) is kept separately |
+| `PUT /api/barber/:token/bookings/:id` | Create a walk-in, or update one of this barber's visits (or claim an open waiting one). Another barber's visit → `404` "This visit is with another barber." Server stamps `barberId` and location from the chair, and **overrides `price` with the menu total** of the visit's services (+ home fee; a visit paid online keeps its amount). |
 | `GET /api/barber/:token/sales` | `?range=` own sales |
 | `GET /api/barber/:token/performance` | `?range=&from=&to=` own performance |
 | `PUT /api/barber/:token/state/:key` | No keys allowed today → 400 |

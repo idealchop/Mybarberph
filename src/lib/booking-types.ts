@@ -37,8 +37,6 @@ export interface ChairRequest {
   payMethod?: PayMethod;
   /** Owner's note on this visit. */
   notes?: string;
-  /** Optional tip in whole pesos (≥0). Separate from `price` (centavos), which stays the service amount. */
-  tip?: number;
   /** How the customer said they'd pay at booking (QR page). */
   payPref?: "cash" | "gcash";
   /** Customer's rating after the visit (1–5) and optional comment. */

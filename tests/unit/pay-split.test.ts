@@ -18,13 +18,13 @@ describe("Collected split by payment method", () => {
     expect(splitParts(s).map((p) => p.label)).toEqual(["Cash", "GCash"]);
   });
 
-  it("TC-PAY-ODD-01 a paid visit with no stored method is Other, never guessed as cash", () => {
+  it("TC-PAY-ODD-01 a paid visit with no stored method counts and shows as Cash, as on the server (Jimboy, 2026-10-20)", () => {
     const legacy = visit({ paid: true, payMethod: undefined });
-    expect(payBucket(legacy)).toBe("other");
-    expect(payMethodLabel(legacy)).toBe("Other");
+    expect(payBucket(legacy)).toBe("cash");
+    expect(payMethodLabel(legacy)).toBe("Cash");
     const s = paySplit([legacy, visit({ paid: true, payMethod: "cash" })]);
-    expect(s).toMatchObject({ cash: 10000, other: 10000 });
-    expect(splitParts(s).map((p) => p.label)).toEqual(["Cash", "GCash", "Other"]);
+    expect(s).toMatchObject({ cash: 20000, other: 0 });
+    expect(splitParts(s).map((p) => p.label)).toEqual(["Cash", "GCash"]);
   });
 
   it("TC-PAY-NEG-01 unpaid visits are not collected and have no method label", () => {
@@ -37,12 +37,12 @@ describe("Collected split by payment method", () => {
     const r = salesReport(rows, 10000, "today");
     const s = r.collectedSplit;
     expect(s.cash + s.gcash + s.online + s.other).toBe(r.collected);
-    expect(r.payments.map((p) => p.label)).toContain("Other");
+    expect(r.payments.map((p) => p.label)).not.toContain("Other");
   });
 
-  it("TC-PAY-ODD-02 per barber: split by method, remit = cash + no-method (server rule), online excluded", () => {
+  it("TC-PAY-ODD-02 per barber: split by method; no-method is cash; remit = cash, online excluded", () => {
     const rows = [visit({ paid: true, payMethod: "cash" }), visit({ paid: true, payMethod: "gcash" }), visit({ paid: true }), visit({ paid: true, payMethod: "online" })];
     const [b] = barberStats(rows, "today", "all", [{ id: "home", name: "Main" }], []);
-    expect(b).toMatchObject({ cash: 10000, gcash: 10000, other: 10000, online: 10000, remit: 20000 });
+    expect(b).toMatchObject({ cash: 20000, gcash: 10000, other: 0, online: 10000, remit: 20000 });
   });
 });
