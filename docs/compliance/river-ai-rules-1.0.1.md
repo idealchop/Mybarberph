@@ -8,22 +8,22 @@
 | Author | agent (Grok Bot) for Jimboy Regalado |
 | Change size | **L** |
 | Shape | **A**, single-app variant (one Next.js app = UI + API route handlers) |
-| Overall | **BLOCKED**: code, docs and tests pass. DEV deploy and the DEV smoke are blocked by an expired Firebase/gcloud login. 4 checklist items stay FAIL until Jimboy decides (dev branch, shared Brevo key, Web Storage, rate limit / App Check). 24 open items listed at the end. |
+| Overall | **DEV deployed, PASS on everything automated**: code, docs and 94 local + 24 DEV e2e tests pass. DEV deployed (2b7e328, 2026-10-19 22:04 PHT) and the hardened rules released (22:05 PHT). Still BLOCKED: signed-in manual checks (T11, R05). 1 FAIL (D09 Web Storage, needs a decision). 2 ACCEPTED (C24 Brevo, B07 rate limit). ' + str(len(OPEN)) + ' open items at the end. |
 
 ## Scorecard (items per stage)
 
-| Stage | Items | Before: PASS / FAIL / N/A | After: PASS / FAIL / BLOCKED / N/A | Phase report |
+| Stage | Items | Before: PASS / FAIL / N/A | After: PASS / ACCEPTED / FAIL / BLOCKED / N/A | Phase report |
 | :--- | :--- | :--- | :--- | :--- |
-| 00-core | 32 | 14 / 16 / 2 | 28 / 2 / 0 / 2 | [reports/00-core-summary-report.md](./reports/00-core-summary-report.md) |
-| 01-plan | 9 | 1 / 8 / 0 | 9 / 0 / 0 / 0 | [reports/01-plan-summary-report.md](./reports/01-plan-summary-report.md) |
-| 02-design | 10 | 1 / 8 / 1 | 8 / 1 / 0 / 1 | [reports/02-design-summary-report.md](./reports/02-design-summary-report.md) |
-| 03-build | 22 | 10 / 11 / 1 | 20 / 1 / 0 / 1 | [reports/03-build-summary-report.md](./reports/03-build-summary-report.md) |
-| 04-test | 13 | 0 / 12 / 1 | 11 / 0 / 2 / 0 | [reports/04-test-summary-report.md](./reports/04-test-summary-report.md) |
-| 05-release | 9 | 4 / 5 / 0 | 7 / 0 / 2 / 0 | [reports/05-release-summary-report.md](./reports/05-release-summary-report.md) |
-| 06-operate | 7 | 0 / 5 / 2 | 5 / 0 / 0 / 2 | [reports/06-operate-summary-report.md](./reports/06-operate-summary-report.md) |
-| **Total** | **102** | **30 / 65 / 7** | **88 / 4 / 4 / 6** | [rollup](./reports/sdlc-rollup-summary-report.md) |
+| 00-core | 32 | 14 / 16 / 2 | 29 / 1 / 0 / 0 / 2 | [reports/00-core-summary-report.md](./reports/00-core-summary-report.md) |
+| 01-plan | 9 | 1 / 8 / 0 | 9 / 0 / 0 / 0 / 0 | [reports/01-plan-summary-report.md](./reports/01-plan-summary-report.md) |
+| 02-design | 10 | 1 / 8 / 1 | 8 / 0 / 1 / 0 / 1 | [reports/02-design-summary-report.md](./reports/02-design-summary-report.md) |
+| 03-build | 22 | 10 / 11 / 1 | 20 / 1 / 0 / 0 / 1 | [reports/03-build-summary-report.md](./reports/03-build-summary-report.md) |
+| 04-test | 13 | 0 / 12 / 1 | 12 / 0 / 0 / 1 / 0 | [reports/04-test-summary-report.md](./reports/04-test-summary-report.md) |
+| 05-release | 9 | 4 / 5 / 0 | 8 / 0 / 0 / 1 / 0 | [reports/05-release-summary-report.md](./reports/05-release-summary-report.md) |
+| 06-operate | 7 | 0 / 5 / 2 | 5 / 0 / 0 / 0 / 2 | [reports/06-operate-summary-report.md](./reports/06-operate-summary-report.md) |
+| **Total** | **102** | **30 / 65 / 7** | **91 / 2 / 1 / 2 / 6** | [rollup](./reports/sdlc-rollup-summary-report.md) |
 
-The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in each stage gate, plus the hard rules in `00-core.md`. **FAIL after** = needs Jimboy's decision or access (see open items). **BLOCKED** = done, but can't be verified until the DEV deploy.
+The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in each stage gate, plus the hard rules in `00-core.md`. **ACCEPTED** = Jimboy's recorded decision or exception. **FAIL after** = needs Jimboy's decision. **BLOCKED** = done, but needs a signed-in session to verify by hand.
 
 ## 00-core
 
@@ -49,15 +49,15 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 | C18 | Public routes meet SEO/AEO/GEO | 00-core §5.7 | FAIL | **PASS** | robots.ts, legal titles and descriptions, one h1 (65eb98b, c5c45aa). Legal pages stay noindex while drafts (open item). |
 | C19 | No secrets, .env or debug dumps committed | 00-core §6 | PASS | **PASS** | Secret scan clean; firebase-debug.log gitignored; App Hosting ignore excludes .secret* and .env*. |
 | C20 | No skipped hooks, no force-push | 00-core §6 | PASS | **PASS** | Plain commits and fast-forward push. |
-| C21 | Tenant from verified auth; every read and write scoped | 00-core §7 | PASS | **PASS** | getCaller uid / chairLinks token; TC-TENANT-NEG-01, TC-BARBER-HP-01. |
-| C22 | `dev` branch → DEV, `main` → PROD | 00-core §8 | FAIL | **FAIL** | No `dev` branch; both backends deploy from local CLI. Needs Jimboy (open item). |
+| C21 | Tenant from verified auth; every read and write scoped | 00-core §7 | PASS | **PASS** | getCaller uid / chairLinks token; a barber link reads/writes only its own visits plus open waiting ones at its location (d1b385d); TC-TENANT-NEG-01, TC-BARBER-HP-01/02/03, TC-BARBER-NEG-03/04. |
+| C22 | `dev` branch → DEV, `main` → PROD | 00-core §8 | FAIL | **PASS** | `dev` created from `main` 2026-10-19, fast-forwarded to each `main` commit (both at 2b7e328). Documented in docs/environments.md and the release runbook. Neither backend is connected to a repo (no automatic rollouts); no rollout config changed. |
 | C23 | Every env var documented | 00-core §8 | FAIL | **PASS** | docs/environments.md, env.example. |
-| C24 | Never mix PROD secrets into DEV | 00-core §8 | FAIL | **FAIL** | apphosting.dev.yaml and apphosting.prod.yaml both use the same `BREVO_API_KEY` secret, so DEV sends real SMS/email on the PROD account. Needs a DEV key (open item). |
+| C24 | Never mix PROD secrets into DEV | 00-core §8 | FAIL | **ACCEPTED** | DEV and PROD share the `BREVO_API_KEY` secret. Jimboy's accepted decision (2026-10-19); recorded in docs/environments.md. Databases are now strictly separate: each overlay sets its DB, and the server fails clearly with none or a mismatch (b246f79, TC-ENV-*). |
 | C25 | Firestore listeners only where hybrid-read-model documents them | 00-core §9 | PASS | **PASS** | No listeners at all; polling documented in docs/hybrid-read-model.md. |
 | C26 | Every mutation audited | 00-core §10 | FAIL | **PASS** | Community and photo writes had no audit; now `auditLog` (0a50c19). Others write shops/{id}/activity. |
 | C27 | Errors structured and secret-free | 00-core §10 | FAIL | **PASS** | `{error, code}` on every route; checkout no longer sends PayMongo's message to the client (c1e65ab, 0a50c19). |
 | C28 | Reuse before invent | 00-core §11 | PASS | **PASS** | One `api()` client, UI kit components, existing RangeChips reused for the Done filter. |
-| C29 | Privacy: minimal PII, none in public responses or logs | 00-core §12 | PASS | **PASS** | publicBooking has no customer name or phone; audit lines have no message bodies. Retention and export are not offered (open item). |
+| C29 | Privacy: minimal PII, none in public responses or logs | 00-core §12 | PASS | **PASS** | publicBooking has no customer name or phone; audit lines have no message bodies. No retention/deletion job: Jimboy's accepted decision (2026-10-19). |
 | C30 | Change size declared; 00 summary report for M/L | reports/README | FAIL | **PASS** | Size L; docs/compliance/reports/00-core-summary-report.md. |
 | C31 | White-label (shape C) rules | 00-core §3 | N/A | **N/A** | Not a River Kit fork. |
 | C32 | consumers.md for shared services | 00-core §2 | N/A | **N/A** | Not shape B. |
@@ -97,11 +97,11 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | B01 | Files match kebab-case layout | naming-and-clean-code | FAIL | **PASS** | 7a89571. |
 | B02 | Tech debt bar | tech-debt-and-code-quality | PASS | **PASS** | Lint/tsc zero. |
-| B03 | Security: secrets, webhook signatures, upload limits, XSS sinks, rel=noopener | security-and-vulnerabilities | PASS | **PASS** | HMAC webhook; 5 MB image-only uploads; legal HTML escaped (TC-LEGAL-NF-02); all target=_blank have noopener. |
+| B03 | Security: secrets, webhook signatures, upload limits, XSS sinks, rel=noopener | security-and-vulnerabilities | PASS | **PASS** | HMAC webhook; 5 MB image-only uploads; legal HTML escaped (TC-LEGAL-NF-02); all target=_blank have noopener. Hardened Firestore/Storage rules deployed 2026-10-19 22:05 PHT (approved). Barber links never expire: Jimboy's accepted decision, with a 6-month owner review and manual Reset (3b5f67a, d1b385d). |
 | B04 | Security: outbound URLs allowlisted (SSRF) | security-and-vulnerabilities | FAIL | **PASS** | Logo proxy followed redirects off the allowlist; fixed in e35e686 (TC-SEC-NEG-01/02). |
 | B05 | Security: no leaks in errors; constant-time secret checks | security-and-vulnerabilities 10 | FAIL | **PASS** | Checkout error leak fixed (0a50c19); cron secret uses timingSafeEqual (a992239). |
 | B06 | Security headers | security-and-vulnerabilities | FAIL | **PASS** | nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, HSTS, Permissions-Policy (c1e65ab). CSP not added (open item). |
-| B07 | Auth, App Check, rate limits and validation on mutation paths | api-gateway 3 | FAIL | **FAIL** | Public booking/feedback POSTs and geocode have validation but no rate limit or App Check. Needs a policy decision (shop Wi-Fi shares one IP) and console setup (open item). |
+| B07 | Auth, App Check, rate limits and validation on mutation paths | api-gateway 3 | FAIL | **ACCEPTED** | Validation on every mutation path. No rate limit or App Check: Jimboy's accepted exception (2026-10-19), recorded in docs/backend-documentation.md 'Abuse controls'. |
 | B08 | API per contract: error codes, pagination | api-gateway | FAIL | **PASS** | Codes on every route; cursor/limit documented. |
 | B09 | Validation at the boundary (Zod or equivalent) | security-and-vulnerabilities 3 | PASS | **PASS** | Hand-written guards (allowlists, clamps, size checks). Zod adoption optional (open item). |
 | B10 | FE uses the single apiClient | frontend-implementation | PASS | **PASS** | `api()`. |
@@ -122,17 +122,17 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 
 | ID | Requirement | Source | Before | After | Evidence / reason |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| T01 | HP/NEG/ODD/NF case matrix created | test-case-creation | FAIL | **PASS** | docs/testing/test-plan.md: 34 HP, 28 NEG, 14 ODD, 10 NF automated + 4 manual. |
+| T01 | HP/NEG/ODD/NF case matrix created | test-case-creation | FAIL | **PASS** | docs/testing/test-plan.md: 118 automated rows (48 HP, 40 NEG, 20 ODD, 10 NF) + 7 manual. |
 | T02 | Every case has 'Applied as' | test-gate | FAIL | **PASS** | Each row names its file or manual section. |
 | T03 | Execution log with a Result on every case | test-gate | FAIL | **PASS** | Same doc; BLOCKED rows name the owner and follow-up. |
-| T04 | No open FAIL | test-gate | FAIL | **PASS** | 62/62 local PASS; DEV failures are BLOCKED on deploy, not product bugs. |
+| T04 | No open FAIL | test-gate | FAIL | **PASS** | 94/94 local PASS; 24/24 DEV e2e PASS. |
 | T05 | No skipped tests without reason | test-gate | N/A | **PASS** | Only TC-SEO-HP-02 self-skips off DEV, with a reason. |
 | T06 | Unit tests green | unit-testing | FAIL | **PASS** | `npm test`. |
 | T07 | API contract tests green for core AC | bdd-and-api-contracts | FAIL | **PASS** | tests/api/*. |
 | T08 | Architecture contract checks | architecture-contract-testing | FAIL | **PASS** | tests/unit/architecture-contract.test.ts. |
 | T09 | Mutation verified through its GET | test-gate | FAIL | **PASS** | TC-STATE-HP-02. |
-| T10 | Non-functional cases executed on a deployed env | non-functional-testing | FAIL | **BLOCKED** | Headers/robots/h1 e2e cases need the DEV deploy (expired login). |
-| T11 | Manual cases executed | manual-qa | FAIL | **BLOCKED** | Pay split, Done today, sign-in, checkout visual checks need the DEV deploy; checkout also needs PayMongo test keys. |
+| T10 | Non-functional cases executed on a deployed env | non-functional-testing | FAIL | **PASS** | Headers, robots, h1, error codes: e2e on DEV build 2b7e328, 24/24 PASS (22:05 PHT). |
+| T11 | Manual cases executed | manual-qa | FAIL | **BLOCKED** | Pay split, Done today, link review, barber link (scope, amount lock, tip), sales cross-check and sign-in need a signed-in owner session or a real DEV barber link; checkout also needs PayMongo test keys. Logic covered by automated cases. |
 | T12 | Evidence retained | test-gate 9 | FAIL | **PASS** | Execution log with commands, env and times. |
 | T13 | 04 summary report filled | test-gate 10 | FAIL | **PASS** | reports/04-test-summary-report.md (Status BLOCKED). |
 
@@ -140,11 +140,11 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 
 | ID | Requirement | Source | Before | After | Evidence / reason |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| R01 | Lint / tsc / build green | lint-and-health | FAIL | **PASS** | `npm run verify` exit 0 (lint, typecheck, 62 tests, next build). |
+| R01 | Lint / tsc / build green | lint-and-health | FAIL | **PASS** | `npm run verify` exit 0 (lint, typecheck, 94 tests, next build). |
 | R02 | Release notes / docs in the ship | release-docs-and-notes | FAIL | **PASS** | CHANGELOG.md, docs set. |
 | R03 | Commit and push clean, no secrets | commit-and-push | PASS | **PASS** | Pushed to main; no .secret*/.env*/vendor submodule staged. |
-| R04 | DEV deployed | ship-and-deploy | PASS | **BLOCKED** | `firebase deploy --only apphosting:barbers-ph-dev` fails: Firebase/gcloud login expired. Needs Jimboy to log in again. |
-| R05 | DEV smoke PASS | smoke-and-rollback | FAIL | **BLOCKED** | Smoke runbook written; e2e on the old DEV build: 14 PASS, 10 BLOCKED. |
+| R04 | DEV deployed | ship-and-deploy | PASS | **PASS** | `firebase deploy --only apphosting:barbers-ph-dev`: 2026-10-19 22:04 PHT, commit 2b7e328 (also 8d281a0 at 22:00). Rules released 22:05 PHT. |
+| R05 | DEV smoke PASS | smoke-and-rollback | FAIL | **BLOCKED** | Automated: e2e 24/24 PASS, `/home` 200, new link 404 text live, DB guard resolves barbersdb-dev. Signed-in HP/Mutation smoke needs Jimboy. |
 | R06 | PROD only with the user's OK | release-gate | PASS | **PASS** | PROD not deployed. |
 | R07 | Rollback path known | smoke-and-rollback | FAIL | **PASS** | docs/runbooks/release-smoke-rollback.md. |
 | R08 | URLs and status reported | release-gate 7 | PASS | **PASS** | This report and the chat summary. |
@@ -184,6 +184,15 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 | `35ffeb6` | Docs: full app doc set per River AI Rules 00-core §2 and 06-operate |
 | `fd193f3` | Tests: architecture contract (no client Firestore/Storage SDK, Admin SDK server-only); npm run verify |
 | `6353753` | Tests: TC-STATE-HP-02 mutation then paired GET (04-test 'mutation without verified GET') |
+| `6a32fd6` | Compliance report: River AI Rules 1.0.1 (102 items, before/after per stage), phase reports 00–06 + rollup |
+| `4e9cbae` | Test plan: correct the execution window (19:54–20:05 PHT) |
+| `b246f79` | Firestore: no silent fallback to the PROD database |
+| `3b5f67a` | Barber links: never expire; owner confirms each link every 6 months (nudge only) |
+| `d1b385d` | Barber link: server enforces own bookings only; links resolve without expiry |
+| `d0b8fac` | Barber My sales: Collected split (Cash / GCash, Online and Other when present) |
+| `93df062` | Barber link: amount locked to the menu price; optional tip; 'Update information' link |
+| `8d281a0` | Docs: dev branch (dev -> DEV, main -> PROD), DB guard, accepted decisions, barber link scope/review, amount lock and tip |
+| `2b7e328` | Sales: barber link My sales and /sales count only the link's location; ranking never drops sales |
 
 ## Feature requests from Jimboy (in this pass)
 
@@ -204,35 +213,84 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 - **Barber link**: there is no "done today" list there. Done visits are on its History page, which already has its own filters and date input, so it is unchanged.
 - Logic in `src/lib/done-range.ts`; tests TC-QUEUE-HP-01/02/03, TC-QUEUE-ODD-01 (midnight boundary), TC-QUEUE-NEG-01.
 
+
+### Jimboy's decisions on the open items (2026-10-19)
+
+- **Hardened Firestore/Storage rules**: approved and deployed 2026-10-19 22:05 PHT (both databases + Storage).
+- **Shared Brevo key (DEV = PROD)**: accepted decision (C24).
+- **Separate databases**: DEV `barbersdb-dev`, PROD `barbersdb`; the silent fallback to PROD was removed, and the server fails clearly with no database or a mismatched one (b246f79).
+- **No rate limiting / App Check**: accepted exception (B07).
+- **A barber link only sees and edits its own bookings**: enforced on the server (d1b385d).
+- **No customer data retention/deletion job**: accepted decision.
+- **Barber links never expire**: same token; the owner confirms each link every 6 months as a nudge only; manual Reset/turn-off stays (3b5f67a, d1b385d).
+- **`dev` branch**: `dev` → DEV, `main` → PROD; no auto-deploy config changed.
+
+**Correction to the earlier report:** it said the barber's My sales had no Cash/GCash split. In fact it had Cash and GCash tiles, but no Online/Other, and it counted paid visits with no method as cash. It now has one "Collected" card with the same split as the owner's Overview (d0b8fac, TC-PAY-HP-04).
+
+### Barber links: never expire, 6-month review (`3b5f67a`, `d1b385d`)
+
+- The server has no expiry check. The token never rotates on its own. Old `linkExpiresAt` is read as the review date, so no link broke.
+- "Keep {name}'s link active?" + Confirm shows on the barber detail page and in Manage Shop › Barbers; "Barber links to review · N" shows in Settings. Confirm sets the next review 6 months out. If the owner never confirms, the link keeps working.
+- Barber detail › Barber link › **Reset link** (new) replaces the token.
+- Error text: "This link was replaced or turned off." Tests TC-LINK-HP-01/02, ODD-01, NEG-01/02, TC-BARBER-NF-03.
+
+### Barber link: own bookings only (`d1b385d`)
+
+- `GET /api/barber/:token` returns that barber's visits plus unassigned visits still waiting at their location (so Waiting → Accept works). A `PUT` on another barber's visit answers 404, and the screen says "Another barber already has this customer." Tests TC-BARBER-HP-02/03, NEG-03/04, ODD-01.
+
+### Amount locked, optional tip, "Update information" (`93df062`)
+
+- On a barber link, Amount is a read-only "Menu price" in Edit order and the Complete popup. The server overrides any amount with the menu total (+ home fee; a visit paid online keeps its amount). Owners can still edit amounts.
+- "+ Add tip" reveals one ₱ input, stored as `tip` (whole pesos, separate from the price). It shows as "Tip ₱X" in order details and both History lists.
+- Collected totals include tips under the payment's method, with an "incl. ₱X tips" line (Sales Overview, Collection, My sales). Sales, rankings, by-service and remit stay service amounts.
+- Barber Complete popup: "Update information" is a text link under "Confirm & complete". Tests TC-BARBER-NEG-05, HP-04/05/06, ODD-02, TC-TIP-HP-01..04, NEG-01, ODD-01.
+
+### Sales mismatch between views (`2b7e328`)
+
+Jimboy reported that the two views didn't match. gcloud is logged out, so I couldn't read barbersdb-dev. Instead I checked every view's period, filter and identity rule against a fixture built from his numbers.
+
+| View (same shop, San Antonio, Oct 19) | Expected from raw visits | Shown before the fix | After the fix |
+| :--- | :--- | :--- | :--- |
+| Owner Sales Overview · Today | ₱800 · 2 cuts | ₱800 · 2 | ₱800 · 2 |
+| Owner Collection ranking · Keith | ₱800 (Cash ₱250, GCash ₱550) | ₱800 | ₱800 |
+| Barber link My sales · This week (Mon Oct 19 = today) | ₱800 · 2 cuts · Cash ₱250 · GCash ₱550 | **₱2,200 · 5 · Cash ₱1,650 · GCash ₱550** (matches his screenshot) | ₱800 · 2 |
+| Barber link My sales · By service | Haircut·Wax 1 ₱550, Haircut 1 ₱250 | Haircut·Wax 2 ₱1,050, Haircut·Wax·Shaving 1 ₱650, Haircut 2 ₱500 | per its location only |
+| Barber link `/sales` "mine" | the link's location | the bigger branch | the link's location |
+| Owner ranking with a turned-off chair | rows add up to the Sales total | that barber's sales dropped at every location | only an empty row at that location is hidden |
+
+- **Cause 1 (main):** the barber link's My sales/performance matched visits by `barberId` at any location. A barber with chairs in two branches got both branches on one link (here, ₱1,400 of Pacita cash). The link's Queue/History and the owner's per-location Sales count one location. **Fixed:** the link's location only.
+- **Cause 2:** `/api/barber/:token/sales` took `barbers[0]` with no location filter. **Fixed.**
+- **Cause 3:** the owner ranking hid every row of a barber whose chair was turned off at any location, sales included. **Fixed:** `rankedBarbers`.
+- **Cause 4 (minor):** the owner `barberSales` didn't use the chair id for old chair-only visits, unlike the client stats. **Fixed.**
+- **Not a bug:** "This week" on the barber link is Monday–Sunday (Manila), while the owner's "7d" is a rolling 7 days. Day boundaries are Manila midnight everywhere. The Haircut·Wax bucket at ₱500 and ₱550 is one service label with two amounts. The ₱550 was probably edited by hand, which the amount lock now prevents (for a real extra, use the tip).
+- Regression tests TC-SALES-HP-01, NEG-01/02/03, ODD-01. The fixture gives exactly ₱2,200 / 5 / ₱1,650 on the old code.
+
+
 ## Verification
 
-- `npm run verify` (lint, `tsc --noEmit`, Vitest, `next build`) on Node 22: **exit 0**, 62/62 tests.
-- E2E (read-only) on DEV: 14 PASS, 10 BLOCKED (cases for changes not yet deployed). Log: [../testing/test-plan.md](../testing/test-plan.md).
-- DEV deploy: **BLOCKED** (expired Firebase/gcloud login; not worked around).
+- `npm run verify` (lint, `tsc --noEmit`, Vitest, `next build`) on Node 22: **exit 0**, 94/94 tests.
+- DEV deploy: `firebase deploy --only apphosting:barbers-ph-dev`, done 2026-10-19 22:00 PHT (8d281a0) and 22:04 PHT (2b7e328). `main` = `dev` = 2b7e328. Backends: `barbers-ph-dev` environment `dev`, `barbers-ph` environment `prod` (read-only check), so each picks its overlay and database.
+- Rules: `firebase deploy --only firestore:rules,storage`, released 22:05 PHT (approved; both databases + Storage).
+- E2E (read-only) on DEV build 2b7e328: **24/24 PASS**. Log: [../testing/test-plan.md](../testing/test-plan.md).
+- Manual signed-in checks: BLOCKED (need Jimboy's session / a DEV barber link).
 
 ## Open items for Jimboy
 
-1. **Deploy:** The Firebase and gcloud logins on the box have expired, so the DEV deploy can't run. Please log in again (`firebase login --reauth`, `gcloud auth login`), then I'll deploy DEV and run the smoke checks.
-2. **Deploy:** PROD is not deployed. It needs your OK after DEV smoke passes.
-3. **Security:** The hardened `firestore.rules` and `storage.rules` are committed but not deployed, because one deploy updates both the DEV and PROD databases. They need your OK.
-4. **Environments:** There is no `dev` branch. Do you want `dev` → DEV and `main` → PROD, with App Hosting rollouts connected to them?
-5. **Environments:** DEV and PROD use the same `BREVO_API_KEY` secret, so DEV sends real SMS and email on the production Brevo account. A separate DEV key (or no Brevo on DEV) is needed.
-6. **Environments:** `NEXT_PUBLIC_AUTH_TEST_MODE=1` is on for hosted DEV (test phone numbers can skip reCAPTCHA in an opted-in browser). Keep it on, or turn it off?
-7. **Environments:** `RIVER_MOBILE_API_KEY`, `PAYMONGO_SECRET_KEY` and `PAYMONGO_WEBHOOK_SECRET` are commented out in `apphosting.yaml`. If they aren't set in the console, the partner API and checkout don't work on that backend. Please confirm.
-8. **Environments:** With no database env var set, the server falls back to the PROD database `barbersdb` (src/lib/firebase/admin.ts). I left this unchanged because I couldn't confirm PROD's App Hosting environment name. Can I switch the default to `barbersdb-dev`?
-9. **Security:** Public booking, feedback and geocode routes have no rate limit or App Check (the rulebook requires both on mutation paths). A per-IP limit could block busy shops where customers share the shop Wi-Fi, so this needs your decision, plus App Check setup in the Firebase console.
-10. **Security:** No Content-Security-Policy header yet. Adding one needs testing against Firebase Auth, the map, PayMongo and image hosts. Do you want it?
-11. **Security:** A barber link can update any booking in its shop, not only its own (the server stamps the barber and location). Should it be limited to the barber's own and unassigned visits?
-12. **Product:** Three small browser-storage items remain: the customer's ticket id, the Google sign-in return path and the DEV test-phone switch. The rulebook bans Web Storage for app state, but these are approved UX, so I flagged them instead of changing them. Keep them as exceptions?
-13. **Product:** Paid visits with no stored payment method now show as 'Other'. The server still counts them in 'cash to claim' (remit), as before. Confirm that's what you want.
-14. **Product:** The barber's own 'My sales' page on the barber link still shows the server totals with no Cash/GCash split. Do you want the split there too?
-15. **Product:** The barber link has no 'Done today' list. Its done visits are on the History page, which already has its own filters and date picker, so I didn't change it.
-16. **Product:** The privacy and terms pages stay noindex while their text is a draft. Tell me when the text is final and I'll make them indexable.
-17. **Cost:** Sales and 'cash to claim' re-read up to 5,000–20,000 and 8,000 visits every 30 seconds while the screen is open. That's fine today but costly for busy shops. Do you want pre-computed daily totals or a longer interval?
-18. **Privacy:** There's no retention or export/delete process for customer names and phone numbers in bookings. Please decide a retention period and whether customers can ask for deletion.
-19. **Operate:** No monitoring alerts are confirmed. Please create the three in docs/slos-and-alerting.md (5xx rate, denied audit actions, billing budget), or give me project access to do it.
-20. **Test:** Visual checks of the Cash/GCash split and the 'Done today' filter, the sign-in check and the PayMongo checkout QA all wait for the DEV deploy. Checkout also needs PayMongo test keys on DEV.
-21. **Engineering:** I didn't add a GitHub Actions CI workflow. It needs a `SUBMODULES_TOKEN` repo secret for the private UI kit. Do you want CI? `npm run verify` is the local gate for now.
-22. **Engineering:** Optional: move input validation to Zod, and split the app into `apps/web` + `packages/*` (shape A). Both are large refactors and only worth doing if you want them.
-23. **Engineering:** `SESSION_COOKIE_NAME` is set in apphosting.yaml but the app never reads it. Remove it, or keep it for later?
-24. **Engineering:** The env template is named `env.example`, not `.env.example`, because this repo never commits `.env*` files. Is that name OK?
+1. **Deploy:** PROD is not deployed. It needs your OK after the signed-in DEV checks pass.
+2. **Test:** The signed-in manual checks on DEV (pay split, Done today, link review, barber link scope / amount lock / tip, the sales cross-check, sign-in) need your owner session or a DEV test phone, and a real barber link. All their logic is covered by automated tests.
+3. **Access:** gcloud is still logged out on the box (`gcloud auth login`). Without it I can't read barbersdb-dev, so the sales cross-check was done in code against a fixture built from your screenshots, not against your live visits.
+4. **Environments:** `NEXT_PUBLIC_AUTH_TEST_MODE=1` is on for hosted DEV (test phone numbers can skip reCAPTCHA in an opted-in browser). Keep it on, or turn it off?
+5. **Environments:** `RIVER_MOBILE_API_KEY`, `PAYMONGO_SECRET_KEY` and `PAYMONGO_WEBHOOK_SECRET` are commented out in `apphosting.yaml`. If they aren't set in the console, the partner API and checkout don't work on that backend. Please confirm.
+6. **Security:** No Content-Security-Policy header yet. Adding one needs testing against Firebase Auth, the map, PayMongo and image hosts. Do you want it?
+7. **Product:** Barber link scope: besides its own visits, a link still sees unassigned visits waiting at its location, so the shared Waiting → Accept flow keeps working. The first save makes the visit that barber's. Confirm, or should Waiting be assigned by the owner only?
+8. **Product:** I added a 'Reset link' button on the barber detail page. There was no reset button before, and the new 'never expire' design needs a manual way to replace a link.
+9. **Product:** Tips paid in cash count in Collected under Cash, but not in 'cash to hand over' (remit), on the assumption that tips belong to the barber. Should the barber hand cash tips to the shop too?
+10. **Product:** Paid visits with no stored payment method show as 'Other' and still count in 'cash to claim'. The server also still saves a paid visit with no method as cash (pre-existing). Confirm.
+11. **Product:** Three small browser-storage items remain: the customer's ticket id, the Google sign-in return path and the DEV test-phone switch. The rulebook bans Web Storage for app state, but these are approved UX. Keep them as exceptions?
+12. **Product:** The privacy and terms pages stay noindex while their text is a draft. Tell me when the text is final.
+13. **Cost:** Sales and 'cash to claim' re-read up to 5,000–20,000 and 8,000 visits every 30 seconds while the screen is open. Pre-computed daily totals or a longer interval?
+14. **Operate:** No monitoring alerts are confirmed. Please create the three in docs/slos-and-alerting.md, or give me project access.
+15. **Engineering:** No GitHub Actions CI (needs a `SUBMODULES_TOKEN` secret for the private UI kit). `npm run verify` is the local gate.
+16. **Engineering:** Optional: Zod validation and an `apps/web` + `packages/*` split. Both are large refactors.
+17. **Engineering:** `SESSION_COOKIE_NAME` is set in apphosting.yaml but never read. Remove it?
+18. **Engineering:** The env template is `env.example`, not `.env.example`, because this repo never commits `.env*` files. OK?

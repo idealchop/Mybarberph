@@ -5,7 +5,7 @@
 | Feature | Compliance pass + Collected pay split + Done-today filter |
 | Date range | 2026-10-19 (PHT) |
 | Author | agent (Grok Bot) for Jimboy Regalado |
-| Overall status | BLOCKED (DEV deploy) |
+| Overall status | DEV deployed; signed-in manual checks BLOCKED |
 
 ## Phase scorecard
 | Phase | Report | Gate | Status |
@@ -14,14 +14,14 @@
 | 01 Plan | [01](./01-plan-summary-report.md) | architecture plan | PASS |
 | 02 Design | [02](./02-design-summary-report.md) | design | PASS (1 open) |
 | 03 Build | [03](./03-build-summary-report.md) | build | PASS (1 open) |
-| 04 Test | [04](./04-test-summary-report.md) | test (executed cases) | BLOCKED |
-| 05 Release | [05](./05-release-summary-report.md) | release (Dev/Prod) | BLOCKED |
+| 04 Test | [04](./04-test-summary-report.md) | test (executed cases) | BLOCKED (manual, signed-in) |
+| 05 Release | [05](./05-release-summary-report.md) | release (Dev/Prod) | DEV PASS (automated); PROD not deployed |
 | 06 Operate | [06](./06-operate-summary-report.md) | operate | PASS |
 
 ## Outcomes
-- Shipped to: pushed to `main`; DEV deploy blocked
+- Shipped to: `main` and `dev` at 2b7e328; DEV deployed 2026-10-19 22:04 PHT; rules released 22:05 PHT
 - URLs: DEV https://barbers-ph-dev--mybarberph.asia-southeast1.hosted.app (old build)
-- Case execution: 62/62 local PASS; DEV e2e 14 PASS / 10 BLOCKED; 4 manual BLOCKED
+- Case execution: 94/94 local PASS; DEV e2e 24 PASS / 0 BLOCKED; 7 manual BLOCKED (signed-in session)
 - Open follow-ups: [../river-ai-rules-1.0.1.md#open-items-for-jimboy](../river-ai-rules-1.0.1.md#open-items-for-jimboy)
 
 ## Lessons

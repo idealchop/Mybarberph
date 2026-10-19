@@ -5,7 +5,7 @@
 | Feature / task | River AI Rules 1.0.1 compliance pass + Collected pay split + Done-today filter |
 | Date | 2026-10-19 (PHT) |
 | Author | agent (Grok Bot) for Jimboy Regalado |
-| Status | PASS (2 items need Jimboy: C22 dev branch, C24 shared Brevo secret) |
+| Status | PASS (C22 `dev` branch created; C24 shared Brevo key is Jimboy's accepted decision) |
 
 ## Architecture shape
 - Shape: **A**, single-app variant
@@ -16,7 +16,7 @@
 - [x] FE/BE contract (no FE business writes; dual GET): TC-ARCH-*, api-reference
 - [x] Docs-first: docs/README.md index and all required docs
 - [x] Tenant / authz wall: TC-TENANT-NEG-01
-- [ ] Environments (`dev` / `main`): no `dev` branch; DEV and PROD share BREVO_API_KEY (open items)
+- [x] Environments: `dev` → DEV, `main` → PROD (created 2026-10-19); each overlay sets its database, the server fails clearly with none (no PROD fallback); shared BREVO_API_KEY accepted by Jimboy
 - [x] Hybrid read policy: API GET + polling only
 - [x] Audit & safe logging
 - [x] Reuse before invent
@@ -27,5 +27,5 @@
 - No DEV→PROD branch flow, so a CLI deploy from the wrong tree could reach PROD. Mitigated by the runbook: PROD only with Jimboy's OK.
 
 ## Gate
-- Core readiness: PASS (with 2 open items)
+- Core readiness: PASS
 - Notes: details in [../river-ai-rules-1.0.1.md](../river-ai-rules-1.0.1.md#00-core)

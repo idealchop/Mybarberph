@@ -5,7 +5,7 @@
 | Feature / task | River AI Rules 1.0.1 compliance pass + Collected pay split + Done-today filter |
 | Date | 2026-10-19 (PHT) |
 | Author | agent (Grok Bot) for Jimboy Regalado |
-| Status | PASS (B07 rate limit / App Check needs Jimboy) |
+| Status | PASS (B07 rate limit / App Check: Jimboy's accepted exception) |
 | Design gate | PASS |
 
 ## Implemented

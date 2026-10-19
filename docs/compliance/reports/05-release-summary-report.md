@@ -5,8 +5,8 @@
 | Feature / task | River AI Rules 1.0.1 compliance pass + Collected pay split + Done-today filter |
 | Date | 2026-10-19 (PHT) |
 | Author | agent (Grok Bot) for Jimboy Regalado |
-| Status | BLOCKED |
-| Test gate | BLOCKED (DEV-only cases) |
+| Status | DEV deployed; smoke partly BLOCKED (signed-in checks) |
+| Test gate | automated PASS; manual BLOCKED (signed-in) |
 
 ## Health
 - Lint / tsc / build: PASS (`npm run verify`, Node 22)
@@ -23,7 +23,7 @@
 ## Deploy
 | Env | API | FE | Result |
 | :--- | :--- | :--- | :--- |
-| Dev | barbers-ph-dev | same app | BLOCKED: Firebase/gcloud login expired |
+| Dev | barbers-ph-dev | same app | DEPLOYED 2026-10-19 22:04 PHT, commit 2b7e328 (`dev` = `main`); rules released 22:05 PHT (both databases + Storage, approved) |
 | Prod | n/a | n/a | n/a |
 - Prod OK received: n/a
 - Deploy order API→FE: n/a (one deployable)
@@ -31,7 +31,7 @@
 ## Smoke
 | Env | HP smoke | Notes |
 | :--- | :--- | :--- |
-| Dev | BLOCKED | old build: 14/24 e2e PASS; the rest test this pass's changes |
+| Dev | PARTIAL | e2e 24/24 PASS; `/home` 200; link 404 text live; signed-in HP/Mutation smoke needs Jimboy |
 | Prod | n/a | |
 
 ## Rollback readiness
@@ -42,4 +42,4 @@
 - Prod: n/a
 
 ## Release gate
-- [ ] PASS: blocked on DEV deploy
+- [ ] PASS: DEV deployed and automated smoke PASS; signed-in smoke pending. PROD not deployed

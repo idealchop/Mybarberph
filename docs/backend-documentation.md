@@ -21,7 +21,7 @@ There is no separate `packages/` workspace yet. Splitting into `apps/web` + `pac
 - Owner routes: `shopId = (await getCaller(req)).uid`. No route accepts another shop id from an owner.
 - Barber routes: `shopId` comes from `chairLinks/{token}` on the server, and a link only reads/writes its own barber's visits plus open ones waiting at its location (`barberAccess`). The amount it saves is always the menu price (`barberPrice`).
 - Partner and public routes take `shopId` from the path but read only public fields of `listed` shops (partner) or the public profile (public).
-- Firestore and Storage security rules are the boundary for any direct client access: no client writes business data; public read only for listed shops' public fields; owner read of `private/*`. The server's Admin SDK bypasses them. The hardened rules in this repo are **not deployed yet** (open item: needs approval, since the same file goes to both databases).
+- Firestore and Storage security rules are the boundary for any direct client access: no client writes business data; public read only for listed shops' public fields; owner read of `private/*`. The server's Admin SDK bypasses them. The hardened rules in this repo were **deployed on 2026-10-19 22:05 PHT** with Jimboy's approval (one deploy updates both `barbersdb-dev` and `barbersdb`, and Storage).
 
 ## Validation
 
