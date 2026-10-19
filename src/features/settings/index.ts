@@ -8,3 +8,4 @@ export { ServicesScreen } from "./services-screen";
 export { SettingsScreen } from "./settings-screen";
 export { ShopsScreen } from "./shops-screen";
 export { AccountScreen } from "./account-screen";
+export { InstallScreen } from "./install-screen";

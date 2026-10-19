@@ -2,7 +2,7 @@
 
 import { FormSkeleton } from "@/components/common/skeleton";
 import { useCloud } from "@/lib/cloud";
-import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound } from "lucide-react";
+import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -40,6 +40,7 @@ export function SettingsScreen() {
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut and other services" },
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
+    { href: "/settings/install", icon: Smartphone, title: "Install app", subtitle: "Open Barbers.ph from your home screen" },
   ];
 
   if (!cloudReady) return <FormSkeleton />;

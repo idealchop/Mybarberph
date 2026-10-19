@@ -9,7 +9,9 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { InstallPanel } from "@/components/pwa/install-panel";
+import { isStandalone } from "@/lib/pwa";
 import { useEffect, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
 import { BarberIcon } from "@/components/art";
@@ -151,6 +153,9 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [scanning, setScanning] = useState(false);
   const [history, setHistory] = useState(false);
   const [perf, setPerf] = useState(false);
+  const [install, setInstall] = useState(false);
+  const [standalone, setStandalone] = useState(true);
+  useEffect(() => { const t = window.setTimeout(() => setStandalone(isStandalone()), 0); return () => window.clearTimeout(t); }, []);
   const shopsLoc = useShopLocations();
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -199,6 +204,14 @@ export function BarberLinkScreen({ token }: { token: string }) {
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
 
   const placeName = shopsLoc.enabled ? shopsLoc.branches.find((b) => b.id === placeId)?.name ?? "" : "";
+  if (install) {
+    return (
+      <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-4">
+        <button type="button" onClick={() => setInstall(false)} aria-label="Back" className="inline-flex size-11 items-center justify-center rounded-full"><ChevronLeft size={22} /></button>
+        <InstallPanel subtitle="Open your barber link from the home screen, like an app." back={<button type="button" onClick={() => setInstall(false)} className="hover:underline">Back to my link</button>} />
+      </main>
+    );
+  }
   if (perf) return <BarberPerformanceView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} />;
   if (history) {
     return (
@@ -225,6 +238,15 @@ export function BarberLinkScreen({ token }: { token: string }) {
         </div>
         <button type="button" aria-label="My sales" title="My sales" onClick={() => setPerf(true)} className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><BarChart3 size={20} strokeWidth={2} /></button>
       </header>
+
+      {/* Install entry (Jimboy, 2026-10-20). The home-screen app reopens this same link (per-token manifest). Hidden once installed. */}
+      {standalone ? null : (
+        <button type="button" onClick={() => setInstall(true)} className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-surface px-3.5 py-2.5 text-left shadow-card">
+          <Smartphone size={18} className="flex-none" aria-hidden />
+          <span className="min-w-0 flex-1"><b className="block text-[14px]">Install app</b><small className="block truncate text-[12px] font-semibold text-muted">Open your link from the home screen</small></span>
+          <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
+        </button>
+      )}
 
       {allowance.unlimited ? null : (
         <p className="mt-3 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-bold text-ink-2" aria-live="polite">
