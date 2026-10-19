@@ -3,6 +3,7 @@
  * Auth: Authorization: Bearer <COMPANION_CRON_SECRET>, or x-companion-cron header.
  * Body optional: { shopId?: string, force?: boolean }. Without shopId, runs for every named shop.
  */
+import { timingSafeEqual } from "node:crypto";
 import { json, badRequest, unauthorized } from "@/lib/server/auth";
 import { allShopIds, weeklyTips } from "@/lib/server/companion/companion";
 import { companionEnabled } from "@/lib/companion-flag";
@@ -10,12 +11,18 @@ import { companionEnabled } from "@/lib/companion-flag";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+/** Constant-time compare so the secret can't be guessed byte by byte from response timing. */
+function same(given: string, secret: string) {
+  const a = Buffer.from(given), b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 function authorized(req: Request) {
   const secret = process.env.COMPANION_CRON_SECRET;
   if (!secret) return false;
-  const auth = req.headers.get("authorization") || "";
+  const auth = (req.headers.get("authorization") || "").replace(/^Bearer /, "");
   const h = req.headers.get("x-companion-cron") || "";
-  return auth === `Bearer ${secret}` || h === secret;
+  return same(auth, secret) || same(h, secret);
 }
 
 export async function POST(req: Request) {
