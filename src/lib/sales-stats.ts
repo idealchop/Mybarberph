@@ -144,3 +144,12 @@ export function dailySeries(rows: ChairRequest[], range: SalesRange, loc: string
 export function busyMinutes(rows: ChairRequest[]) {
   return Math.round(rows.reduce((m, r) => m + (r.status === "done" && r.startedAt && r.completedAt && r.completedAt > r.startedAt ? Math.min(240, (r.completedAt - r.startedAt) / 60000) : 0), 0));
 }
+
+/**
+ * Ranking rows to show. A turned-off barber is hidden only at the location where their chair is off, and only
+ * when they have no sales in the range, so the ranking always adds up to the Sales total.
+ */
+export function rankedBarbers(rows: BarberStat[], chairs: { id: string; barberId?: string; locationId?: string; active?: boolean }[]): BarberStat[] {
+  const off = new Set(chairs.filter((c) => c.active === false).map((c) => `${c.barberId || c.id}@${c.locationId || HOME_LOCATION_ID}`));
+  return rows.filter((b) => b.cuts > 0 || !off.has(`${b.id}@${b.locationId}`));
+}

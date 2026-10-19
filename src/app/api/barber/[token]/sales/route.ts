@@ -11,6 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const me = await linkBarber(link.shopId, link.chairId);
   if (!me) return notFound();
   const range = new URL(req.url).searchParams.get("range") === "month" ? "month" : "week";
-  const r = await barberSales(link.shopId, { range, barberId: me.barberId });
+  // Only this link's location (a barber on chairs in two branches has one row per branch).
+  const r = await barberSales(link.shopId, { range, barberId: me.barberId, loc: me.locationId || "home" });
   return json({ ...r, mine: r.barbers[0] ?? { ...r.total, barberId: me.barberId, barberName: me.barberName } });
 }

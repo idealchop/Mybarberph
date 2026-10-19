@@ -13,7 +13,7 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
-import { barberStats } from "@/lib/sales-stats";
+import { barberStats, rankedBarbers } from "@/lib/sales-stats";
 import { BarberRanking, ClaimHistory, BarberSalesRanking, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
@@ -54,7 +54,7 @@ export function SalesDataScreen() {
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   const report = salesReport(rows, unpaid, range);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
-  const barbers = useMemo(() => { const off = new Set(chairs.filter((c) => c.active === false).map((c) => c.barberId || c.id)); return barberStats(all, range, where, branches, chairs).filter((b) => !off.has(b.id)); }, [all, range, where, branches, chairs]);
+  const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
   const roster = useMemo(() => chairs.filter((c) => c.active !== false).map((c) => { const l = c.locationId || HOME_LOCATION_ID; return { id: c.barberId || c.id, name: chairBarberName(c), locationId: l, locationName: branches.find((b) => b.id === l)?.name ?? "" }; }), [chairs, branches]);
   const claim = (id: string, l: string) => void remit.claim(id, l);

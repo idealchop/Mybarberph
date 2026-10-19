@@ -22,7 +22,8 @@ export async function barberSales(shopId: string, q: { range?: string | null; fr
     const bl = b.locationId || "home";
     if (loc && bl !== loc) continue;
     const seat = chairs.find((c) => c.label === (b.seatLabel || b.chairLabel) && (c.locationId || "home") === bl);
-    const id = b.barberId || seat?.barberId || `seat:${bl}:${b.seatLabel || "-"}`;
+    // Same identity rule as the owner's client stats and barberPerformance (chair id for chair-only rows).
+    const id = b.barberId || seat?.barberId || seat?.id || `seat:${bl}:${b.seatLabel || "-"}`;
     if (q.barberId && id !== q.barberId) continue;
     const name = b.barberName || seat?.barberName?.trim() || (b.seatLabel ? `${b.seatLabel} (no barber)` : "No barber");
     const key = `${id}@${bl}`;
@@ -58,7 +59,10 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   const isMine = (b: ChairRequest) => {
     const bl = b.locationId || "home";
     const seat = chairs.find((c) => c.label === (b.seatLabel || b.chairLabel) && (c.locationId || "home") === bl);
-    return (b.barberId || seat?.barberId || seat?.id) === q.barberId || (bl === myLoc && !b.barberId && Boolean(me) && (b.seatLabel || b.chairLabel) === me!.label);
+    // A link is one chair at one location: count only that location, as the link's Queue/History and the
+    // owner's per-location Sales do. (Before, a barber on chairs in two branches got both branches here.)
+    if (bl !== myLoc) return false;
+    return (b.barberId || seat?.barberId || seat?.id) === q.barberId || (!b.barberId && Boolean(me) && (b.seatLabel || b.chairLabel) === me!.label);
   };
   const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; bookingIds: string[]; claimedAt: number }).sort((a, b) => b.claimedAt - a.claimedAt);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));
