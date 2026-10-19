@@ -35,7 +35,7 @@ function EditorBar({ hold, onBack }: { dirty: boolean; busy: boolean; hold: stri
         <button type="button" aria-label="Back" onClick={onBack} className="inline-flex size-11 flex-none items-center justify-center rounded-full bg-grey-100 text-ink">
           <ChevronLeft size={22} strokeWidth={1.75} />
         </button>
-        <span className="truncate text-[15px] font-bold">Update shop</span>
+        <h1 className="truncate text-[15px] font-bold">Update shop</h1>
         <span className="size-11 flex-none" aria-hidden />
       </div>
       {hold ? <p className="px-5 pb-1 text-[13px] font-semibold">{hold}</p> : null}

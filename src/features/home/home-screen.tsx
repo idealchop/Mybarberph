@@ -130,6 +130,8 @@ export function HomeScreen() {
   if (!ready) return <HomeSkeleton />;
   return (
     <>
+      {/* Screen-reader page title (a11y: one h1 per page, both layouts); visually unchanged. */}
+      <h1 className="sr-only">Home</h1>
       <div className="mx-auto w-full max-w-[402px] pb-4 lg:hidden">
         <header className="px-4 pt-1">
           <div className="flex h-16 items-center justify-between gap-2">
