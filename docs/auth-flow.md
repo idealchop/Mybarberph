@@ -6,7 +6,7 @@ The browser loads only the Firebase Auth web SDK (`src/lib/firebase/client.ts`, 
 
 1. **Guest first.** `/` → `/home` works signed out. Actions that need an account (`data-auth="action"`) open the sign-in sheet (`requireAuth`).
    - **Opens once per visit (2026-10-20).** A signed-out visitor on a shop-app page (Home, Queue, Sales, Settings…) sees the sign-in sheet by itself once per page load (`src/lib/auto-login.ts`). It is dismissable and guest browsing keeps working. It never opens on booking/schedule (`/book`), the customer ticket, barber links (`/b/…`), Moments, privacy, terms or map credits, nor while "Signing you in…" (Google redirect return).
-   - **No email/password sign-in.** The sheet offers Google and a text code only, so there is no "Forgot password?" link (it would need an email/password method first; open item).
+   - **No email/password sign-in.** The sheet offers Google and a text code only, so there is no "Forgot password?" link. No email/password sign-in is Jimboy's accepted decision (2026-10-20); the Change password form on Settings › Account stays dormant behind the password-provider check.
 2. **Sign-in methods**
    - **Google**: `signInWithPopup`; when the popup is blocked or unsupported (mobile Safari, in-app browsers) it falls back to `signInWithRedirect`, keeping the return path in `sessionStorage["bp.authRedirect"]` (removed after `getRedirectResult`). With `NEXT_PUBLIC_AUTH_SAME_ORIGIN=1` on `*.hosted.app` / `*.web.app`, the auth domain is the current host so the redirect handler is same-origin.
    - **Phone (SMS OTP)**: `signInWithPhoneNumber` with an invisible reCAPTCHA, then `confirmPhoneCode`.

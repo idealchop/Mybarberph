@@ -8,7 +8,7 @@
 | Author | agent (Grok Bot) for Jimboy Regalado |
 | Change size | **L** |
 | Shape | **A**, single-app variant (one Next.js app = UI + API route handlers) |
-| Overall | **DEV deployed, PASS on everything automated**: code, docs and 94 local + 28 DEV e2e tests pass. DEV deployed (46fd4cb, 2026-10-20 00:20 PHT) and the hardened rules released (2026-10-19 22:05 PHT). Still BLOCKED: signed-in manual checks (T11, R05). 1 FAIL (D09 Web Storage, needs a decision). 2 ACCEPTED (C24 Brevo, B07 rate limit). 15 open items at the end. |
+| Overall | **DEV deployed, PASS on everything automated**: code, docs and 94 local + 28 DEV e2e tests pass. DEV deployed (46fd4cb, 2026-10-20 00:20 PHT) and the hardened rules released (2026-10-19 22:05 PHT). Still BLOCKED: signed-in manual checks (T11, R05). 1 FAIL (D09 Web Storage, needs a decision). 2 ACCEPTED (C24 Brevo, B07 rate limit). 14 open items at the end. |
 
 ## Scorecard (items per stage)
 
@@ -200,6 +200,7 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 | `24ed75d` | Sign-in sheet opens by itself once per visit on dashboard pages |
 | `4dd58a8` | Docs: auth flow (sign-in sheet once per visit, Settings › Account, no password sign-in) |
 | `46fd4cb` | Barber detail: remove the 'Barber link' card and Reset link |
+| `a9a2882` | Compliance report + test plan: Jimboy's 2026-10-20 decisions (no tips, no-method = Cash, Waiting kept, Reset link removed), sign-in changes, DEV 46fd4cb e2e 28/28 |
 
 ## Feature requests from Jimboy (in this pass)
 
@@ -234,6 +235,7 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 - **(2026-10-20) Barber links keep seeing unassigned Waiting visits at their location**: kept as built.
 - **(2026-10-20) No Reset link button**: the 'Barber link' card (Reset link) on the barber detail page was removed. Turning the barber off still stops the link, and the 6-month review stays.
 - **(2026-10-20) No tips**: the optional tip was removed entirely (UI, totals, server, tests, docs; 45ae0ea). Tip fields already in data are ignored. The amount lock and 'Update information' stay.
+- **(2026-10-20) No email/password sign-in**: sign-in stays Google and text code only, so there is no Forgot password. Settings › Account shows the sign-in method; its Change password form stays dormant behind the password-provider check.
 - **(2026-10-20) A paid visit with no method is Cash**: the client split and labels now say Cash, matching the server's save and remit rule (45ae0ea).
 
 **Correction to the earlier report:** it said the barber's My sales had no Cash/GCash split. In fact it had Cash and GCash tiles, but no Online/Other, and it counted paid visits with no method as cash. It now has one "Collected" card with the same split as the owner's Overview (d0b8fac, TC-PAY-HP-04).
@@ -259,7 +261,7 @@ The checklist is every *Automatic PASS requirement* and *Automatic FAIL* row in 
 
 - **Settings › Account** shows how the owner signs in ("You sign in with Google" / "with a text code"). An account with a password gets Change password: re-authenticate with the current password, then `updatePassword`, with clear errors. Tests TC-ACCT-HP-01, NEG-01/02.
 - **The sign-in sheet opens by itself once per visit** on shop-app pages for signed-out visitors. It's dismissable, and never opens on booking, ticket, barber link, Moments, privacy, terms, map credits or during "Signing you in…". Tests TC-AUTH-HP-03/04, NEG-04/05, ODD-01.
-- **"Forgot password?" was not built:** there's no password sign-in to reset (see open items).
+- **"Forgot password?" was not built:** Jimboy's accepted decision (2026-10-20) is no email/password sign-in, so there's nothing to reset. The Change password form stays dormant behind the password-provider check.
 
 ### Sales mismatch between views (`2b7e328`)
 
@@ -299,12 +301,11 @@ Jimboy reported that the two views didn't match. gcloud is logged out, so I coul
 4. **Environments:** `NEXT_PUBLIC_AUTH_TEST_MODE=1` is on for hosted DEV (test phone numbers can skip reCAPTCHA in an opted-in browser). Keep it on, or turn it off?
 5. **Environments:** `RIVER_MOBILE_API_KEY`, `PAYMONGO_SECRET_KEY` and `PAYMONGO_WEBHOOK_SECRET` are commented out in `apphosting.yaml`. If they aren't set in the console, the partner API and checkout don't work on that backend. Please confirm.
 6. **Security:** No Content-Security-Policy header yet. Adding one needs testing against Firebase Auth, the map, PayMongo and image hosts. Do you want it?
-7. **Auth:** There is no email/password sign-in (the sheet offers Google and a text code), so 'Forgot password?' has nowhere to go and no account has a password to change. Settings › Account shows the sign-in method, and its Change password form only appears for a password account. Do you want email/password sign-in added? It needs the Email/Password provider turned on in the Firebase console. A reset link would also need the authorized domains (`barbers-ph-dev--mybarberph.asia-southeast1.hosted.app`, `barbersph.web.app`) checked there, which I can't verify without gcloud.
-8. **Product:** Three small browser-storage items remain: the customer's ticket id, the Google sign-in return path and the DEV test-phone switch. The rulebook bans Web Storage for app state, but these are approved UX. Keep them as exceptions?
-9. **Product:** The privacy and terms pages stay noindex while their text is a draft. Tell me when the text is final.
-10. **Cost:** Sales and 'cash to claim' re-read up to 5,000–20,000 and 8,000 visits every 30 seconds while the screen is open. Pre-computed daily totals or a longer interval?
-11. **Operate:** No monitoring alerts are confirmed. Please create the three in docs/slos-and-alerting.md, or give me project access.
-12. **Engineering:** No GitHub Actions CI (needs a `SUBMODULES_TOKEN` secret for the private UI kit). `npm run verify` is the local gate.
-13. **Engineering:** Optional: Zod validation and an `apps/web` + `packages/*` split. Both are large refactors.
-14. **Engineering:** `SESSION_COOKIE_NAME` is set in apphosting.yaml but never read. Remove it?
-15. **Engineering:** The env template is `env.example`, not `.env.example`, because this repo never commits `.env*` files. OK?
+7. **Product:** Three small browser-storage items remain: the customer's ticket id, the Google sign-in return path and the DEV test-phone switch. The rulebook bans Web Storage for app state, but these are approved UX. Keep them as exceptions?
+8. **Product:** The privacy and terms pages stay noindex while their text is a draft. Tell me when the text is final.
+9. **Cost:** Sales and 'cash to claim' re-read up to 5,000–20,000 and 8,000 visits every 30 seconds while the screen is open. Pre-computed daily totals or a longer interval?
+10. **Operate:** No monitoring alerts are confirmed. Please create the three in docs/slos-and-alerting.md, or give me project access.
+11. **Engineering:** No GitHub Actions CI (needs a `SUBMODULES_TOKEN` secret for the private UI kit). `npm run verify` is the local gate.
+12. **Engineering:** Optional: Zod validation and an `apps/web` + `packages/*` split. Both are large refactors.
+13. **Engineering:** `SESSION_COOKIE_NAME` is set in apphosting.yaml but never read. Remove it?
+14. **Engineering:** The env template is `env.example`, not `.env.example`, because this repo never commits `.env*` files. OK?
