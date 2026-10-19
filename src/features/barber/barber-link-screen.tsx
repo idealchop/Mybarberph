@@ -10,9 +10,8 @@ import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
-import { InstallPanel } from "@/components/pwa/install-panel";
+import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { isStandalone } from "@/lib/pwa";
-import { Footprints, Zap } from "lucide-react";
 
 import { useEffect, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
@@ -29,10 +28,9 @@ import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-se
 
 /** Install view (Jimboy, 2026-10-20): barber-focused lines. */
 const BARBER_FEATURES = [
-  { icon: Footprints, text: "Take walk-ins in a tap" },
-  { icon: ScanLine, text: "Scan customer tickets" },
-  { icon: BarChart3, text: "See my sales and cuts" },
-  { icon: Zap, text: "Opens straight to my link" },
+  { art: <BarberIcon name="clipper" size={30} />, text: "Take walk-ins in a tap" },
+  { art: <Icon3d src="/icons3d/ticket.png" />, text: "Scan customer tickets" },
+  { art: <Icon3d src="/icons3d/bar-chart.png" />, text: "See my sales and cuts" },
 ];
 
 const PILL = "relative h-8 gap-1 rounded-pill px-3 text-[13px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";

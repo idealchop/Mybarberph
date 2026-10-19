@@ -1,7 +1,7 @@
 "use client";
 /**
  * Install Barbers.ph (owner Settings › Install app, and the barber link). One layout on every phone:
- * big icon, title, stats row (placeholders until real ratings: src/lib/app-stats.ts), a short feature list,
+ * big icon, title, stats row (placeholders until real ratings: src/lib/app-stats.ts), three feature lines with 3D icons,
  * full-width "Install the app" and "Rate & send feedback" (Jimboy, 2026-10-20).
  * Android/Chrome/Edge: the browser's own install prompt. iPhone/iPad can't install from a page, so the button
  * dims the screen and points at Safari's Share button ("Tap Share, then Add to Home Screen"); tap anywhere
@@ -16,7 +16,14 @@ import { useSession } from "@/lib/session";
 import { Button } from "@/components/common/button";
 import { usePwaInstall } from "@/lib/pwa";
 
-export interface InstallFeature { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; text: string }
+/** art: a small 3D icon (~30px) from the app's own set (BarberIcon, CoinIcon, /icons3d). */
+export interface InstallFeature { art: React.ReactNode; text: string }
+
+/** A /icons3d PNG at feature-line size. */
+export function Icon3d({ src }: { src: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" width={30} height={30} className="size-[30px] object-contain" />;
+}
 
 /** token set = barber link (rates as that link); unset = owner (rates with their sign-in). */
 export function InstallPanel({ features, token }: { features: InstallFeature[]; token?: string }) {
@@ -52,9 +59,9 @@ export function InstallPanel({ features, token }: { features: InstallFeature[]; 
 
       {installed ? null : (
         <ul className="mt-4 flex w-full flex-col gap-2.5 text-left">
-          {features.map(({ icon: Icon, text }) => (
+          {features.map(({ art, text }) => (
             <li key={text} className="flex items-center gap-3 text-[14px] font-semibold">
-              <span className="inline-flex size-8 flex-none items-center justify-center rounded-[10px] bg-grey-100"><Icon size={16} strokeWidth={2} /></span>
+              <span aria-hidden className="inline-flex size-[30px] flex-none items-center justify-center">{art}</span>
               <span className="min-w-0">{text}</span>
             </li>
           ))}

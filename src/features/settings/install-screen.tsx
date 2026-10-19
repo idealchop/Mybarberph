@@ -1,13 +1,13 @@
 "use client";
-import { BarChart3, CalendarCheck, Scissors, Zap } from "lucide-react";
-import { InstallPanel } from "@/components/pwa/install-panel";
+import { CoinIcon } from "@river-apps/icons";
+import { BarberIcon } from "@/components/art";
+import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { PageBack } from "@/components/shell/page-back";
 
 const FEATURES = [
-  { icon: Scissors, text: "Run your barbershop from your phone" },
-  { icon: CalendarCheck, text: "Take walk-ins and online bookings" },
-  { icon: BarChart3, text: "Track sales, Cash and GCash, and barber performance" },
-  { icon: Zap, text: "Opens fast, like a real app" },
+  { art: <BarberIcon name="pole" size={30} />, text: "Run your barbershop from your phone" },
+  { art: <Icon3d src="/icons3d/calendar.png" />, text: "Take walk-ins and online bookings" },
+  { art: <CoinIcon size={30} />, text: "Track sales, Cash and GCash, and barber performance" },
 ];
 
 /** Settings › Install app: Barbers.ph on the owner's home screen (opens /home). */
