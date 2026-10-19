@@ -1,0 +1,28 @@
+---
+description: River Tech SDLC AI rules — load river-ai-rules catalog for all phases (v1.0.1)
+alwaysApply: true
+---
+
+# River AI Rules (SDLC) v1
+
+Before planning or implementing River Tech work, follow the catalog:
+
+- Monorepo root: **`river-ai-rules/README.md`**
+- App folder as Cursor root: **`../river-ai-rules/README.md`**
+
+Version: see `river-ai-rules/VERSION` and `CHANGELOG.md`.  
+Why: `river-ai-rules/JUSTIFICATION.md`.  
+Size first: `river-ai-rules/00-core/change-sizing-and-proportionality.md` (S/M/L).
+
+Mandatory order:
+
+1. Declare **change size** S/M/L — full seven-phase ceremony is for material work; Size S stays light
+2. `00-core.md` — FE/BE contract, docs-first, secrets, tenant/env/hybrid/audit/reuse, privacy (**never** scale these down)
+3. Architecture shape under `00-core/` (monorepo / shared services / app kit)
+4. In-scope flow: `01-plan` → `02-design` → `03-build` → `04-test` → `05-release` → `06-operate` (gates PASS for phases that apply)
+5. Fill `reports/{phase}-summary-report.md` for in-scope phases (or one Size-S note with N/A reasons) before claiming gate PASS
+6. Linked skills under `.agents/skills/` for detailed protocols
+
+Path aliases: SmartRefill FE = `smartrefill/frontend`, BE = `smartrefill/backend`. Legacy `smartrefill-v3` / `smartrefill-v3-api` map to those paths.
+
+If docs and code disagree, fix one of them in the same change. Do not ignore the rulebook. App-specific `.mdc` files only add local doc pointers — they do not replace this catalog.

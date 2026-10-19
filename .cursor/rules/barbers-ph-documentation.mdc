@@ -1,0 +1,14 @@
+---
+description: Barbers.ph local doc pointers (adds to river-ai-rules; does not replace it)
+alwaysApply: true
+---
+
+# Barbers.ph — local pointers
+
+- Rulebook: River AI Rules v1.0.1 — https://github.com/idealchop/river-ai-rules (clone next to this repo as `../river-ai-rules/` so `river-ai-rules.mdc` paths resolve). Compliance status: `docs/compliance/river-ai-rules-1.0.1.md`.
+- Start every task at `docs/README.md`. Before changing schema read `docs/firestore_schema.md`; auth `docs/auth-flow.md`; roles `docs/workspace-roles-and-permissions.md`; API `docs/api-reference.md`; env/deploy `docs/environments.md`; reads `docs/hybrid-read-model.md`.
+- Shape A (single Next.js app): UI in `src/app` + `src/features`, backend in `src/app/api/**/route.ts` + `src/lib/server/*` (Admin SDK, `server-only`). The browser uses Firebase Auth only — no client Firestore/Storage SDK.
+- Tenant = owner's Firebase uid from the verified ID token (`getCaller`). Never take a shop id from the body for owner routes.
+- Errors: `apiError(code, message, status)` from `src/lib/server/auth.ts`.
+- Deploy DEV only unless Jimboy says otherwise: `firebase deploy --only apphosting:barbers-ph-dev --project mybarberph` from a clean tree (retry on 409). Never deploy prod or rules without explicit approval.
+- Never commit `.secret*` / `.env*`, `vendor/river-apps-ui-kit` changes, or tokens.
