@@ -196,8 +196,11 @@ export function usePublicBooking(id: string, shopId: string) {
       } catch { /* keep the last status */ }
     };
     void pull();
-    const timer = window.setInterval(pull, 3000);
-    return () => { live = false; window.clearInterval(timer); };
+    // Hidden tabs skip the poll; coming back pulls at once (river-ai-rules 03-build/performance).
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void pull(); }, 3000);
+    const onShow = () => { if (document.visibilityState === "visible") void pull(); };
+    document.addEventListener("visibilitychange", onShow);
+    return () => { live = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", onShow); };
   }, [id, shopId]);
   return booking;
 }

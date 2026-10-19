@@ -108,7 +108,7 @@ function Notifications() {
   const shops = useShopLocations();
   const [data, setData] = useState<{ items: Entry[]; unread: number } | null>(null);
   const load = useCallback(() => api("/api/shop/notifications").then((d: { items: Entry[]; unread: number }) => setData(d)).catch(() => undefined), []);
-  useEffect(() => { if (!user) return; const t = window.setTimeout(() => void load(), 0); const i = window.setInterval(() => void load(), 30_000); return () => { window.clearTimeout(t); window.clearInterval(i); }; }, [user, load]);
+  useEffect(() => { if (!user) return; const t = window.setTimeout(() => void load(), 0); const i = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30_000); return () => { window.clearTimeout(t); window.clearInterval(i); }; }, [user, load]);
   const markAll = async () => { await api("/api/shop/notifications", { method: "POST", body: JSON.stringify({}) }).catch(() => undefined); window.dispatchEvent(new Event("barbers-notifications")); void load(); };
   const nameOf = (id?: string) => (shops.enabled ? shops.branches.find((b) => b.id === (id || HOME_LOCATION_ID))?.name : undefined);
   return (
@@ -149,7 +149,7 @@ export function NotificationBell() {
     if (!user) return;
     const get = () => void api("/api/shop/notifications?count=1").then((d: { unread: number }) => setN(d.unread || 0)).catch(() => undefined);
     const t = window.setTimeout(get, 0);
-    const i = window.setInterval(get, 60_000);
+    const i = window.setInterval(() => { if (document.visibilityState === "visible") get(); }, 60_000);
     window.addEventListener("barbers-notifications", get);
     return () => { window.clearTimeout(t); window.clearInterval(i); window.removeEventListener("barbers-notifications", get); };
   }, [user]);
