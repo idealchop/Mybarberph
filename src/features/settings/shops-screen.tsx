@@ -2,7 +2,7 @@
 import { chairBarberName } from "@/lib/shop-chairs";
 import { BarberPortrait } from "@/features/settings/seat-list";
 import { ShareBarberLink } from "@/features/settings/services-screen";
-import { FormSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import Link from "next/link";
 import { QrCode } from "@/components/common/qr-code";
 
@@ -66,7 +66,7 @@ export function ShopsScreen() {
     }
   }
 
-  if (!cloudReady) return <FormSkeleton />;
+  if (!cloudReady) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <header className="mt-1 px-1">

@@ -1,5 +1,5 @@
 "use client";
-import { ListSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { ChevronRight, MapPin } from "lucide-react";
 
 import { useState } from "react";
@@ -33,7 +33,7 @@ export function HistoryScreen() {
   const nameOf = (id?: string) => shops.branches.find((b) => b.id === (id || HOME_LOCATION_ID))?.name;
   const remit = useRemit("all");
   const total = done.reduce((s2, r) => s2 + (r.price || 0), 0);
-  if (!deep && !cloud.ready) return <ListSkeleton />;
+  if (!deep && !cloud.ready) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="History" subtitle={deep || cloud.ready ? `${done.length} finished · ${peso(total)}` : "Loading"} />

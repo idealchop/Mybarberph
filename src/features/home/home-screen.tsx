@@ -1,5 +1,5 @@
 "use client";
-import { HomeSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { Sk } from "@/components/common/skeleton";
 import { useRemit } from "@/features/sales";
 import { EmptyBookings } from "@/components/common/empty-bookings";
@@ -124,7 +124,7 @@ export function HomeScreen() {
                   </span>
                 </div>
   );
-  if (!ready) return <HomeSkeleton />;
+  if (!ready) return <AppLoader />;
   return (
     <>
       {/* Screen-reader page title (a11y: one h1 per page, both layouts); visually unchanged. */}

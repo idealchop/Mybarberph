@@ -1,5 +1,5 @@
 "use client";
-import { ListSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 import { ChevronDown, ChevronLeft, ChevronRight, Home as HomeIcon, MapPin } from "lucide-react";
 import { mapsLink } from "@/lib/home-service-model";
@@ -147,7 +147,7 @@ export function QueueBoard() {
   const done = doneInRange([...list, ...pastRows.filter((r) => r.channel === (channel === "walk-ins" ? "walk-in" : "online") && matches(r, search))], doneRange);
   const anyDone = list.some((r) => r.status === "done");
 
-  if (!ready) return <ListSkeleton />;
+  if (!ready) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <header className="flex items-center justify-between gap-3 border-b border-line px-1 pb-3">

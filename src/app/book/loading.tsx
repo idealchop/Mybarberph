@@ -1,5 +1,5 @@
-import { TicketSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 
 export default function Loading() {
-  return <TicketSkeleton />;
+  return <AppLoader />;
 }

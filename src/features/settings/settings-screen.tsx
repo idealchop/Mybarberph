@@ -1,6 +1,6 @@
 "use client";
 
-import { FormSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { AppVersion } from "@/components/common/app-version";
 import { useCloud } from "@/lib/cloud";
 import { useInstallHidden } from "@/lib/pwa";
@@ -47,7 +47,7 @@ export function SettingsScreen() {
     ...(installHidden ? [] : [{ href: "/settings/install", icon: Smartphone, title: "Install app", subtitle: "Open Barbers.ph from your home screen" }]),
   ];
 
-  if (!cloudReady) return <FormSkeleton />;
+  if (!cloudReady) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-6 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
       <div className="flex items-start gap-2">

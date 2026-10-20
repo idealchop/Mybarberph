@@ -1,5 +1,5 @@
 "use client";
-import { HomeSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { PoweredBy } from "@/components/qr/shop-brand";
 import { completeCut } from "@/components/transactions/complete-flow";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
@@ -184,7 +184,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
     );
   }
   if (!chairsReady || !ready || !cloud.ready) {
-    return <HomeSkeleton />;
+    return <AppLoader />;
   }
   if (!chair) {
     return (

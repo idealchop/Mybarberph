@@ -1,5 +1,5 @@
 "use client";
-import { DashboardSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
 import { StatCard, cn } from "@river-apps/ui";
@@ -61,7 +61,7 @@ export function SalesDataScreen() {
   const claim = (id: string, l: string) => void remit.claim(id, l);
   const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
 
-  if (!deep && !cloud.ready) return <DashboardSkeleton />;
+  if (!deep && !cloud.ready) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
       <header className="border-b border-line px-1 pb-3">

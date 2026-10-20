@@ -1,5 +1,5 @@
 "use client";
-import { FormSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { Card, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,7 +18,7 @@ export function ManageShopScreen() {
   const id = useSearchParams().get("id") ?? HOME_LOCATION_ID;
   const shops = useShopLocations();
   const branch = shops.branches.find((b) => b.id === id);
-  if (!shops.ready) return <FormSkeleton />;
+  if (!shops.ready) return <AppLoader />;
   if (!branch) {
     return (
       <div className="mx-auto max-w-[402px] px-4 pt-6">

@@ -1,5 +1,5 @@
 "use client";
-import { DashboardSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { StatCard } from "@river-apps/ui";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -53,7 +53,7 @@ export function SalesDetailScreen() {
   const remit = useRemit(kind === "barber" ? "all" : id || "all");
   const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + u.amount, 0);
 
-  if (!deep && !cloud.ready) return <DashboardSkeleton />;
+  if (!deep && !cloud.ready) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-1 px-1">

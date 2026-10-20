@@ -1,6 +1,6 @@
 "use client";
 
-import { TicketSkeleton } from "@/components/common/skeleton";
+import { AppLoader } from "@/components/common/app-loader";
 import { CheckIcon } from "@river-apps/icons";
 import { Card, MonoText } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
@@ -23,7 +23,7 @@ export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnoth
   const [rated, setRated] = useState<ChairRequest | null>(null);
   const booking = rated ?? live;
 
-  if (booking === undefined) return <TicketSkeleton />;
+  if (booking === undefined) return <AppLoader />;
   if (!booking) {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col bg-canvas">
