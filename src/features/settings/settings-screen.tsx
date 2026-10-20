@@ -161,14 +161,14 @@ export function SettingsScreen() {
             <small className="text-[13px] font-medium text-muted">{user.email || user.phone || "Signed in"}</small>
           </span>
         </button> : null}
-        <p className="-mt-1 px-1 text-[12px] font-medium text-muted">
+        <p className="-mt-1 w-full self-stretch text-center text-[12px] font-medium text-muted">
           <Link href="/terms" className="hover:underline">Terms</Link>
           <span aria-hidden> · </span>
           <Link href="/privacy" className="hover:underline">Privacy</Link>
           <span aria-hidden> · </span>
           <Link href="/settings/map-credits" className="hover:underline">Map credits</Link>
         </p>
-        <AppVersion className="pb-2" />
+        <AppVersion className="w-full self-stretch pb-2" />
       </div>
     </div>
   );
