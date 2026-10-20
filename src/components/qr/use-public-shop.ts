@@ -11,7 +11,8 @@ export interface PublicShop {
   location: { lat: number; lng: number; formattedAddress: string } | null;
   photoUrls: string[];
   logoUrl: string | null;
-  payQr?: { gcash: string | null; maya: string | null };
+  /** The shop's single online payment QR, or null. */
+  payQrUrl?: string | null;
   branches: { id: string; name: string; address: string; area: string }[];
   services: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string | null }[];
   servicesByLocation?: Record<string, PublicShop["services"]>;

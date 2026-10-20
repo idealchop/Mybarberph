@@ -1,8 +1,11 @@
-import type { PublicShop } from "./use-public-shop";
+export type PayChoice = "cash" | "online";
 
-export type PayChoice = "cash" | "gcash" | "maya";
+/** Booking pay choices (Jimboy, 2026-10-20): Cash or Online. Online stays even without a QR; the QR card shows only when uploaded. */
+export function payChoices(): PayChoice[] {
+  return ["cash", "online"];
+}
 
-/** Booking pay choices: Cash and GCash always; Maya only when the shop has uploaded a Maya QR. */
-export function payChoices(shop: Pick<PublicShop, "payQr"> | null | undefined): PayChoice[] {
-  return shop?.payQr?.maya ? ["cash", "gcash", "maya"] : ["cash", "gcash"];
+/** Older bookings stored "gcash"/"maya": all of them are "online" now. */
+export function isOnlineChoice(p: string | null | undefined) {
+  return p === "online" || p === "gcash" || p === "maya";
 }

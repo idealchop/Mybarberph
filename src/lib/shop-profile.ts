@@ -21,8 +21,8 @@ export interface ShopProfile {
   photoUrls: string[];
   /** Round mark shown with the shop name. */
   logoUrl: string;
-  /** GCash / Maya QR images customers can pay with (empty = none). */
-  payQr?: { gcash: string; maya: string };
+  /** One payment QR (GCash, Maya, bank QR Ph…) customers can pay with online. Empty = none. */
+  payQrUrl?: string;
   /** Shops this owner runs. Shown on the profile. */
   locations: number;
   /** Opening hours as the shop writes them, e.g. "Mon–Sat 9 AM–8 PM". */
@@ -61,7 +61,8 @@ function readProfile(): ShopProfile {
       location: saved.location ?? null,
       photoUrls: Array.isArray(saved.photoUrls) ? saved.photoUrls : [],
       logoUrl: typeof saved.logoUrl === "string" ? saved.logoUrl : "",
-      payQr: { gcash: typeof saved.payQr?.gcash === "string" ? saved.payQr.gcash : "", maya: typeof saved.payQr?.maya === "string" ? saved.payQr.maya : "" },
+      // Older dev data had separate GCash/Maya QRs: the first one becomes the single payment QR.
+      payQrUrl: typeof saved.payQrUrl === "string" ? saved.payQrUrl : ((saved as { payQr?: { gcash?: string; maya?: string } }).payQr?.gcash || (saved as { payQr?: { gcash?: string; maya?: string } }).payQr?.maya || ""),
       hours: typeof saved.hours === "string" ? saved.hours : "",
       locations: clampLocations(saved.locations),
     };

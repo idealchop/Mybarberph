@@ -1,5 +1,6 @@
 "use client";
 import { Input } from "@river-apps/ui";
+import { isOnlineChoice } from "@/components/qr/pay-choices";
 import { payMethodLabel } from "@/lib/pay-split";
 import { Button } from "@/components/common/button";
 import { Check, X } from "lucide-react";
@@ -55,8 +56,10 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
   const base = barber ? lockedAmount(row, menu) : row.price || menuTotal;
   const [adjust, setAdjust] = useState(false);
   const [paid, setPaid] = useState(true);
-  const [m, setM] = useState<"cash" | "gcash">("cash");
-  const method = adjust ? m : "cash";
+  // Customer chose Online (shop QR) when booking: default the collection to GCash (the e-wallet bucket), not cash.
+  const prefersQr = isOnlineChoice(row.payPref);
+  const [m, setM] = useState<"cash" | "gcash">(prefersQr ? "gcash" : "cash");
+  const method = adjust ? m : prefersQr ? "gcash" : "cash";
   const isPaid = adjust ? paid : true;
   const [amount, setAmount] = useState(String(base / 100));
   const [busy, setBusy] = useState(false);

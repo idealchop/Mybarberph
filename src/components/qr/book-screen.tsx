@@ -186,7 +186,7 @@ export function BookScreen() {
         ) : null}
 
         <p className="mt-5 text-[13px] font-bold">How will you pay?</p>
-        <div className={`mt-2 grid gap-2 ${payOptions(shop).length > 2 ? "grid-cols-3" : "grid-cols-2"}`} role="radiogroup" aria-label="How will you pay">
+        <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">
           {payOptions(shop).map(([v, label, ic]) => (
             <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPay(v)}
               className={`flex h-12 items-center justify-center gap-2 rounded-[14px] text-[14.5px] font-bold ${pay === v ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>
@@ -194,8 +194,8 @@ export function BookScreen() {
             </button>
           ))}
         </div>
-        {pay !== "cash" && shop?.payQr?.[pay] ? <PayQr wallet={pay} url={shop.payQr[pay]!} shopName={shop.name} /> : null}
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay !== "cash" && shop?.payQr?.[pay] ? "Pay with the QR, or at the shop when the cut is done." : "You pay at the shop when the cut is done."}</p>
+        {pay === "online" && shop?.payQrUrl ? <PayQr url={shop.payQrUrl} shopName={shop.name} /> : null}
+        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the cut is done (GCash, Maya or bank QR).") : "You pay at the shop when the cut is done."}</p>
 
         <div className="mt-5 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
           <div className="flex justify-between text-[13.5px] font-semibold"><span>{haircut.name}</span><span className="tabular-nums">{peso(haircut.price ?? 0)}</span></div>

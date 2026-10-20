@@ -41,7 +41,7 @@ export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnoth
   const closed = booking.status === "declined";
   const current = stepIndex(booking);
   const sitting = booking.status === "in_chair" ? booking.chairLabel || "the chair" : "";
-  const method = (() => { const m = booking.paid ? booking.payMethod : booking.payPref; return m === "gcash" ? "GCash" : m === "maya" ? "Maya" : "cash"; })();
+  const method = (() => { const m = booking.paid ? booking.payMethod : booking.payPref; return booking.paid ? (m === "gcash" ? "GCash" : m === "online" ? "online" : "cash") : (m === "online" || m === "gcash" || m === "maya" ? "online" : "cash"); })();
   const amount = booking.price ? peso(booking.price) : "";
   const payLine = booking.paid ? `Paid ${amount} · ${method === "cash" ? "Cash" : "GCash"}` : `Pay ${amount} by ${method} at the shop`;
 
