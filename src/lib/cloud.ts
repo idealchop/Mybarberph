@@ -70,6 +70,24 @@ export async function api(path: string, init: RequestInit = {}) {
   return body;
 }
 
+/**
+ * Last good owner snapshot, per uid, on this device (fast launch). Rendered at once on the next open and
+ * replaced by the server's copy a moment later. Cleared on sign-out or when another account signs in.
+ */
+const cacheKey = (id: string) => `bp.cloud.${id}`;
+type Cached = Pick<Snap, "shopId" | "chairId" | "shop" | "values" | "bookings">;
+function readCache(id: string): Cached | null {
+  try { const raw = localStorage.getItem(cacheKey(id)); return raw ? (JSON.parse(raw) as Cached) : null; } catch { return null; }
+}
+function writeCache(id: string, c: Cached) {
+  try { localStorage.setItem(cacheKey(id), JSON.stringify(c)); } catch { /* full or blocked: just no fast launch */ }
+}
+function dropCaches(keep?: string) {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("bp.cloud.") && k !== (keep ? cacheKey(keep) : "")) localStorage.removeItem(k);
+  } catch { /* blocked */ }
+}
+
 function base() {
   return mode?.kind === "barber" ? `/api/barber/${mode.token}` : "/api/shop";
 }
@@ -82,7 +100,9 @@ async function load(quiet = false) {
     const d = await api(base());
     // Don't clobber unsaved local edits, or anything written while this request was in flight.
     if ((pending > 0 || epoch !== writeEpoch) && quiet) return;
-    set({ ready: true, loading: false, error: null, mode: mode.kind, shopId: d.shopId, chairId: d.chairId ?? null, shop: d.shop, values: d.values ?? {}, bookings: d.bookings ?? [] });
+    const data: Cached = { shopId: d.shopId, chairId: d.chairId ?? null, shop: d.shop, values: d.values ?? {}, bookings: d.bookings ?? [] };
+    set({ ready: true, loading: false, error: null, mode: mode.kind, ...data });
+    if (mode.kind === "owner" && uid) writeCache(uid, data);
   } catch (e) {
     set({ ready: true, loading: false, error: (e as Error).message });
   }
@@ -106,8 +126,16 @@ export function startCloud() {
     const next = s.user?.uid ?? null;
     if (next === uid && snap.ready) return;
     uid = next;
-    if (!next) { mode = null; window.clearInterval(pollTimer); set({ ...EMPTY, ready: true }); return; }
+    if (!next) { mode = null; window.clearInterval(pollTimer); dropCaches(); set({ ...EMPTY, ready: true }); return; }
     mode = { kind: "owner" };
+    dropCaches(next);
+    const cached = readCache(next);
+    if (cached) {
+      // Fast launch: show the last saved copy now, refresh from the server in the background.
+      set({ ...EMPTY, ...cached, ready: true, loading: false, mode: "owner" });
+      void load(true).then(poll);
+      return;
+    }
     // New owner (e.g. just signed in): drop the guest snapshot so nothing empty flashes before their data loads.
     set({ ...EMPTY, ready: false, loading: true });
     void load().then(poll);

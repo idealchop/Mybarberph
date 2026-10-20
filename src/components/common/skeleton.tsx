@@ -2,7 +2,7 @@ import { cn } from "@river-apps/ui";
 
 /** Shimmering placeholder block (pulse only when motion is allowed). */
 export function Sk({ className }: { className?: string }) {
-  return <span aria-hidden className={cn("block rounded-[12px] bg-grey-100 motion-safe:animate-pulse", className)} />;
+  return <span aria-hidden className={cn("skeleton-shimmer block rounded-[12px] bg-grey-200", className)} />;
 }
 
 function Shell({ children, wide, className }: { children: React.ReactNode; wide?: boolean; className?: string }) {

@@ -39,21 +39,42 @@ function toUser(u: User): SessionUser {
   };
 }
 
+/**
+ * Fast launch (Jimboy, 2026-10-20): the last signed-in user is remembered on this device, so the app can render
+ * the owner's screens at once while Firebase restores the real session (IndexedDB + token refresh, ~1-2 s on a
+ * phone). Firebase stays the authority: if it reports someone else or no one, the hint is replaced at once, and
+ * every API call still waits for a real ID token.
+ */
+const LAST_USER = "bp.lastUser";
+function readLastUser(): SessionUser | null {
+  try { const raw = localStorage.getItem(LAST_USER); return raw ? (JSON.parse(raw) as SessionUser) : null; } catch { return null; }
+}
+function writeLastUser(u: SessionUser | null) {
+  try { if (u) localStorage.setItem(LAST_USER, JSON.stringify(u)); else localStorage.removeItem(LAST_USER); } catch { /* storage blocked */ }
+}
+
 /** Starts listening to Firebase Auth once. Safe to call more than once. */
 export function hydrateSession() {
   if (started || typeof window === "undefined") return;
   started = true;
   if (!isFirebaseConfigured()) { snap = { ready: true, user: null, signingIn: false }; emit(); return; }
   try { if (sessionStorage.getItem("bp.authRedirect")) snap = { ...snap, signingIn: true }; } catch { /* storage blocked */ }
+  const hint = snap.signingIn ? null : readLastUser();
+  if (hint) { snap = { ...snap, ready: true, user: hint }; emit(); }
   onAuthStateChanged(firebaseAuth(), (u) => {
     current = u;
-    snap = { ...snap, ready: true, user: u ? toUser(u) : null };
+    const user = u ? toUser(u) : null;
+    writeLastUser(user);
+    snap = { ...snap, ready: true, user };
     emit();
   });
 }
 
 export async function idToken(): Promise<string | null> {
-  const u = current ?? (isFirebaseConfigured() ? firebaseAuth().currentUser : null);
+  if (!isFirebaseConfigured()) return null;
+  // The session may still be restoring (the screen may be showing the remembered user); wait for the real one.
+  if (!current) await firebaseAuth().authStateReady().catch(() => undefined);
+  const u = current ?? firebaseAuth().currentUser;
   return u ? u.getIdToken() : null;
 }
 
@@ -153,6 +174,7 @@ export async function changePassword(current: string, next: string) {
 }
 
 export async function signOut() {
+  writeLastUser(null);
   if (isFirebaseConfigured()) await fbSignOut(firebaseAuth());
 }
 
