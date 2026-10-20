@@ -93,3 +93,16 @@ test.describe("Sales › My Barbers tab", () => {
     await expectNoHorizontalOverflow(page);
   });
 });
+
+test.describe("Sales fits small phones", () => {
+  for (const view of ["performance", "services", "barbers"]) {
+    test(`TC-SALES-NF-06 /sales?view=${view} has no horizontal scroll at 320px`, async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.goto(`/sales?view=${view}`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("tablist", { name: "Sales view" })).toBeVisible({ timeout: 20_000 });
+      await page.waitForTimeout(800);
+      const [sw, cw] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      expect(sw).toBe(cw);
+    });
+  }
+});

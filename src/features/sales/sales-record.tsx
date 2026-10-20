@@ -82,7 +82,7 @@ export function SalesRecord({ data }: { data: SalesData }) {
           <Button leadingIcon={<Download size={18} strokeWidth={1.75} />} onClick={exportCsv}>Export CSV</Button>
         </>} />
 
-      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1.45fr]">
+      <section className="mt-5 grid grid-cols-1 [&>*]:min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1.45fr]">
         <div className="relative overflow-hidden rounded-card bg-ink px-5 py-[18px] text-on-ink shadow-raised">
           {glow}
           <div className="relative flex flex-col leading-tight"><span className="text-[12px] font-semibold text-on-ink-muted">Sales {rangeLabel}</span><span className="mt-1 text-[26px] font-extrabold tracking-[-0.03em]">{peso(k(s.sales))}</span><span className="mt-1 text-[12px] font-semibold text-on-ink-muted">{range === "day" ? s.salesDeltaLabel : range === "week" ? "+9% vs last week" : "+12% vs September"}</span></div>

@@ -41,7 +41,7 @@ export function PerfFilterButton({ value, onChange, all, chairs }: { value: Perf
           <div role="dialog" aria-label="Filters" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
             <b className="block text-[18px]">Filters</b>
-            <div className="mt-3 grid gap-3">
+            <div className="mt-3 grid grid-cols-1 [&>*]:min-w-0 gap-3">
               {sel("Barber", "fb", [["", "All barbers"], ...barberOpts])}
               {sel("Channel", "fc", [["", "All channels"], ["walk-in", "Walk-in"], ["online", "Online"]])}
               {sel("Payment", "fp", [["", "All payments"], ["cash", "Cash"], ["gcash", "GCash"], ["online", "Paid online"], ["unpaid", "Unpaid"]])}
@@ -237,7 +237,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
       <Panel title="Completion" sub={completion == null ? "No finished or declined visits" : `${completion}% of requests finished`}>
         <div className="mt-3 flex items-center gap-4">
           <Ring pct={completion ?? 0} />
-          <ul className="grid flex-1 gap-1.5 text-[13px] font-semibold">
+          <ul className="grid grid-cols-1 [&>*]:min-w-0 flex-1 gap-1.5 text-[13px] font-semibold">
             <Li dot="bg-ink" k="Finished" v={String(now.cuts)} />
             <Li dot="bg-[#D92D20]" k="Declined" v={String(declined)} />
             <Li dot="bg-grey-300" k="Waiting / not started" v={String(pending)} />
@@ -259,7 +259,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
       </Panel>
 
       <Panel title="Service mix" sub={services.length ? `${services.length} service${services.length === 1 ? "" : "s"}` : "No finished cuts"}>
-        <ul className="mt-2 grid gap-2.5">
+        <ul className="mt-2 grid grid-cols-1 [&>*]:min-w-0 gap-2.5">
           {services.map((s) => (
             <li key={s.name}>
               <div className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]"><b className="min-w-0 truncate">{s.name}</b><b className="tabular-nums">{peso(s.sales)}</b></div>

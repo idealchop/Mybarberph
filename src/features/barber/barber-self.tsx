@@ -103,7 +103,7 @@ export function BarberPerformanceView({ token, who, place, onBack }: { token: st
           </section>
           <section className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card" aria-label="Busiest days">
             <div className="flex items-baseline justify-between"><b className="text-[15px]">Busiest days</b>{topDay?.cuts ? <small className="text-[12px] font-semibold text-muted">Most on {topDay.day}</small> : null}</div>
-            <ul className="mt-2 grid gap-1.5">
+            <ul className="mt-2 grid grid-cols-1 [&>*]:min-w-0 gap-1.5">
               {d.days.map((x) => (
                 <li key={x.day} className="flex items-center gap-2 text-[12.5px] font-semibold"><span className="w-8 text-muted">{x.day}</span><span className="h-2.5 flex-1 rounded-full bg-grey-100"><span className="block h-full rounded-full bg-ink" style={{ width: `${(x.cuts / maxDay) * 100}%` }} /></span><span className="w-20 text-right tabular-nums">{x.cuts} · {peso(x.sales)}</span></li>
               ))}

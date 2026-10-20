@@ -110,7 +110,7 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
       {comments.length ? (
         <section className="mt-3 rounded-card bg-surface px-4 py-4 shadow-card">
           <h2 className="text-[16px] font-bold">Customer feedback</h2>
-          <ul className="mt-2 grid gap-2">
+          <ul className="mt-2 grid grid-cols-1 [&>*]:min-w-0 gap-2">
             {comments.map((r) => (
               <li key={r.id} className="rounded-[14px] bg-grey-100 px-3 py-2.5">
                 <span className="text-[12px] font-bold">{"★".repeat(Math.round(r.rating || 0))}<span className="text-grey-300">{"★".repeat(5 - Math.round(r.rating || 0))}</span></span>

@@ -95,7 +95,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
             <div className="flex items-center justify-between"><b className="text-[17px]">Claim remit</b><button type="button" onClick={() => setOpen(false)} className="text-[13px] font-bold text-muted">Done</button></div>
             {rows.length ? (
-              <ul className="mt-3 grid gap-2">
+              <ul className="mt-3 grid grid-cols-1 [&>*]:min-w-0 gap-2">
                 {rows.map((u) => (
                   <li key={`${u.barberId}@${u.locationId}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-grey-100 px-3.5 py-3">
                     <span className="min-w-0">
@@ -130,9 +130,10 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
       <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
         {shown.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
               <b className="block truncate text-[14px]">{barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName}</b>
-              <small className="flex items-center gap-1 truncate text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" />Claimed by owner · {day(c.claimedAt)}{!barberId && locName?.(c.locationId) ? ` · ${locName(c.locationId)}` : ""}</small>
+              <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" /><span className="min-w-0 truncate">Claimed by owner · {day(c.claimedAt)}</span></small>
+              {!barberId && locName?.(c.locationId) ? <small className="block truncate text-[12px] font-semibold text-muted">{locName(c.locationId)}</small> : null}
             </span>
             <b className="flex-none text-[14.5px] tabular-nums">{peso(c.amount)}</b>
           </li>
@@ -146,18 +147,19 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
 export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
   if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>;
   return (
-    <ol className="mt-4 grid gap-2.5 lg:grid-cols-2" aria-label="Barber ranking by sales">
+    <ol className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2" aria-label="Barber ranking by sales">
       {rows.map((b, i) => (
         <li key={`${b.id}@${b.locationId}`}>
-          <Link href={href("barber", b.id, range, b.locationId)} className={cn("block bg-surface px-4 py-3.5 shadow-card", onClaim ? "rounded-t-card" : "rounded-card")}>
+          <Link href={href("barber", b.id, range, b.locationId)} className={cn("box-border block w-full min-w-0 bg-surface px-4 py-3.5 shadow-card", onClaim ? "rounded-t-card" : "rounded-card")}>
             <div className="flex items-center gap-3">
               <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i === 0 ? "bg-ink text-on-ink" : i < 3 ? "bg-grey-200" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i + 1}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
-                <small className="block truncate text-[12.5px] font-semibold text-muted">{[showLoc ? b.locationName : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].filter(Boolean).join(" · ")}</small>
+                {showLoc && b.locationName ? <small className="block truncate text-[12.5px] font-semibold text-muted">{b.locationName}</small> : null}
+                <small className="block truncate text-[12.5px] font-semibold text-muted">{[`${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].join(" · ")}</small>
                 <PaySplitText split={b} className="block truncate text-[12px] font-semibold text-muted" />
               </span>
-              <b className="text-[16px] tabular-nums">{peso(b.sales)}</b>
+              <b className="flex-none text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
             </div>
           </Link>
@@ -173,7 +175,7 @@ export function ServiceTable({ rows, split }: { rows: ServiceStat[]; split?: { l
   if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No cuts in this range.</p>;
   const total = rows.reduce((s, r) => s + r.sales, 0) || 1;
   return (
-    <ul className="mt-4 grid gap-2.5 lg:grid-cols-2">
+    <ul className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2">
       {rows.map((s) => (
         <li key={s.name}>
           <Card className="px-4 py-3.5">
