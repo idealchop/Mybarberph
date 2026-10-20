@@ -27,7 +27,7 @@ export function Icon3d({ src }: { src: string }) {
 
 /** token set = barber link (rates as that link); unset = owner (rates with their sign-in). */
 export function InstallPanel({ features, token }: { features: InstallFeature[]; token?: string }) {
-  const pwa = usePwaInstall();
+  const pwa = usePwaInstall(token);
   const [guide, setGuide] = useState<null | "ios" | "safari" | "menu">(null);
   const [rating, setRating] = useState(false);
   const fb = useFeedback(token);

@@ -12,7 +12,7 @@ import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
-import { isStandalone } from "@/lib/pwa";
+import { useInstallHidden } from "@/lib/pwa";
 
 import { useEffect, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
@@ -163,8 +163,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [history, setHistory] = useState(false);
   const [perf, setPerf] = useState(false);
   const [install, setInstall] = useState(false);
-  const [standalone, setStandalone] = useState(true);
-  useEffect(() => { const t = window.setTimeout(() => setStandalone(isStandalone()), 0); return () => window.clearTimeout(t); }, []);
+  const installHidden = useInstallHidden(token);
   const shopsLoc = useShopLocations();
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -248,8 +247,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
         <button type="button" aria-label="My sales" title="My sales" onClick={() => setPerf(true)} className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><BarChart3 size={20} strokeWidth={2} /></button>
       </header>
 
-      {/* Install entry (Jimboy, 2026-10-20). The home-screen app reopens this same link (per-token manifest). Hidden once installed. */}
-      {standalone ? null : (
+      {/* Install entry (Jimboy, 2026-10-20). The home-screen app reopens this same link (per-token manifest). Hidden once installed (standalone, or remembered for this link). */}
+      {installHidden ? null : (
         <button type="button" onClick={() => setInstall(true)} className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-surface px-3.5 py-2.5 text-left shadow-card">
           <Smartphone size={18} className="flex-none" aria-hidden />
           <span className="min-w-0 flex-1"><b className="block text-[14px]">Install app</b><small className="block truncate text-[12px] font-semibold text-muted">Open your link from the home screen</small></span>

@@ -3,6 +3,7 @@
 import { FormSkeleton } from "@/components/common/skeleton";
 import { AppVersion } from "@/components/common/app-version";
 import { useCloud } from "@/lib/cloud";
+import { useInstallHidden } from "@/lib/pwa";
 import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ const PAID_PER_MO = "₱499/mo";
 
 /** Settings hub, same shape as Laundry.ph: profile, credits, setup, features, log out. */
 export function SettingsScreen() {
+  const installHidden = useInstallHidden();
   const cloudReady = useCloud().ready;
   const { profile } = useShopProfile();
   const shops = useShopLocations();
@@ -41,7 +43,8 @@ export function SettingsScreen() {
     { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut and other services" },
     { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
-    { href: "/settings/install", icon: Smartphone, title: "Install app", subtitle: "Open Barbers.ph from your home screen" },
+    // Hidden once installed on this phone; /settings/install stays reachable and shows "Installed".
+    ...(installHidden ? [] : [{ href: "/settings/install", icon: Smartphone, title: "Install app", subtitle: "Open Barbers.ph from your home screen" }]),
   ];
 
   if (!cloudReady) return <FormSkeleton />;
