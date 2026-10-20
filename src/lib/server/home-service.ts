@@ -137,7 +137,7 @@ export async function createHomeBooking(shopId: string, input: HomeBookingInput)
     scheduledAt: at, home: { address, lat, lng, distanceKm: dist, ...(s(input.notes, 300) ? { notes: s(input.notes, 300) } : {}) }, homeFee: fee,
   };
   if (locationId !== "home") row.locationId = locationId;
-  if (input.payPref === "cash" || input.payPref === "gcash") row.payPref = input.payPref;
+  if (input.payPref === "cash" || input.payPref === "gcash" || input.payPref === "maya") row.payPref = input.payPref;
   if (input.externalId) row.externalId = s(input.externalId, 120);
   if (barber) { row.barberId = barber.id; row.barberName = barber.name; }
   await shopRef(shopId).collection("bookings").doc(row.id).set(row);

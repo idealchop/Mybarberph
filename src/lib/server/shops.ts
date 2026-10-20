@@ -57,6 +57,7 @@ export interface ShopDoc {
   location: { lat: number; lng: number; formattedAddress: string } | null;
   photoUrls: string[];
   logoUrl: string;
+  payQr?: { gcash: string; maya: string };
   branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"] }[];
   menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string }[];
   /** Menus for branches other than the first shop, keyed by location id. */
@@ -132,6 +133,7 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
       name, address: str(parsed.address), area: str(parsed.area, 120), phone: str(parsed.phone, 30),
       about: str(parsed.about, 600), hours: str(parsed.hours, 200), hoursWeek: parseWeek(parsed.hoursWeek), location: loc(parsed.location),
       photoUrls: urls(parsed.photoUrls), logoUrl: urls([parsed.logoUrl])[0] ?? "",
+      payQr: { gcash: urls([(parsed.payQr as { gcash?: unknown } | undefined)?.gcash])[0] ?? "", maya: urls([(parsed.payQr as { maya?: unknown } | undefined)?.maya])[0] ?? "" },
       listed: Boolean(name), updatedAt: now,
     }, { merge: true });
     // The app always shows a Haircut service; publish it until the owner edits the menu.
@@ -403,6 +405,7 @@ export function publicShop(id: string, s: ShopDoc) {
   return {
     id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null, hoursWeek: s.hoursWeek ?? null,
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
+    payQr: { gcash: s.payQr?.gcash || null, maya: s.payQr?.maya || null },
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null })),
     servicesByLocation: {} as Record<string, never[]>,
     plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
@@ -475,7 +478,7 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
     row.barberId = b.id;
     row.barberName = b.name;
   }
-  if (input.payPref === "cash" || input.payPref === "gcash") row.payPref = input.payPref;
+  if (input.payPref === "cash" || input.payPref === "gcash" || input.payPref === "maya") row.payPref = input.payPref;
   await shopRef(shopId).collection("bookings").doc(id).set(row);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,
     text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "river" ? " (River app)" : " (QR)"}` }, true);

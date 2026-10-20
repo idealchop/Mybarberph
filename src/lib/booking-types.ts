@@ -38,7 +38,7 @@ export interface ChairRequest {
   /** Owner's note on this visit. */
   notes?: string;
   /** How the customer said they'd pay at booking (QR page). */
-  payPref?: "cash" | "gcash";
+  payPref?: "cash" | "gcash" | "maya";
   /** Customer's rating after the visit (1–5) and optional comment. */
   rating?: number;
   feedback?: string;

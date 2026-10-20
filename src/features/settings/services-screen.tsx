@@ -7,6 +7,7 @@ import { Button, Spinner } from "@/components/common/button";
 import { BarberIcon } from "@/components/art";
 import { HomeServiceCard, HomeToggle } from "@/features/settings/home-service-card";
 import { LinkReviewList } from "./link-review";
+import { PayQrSettings } from "./pay-qr-settings";
 import { PageBack } from "@/components/shell/page-back";
 import { fileToDataUrl } from "@/features/community";
 import { BarberPortrait } from "@/features/settings/seat-list";
@@ -205,6 +206,8 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
           </ul>
         )}
       </section>
+
+      <PayQrSettings />
 
       <section className="mt-6">
         <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Home service</h2>

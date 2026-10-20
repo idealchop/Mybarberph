@@ -1,9 +1,10 @@
 "use client";
 
-import { CoinIcon } from "@river-apps/icons";
+import { PayQr } from "./pay-qr";
+import { payOptions, type PayChoice } from "./pay-options";
 import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { CalendarDays, Check, ChevronRight, Plus, Wallet, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Plus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BarberIcon, type BarberIconName } from "@/components/art";
@@ -41,7 +42,7 @@ export function BookScreen() {
   const [picked, setPicked] = useState<string[]>([]);
   const [more, setMore] = useState(false);
   const [sched, setSched] = useState<ScheduleRequest | null>(null);
-  const [pay, setPay] = useState<"cash" | "gcash">("cash");
+  const [pay, setPay] = useState<PayChoice>("cash");
   const [error, setError] = useState("");
   const [ask, setAsk] = useState(false);
   const [sending, setSending] = useState(false);
@@ -185,15 +186,16 @@ export function BookScreen() {
         ) : null}
 
         <p className="mt-5 text-[13px] font-bold">How will you pay?</p>
-        <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="How will you pay">
-          {([["cash", "Cash", <CoinIcon key="c" size={28} />], ["gcash", "GCash", <Wallet key="g" size={24} strokeWidth={1.75} />]] as const).map(([v, label, ic]) => (
+        <div className={`mt-2 grid gap-2 ${payOptions(shop).length > 2 ? "grid-cols-3" : "grid-cols-2"}`} role="radiogroup" aria-label="How will you pay">
+          {payOptions(shop).map(([v, label, ic]) => (
             <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPay(v)}
               className={`flex h-12 items-center justify-center gap-2 rounded-[14px] text-[14.5px] font-bold ${pay === v ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>
               {ic} {label}
             </button>
           ))}
         </div>
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">You pay at the shop when the cut is done.</p>
+        {pay !== "cash" && shop?.payQr?.[pay] ? <PayQr wallet={pay} url={shop.payQr[pay]!} shopName={shop.name} /> : null}
+        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay !== "cash" && shop?.payQr?.[pay] ? "Pay with the QR, or at the shop when the cut is done." : "You pay at the shop when the cut is done."}</p>
 
         <div className="mt-5 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
           <div className="flex justify-between text-[13.5px] font-semibold"><span>{haircut.name}</span><span className="tabular-nums">{peso(haircut.price ?? 0)}</span></div>

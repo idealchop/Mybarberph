@@ -1,8 +1,9 @@
 "use client";
 
-import { CoinIcon } from "@river-apps/icons";
+import { PayQr } from "./pay-qr";
+import { payOptions, type PayChoice } from "./pay-options";
 import { Avatar } from "@river-apps/ui";
-import { Check, ChevronLeft, Users, Wallet } from "lucide-react";
+import { Check, ChevronLeft, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BarberIcon, type BarberIconName } from "@/components/art";
 import { Button } from "@/components/common/button";
@@ -15,7 +16,7 @@ const ICONS: BarberIconName[] = ["scissors", "clipper", "pole", "razor", "towel"
 const icon = (v?: string | null): BarberIconName => (ICONS.includes(v as BarberIconName) ? (v as BarberIconName) : "scissors");
 
 type Barber = { id: string; name: string; photoUrl: string | null };
-export type ScheduleRequest = { serviceIds: string[]; barberId?: string; scheduledAt: number; pay: "cash" | "gcash"; total: number };
+export type ScheduleRequest = { serviceIds: string[]; barberId?: string; scheduledAt: number; pay: PayChoice; total: number };
 
 /** Manila calendar date (YYYY-MM-DD) `offset` days from today. */
 function manilaDay(offset: number) {
@@ -50,7 +51,7 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => manilaDay(i)), []);
   const [day, setDay] = useState(days[0]!);
   const [time, setTime] = useState("");
-  const [pay, setPay] = useState<"cash" | "gcash">("cash");
+  const [pay, setPay] = useState<PayChoice>("cash");
 
   useEffect(() => {
     let live = true;
@@ -137,15 +138,16 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
         ) : <p className="mt-2 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold text-muted">No times left on this day. Pick another date.</p>}
 
         <p className="mt-5 text-[13px] font-bold">How will you pay?</p>
-        <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="How will you pay">
-          {([["cash", "Cash", <CoinIcon key="c" size={28} />], ["gcash", "GCash", <Wallet key="g" size={24} strokeWidth={1.75} />]] as const).map(([v, label, ic]) => (
+        <div className={`mt-2 grid gap-2 ${payOptions(shop).length > 2 ? "grid-cols-3" : "grid-cols-2"}`} role="radiogroup" aria-label="How will you pay">
+          {payOptions(shop).map(([v, label, ic]) => (
             <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPay(v)}
               className={`flex h-12 items-center justify-center gap-2 rounded-[14px] text-[14.5px] font-bold ${pay === v ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}>
               {ic} {label}
             </button>
           ))}
         </div>
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">You pay at the shop when the cut is done.</p>
+        {pay !== "cash" && shop?.payQr?.[pay] ? <PayQr wallet={pay} url={shop.payQr[pay]!} shopName={shop.name} /> : null}
+        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay !== "cash" && shop?.payQr?.[pay] ? "Pay with the QR, or at the shop when the cut is done." : "You pay at the shop when the cut is done."}</p>
 
         {error ? <p className="mt-3 text-[13px] font-semibold">{error}</p> : null}
         <Button className="mt-5" fullWidth disabled={!ready || sending} loading={sending}
