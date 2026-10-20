@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { KitDefs, ref, usePrefix } from "./defs";
 
-export type BarberIconName = "scissors" | "clipper" | "pole" | "razor" | "towel" | "ticket" | "gift" | "qr";
+export type BarberIconName = "scissors" | "clipper" | "pole" | "razor" | "towel" | "ticket" | "gift" | "qr" | "trophy" | "shop";
 
 const shapes: Record<BarberIconName, (p: string) => ReactNode> = {
   scissors: (p) => (
@@ -70,6 +70,29 @@ const shapes: Record<BarberIconName, (p: string) => ReactNode> = {
       <rect x="28" y="18" width="8" height="36" fill={ref(p, "gold")} />
       <path d="M32 18 C26 8 16 10 20 16 C22 19 28 18 32 18 C36 18 42 19 44 16 C48 10 38 8 32 18 Z" fill={ref(p, "gold")} />
       <path d="M13 32 L13 46" stroke="#fff" strokeOpacity=".6" strokeWidth="2.5" strokeLinecap="round" />
+    </g>
+  ),
+  trophy: (p) => (
+    <g filter={ref(p, "sh")}>
+      <path d="M18 14 C10 14 8 20 10 25 C12 31 18 33 22 33" fill="none" stroke={ref(p, "gold")} strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M46 14 C54 14 56 20 54 25 C52 31 46 33 42 33" fill="none" stroke={ref(p, "gold")} strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M17 9 H47 V22 C47 32 40 39 32 39 C24 39 17 32 17 22 Z" fill={ref(p, "gold")} />
+      <path d="M17 24 H47 C46.4 26.4 45.4 28.4 44 30 H20 C18.6 28.4 17.6 26.4 17 24 Z" fill={ref(p, "peach")} />
+      <rect x="28" y="38" width="8" height="8" rx="2" fill={ref(p, "gold")} />
+      <rect x="20" y="46" width="24" height="9" rx="3.5" fill={ref(p, "gold")} />
+      <path d="M23 13 C22.5 18 23 22 25 26" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity=".8" />
+    </g>
+  ),
+  shop: (p) => (
+    <g filter={ref(p, "sh")}>
+      <rect x="11" y="26" width="42" height="29" rx="4" fill="#FFF6E8" />
+      <rect x="15" y="32" width="15" height="12" rx="2.5" fill={ref(p, "sky")} />
+      <rect x="35" y="32" width="13" height="23" rx="2.5" fill={ref(p, "peach")} />
+      <circle cx="45" cy="44" r="1.4" fill={ref(p, "gold")} />
+      <path d="M8 18 L13 10 H51 L56 18 Z" fill={ref(p, "mint")} />
+      <path d="M8 18 H56 V22 C56 25.3 53.3 28 50 28 C46.7 28 44 25.3 44 22 C44 25.3 41.3 28 38 28 C34.7 28 32 25.3 32 22 C32 25.3 29.3 28 26 28 C22.7 28 20 25.3 20 22 C20 25.3 17.3 28 14 28 C10.7 28 8 25.3 8 22 Z" fill={ref(p, "mint")} />
+      <path d="M20 18 V22 C20 25.3 22.7 28 26 28 C29.3 28 32 25.3 32 22 V18 Z M44 18 V22 C44 25.3 46.7 28 50 28 C53.3 28 56 25.3 56 22 V18 Z" fill="#fff" opacity=".85" />
+      <path d="M17 35 L21 35" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".8" />
     </g>
   ),
   qr: (p) => (

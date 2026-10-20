@@ -22,6 +22,9 @@ import { useOwnerLogo, useShopProfile, type ShopLocation } from "@/lib/shop-prof
 import { maxLocations, planForLocations, planInfo } from "@/lib/plans";
 import { useTier } from "@/lib/tier";
 import { LocationPicker } from "./location-picker";
+import { BottomSheet } from "@/components/common/bottom-sheet";
+import { Plus } from "lucide-react";
+import { BarberProfile } from "./barber-profile";
 
 /** Turn shops on, add a place, and keep each pin with that shop. */
 export function ShopsScreen() {
@@ -38,6 +41,7 @@ export function ShopsScreen() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
 
   async function onAdd() {
     setError("");
@@ -58,6 +62,7 @@ export function ShopsScreen() {
       copyMenuToLocation(result.branch.id);
       setName("");
       setPin(null);
+      setAdding(false);
       setNote(`${result.branch.name} is ready. Its queue, barbers, and barber links stay on this shop.`);
     } catch {
       setError("Couldn’t look up that pin. Try again.");
@@ -72,9 +77,9 @@ export function ShopsScreen() {
       <header className="mt-1 px-1">
         <div className="flex items-center gap-1">
           <PageBack fallback="/settings" />
-          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Manage Locations</h1>
+          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Manage locations</h1>
         </div>
-        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Each shop has its own QR. Tap Edit Shop for its details, pin and barbers." : "Turn this on when you run more than one shop."}</p>
+        <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{enabled ? "Each shop has its own QR. Tap Edit shop for its details, pin and barbers." : "Turn this on when you run more than one shop."}</p>
       </header>
       {note ? <p className="mt-3 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
@@ -88,7 +93,7 @@ export function ShopsScreen() {
                   <div className="min-w-0 flex-1">
                     <b className="block text-[16px]">{branch.name}{branch.id === HOME_LOCATION_ID ? <span className="ml-1.5 text-[12px] font-semibold text-muted">Main</span> : null}</b>
                     <p className="mt-0.5 text-[13px] font-medium text-muted">{branch.area || branch.address || "No pin yet"}</p>
-                    <Link href={`/settings/shops/edit?id=${encodeURIComponent(branch.id)}`} className="mt-3 inline-flex h-8 items-center rounded-pill px-3.5 text-[12.5px] font-bold ring-1 ring-ink">Edit Shop</Link>
+                    <Link href={`/settings/shops/edit?id=${encodeURIComponent(branch.id)}`} className="mt-3 inline-flex h-8 items-center rounded-pill px-3.5 text-[12.5px] font-bold ring-1 ring-ink">Edit shop</Link>
                   </div>
                   <BranchQr branchId={branch.id} name={branch.name} />
                 </div>
@@ -104,14 +109,7 @@ export function ShopsScreen() {
               <Button className="mt-4" fullWidth href="/settings/billing">See Lifetime plans</Button>
             </section>
           ) : (
-          <section className="mt-6">
-            <h2 className="px-1 text-[13px] font-bold text-muted">Add a shop</h2>
-            <div className="mt-2 flex flex-col gap-3 rounded-card bg-surface px-3.5 py-3.5 shadow-card">
-              <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
-              <LocationPicker value={pin} onChange={setPin} disabled={busy} />
-              <Button fullWidth loading={busy} disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Add shop"}</Button>
-            </div>
-          </section>
+          <Button className="mt-4" fullWidth variant="secondary" leadingIcon={<Plus size={17} strokeWidth={2.2} />} data-auth="action" onClick={() => { setError(""); setAdding(true); }}>Add another shop</Button>
           )}
 
           <div className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card">
@@ -127,6 +125,16 @@ export function ShopsScreen() {
           <Button className="mt-4" fullWidth disabled={!profileReady} data-auth="action" onClick={() => setConfirmMulti("on")}>Turn on multiple shops</Button>
         </div>
       )}
+      {adding ? (
+        <BottomSheet title="Add another shop" subtitle="Name it and drop a pin" onClose={() => { if (!busy) setAdding(false); }}
+          footer={<div className="flex gap-2"><Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setAdding(false)}>Back</Button><Button className="flex-1" loading={busy} disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Save"}</Button></div>}>
+          <div className="flex flex-col gap-3 pt-1">
+            <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
+            <LocationPicker value={pin} onChange={setPin} disabled={busy} />
+            {error ? <p className="text-[13.5px] font-semibold" role="alert">{error}</p> : null}
+          </div>
+        </BottomSheet>
+      ) : null}
       {confirmMulti ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setConfirmMulti(null)}>
           <div role="dialog" aria-modal="true" aria-label={confirmMulti === "on" ? "Turn on multiple shops" : "Turn off multiple shops"} className="w-full max-w-[440px] rounded-t-[28px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-5 shadow-card sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -174,13 +182,17 @@ function BranchQr({ branchId, name }: { branchId: string; name: string }) {
 function BranchBarbers({ locationId }: { locationId: string }) {
   const { chairs } = useShopChairs({ all: true });
   const mine = chairs.filter((c) => (c.locationId || HOME_LOCATION_ID) === locationId && c.active !== false);
-  if (!mine.length) return <p className="mt-3 border-t border-line pt-2.5 text-[12.5px] font-semibold text-muted">No barbers yet. Add them in Edit Shop.</p>;
+  const [open, setOpen] = useState<string | null>(null);
+  if (open) return <BarberProfile chairId={open} onClose={() => setOpen(null)} />;
+  if (!mine.length) return <p className="mt-3 border-t border-line pt-2.5 text-[12.5px] font-semibold text-muted">No barbers yet. Add them in Edit shop.</p>;
   return (
     <ul className="mt-3 grid gap-2 border-t border-line pt-2.5">
       {mine.map((c) => (
         <li key={c.id} className="flex items-center gap-2.5">
-          <BarberPortrait chair={c} size={28} />
-          <b className="min-w-0 flex-1 truncate text-[13.5px]">{chairBarberName(c)}</b>
+          <button type="button" onClick={() => setOpen(c.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" aria-label={`Open ${chairBarberName(c)}’s profile`}>
+            <BarberPortrait chair={c} size={28} />
+            <b className="min-w-0 flex-1 truncate text-[13.5px] underline decoration-grey-300 underline-offset-[3px]">{chairBarberName(c)}</b>
+          </button>
           <ShareBarberLink compact id={c.id} name={chairBarberName(c)} />
         </li>
       ))}

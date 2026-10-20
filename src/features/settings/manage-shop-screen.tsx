@@ -11,7 +11,9 @@ import { useChairRequests } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID, useShopLocations, type ShopBranch } from "@/lib/shop-locations";
 import type { ShopLocation } from "@/lib/shop-profile";
 import { LocationPicker } from "./location-picker";
-import { ServicesScreen } from "./services-screen";
+import { Back, ServicesScreen } from "./services-screen";
+import { FullScreen } from "@/components/shell/full-screen";
+import { Pencil } from "lucide-react";
 
 /** Manage Shop: one location's name, address, pin, profile and its services & chairs. */
 export function ManageShopScreen() {
@@ -43,6 +45,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const pinMoved = (pin?.lat ?? 0) !== (branch.location?.lat ?? 0) || (pin?.lng ?? 0) !== (branch.location?.lng ?? 0);
   const dirty = name.trim() !== branch.name || phone !== (branch.phone ?? "") || about !== (branch.about ?? "") || address !== (branch.address ?? "") || pinMoved;
 
@@ -72,7 +75,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-28 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
+    <div className="mx-auto w-full max-w-[402px] px-4 pb-10 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-1">
         <PageBack fallback="/settings/shops" />
         <div className="min-w-0">
@@ -86,18 +89,19 @@ function Editor({ branch }: { branch: ShopBranch }) {
         <ServicesScreen locationId={branch.id} embedded />
       </div>
 
-      <Card className="mt-6 grid gap-3 px-4 py-4">
-        <b className="text-[16px]">Shop details</b>
-        <Input label="Shop name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} disabled={busy} />
-        <Input label="Address" value={address} maxLength={300} onChange={(e) => setAddress(e.target.value)} disabled={busy} placeholder="Street, barangay, city" />
-        <Input label="Shop phone" inputMode="tel" value={phone} maxLength={20} placeholder="09XX XXX XXXX" onChange={(e) => setPhone(e.target.value)} disabled={busy} />
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-bold">About this shop <span className="font-semibold text-muted">(optional)</span></span>
-          <textarea value={about} maxLength={300} rows={3} onChange={(e) => setAbout(e.target.value)} disabled={busy} className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" />
-        </label>
-        <LocationPicker value={pin} onChange={setPin} disabled={busy} />
-        <p className="text-[12.5px] font-semibold text-muted">Brand name, logo, hours and facades are in <a href="/settings/edit" className="font-bold underline underline-offset-[3px]">Shop profile</a>.</p>
-      </Card>
+      <section className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card" aria-label="Shop details">
+        <div className="flex items-start justify-between gap-3">
+          <b className="text-[16px]">Shop details</b>
+          <button type="button" data-auth="action" onClick={() => setEditOpen(true)} aria-label="Update shop details" title="Update"
+            className="inline-flex h-9 flex-none items-center gap-1.5 rounded-pill bg-grey-100 px-3 text-[13px] font-bold"><Pencil size={15} strokeWidth={2} />Update</button>
+        </div>
+        <dl className="mt-2 grid gap-2.5 text-[14px]">
+          {([["Shop name", branch.name], ["Address", branch.address || branch.area], ["Shop phone", branch.phone], ["About", branch.about]] as const).map(([k, v]) => (
+            <div key={k}><dt className="text-[12px] font-semibold text-muted">{k}</dt><dd className="font-semibold">{v || <span className="text-muted">Not set</span>}</dd></div>
+          ))}
+          <div><dt className="text-[12px] font-semibold text-muted">Map pin</dt><dd className="font-semibold">{branch.location ? (branch.location.formattedAddress || "Pinned") : <span className="text-muted">No pin yet</span>}</dd></div>
+        </dl>
+      </section>
 
       {branch.id === HOME_LOCATION_ID ? null : (
         <Card className="mt-6 px-4 py-4">
@@ -114,11 +118,25 @@ function Editor({ branch }: { branch: ShopBranch }) {
         </Card>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-        <div className="mx-auto max-w-[402px] lg:max-w-[720px]">
-          <Button data-auth="action" fullWidth loading={busy} disabled={busy || !dirty || name.trim().length < 2} onClick={() => void save()}>{busy ? "Saving…" : "Save Shop"}</Button>
-        </div>
-      </div>
+      {editOpen ? (
+        <FullScreen>
+          <Back title="Edit shop details" onBack={() => setEditOpen(false)} />
+          <p className="mt-0.5 pl-11 text-[13.5px] font-semibold text-muted">{branch.name}</p>
+          <div className="mt-4 grid gap-3">
+        <Input label="Shop name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} disabled={busy} />
+        <Input label="Address" value={address} maxLength={300} onChange={(e) => setAddress(e.target.value)} disabled={busy} placeholder="Street, barangay, city" />
+        <Input label="Shop phone" inputMode="tel" value={phone} maxLength={20} placeholder="09XX XXX XXXX" onChange={(e) => setPhone(e.target.value)} disabled={busy} />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-bold">About this shop <span className="font-semibold text-muted">(optional)</span></span>
+          <textarea value={about} maxLength={300} rows={3} onChange={(e) => setAbout(e.target.value)} disabled={busy} className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" />
+        </label>
+        <LocationPicker value={pin} onChange={setPin} disabled={busy} />
+        <p className="text-[12.5px] font-semibold text-muted">Brand name, logo, hours and facades are in <a href="/settings/edit" className="font-bold underline underline-offset-[3px]">Shop profile</a>.</p>
+
+          </div>
+          <Button data-auth="action" className="mt-6" fullWidth loading={busy} disabled={busy || !dirty || name.trim().length < 2} onClick={() => void save().then(() => setEditOpen(false))}>{busy ? "Saving…" : "Save"}</Button>
+        </FullScreen>
+      ) : null}
     </div>
   );
 }

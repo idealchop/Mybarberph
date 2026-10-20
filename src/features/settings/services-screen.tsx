@@ -21,9 +21,13 @@ import {
   type ShopHaircut, type ShopTreatment,
 } from "@/lib/shop-services";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { sharePct } from "@/lib/income-split";
+import { BarberProfile } from "./barber-profile";
+import { FullScreen } from "@/components/shell/full-screen";
 
 type Editor =
   | { kind: "chair"; chair: ShopChair; fresh: boolean }
+  | { kind: "profile"; chairId: string }
   | { kind: "haircut" }
   | { kind: "treatment"; treatment: ShopTreatment; fresh: boolean };
 
@@ -46,9 +50,12 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
     return map;
   }, [rows]);
 
+  if (editing?.kind === "profile") return <BarberProfile chairId={editing.chairId} onClose={() => setEditing(null)} />;
+
   if (editing?.kind === "chair") {
     return (
       <ChairEditor
+        inService={Boolean(holders[editing.chair.label])}
         chair={chairs.find((c) => c.id === editing.chair.id) ?? editing.chair}
         fresh={editing.fresh}
         onBack={() => setEditing(null)}
@@ -138,11 +145,11 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
               const off = chair.active === false;
               return (
                 <li key={chair.id} className="relative rounded-card bg-surface px-3.5 py-3.5 shadow-card">
-                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "chair", chair, fresh: false })} className="flex w-full min-w-0 items-center gap-3 pr-11 text-left" aria-label={`Edit ${chairBarberName(chair)}`}>
+                  <button type="button" style={{ opacity: off ? 0.55 : 1 }} onClick={() => setEditing({ kind: "profile", chairId: chair.id })} className="flex w-full min-w-0 items-center gap-3 pr-11 text-left" aria-label={`Open ${chairBarberName(chair)}’s profile`}>
                     <BarberPortrait chair={chair} size={44} />
                     <span className="min-w-0">
                       <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
-                      <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""}</small>
+                      <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""} · {sharePct(chair)}% share</small>
                     </span>
                   </button>
                   <button type="button" aria-label={`Edit ${chairBarberName(chair)}`} title="Edit barber" onClick={() => setEditing({ kind: "chair", chair, fresh: false })}
@@ -241,7 +248,7 @@ export function ShareBarberLink({ id, name, compact = false }: { id: string; nam
   );
 }
 
-function Back({ title, onBack }: { title: string; onBack: () => void }) {
+export function Back({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-1">
       <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink">
@@ -271,12 +278,14 @@ function IconPick({ icons, value, onChange }: { icons: typeof HAIRCUT_ICONS; val
   );
 }
 
-function ChairEditor({
-  chair, fresh, onBack, onSave, onRemove,
+export function ChairEditor({
+  chair, fresh, onBack, onSave, onRemove, inService,
 }: {
   chair: ShopChair;
   fresh: boolean;
   place?: string;
+  /** With a customer now: the location can't be switched until the cut is done. */
+  inService?: boolean;
   onBack: () => void;
   onSave: (next: ShopChair) => string;
   onRemove: () => string;
@@ -288,6 +297,10 @@ function ChairEditor({
   const [error, setError] = useState("");
   const [up, setUp] = useState<"" | "uploading" | "done">("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const shops = useShopLocations();
+  const [loc, setLoc] = useState(chair.locationId || HOME_LOCATION_ID);
+  const [share, setShare] = useState(String(sharePct(chair)));
+  const [saving, setSaving] = useState(false);
 
   async function pickPhoto(file: File | undefined) {
     if (!file) return;
@@ -304,7 +317,7 @@ function ChairEditor({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
+    <FullScreen>
       <Back title={fresh ? "Add barber" : "Edit barber"} onBack={onBack} />
       <div className="mt-5 flex items-end gap-3">
         <div className="flex flex-none flex-col items-center">
@@ -332,26 +345,54 @@ function ChairEditor({
         <Input label="Email (optional)" type="email" inputMode="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value.trim().slice(0, 120))} />
         <p className="px-1 text-[12px] font-semibold text-muted">For booking alerts when SMS/email is turned on.</p>
       </div>
+      <div className="mt-5">
+        <p className="px-1 text-[13px] font-bold">Income split</p>
+        <p className="px-1 text-[12.5px] font-semibold text-muted">The barber’s share of sales. Tips always go 100% to the barber.</p>
+        <div className="mt-2 flex items-center gap-2">
+          {[40, 50, 60, 70].map((v) => (
+            <button key={v} type="button" aria-pressed={share === String(v)} onClick={() => setShare(String(v))}
+              className={`h-10 flex-1 rounded-pill text-[13.5px] font-bold ${share === String(v) ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{v}%</button>
+          ))}
+          <label className="flex h-10 w-[84px] flex-none items-center rounded-pill bg-grey-100 px-3 text-[13.5px] font-bold">
+            <input aria-label="Barber share percent" inputMode="numeric" value={share} onChange={(e) => setShare(e.target.value.replace(/[^\d]/g, "").slice(0, 3))} className="w-full min-w-0 bg-transparent outline-none" />%
+          </label>
+        </div>
+        <p className="mt-1.5 px-1 text-[12.5px] font-semibold text-ink-2">Barber {Math.min(100, Number(share) || 0)}% · Shop {100 - Math.min(100, Number(share) || 0)}%. On ₱1,000: barber ₱{(Math.min(100, Number(share) || 0) * 10).toLocaleString("en-PH")}, shop ₱{((100 - Math.min(100, Number(share) || 0)) * 10).toLocaleString("en-PH")}.</p>
+      </div>
+      {shops.enabled && shops.branches.length > 1 ? (
+        <label className="mt-5 flex flex-col gap-1.5">
+          <span className="px-1 text-[13px] font-bold">Location</span>
+          <select value={loc} disabled={inService} onChange={(e) => setLoc(e.target.value)} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+            {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <span className="px-1 text-[12px] font-semibold text-muted">{inService ? "Finish the current cut before moving this barber." : "Moving keeps the same barber link and sales history."}</span>
+        </label>
+      ) : null}
       {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
-      <Button data-auth="action" className="mt-6" fullWidth disabled={up === "uploading"} onClick={() => {
+      <Button data-auth="action" className="mt-6" fullWidth loading={saving} disabled={up === "uploading" || saving} onClick={() => {
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Check the email address."); return; }
-        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined, phone: phone.trim() || undefined, email: email || undefined });
+        const pct = Number(share);
+        if (!share || !(pct >= 0 && pct <= 100)) { setError("Set the barber’s share from 0 to 100%."); return; }
+        setSaving(true);
+        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined, phone: phone.trim() || undefined, email: email || undefined, sharePct: Math.round(pct), locationId: loc });
+        setSaving(false);
         if (error) setError(error);
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={() => {
         const error = onRemove();
         if (error) setError(error);
       }}>Remove barber</Button>}
-    </div>
+    </FullScreen>
   );
 }
+
 
 function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void }) {
   const [draft, setDraft] = useState(haircut);
   const [price, setPrice] = useState(haircut.price ? String(haircut.price) : "");
 
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
+    <FullScreen>
       <Back title="Edit haircut" onBack={onBack} />
       <p className="mt-1 pl-11 text-[14px] font-medium text-muted">One haircut for the shop. Other services are added separately.</p>
       <p className="mt-5 text-[13px] font-bold">Icon</p>
@@ -365,7 +406,7 @@ function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBa
         // Duration isn't asked; the internal default keeps time slots working.
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
-    </div>
+    </FullScreen>
   );
 }
 
@@ -382,7 +423,7 @@ function TreatmentEditor({
   const [price, setPrice] = useState(treatment.price ? String(treatment.price) : "");
 
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:px-[30px] lg:pt-6">
+    <FullScreen>
       <Back title={fresh ? "Add a service" : "Edit service"} onBack={onBack} />
       <p className="mt-1 pl-11 text-[14px] font-medium text-muted">This sits with the haircut. Save to keep it.</p>
       <p className="mt-5 text-[13px] font-bold">Icon</p>
@@ -397,6 +438,6 @@ function TreatmentEditor({
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
-    </div>
+    </FullScreen>
   );
 }

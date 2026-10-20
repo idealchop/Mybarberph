@@ -5,7 +5,7 @@ import { useRemit } from "@/features/sales";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { ChevronDown, Loader2, Plus, ScanLine, User } from "lucide-react";
+import { Plus, ScanLine, User } from "lucide-react";
 import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
@@ -19,6 +19,9 @@ import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigu
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { CompanionCard } from "@/features/companion";
+import { LocationSwitcher } from "@/components/shell/location-switcher";
+import { BarberIcon } from "@/components/art";
+import { ChevronRight } from "lucide-react";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -112,14 +115,9 @@ export function HomeScreen() {
                   <span className="flex min-w-0 flex-col leading-[1.2]">
                     <Link href="/settings" className="max-w-[170px] truncate text-[14px] font-extrabold tracking-[-0.01em]">{shopName}</Link>
                     {shops.enabled && shops.branches.length > 1 ? (
-                      <label className="relative inline-flex max-w-[170px] items-center gap-0.5 text-[11.5px] font-semibold text-muted">
-                        <span className="truncate">{shops.viewingAll ? "All locations" : shops.branch?.name ?? "Main"}</span>
-                        {remit.loading ? <Loader2 size={12} strokeWidth={2.4} className="flex-none animate-spin" aria-label="Loading" /> : <ChevronDown size={13} strokeWidth={2.2} className="flex-none" aria-hidden />}
-                        <select aria-label="Switch location" value={shops.viewId} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
-                          {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                          <option value={ALL_LOCATIONS}>All locations</option>
-                        </select>
-                      </label>
+                      <LocationSwitcher className="max-w-[170px] text-[11.5px] font-semibold text-muted" value={shops.viewId} allId={ALL_LOCATIONS} loading={remit.loading}
+                        label={shops.viewingAll ? "All locations" : shops.branch?.name ?? "Main"} onChange={shops.setView}
+                        options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
                     ) : <span className="max-w-[170px] truncate text-[11.5px] font-semibold text-muted">{profile.area || profile.address.split(",")[0] || "Your shop"}</span>}
                   </span>
                 </div>
@@ -177,6 +175,7 @@ export function HomeScreen() {
         </div>
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
         <CompanionCard className="mx-4 mt-3" />
+        <HomeShortcuts className="mx-4 mt-3" />
         <SalesChartCard className="mx-4 mt-3" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
@@ -229,6 +228,7 @@ export function HomeScreen() {
           <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         <CompanionCard className="mt-5" />
+        <HomeShortcuts className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />
         {shops.viewingAll ? <ShopDays rows={byShop} className="mt-5" /> : null}
         <Card padding="none" className="mt-5 px-[18px] pb-4 pt-4">
@@ -289,4 +289,23 @@ function useTick(on: boolean) {
     return () => window.clearInterval(t);
   }, [on]);
   return now;
+}
+
+/** Shortcuts under the Companion card (Jimboy, 2026-10-21). */
+function HomeShortcuts({ className = "" }: { className?: string }) {
+  const items = [
+    { href: "/settings/shops", icon: "shop" as const, title: "Manage shops", sub: "Locations, barbers, QR" },
+    { href: "/settings/services", icon: "scissors" as const, title: "Services", sub: "Prices and payment QR" },
+  ];
+  return (
+    <nav aria-label="Shortcuts" className={`grid grid-cols-2 gap-3 ${className}`}>
+      {items.map((it) => (
+        <Link key={it.href} href={it.href} className="flex min-w-0 items-center gap-2.5 rounded-card bg-surface px-3 py-3 shadow-card active:scale-[0.99]">
+          <BarberIcon name={it.icon} size={40} />
+          <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{it.title}</b><small className="block truncate text-[12px] font-semibold text-muted">{it.sub}</small></span>
+          <ChevronRight size={16} className="flex-none text-subtle" aria-hidden />
+        </Link>
+      ))}
+    </nav>
+  );
 }

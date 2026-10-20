@@ -1,7 +1,8 @@
 "use client";
+import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { AppLoader } from "@/components/common/app-loader";
 import { EmptyBookings } from "@/components/common/empty-bookings";
-import { ChevronDown, ChevronLeft, ChevronRight, Home as HomeIcon, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home as HomeIcon, MapPin } from "lucide-react";
 import { mapsLink } from "@/lib/home-service-model";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/complete-flow";
@@ -177,14 +178,9 @@ export function QueueBoard() {
           Today
           {shops.enabled ? (
             shops.branches.length > 1 ? (
-              <label className="relative ml-1 inline-flex min-w-0 items-center gap-0.5 text-ink">
-                <span className="truncate">· {shops.viewingAll ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
-                <ChevronDown size={14} strokeWidth={2.2} className="flex-none" aria-hidden />
-                <select aria-label="Location" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} onChange={(e) => shops.setView(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
-                  {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  <option value={ALL_LOCATIONS}>All locations</option>
-                </select>
-              </label>
+              <LocationSwitcher className="ml-1 text-ink" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} allId={ALL_LOCATIONS} onChange={shops.setView}
+                label={`· ${shops.viewingAll ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}`}
+                options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
             ) : <span className="ml-1 truncate">· {allLocs ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
           ) : null}
         </p>
