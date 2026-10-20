@@ -1,5 +1,5 @@
 /**
- * Seeds Jimboy's real demo owner account: BOYET BARBERSHOP (since 2014). No visits or sales are created.
+ * Seeds Jimboy's real demo owner account: Boyet Barbershop (since 2014). No visits or sales are created.
  *
  * Idempotent: stable ids for branches, barbers and chairs; existing barber link tokens are kept; re-running
  * rewrites the same docs. Goes through the app's own server writers (putState), so the shop doc, branch list,
@@ -12,6 +12,10 @@
  * Options: --dry-run (print the plan, write nothing), --no-logo.
  *
  * Needs Application Default Credentials for project mybarberph (gcloud auth application-default login).
+ * Accounts under Workspace re-auth (the Node library's refresh fails with invalid_rapt): right after logging in, run
+ *   SEED_ACCESS_TOKEN="$(gcloud auth application-default print-access-token)" \
+ *     npx vite-node --config scripts/seed.vite.config.ts scripts/seed-boyet.ts -- --uid boyet-barbershop-owner
+ * (scripts/admin-token.ts stands in for the Admin module; the token is never printed or stored.)
  * The owner's Firebase Auth user (phone +639995199685) is project-wide; its uid is the shop id.
  */
 import { randomBytes } from "node:crypto";
@@ -59,7 +63,7 @@ const MENU = {
     { id: "beard-trim", name: "Beard trim", durationMins: 15, price: 60, icon: "razor" },
   ],
 };
-const NAME = "BOYET BARBERSHOP";
+const NAME = "Boyet Barbershop";
 const branchId = (i: number, slug: string) => (i === 0 ? "home" : `loc-${slug}`);
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const formatted = (b: (typeof BRANCHES)[number]) => b.address;

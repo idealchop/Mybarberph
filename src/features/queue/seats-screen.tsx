@@ -37,7 +37,7 @@ export function SeatsScreen() {
         const mine = chairs.filter((chair) => chairLocation(chair) === branch.id);
         return (
           <section key={branch.id} className="mt-5">
-            <p className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">{branch.name}</p>
+            <p className="px-1 text-[13.5px] font-extrabold text-muted">{branch.name}</p>
             {mine.length === 0 ? (
               <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No chairs yet. Add them in Services.</p>
             ) : (
