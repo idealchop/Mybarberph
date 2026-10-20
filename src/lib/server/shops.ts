@@ -26,6 +26,7 @@ export const STATE_KEYS: Record<string, string> = {
   "barbers.shop-locations": "locations",
   "barbers.community.v1": "community",
   "barbers.home-service": "home",
+  "barbers.sales-groups": "salesGroups",
 };
 /** Keys a barber link may write. */
 /** State a chair link may write directly: none. Barbers change only their own name (setBarberName). */

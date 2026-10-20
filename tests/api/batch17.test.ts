@@ -39,3 +39,39 @@ describe("edit log", () => {
     expect(editChanges(a, a)).toEqual([]);
   });
 });
+
+import { groupReport, normalizeGroups, toggleMember } from "@/lib/sales-groups";
+import type { ChairRequest } from "@/lib/booking-types";
+import { filterLocations } from "@/components/shell/location-switcher";
+
+describe("sales groups", () => {
+  const done = (o: Partial<ChairRequest>) => ({ id: Math.random().toString(36), status: "done", price: 100_000, ...o }) as ChairRequest;
+  it("always has Group 1–3 and keeps names", () => {
+    const g = normalizeGroups([{ id: "g2", name: " North ", locationIds: ["a", "a"] }]);
+    expect(g.map((x) => x.name)).toEqual(["Group 1", "North", "Group 3"]);
+    expect(g[1]!.locationIds).toEqual(["a"]);
+  });
+  it("sums a group's locations and barbers once, with net after the barber's share and tips apart", () => {
+    const chairs = [{ id: "c1", label: "Jay", barberId: "b1", locationId: "home", sharePct: 60 }, { id: "c2", label: "Ben", barberId: "b2", locationId: "loc-x" }];
+    const rows = [done({ locationId: "home", barberId: "b1", tip: 5000 }), done({ locationId: "loc-x", barberId: "b2" }), done({ locationId: "loc-y", barberId: "b3" })];
+    let g = normalizeGroups(null)[0]!;
+    g = toggleMember(g, "loc", "home");
+    g = toggleMember(g, "barber", "b2");
+    g = toggleMember(g, "barber", "b1"); // also at home: counted once
+    const r = groupReport(rows, g, chairs, { loc: (id) => id });
+    expect(r.cuts).toBe(2);
+    expect(r.gross).toBe(200_000);
+    expect(r.net).toBe(40_000 + 50_000);
+    expect(r.tips).toBe(5000);
+    expect(r.barbers.map((b) => b.id).sort()).toEqual(["b1", "b2"]);
+    expect(toggleMember(g, "loc", "home").locationIds).toEqual([]);
+  });
+});
+
+describe("location sheet search", () => {
+  it("matches name or area", () => {
+    const list = [{ id: "1", name: "Bayan", sub: "Cabuyao" }, { id: "2", name: "Niugan", sub: "Cabuyao City" }, { id: "3", name: "Pulo" }];
+    expect(filterLocations(list, "cabuyao").map((x) => x.id)).toEqual(["1", "2"]);
+    expect(filterLocations(list, " ").length).toBe(3);
+  });
+});

@@ -12,7 +12,11 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
-import { barberStats, rankedBarbers } from "@/lib/sales-stats";
+import { barberStats, inRange, rankedBarbers } from "@/lib/sales-stats";
+import { SalesGroups } from "./sales-groups";
+import { LocationSwitcher } from "@/components/shell/location-switcher";
+import { BarberIcon } from "@/components/art";
+import { tipOf } from "@/lib/income-split";
 import { BarberRanking, ClaimHistory, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
@@ -20,11 +24,12 @@ import { BarberLeaderboard } from "./barber-leaderboard";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
 
 // Three tabs (Jimboy, 2026-10-20): Collection (default), Performance, My Barbers. Old ?view=overview links land on Collection.
-type View = "performance" | "services" | "barbers";
+// Batch 17 (Jimboy, 2026-10-21): My Barbers moves back to the top-right; the third tab is Sales group.
+type View = "performance" | "services" | "groups" | "barbers";
 const VIEWS: { value: View; label: string }[] = [
   { value: "performance", label: "Collection" },
   { value: "services", label: "Performance" },
-  { value: "barbers", label: "My Barbers" },
+  { value: "groups", label: "Sales group" },
 ];
 
 /** Sales: Collection / Performance, filtered by location and a compact date chip. */
@@ -46,7 +51,7 @@ export function SalesDataScreen() {
     const t = window.setTimeout(() => {
       // Anything but "services" (incl. the old overview tab) opens Collection.
       const v = q.get("view") ?? q.get("tab");
-      setView(v === "services" ? "services" : v === "barbers" ? "barbers" : "performance");
+      setView(v === "services" ? "services" : v === "barbers" ? "barbers" : v === "groups" ? "groups" : "performance");
       if (q.get("loc")) setLoc(q.get("loc")!);
       if (q.get("r") === "week" || q.get("r") === "month" || q.get("r") === "today") setRange(q.get("r") as SalesRange);
     }, 0);
@@ -54,7 +59,8 @@ export function SalesDataScreen() {
   }, []);
 
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
-  const report = salesReport(rows, unpaid, range);
+  const base = salesReport(rows, unpaid, range);
+  const report = { ...base, tips: inRange(rows, range, "all").filter((r) => r.status === "done").reduce((s, r) => s + tipOf(r), 0) };
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
@@ -70,6 +76,11 @@ export function SalesDataScreen() {
           <h1 className="flex items-center gap-1.5 text-[28px] font-extrabold leading-none tracking-[-0.03em]">
             <CoinIcon size={28} /> Sales
           </h1>
+          <button type="button" aria-pressed={view === "barbers"} onClick={() => setView(view === "barbers" ? "performance" : "barbers")}
+            className={`ml-auto inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-3 ${view === "barbers" ? "border-ink bg-ink text-on-ink" : "border-line"}`}>
+            <BarberIcon name="trophy" size={28} />
+            <span className="text-[13px] font-bold leading-none">My Barbers</span>
+          </button>
         </div>
       </header>
 
@@ -82,13 +93,12 @@ export function SalesDataScreen() {
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         {shops.enabled && shops.branches.length > 1 ? (
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-pill bg-surface px-3 shadow-card">
+          <div className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-pill bg-surface px-3 shadow-card">
             <MapPin size={14} className="flex-none text-muted" aria-hidden />
-            <select aria-label="Location" value={where} onChange={(e) => setLoc(e.target.value)} className="min-w-0 flex-1 bg-transparent text-[12.5px] font-bold outline-none">
-              <option value="all">All locations</option>
-              {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </label>
+            <LocationSwitcher className="flex-1 text-[12.5px] font-bold" value={where} allId="all" onChange={setLoc}
+              label={where === "all" ? "All locations" : shops.branches.find((b) => b.id === where)?.name ?? "Main"}
+              options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
+          </div>
         ) : null}
         <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
       </div>
@@ -99,6 +109,7 @@ export function SalesDataScreen() {
             <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
             <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
           </div>
+          {report.tips ? <p className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3 text-[13.5px] font-semibold shadow-card"><span>Tips for barbers <small className="block text-[12px] text-muted">Not part of sales · 100% the barbers’</small></span><b className="text-[17px] tabular-nums">{peso(report.tips)}</b></p> : null}
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
@@ -112,6 +123,7 @@ export function SalesDataScreen() {
         </>
       ) : null}
       {view === "barbers" ? <BarberLeaderboard range={range} where={where} all={all} /> : null}
+      {view === "groups" ? <SalesGroups rows={inRange(all, range, "all")} chairs={chairs} branches={branches} /> : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>
     </div>
   );
