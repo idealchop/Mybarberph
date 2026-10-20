@@ -250,7 +250,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-muted">{greeting}, {chairBarberName(chair)}</p>
           <h1 className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{profile.name}</h1>
-          <p className="truncate text-[13px] font-semibold text-muted">{[chairBarberName(chair), placeName].filter(Boolean).join(" · ")}</p>
+          <p className="truncate text-[13px] font-semibold text-muted">{placeName}</p>
         </div>
         <button type="button" aria-label="My sales" title="My sales" onClick={() => setPerf(true)} className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><BarChart3 size={20} strokeWidth={2} /></button>
       </header>
