@@ -67,7 +67,7 @@ export function ShopProfileView({ shop, onBack, onRated }: { shop: PublicShop; o
         {cover ? <img src={cover} alt="" className="size-full object-cover opacity-90" /> : null}
         <button type="button" onClick={onBack} aria-label="Back" className="absolute left-3 top-3 inline-flex size-11 items-center justify-center rounded-full bg-surface/95 shadow-card"><ChevronLeft size={24} strokeWidth={1.9} /></button>
       </div>
-      <div className="-mt-10 px-4">
+      <div className="relative z-[1] -mt-10 px-4">
         <Avatar name={shop.name} src={shop.logoUrl || undefined} preset="sky" size={76} decorative={false} className="ring-4 ring-canvas" />
         <h1 className="mt-2 text-[24px] font-extrabold leading-tight tracking-[-0.03em]">{shop.name}</h1>
         <StarLine rating={rating} className="mt-0.5" />
