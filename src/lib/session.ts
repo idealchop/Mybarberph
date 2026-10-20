@@ -61,6 +61,9 @@ export function hydrateSession() {
   try { if (sessionStorage.getItem("bp.authRedirect")) snap = { ...snap, signingIn: true }; } catch { /* storage blocked */ }
   const hint = snap.signingIn ? null : readLastUser();
   if (hint) { snap = { ...snap, ready: true, user: hint }; emit(); }
+  // Never let the UI wait on Firebase Auth forever (e.g. Safari privacy protections blocking storage):
+  // after 4 s show the signed-out view; a late answer from Firebase still signs the owner in.
+  window.setTimeout(() => { if (!snap.ready) { snap = { ...snap, ready: true, user: null, signingIn: false }; emit(); } }, 4000);
   onAuthStateChanged(firebaseAuth(), (u) => {
     current = u;
     const user = u ? toUser(u) : null;

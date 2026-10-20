@@ -64,7 +64,8 @@ export async function api(path: string, init: RequestInit = {}) {
     const t = await idToken();
     if (t) headers.set("authorization", `Bearer ${t}`);
   }
-  const res = await fetch(path, { ...init, headers, cache: "no-store" });
+  // Never hang a screen on a stuck request: give up after 15 s (the screen shows its error / retry state).
+  const res = await fetch(path, { ...init, headers, cache: "no-store", signal: init.signal ?? AbortSignal.timeout(15_000) });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(body.error || `Request failed (${res.status})`), { status: res.status, body });
   return body;

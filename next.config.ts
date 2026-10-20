@@ -15,6 +15,9 @@ const BUILD_ID = process.env.BUILD_ID_OVERRIDE || Date.now().toString(36);
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // With `revalidate = 60` in the root layout, HTML is sent as "s-maxage=60, stale-while-revalidate=60":
+  // a CDN can serve a page at most ~2 minutes old (default would be a year).
+  expireTime: 120,
   agentRules: false,
   devIndicators: false,
   // AI Companion switch (see src/lib/companion-flag.ts): on only where COMPANION_ENABLED=1.

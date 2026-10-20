@@ -36,7 +36,14 @@ export function PwaHost() {
       settle();
       w.addEventListener("statechange", settle);
     };
-    const onController = () => { if (wanted.current) window.location.reload(); };
+    // A new worker took over. Reload when asked (Update button) or right at launch, before anything was typed;
+    // later in a session the "Update available" bar asks first. Guarded so it reloads at most once a minute.
+    const onController = () => {
+      const atLaunch = performance.now() < 15_000;
+      if (!wanted.current && !atLaunch) { setUpdate(true); return; }
+      try { const k = "bp.swReload", last = Number(sessionStorage.getItem(k)) || 0; if (Date.now() - last < 60_000) return; sessionStorage.setItem(k, String(Date.now())); } catch { /* storage blocked */ }
+      window.location.reload();
+    };
     const check = async () => {
       if (stop || document.visibilityState !== "visible") return;
       void reg.current?.update().catch(() => {});

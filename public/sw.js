@@ -2,12 +2,13 @@
  * - Never touches /api, /__/auth, Firebase or any cross-origin request (no caching of API or auth responses).
  * - Navigations: network first; the last good copy is only used when offline.
  * - Hashed build assets (/_next/static) and app icons: cache first (immutable).
- * - A new version waits until the page asks it to take over ("SKIP_WAITING" from the Update button). */
+ * - A new version takes over at once (skipWaiting + clients.claim) and old caches are deleted on activate.
+ *   Navigations are network first, so an old app shell is only ever served when offline. */
 const VERSION = new URL(self.location.href).searchParams.get("v") || "0";
 const PAGES = `pages-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 
-self.addEventListener("install", () => {});
+self.addEventListener("install", () => { self.skipWaiting(); });
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) if (key !== PAGES && key !== ASSETS) await caches.delete(key);
