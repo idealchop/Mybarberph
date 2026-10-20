@@ -13,6 +13,10 @@ export interface PublicShop {
   logoUrl: string | null;
   /** The shop's single online payment QR, or null. */
   payQrUrl?: string | null;
+  /** Star summary (all reviews + visit ratings). */
+  rating?: { avg: number | null; count: number };
+  phone?: string;
+  about?: string;
   branches: { id: string; name: string; address: string; area: string }[];
   services: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string | null }[];
   servicesByLocation?: Record<string, PublicShop["services"]>;

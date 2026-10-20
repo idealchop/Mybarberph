@@ -1,4 +1,5 @@
 import { editChanges } from "@/lib/edit-log";
+import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
@@ -60,6 +61,9 @@ export interface ShopDoc {
   photoUrls: string[];
   logoUrl: string;
   payQrUrl?: string;
+  /** Star line on customer pages (lib/server/reviews.ts). */
+  ratingCount?: number;
+  ratingSum?: number;
   /** Legacy (dev only, before 2026-10-20 23:58): separate GCash/Maya QRs. Read as payQrUrl. */
   payQr?: { gcash?: string; maya?: string };
   branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"] }[];
@@ -421,6 +425,7 @@ export function publicShop(id: string, s: ShopDoc) {
     id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null, hoursWeek: s.hoursWeek ?? null,
     location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
     payQrUrl: s.payQrUrl || s.payQr?.gcash || s.payQr?.maya || null,
+    rating: ratingSummary(s),
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null })),
     servicesByLocation: {} as Record<string, never[]>,
     plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
@@ -514,6 +519,8 @@ export async function saveFeedback(shopId: string, id: string, rating: number, c
     if (b.rating) return b;
     const next = { ...b, rating: r, feedback: str(comment, 500).trim() || undefined, feedbackAt: Date.now() };
     if (!next.feedback) delete next.feedback;
+    // Also counts toward the shop's star line (reviews read before any write: Firestore transaction rule).
+    await writeReview(tx, shopId, `visit_${id}`, { rating: r, comment: (next.feedback ?? "").slice(0, 300), name: (b.customerLabel && b.customerLabel !== "Walk-in" && !b.customerLabel.includes("@") && !/\d{7}/.test(b.customerLabel) ? b.customerLabel.split(" ")[0]! : "Customer"), at: next.feedbackAt, source: "visit" });
     tx.set(ref, next);
     return next as ChairRequest;
   });

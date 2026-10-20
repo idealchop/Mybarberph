@@ -2,7 +2,6 @@
 
 import { PayQr } from "./pay-qr";
 import { payOptions, type PayChoice } from "./pay-options";
-import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { CalendarDays, Check, ChevronRight, Plus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -14,8 +13,16 @@ import { ACTIVE_BOOKING_KEY, parseContact } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { ScheduleScreen, type ScheduleRequest } from "./schedule-screen";
 import { RequestStatus } from "./request-status";
-import { PoweredBy, ShopHeader } from "./shop-brand";
+import { PoweredBy } from "./shop-brand";
+import { ShopProfileView, StarLine } from "./shop-profile";
+import { Avatar, Input } from "@river-apps/ui";
 import { usePublicShop } from "./use-public-shop";
+
+/** Manila time greeting for the customer header. */
+function greet() {
+  const h = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila", hour: "numeric", hour12: false })) % 24;
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
 
 const ICONS: BarberIconName[] = ["scissors", "clipper", "pole", "razor", "towel", "ticket", "gift", "qr"];
 const icon = (v?: string | null, fallback: BarberIconName = "scissors") => (ICONS.includes(v as BarberIconName) ? (v as BarberIconName) : fallback);
@@ -47,7 +54,9 @@ export function BookScreen() {
   const [ask, setAsk] = useState(false);
   const [sending, setSending] = useState(false);
   const [ticket, setTicket] = useState<string | null>(null);
-  const [view, setView] = useState<"form" | "ticket" | "schedule">("form");
+  const [view, setView] = useState<"form" | "ticket" | "schedule" | "profile">("form");
+  const [rated, setRated] = useState<{ avg: number | null; count: number } | null>(null);
+  const rating = rated ?? shop?.rating ?? null;
   useEffect(() => {
     const t = savedTicket(shopId);
     if (!t) return;
@@ -120,6 +129,7 @@ export function BookScreen() {
       </>
     );
   }
+  if (view === "profile" && shop) return <ShopProfileView shop={shop} onBack={() => setView("form")} onRated={setRated} />;
   if (view === "ticket" && ticket) return <RequestStatus bookingId={ticket} shopId={shopId} shop={shop ?? null} branchName={branch?.name} onBookAnother={() => setView("form")} />;
   if (shop === undefined) return (
     <main role="status" aria-label="Loading the shop" className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas">
@@ -139,21 +149,40 @@ export function BookScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-6">
-      <ShopHeader shop={shop} branchName={branch ? branch.address || branch.area || branch.name : undefined} trailing={
-        <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-grey-100 px-3.5 text-[13.5px] font-bold text-ink">
+      {/* Customer page in the barber view's style (Jimboy, 2026-10-21): greeting header, dark hero, clean sections. */}
+      <header className="flex min-w-0 items-center gap-2.5 px-4 pt-5">
+        <button type="button" onClick={() => setView("profile")} aria-label={`${shop.name}: shop profile and reviews`} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <Avatar name={shop.name} src={shop.logoUrl || undefined} preset="sky" size={44} decorative={false} className="flex-none ring-1 ring-line" />
+          <span className="min-w-0">
+            <span className="block truncate text-[12px] font-medium text-muted">{greet()}, welcome to</span>
+            <span className="flex items-center gap-1"><b className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{shop.name}</b><ChevronRight size={16} className="flex-none text-subtle" aria-hidden /></span>
+            <span className="flex min-w-0 items-center gap-1.5"><StarLine rating={rating} />{branch ? <span className="truncate text-[12.5px] font-semibold text-muted">· {branch.name}</span> : null}</span>
+          </span>
+        </button>
+        <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-surface px-3.5 text-[13.5px] font-bold text-ink shadow-card">
           <CalendarDays size={17} strokeWidth={2.1} aria-hidden /> Schedule
         </button>
-      } />
+      </header>
       <div className="px-4">
         {ticket ? (
-          <button type="button" onClick={() => setView("ticket")} className="mt-4 flex w-full items-center justify-between rounded-card bg-ink px-4 py-3 text-left text-on-ink">
-            <span><b className="block text-[14.5px]">Back to my ticket</b><small className="text-[12px] font-semibold text-on-ink/70">See your place in the queue</small></span>
+          <button type="button" onClick={() => setView("ticket")} className="mt-4 flex w-full items-center justify-between rounded-card bg-surface px-4 py-3 text-left shadow-card">
+            <span><b className="block text-[14.5px]">Back to my ticket</b><small className="text-[12px] font-semibold text-muted">See your place in the queue</small></span>
             <ChevronRight size={20} />
           </button>
         ) : null}
-        <h2 className="mt-5 text-[24px] font-extrabold leading-[1.15] tracking-[-0.03em]">Book a haircut</h2>
+        <section aria-label="Book a haircut" className="relative isolate mt-4 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
+          <div className="relative z-10 min-w-0 flex-1">
+            <p className="text-[12px] font-medium text-on-ink-muted">Walk in now, no account needed</p>
+            <h2 className="mt-1 text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em]">Book a haircut</h2>
+            <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">{haircut.name}{haircut.price ? ` · ${peso(haircut.price)}` : ""} · pay at the shop or online</p>
+          </div>
+          <div aria-hidden className="pointer-events-none relative z-0 -mr-1 flex w-[112px] flex-none items-end justify-center">
+            <BarberIcon name="pole" size={104} className="drop-shadow-[0_10px_18px_rgba(0,0,0,0.35)]" />
+            <span className="absolute -bottom-1 -left-1 rotate-[-14deg]"><BarberIcon name="scissors" size={58} /></span>
+          </div>
+        </section>
 
-        <p className="mt-4 text-[13px] font-bold">Service</p>
+        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Service</h3>
         <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
           <BarberIcon name={icon(haircut.icon, "clipper")} size={40} title={haircut.name} />
           <span className="min-w-0 flex-1">
@@ -185,7 +214,7 @@ export function BookScreen() {
           </ul>
         ) : null}
 
-        <p className="mt-5 text-[13px] font-bold">How will you pay?</p>
+        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
         <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">
           {payOptions(shop).map(([v, label, ic]) => (
             <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPay(v)}
@@ -197,7 +226,8 @@ export function BookScreen() {
         {pay === "online" && shop?.payQrUrl ? <PayQr url={shop.payQrUrl} shopName={shop.name} /> : null}
         <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the cut is done (GCash, Maya or bank QR).") : "You pay at the shop when the cut is done."}</p>
 
-        <div className="mt-5 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
+        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Summary</h3>
+        <div className="mt-2 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
           <div className="flex justify-between text-[13.5px] font-semibold"><span>{haircut.name}</span><span className="tabular-nums">{peso(haircut.price ?? 0)}</span></div>
           {chosen.map((t) => <div key={t.id} className="mt-1 flex justify-between text-[13.5px] font-semibold"><span>{t.name}</span><span className="tabular-nums">{peso(t.price)}</span></div>)}
           <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-line pt-2">
