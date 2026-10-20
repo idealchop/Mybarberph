@@ -13,8 +13,15 @@ import { groupReport, normalizeGroups, SALES_GROUPS_KEY, toggleMember, type Grou
 function useGroups() {
   const cloud = useCloud();
   const raw = cloud.values[SALES_GROUPS_KEY];
-  const groups = useMemo(() => { try { return normalizeGroups(JSON.parse(raw || "null")); } catch { return normalizeGroups(null); } }, [raw]);
-  const save = (g: SalesGroup) => cloudStorage.setItem(SALES_GROUPS_KEY, JSON.stringify(groups.map((x) => (x.id === g.id ? g : x))));
+  const saved = useMemo(() => { try { return normalizeGroups(JSON.parse(raw || "null")); } catch { return normalizeGroups(null); } }, [raw]);
+  // Optimistic: taps show at once; the saved copy wins again when it changes.
+  const [local, setLocal] = useState<{ raw: string | undefined; groups: SalesGroup[] } | null>(null);
+  const groups = local && local.raw === raw ? local.groups : saved;
+  const save = (g: SalesGroup) => {
+    const next = groups.map((x) => (x.id === g.id ? g : x));
+    setLocal({ raw, groups: next });
+    cloudStorage.setItem(SALES_GROUPS_KEY, JSON.stringify(next));
+  };
   return { groups, save };
 }
 

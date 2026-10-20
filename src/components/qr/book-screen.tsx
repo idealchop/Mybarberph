@@ -176,9 +176,9 @@ export function BookScreen() {
             <h2 className="mt-1 text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em]">Book a haircut</h2>
             <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">{haircut.name}{haircut.price ? ` · ${peso(haircut.price)}` : ""} · pay at the shop or online</p>
           </div>
-          <div aria-hidden className="pointer-events-none relative z-0 -mr-1 flex w-[112px] flex-none items-end justify-center">
-            <BarberIcon name="pole" size={104} className="drop-shadow-[0_10px_18px_rgba(0,0,0,0.35)]" />
-            <span className="absolute -bottom-1 -left-1 rotate-[-14deg]"><BarberIcon name="scissors" size={58} /></span>
+          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
+            {/* eslint-disable-next-line @next/next/no-img-element -- same 3D pole + scissors art as the barber view */}
+            <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" />
           </div>
         </section>
 

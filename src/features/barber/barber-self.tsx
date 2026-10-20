@@ -172,9 +172,9 @@ function SpeedCard({ d }: { d: BarberPerformance | null }) {
       <span aria-hidden className="inline-flex size-11 flex-none items-center justify-center rounded-[14px] bg-grey-100"><Timer size={22} strokeWidth={2} /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-[12.5px] font-semibold text-muted">Average time per cut</span>
-        <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{avg == null ? "–" : `${avg} min`}</b>
+        <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{avg == null ? "–" : `${avg < 1 ? "<1" : avg} min`}</b>
       </span>
-      <span className="text-right text-[12.5px] font-semibold text-muted">{d?.fastestMins != null ? <>Fastest<b className="block text-[15px] text-ink tabular-nums">{d.fastestMins} min</b></> : "Start to done"}{d?.timedCuts ? <small className="block">{d.timedCuts} timed</small> : null}</span>
+      <span className="text-right text-[12.5px] font-semibold text-muted">{d?.fastestMins != null ? <>Fastest<b className="block text-[15px] text-ink tabular-nums">{d.fastestMins < 1 ? "<1" : d.fastestMins} min</b></> : "Start to done"}{d?.timedCuts ? <small className="block">{d.timedCuts} timed</small> : null}</span>
     </section>
   );
 }
