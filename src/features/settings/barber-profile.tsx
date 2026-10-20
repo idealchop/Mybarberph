@@ -21,15 +21,16 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
   const chair = chairs.find((c) => c.id === chairId);
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState("");
+  const [now] = useState(() => Date.now());
   const myId = chair ? chair.barberId || chair.id : "";
   const holder = chair ? rows.find((r) => r.status === "in_chair" && r.chairLabel === chair.label && (r.locationId || HOME_LOCATION_ID) === (chair.locationId || HOME_LOCATION_ID)) : undefined;
   const week = useMemo(() => {
     if (!chair) return { cuts: 0, sales: 0, tips: 0, today: 0 };
-    const since = Date.now() - 7 * 86_400_000;
-    const today = manilaDay(Date.now());
+    const since = now - 7 * 86_400_000;
+    const today = manilaDay(now);
     const mine = rows.filter((r) => r.status === "done" && (r.completedAt ?? 0) >= since && (r.barberId ? r.barberId === myId : r.seatLabel === chair.label));
     return { cuts: mine.length, sales: mine.reduce((s, r) => s + (r.price || 0), 0), tips: mine.reduce((s, r) => s + tipOf(r), 0), today: mine.filter((r) => manilaDay(r.completedAt ?? 0) === today).length };
-  }, [rows, chair, myId]);
+  }, [rows, chair, myId, now]);
   if (!chair) return <FullScreen><Back title="Barber profile" onBack={onClose} /><p className="mt-4 text-[14px] font-semibold text-muted">This barber was removed.</p></FullScreen>;
   const name = chairBarberName(chair);
   const pct = sharePct(chair);
