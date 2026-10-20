@@ -18,7 +18,6 @@ import { SalesChartCard } from "@/features/sales";
 import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
-import { useTier } from "@/lib/tier";
 import { CompanionCard } from "@/features/companion";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
@@ -70,8 +69,6 @@ function Bookings({ rows, loading, max, placeFor, locationId }: { rows: ChairReq
 
 /** Home matches Laundry.ph: greeting, today hero, three stats, bookings to accept. */
 export function HomeScreen() {
-  const { tier } = useTier();
-  const paid = tier === "paid";
   const greeting = useGreeting();
   const { profile } = useShopProfile();
   const shops = useShopLocations();
@@ -184,15 +181,6 @@ export function HomeScreen() {
         {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
         <div className="mx-4"><Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} locationId={shops.viewingAll ? undefined : shops.scopeId ?? undefined} /></div>
-        {paid ? null : (
-          <Card padding="none" className="mx-4 mt-2.5 flex items-center justify-between gap-3 px-4 py-3.5">
-            <span className="min-w-0">
-              <b className="block text-[14px]">You’re on Partner</b>
-              <small className="text-[12.5px] font-semibold text-muted">Walk-ins: 10/day · Pro adds unlimited walk-ins and the shop QR · ₱499/mo</small>
-            </span>
-            <Button href="/settings/billing" variant="secondary" size="sm" className="flex-none">Plans</Button>
-          </Card>
-        )}
       </div>
 
       <div className="mx-auto hidden w-full max-w-[1120px] px-4 pb-6 pt-4 lg:block lg:px-[30px] lg:pt-6">
