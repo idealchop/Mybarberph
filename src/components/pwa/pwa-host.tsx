@@ -38,7 +38,10 @@ export function PwaHost() {
     };
     // A new worker took over. Reload when asked (Update button) or right at launch, before anything was typed;
     // later in a session the "Update available" bar asks first. Guarded so it reloads at most once a minute.
+    // First visit: the first worker claiming the page is not an update, so no reload then.
+    const hadController = !!navigator.serviceWorker?.controller;
     const onController = () => {
+      if (!hadController && !wanted.current) return;
       const atLaunch = performance.now() < 15_000;
       if (!wanted.current && !atLaunch) { setUpdate(true); return; }
       try { const k = "bp.swReload", last = Number(sessionStorage.getItem(k)) || 0; if (Date.now() - last < 60_000) return; sessionStorage.setItem(k, String(Date.now())); } catch { /* storage blocked */ }
