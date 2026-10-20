@@ -10,7 +10,7 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { BarChart3, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { useInstallHidden } from "@/lib/pwa";
 
@@ -167,6 +167,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const shopsLoc = useShopLocations();
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  // Walk-in: add-on services stay folded behind "Other services" until tapped (Jimboy, 2026-10-20).
+  const [showOther, setShowOther] = useState(false);
   const chair = chairPreview;
   const allowance = useWalkInAllowance(chair?.locationId || HOME_LOCATION_ID);
   useEffect(() => {
@@ -274,8 +276,17 @@ export function BarberLinkScreen({ token }: { token: string }) {
           </div>
           {treatments.length ? (
             <>
-              <p className="mt-4 px-1 text-[13px] font-bold">Other services</p>
-              <div className="mt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                aria-expanded={showOther || picked.length > 0}
+                aria-controls="walkin-other-services"
+                onClick={() => setShowOther((v) => !v)}
+                className="mt-4 flex w-full items-center justify-center gap-1 rounded-[14px] py-2 text-center text-[13.5px] font-bold text-ink-2 hover:bg-grey-100"
+              >
+                Other services{picked.length ? ` · ${picked.length}` : ""}
+                <ChevronDown size={16} strokeWidth={2.2} aria-hidden className={`transition-transform ${showOther || picked.length ? "rotate-180" : ""}`} />
+              </button>
+              {showOther || picked.length > 0 ? <div id="walkin-other-services" className="mt-2 flex flex-col gap-2">
                 {treatments.map((service) => {
                   const on = picked.includes(service.id);
                   return (
@@ -292,7 +303,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
                     </button>
                   );
                 })}
-              </div>
+              </div> : null}
             </>
           ) : null}
           <div className="mt-4">
@@ -331,9 +342,10 @@ export function BarberLinkScreen({ token }: { token: string }) {
             setAdding(false);
             setName("");
             setPicked([]);
+            setShowOther(false);
             setNote("");
           }}>Accept</Button>
-          <Button className="mt-2" fullWidth variant="secondary" onClick={() => { setAdding(false); setName(""); setPicked([]); }}>Cancel</Button>
+          <Button className="mt-2" fullWidth variant="secondary" onClick={() => { setAdding(false); setName(""); setPicked([]); setShowOther(false); }}>Cancel</Button>
         </section>
       ) : scanning ? (
         <OnlineScan
