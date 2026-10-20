@@ -11,7 +11,7 @@ const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone:
 const hourLabel = (h: number) => `${((h + 11) % 12) + 1}${h < 12 ? "am" : "pm"}`;
 
 /** The barber's own My sales page (from the header icon). Week / month / custom. */
-export function BarberPerformanceView({ token, who, place, onBack }: { token: string; who: string; place?: string; onBack: () => void }) {
+export function BarberPerformanceView({ token, who, place, onBack, extra }: { token: string; who: string; place?: string; onBack: () => void; extra?: React.ReactNode }) {
   const [range, setRange] = useState<Range>("week");
   const [from, setFrom] = useState(() => ymd(Date.now() - 13 * 86_400_000));
   const [to, setTo] = useState(() => ymd(Date.now()));
@@ -46,6 +46,7 @@ export function BarberPerformanceView({ token, who, place, onBack }: { token: st
           <p className="truncate text-[13px] font-semibold text-muted">{[who, place].filter(Boolean).join(" · ")}{d ? ` · ${d.label}` : ""}</p>
         </div>
       </div>
+      {extra}
       <div role="radiogroup" aria-label="Period" className="mt-3 grid grid-cols-3 rounded-pill bg-grey-100 p-1">
         {([["week", "This week"], ["month", "This month"], ["custom", "Custom"]] as const).map(([v, l]) => (
           <button key={v} type="button" role="radio" aria-checked={range === v} onClick={() => setRange(v)} className={`h-9 rounded-pill text-[13px] font-bold ${range === v ? "bg-surface text-ink shadow-card" : "text-muted"}`}>{l}</button>

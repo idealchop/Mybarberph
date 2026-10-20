@@ -220,7 +220,15 @@ export function BarberLinkScreen({ token }: { token: string }) {
       </main>
     );
   }
-  if (perf) return <BarberPerformanceView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} />;
+  // Install entry lives on My sales only (Jimboy, 2026-10-20); hidden once installed (standalone, or remembered for this link).
+  const installCard = installHidden ? null : (
+    <button type="button" onClick={() => setInstall(true)} className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-surface px-3.5 py-2.5 text-left shadow-card">
+      <Smartphone size={18} className="flex-none" aria-hidden />
+      <span className="min-w-0 flex-1"><b className="block text-[14px]">Install app</b><small className="block truncate text-[12px] font-semibold text-muted">Open your link from the home screen</small></span>
+      <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
+    </button>
+  );
+  if (perf) return <BarberPerformanceView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} extra={installCard} />;
   if (history) {
     return (
       <ChairHistory
@@ -246,15 +254,6 @@ export function BarberLinkScreen({ token }: { token: string }) {
         </div>
         <button type="button" aria-label="My sales" title="My sales" onClick={() => setPerf(true)} className="ml-auto inline-flex size-11 flex-none items-center justify-center rounded-full bg-surface text-ink shadow-card"><BarChart3 size={20} strokeWidth={2} /></button>
       </header>
-
-      {/* Install entry (Jimboy, 2026-10-20). The home-screen app reopens this same link (per-token manifest). Hidden once installed (standalone, or remembered for this link). */}
-      {installHidden ? null : (
-        <button type="button" onClick={() => setInstall(true)} className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-surface px-3.5 py-2.5 text-left shadow-card">
-          <Smartphone size={18} className="flex-none" aria-hidden />
-          <span className="min-w-0 flex-1"><b className="block text-[14px]">Install app</b><small className="block truncate text-[12px] font-semibold text-muted">Open your link from the home screen</small></span>
-          <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
-        </button>
-      )}
 
       {allowance.unlimited ? null : (
         <p className="mt-3 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-bold text-ink-2" aria-live="polite">
