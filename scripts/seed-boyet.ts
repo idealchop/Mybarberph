@@ -91,18 +91,25 @@ async function main() {
   const loc = (b: (typeof BRANCHES)[number]) => ({ lat: b.pin.lat, lng: b.pin.lng, formattedAddress: formatted(b) });
   const profile = {
     name: NAME, address: home.address, phone: "", area: area(home), about: "Since 2014.", location: loc(home),
-    photoUrls: logoUrl ? [logoUrl] : oldProfile.photoUrls ?? [], logoUrl, locations: BRANCHES.length, hours: "",
+    photoUrls: logoUrl ? [logoUrl] : oldProfile.photoUrls ?? [], logoUrl, locations: BRANCHES.reduce((n, b) => n + b.barbers.length, 0), hours: "",
   };
+  // One barber per branch (Jimboy, 2026-10-20): a place with several barbers becomes "Name I", "Name II", …
+  // (same address and pin; ids "<id>", "<id>-2", …). Names are the place only; the app shows the shop name itself.
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+  const seats = BRANCHES.flatMap((b, i) => b.barbers.map((barber, k) => ({
+    b, barber, id: k === 0 ? branchId(i, b.slug) : `${branchId(i, b.slug)}-${k + 1}`,
+    name: b.barbers.length > 1 ? `${b.area} ${ROMAN[k]}` : b.area,
+  })));
   const locations = {
     enabled: true, viewId: "all",
-    branches: BRANCHES.map((b, i) => ({ id: branchId(i, b.slug), name: `Boyet Barbershop – ${b.area}`, area: area(b), address: b.address, phone: "", about: "", location: loc(b), photoUrls: [] })),
+    branches: seats.map(({ b, id, name }) => ({ id, name, area: area(b), address: b.address, phone: "", about: "", location: loc(b), photoUrls: [] })),
   };
   let n = 0;
-  const chairs = BRANCHES.flatMap((b, i) => b.barbers.map((name) => {
+  const chairs = seats.map(({ barber: name, id: locationId }) => {
     const id = `c-${slugify(name)}`, old = oldChairs.find((c) => c.id === id);
     const review = new Date(); review.setMonth(review.getMonth() + 6);
-    return { id, number: ++n, label: name, barberId: `b-${slugify(name)}`, barberName: name, locationId: branchId(i, b.slug), active: true, linkToken: old?.linkToken || token(), linkReviewAt: old?.linkReviewAt || review.getTime() };
-  }));
+    return { id, number: ++n, label: name, barberId: `b-${slugify(name)}`, barberName: name, locationId, active: true, linkToken: old?.linkToken || token(), linkReviewAt: old?.linkReviewAt || review.getTime() };
+  });
 
   for (const b of BRANCHES) console.log(`  ${b.area.padEnd(18)} ${b.barbers.join(", ")}${b.pin.approx ? `  [pin approx: ${b.pin.approx}]` : ""}`);
   console.log(`  ${chairs.length} barbers · menu ₱${MENU.haircut.price} haircut + ${MENU.treatments.length} add-ons · plan lifetime_unlimited · logo ${logoUrl ? "yes" : "no"}`);
