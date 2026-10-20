@@ -16,7 +16,7 @@ export function LinkReviewList({ chairIds, heading = false, className }: { chair
   return (
     <section className={className} aria-label="Barber links to review">
       {heading ? (
-        <p className="flex items-center gap-1.5 px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">
+        <p className="flex items-center gap-1.5 px-1 text-[12.5px] font-extrabold text-muted">
           <Link2 size={14} strokeWidth={2.4} aria-hidden />Barber links to review · {due.length}
         </p>
       ) : null}

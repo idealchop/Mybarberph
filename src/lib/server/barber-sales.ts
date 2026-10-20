@@ -2,9 +2,10 @@ import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { barberRange, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
 import { payBucket } from "@/lib/pay-split";
+import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
 
-type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string };
+type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number };
 
 /** Finished visits per barber (Manila time) for salary and cash remittance. */
 export async function barberSales(shopId: string, q: { range?: string | null; from?: string | null; to?: string | null; loc?: string | null; barberId?: string | null }) {
@@ -72,6 +73,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
   const hours = new Map<number, number>(); const days = new Map<string, { cuts: number; sales: number }>(); const svc = new Map<string, { cuts: number; sales: number }>();
+  let tips = 0, tipCount = 0, mins = 0, timed = 0, fastest = Infinity;
   const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   for (const d of snap.docs) {
     const b = d.data() as ChairRequest;
@@ -80,6 +82,8 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     if (b.status !== "done" || !b.completedAt || b.completedAt < r.from || b.completedAt >= r.to) continue;
     const p = b.price || 0;
     out.cuts += 1; out.sales += p;
+    const tp = tipOf(b); if (tp) { tips += tp; tipCount += 1; }
+    const cm = cutMinutes(b); if (cm != null) { mins += cm; timed += 1; fastest = Math.min(fastest, cm); }
     if (!b.paid) out.unpaid += p;
     else {
       const k = payBucket(b);
@@ -94,6 +98,10 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     const name = (b.serviceName || "Service").trim(); const s = svc.get(name) ?? { cuts: 0, sales: 0 }; s.cuts += 1; s.sales += p; svc.set(name, s);
   }
   out.avg = out.cuts ? Math.round(out.sales / out.cuts) : 0;
+  out.sharePct = sharePct(me);
+  const split = splitIncome(out.sales, out.sharePct);
+  out.barberShare = split.barber; out.shopShare = split.shop; out.tips = tips; out.tipCount = tipCount;
+  out.timedCuts = timed; out.avgMins = timed ? Math.round(mins / timed) : null; out.fastestMins = timed ? Math.round(fastest) : null;
   out.completionPct = out.cuts + out.declined ? Math.round((out.cuts / (out.cuts + out.declined)) * 100) : null;
   out.hours = [...hours.entries()].map(([hour, cuts]) => ({ hour, cuts })).sort((a, b) => a.hour - b.hour);
   out.days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ day, ...(days.get(day) ?? { cuts: 0, sales: 0 }) }));

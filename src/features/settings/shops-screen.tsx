@@ -105,7 +105,7 @@ export function ShopsScreen() {
             </section>
           ) : (
           <section className="mt-6">
-            <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Add a shop</h2>
+            <h2 className="px-1 text-[13px] font-bold text-muted">Add a shop</h2>
             <div className="mt-2 flex flex-col gap-3 rounded-card bg-surface px-3.5 py-3.5 shadow-card">
               <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
               <LocationPicker value={pin} onChange={setPin} disabled={busy} />

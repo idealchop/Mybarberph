@@ -131,7 +131,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
   const shown = all ? rows : rows.slice(0, max);
   return (
     <section className={cn("mt-4", className)} aria-label="Claimed remit">
-      <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Claimed</h2>
+      <h2 className="px-1 text-[13px] font-bold text-muted">Claimed</h2>
       <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
         {shown.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 last:border-b-0">

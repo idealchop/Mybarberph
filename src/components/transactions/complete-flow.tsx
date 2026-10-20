@@ -11,6 +11,9 @@ import { TransactionSheet } from "./transaction-sheet";
 import { useShopMenu } from "@/lib/shop-services";
 import { useCloud } from "@/lib/cloud";
 import { lockedAmount } from "@/lib/menu-amount";
+import { PayQr } from "@/components/qr/pay-qr";
+import { useShopProfile } from "@/lib/shop-profile";
+import { TIP_CHIPS, customerName } from "@/lib/income-split";
 
 const EVT = "barbers-complete-cut";
 
@@ -63,6 +66,12 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
   const isPaid = adjust ? paid : true;
   const [amount, setAmount] = useState(String(base / 100));
   const [busy, setBusy] = useState(false);
+  // Tip (Jimboy, 2026-10-21): one-tap ₱20 / ₱50 / ₱100 or a custom amount. 100% the barber's, saved on the visit.
+  const [tip, setTip] = useState(0);
+  const [customTip, setCustomTip] = useState<string | null>(null);
+  const tipCents = customTip != null ? Math.max(0, Math.round(Number(customTip) * 100) || 0) : tip;
+  const { profile } = useShopProfile();
+  const qr = profile.payQrUrl || "";
   const typed = Math.round(Number(amount) * 100);
   const cents = !barber && adjust && typed > 0 ? typed : base;
   /** One tap: paid at the default amount (cash unless the customer chose GCash). Change it after in order details. */
@@ -70,8 +79,8 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
     if (busy) return;
     setBusy(true);
     const price = onlinePaid ? row.price : cents;
-    markDone(row.id, onlinePaid ? undefined : { price, paid: isPaid, method });
-    onDone({ ...row, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
+    markDone(row.id, onlinePaid ? (tipCents ? { price: row.price, paid: true, method: "cash", tip: tipCents } : undefined) : { price, paid: isPaid, method, tip: tipCents });
+    onDone({ ...row, tip: tipCents || undefined, status: "done", completedAt: Date.now(), price, paid: onlinePaid || isPaid, payMethod: onlinePaid ? row.payMethod : isPaid ? method : undefined, chairLabel: undefined, seatLabel: row.seatLabel || row.chairLabel });
   };
   const adjustLabel = barber ? (adjust ? "Use default" : "Update information") : adjust ? "Use default" : "Adjust";
   const hint = adjust
@@ -82,12 +91,12 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
       <button type="button" className="absolute inset-0 bg-ink/45" aria-label="Dismiss" onClick={onClose} />
       <div className="relative z-[1] w-full max-w-[440px] rounded-t-[28px] bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-5 shadow-card sm:rounded-[28px]">
         <button type="button" onClick={onClose} aria-label="Close" className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-grey-100"><X size={16} strokeWidth={2.2} /></button>
-        <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-muted">Complete · {row.ref}</p>
-        <p className="mt-1 pr-10 text-[13.5px] font-semibold text-muted">{row.customerLabel || "Walk-in"} · {row.serviceName}{row.barberName ? ` · ${row.barberName}` : ""}</p>
+        <p className="text-[12.5px] font-bold text-muted">Complete · {row.ref}</p>
+        <p className="mt-1 pr-10 text-[13.5px] font-semibold text-muted">{[customerName(row), row.serviceName, row.barberName].filter(Boolean).join(" · ")}</p>
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <h2 id="pay-title" className="text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(onlinePaid ? row.price : cents)}</h2>
-            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}</p>
+            <p className="mt-1.5 text-[13.5px] font-bold">{onlinePaid ? "Already paid online" : isPaid ? `Paid · ${method === "gcash" ? "GCash" : "Cash"}` : "Not paid yet"}{tipCents ? <span className="text-muted"> · + {peso(tipCents)} tip</span> : null}</p>
           </div>
           {onlinePaid || barber ? null : <button type="button" onClick={() => setAdjust(!adjust)} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">{adjustLabel}</button>}
         </div>
@@ -102,6 +111,20 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
             </> : null}
           </div>
         ) : null}
+        {!onlinePaid && isPaid && method === "gcash" && qr ? <div className="mt-3"><PayQr url={qr} shopName={profile.name} /></div> : null}
+        <div className="mt-4">
+          <p className="text-[12px] font-bold text-muted">Tip <span className="font-semibold">· goes to the barber</span></p>
+          <div role="radiogroup" aria-label="Tip" className="mt-1.5 grid grid-cols-5 gap-1.5">
+            {([0, ...TIP_CHIPS] as number[]).map((v) => {
+              const on = customTip == null && tip === v * 100;
+              return <button key={v} type="button" role="radio" aria-checked={on} onClick={() => { setCustomTip(null); setTip(v * 100); }}
+                className={`h-10 rounded-pill text-[13.5px] font-bold tabular-nums ${on ? "bg-ink text-on-ink" : "bg-grey-100 text-ink"}`}>{v ? `₱${v}` : "None"}</button>;
+            })}
+            <button type="button" role="radio" aria-checked={customTip != null} onClick={() => setCustomTip(customTip ?? "")}
+              className={`h-10 rounded-pill text-[13.5px] font-bold ${customTip != null ? "bg-ink text-on-ink" : "bg-grey-100 text-ink"}`}>Other</button>
+          </div>
+          {customTip != null ? <div className="mt-2"><Input label="Tip (₱)" inputMode="decimal" autoFocus value={customTip} onChange={(e) => setCustomTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} /></div> : null}
+        </div>
         {onlinePaid ? null : <p className="mt-3 text-[12.5px] font-semibold text-muted">{hint}</p>}
         <Button data-auth="action" className="mt-5" fullWidth loading={busy} onClick={confirm}>Confirm &amp; complete</Button>
         {barber && !onlinePaid ? (
@@ -136,7 +159,7 @@ function CompletedToast({ row, onClose, onDetails }: { row: ChairRequest; onClos
           <span className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-[#22c55e] text-white"><Check size={22} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1">
             <b className="block text-[16px]">Cut completed</b>
-            <small className="block truncate text-[12.5px] font-semibold text-on-ink-muted">{[row.customerLabel || "Walk-in", row.serviceName, peso(row.price || 0), pay].filter(Boolean).join(" · ")}</small>
+            <small className="block truncate text-[12.5px] font-semibold text-on-ink-muted">{[customerName(row), row.serviceName, peso(row.price || 0), row.tip ? `${peso(row.tip)} tip` : "", pay].filter(Boolean).join(" · ")}</small>
           </span>
           <button type="button" onClick={onDetails} className="flex-none text-[13px] font-bold underline decoration-white/40 underline-offset-[3px]">View details</button>
         </div>

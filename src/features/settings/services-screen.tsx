@@ -119,7 +119,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       {!forLoc ? null : <section className={embedded ? "mt-2" : "mt-5"}>
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
-            {embedded ? null : <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">My Barbers</h2>}
+            {embedded ? null : <h2 className="text-[13px] font-bold text-muted">My Barbers</h2>}
             <p className="mt-1 text-[13px] font-medium text-ink-2">Each barber gets their own link to take walk-ins and finish cuts.</p>
           </div>
           <Button data-auth="action" size="sm" leadingIcon={<Plus size={15} strokeWidth={2.2} />} onClick={() => {
@@ -156,7 +156,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
 
       {forLoc ? null : <>
       <section className="mt-6">
-        <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Haircut</h2>
+        <h2 className="px-1 text-[13px] font-bold text-muted">Haircut</h2>
         <div className="mt-2 flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
           <BarberIcon name={haircut.icon} size={44} title={haircut.name} />
           <span className="min-w-0 flex-1">
@@ -172,7 +172,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       <section className="mt-6">
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
-            <h2 className="text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Other services</h2>
+            <h2 className="text-[13px] font-bold text-muted">Other services</h2>
             <p className="mt-1 text-[13px] font-medium text-ink-2">Anything besides the haircut, like a beard trim or a hot towel.</p>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "treatment", treatment: blankTreatment(), fresh: true })}>Add</Button>
@@ -210,7 +210,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       <PayQrSettings />
 
       <section className="mt-6">
-        <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Home service</h2>
+        <h2 className="px-1 text-[13px] font-bold text-muted">Home service</h2>
         <p className="mt-1 px-1 text-[13px] font-medium text-ink-2">River Mobile customers can book a barber to their home. Tap “Home” on the services you offer, then set each location’s fee, distance, barbers and hours.</p>
         {(shops.enabled && shops.branches.length ? shops.branches : [{ id: HOME_LOCATION_ID, name: "" }]).map((b) => <HomeServiceCard key={b.id} locationId={b.id} place={b.name || undefined} />)}
       </section>

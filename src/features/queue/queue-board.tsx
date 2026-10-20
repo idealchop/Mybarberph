@@ -91,7 +91,7 @@ function Row({ row, onFull, place }: { row: ChairRequest; onFull: (message: stri
       <div role="button" tabIndex={0} aria-label={`Open order ${row.ref}`} onClick={() => setOpen(true)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(true); }} className="flex cursor-pointer items-center gap-3">
         <BarberIcon name={row.serviceId === "haircut" ? haircut.icon : "scissors"} size={40} title={row.serviceName} />
         <div className="flex min-w-0 flex-1 flex-col leading-[1.3]">
-          <b className="flex min-w-0 items-center gap-1.5 text-[15.5px] tracking-[-0.01em]"><span className="truncate">{who}</span>{row.home ? <span className="inline-flex h-5 flex-none items-center gap-0.5 rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold uppercase text-on-ink"><HomeIcon size={11} strokeWidth={2.4} aria-hidden />Home</span> : null}</b>
+          <b className="flex min-w-0 items-center gap-1.5 text-[15.5px] tracking-[-0.01em]"><span className="truncate">{who}</span>{row.home ? <span className="inline-flex h-5 flex-none items-center gap-0.5 rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold text-on-ink"><HomeIcon size={11} strokeWidth={2.4} aria-hidden />Home</span> : null}</b>
           <span className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.scheduledAt ? `Scheduled ${row.slotLabel}` : where}{row.scheduledAt && row.barberName ? ` · with ${row.barberName}` : ""}{place ? ` · ${place}` : ""}</span>
           <span className="mt-0.5 truncate text-[12.5px] font-semibold text-muted">
             {row.ref} · {pay}{row.status === "done" && row.completedAt ? ` · Completed ${completionLabel(row.completedAt)}` : ""}
@@ -220,7 +220,7 @@ export function QueueBoard() {
       {anyDone || doneRange !== "today" ? (
         <div className="mt-5">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-1">
-            <p className="text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">{doneLabel(doneRange)}</p>
+            <p className="text-[12.5px] font-extrabold text-muted">{doneLabel(doneRange)}</p>
             <RangeChips value={doneRange} onChange={setDoneRange} allowCustom />
           </div>
           {done.length ? (
@@ -243,7 +243,7 @@ function Section({ title, rows, onFull, placeOf }: { title: string; rows: ChairR
   if (rows.length === 0) return null;
   return (
     <div className="mt-5">
-      <p className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">{title}</p>
+      <p className="px-1 text-[12.5px] font-extrabold text-muted">{title}</p>
       <ul className="mt-3 flex flex-col gap-3" aria-label={title}>
         {rows.map((row) => <Row key={row.id} row={row} onFull={onFull} place={placeOf?.(row)} />)}
       </ul>

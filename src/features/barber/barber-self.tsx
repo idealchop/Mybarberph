@@ -1,5 +1,5 @@
 "use client";
-import { Check, ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { BarberPerformance } from "@/lib/barber-sales";
 import { peso } from "@/lib/format";
@@ -60,6 +60,9 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
       ) : null}
       {err && !d ? <p className="mt-4 text-[13.5px] font-semibold">{err}</p> : null}
 
+      <EarningsCard d={d} />
+      <SpeedCard d={d} />
+
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Stat wide k="Sales" v={d ? peso(d.sales) : "–"} sub={d ? `${d.cuts} cut${d.cuts === 1 ? "" : "s"}` : undefined} />
         <Stat k="Avg ticket" v={d ? peso(d.avg) : "–"} />
@@ -111,7 +114,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
             </ul>
           </section>
           <section className="mt-4" aria-label="Services">
-            <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">By service</h2>
+            <h2 className="px-1 text-[13px] font-bold text-muted">By service</h2>
             <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
               {d.services.map((s) => (
                 <li key={s.name} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 last:border-b-0"><span className="min-w-0"><b className="block truncate text-[14px]">{s.name}</b><small className="text-[12px] font-semibold text-muted">{s.cuts} cut{s.cuts === 1 ? "" : "s"}</small></span><b className="tabular-nums">{peso(s.sales)}</b></li>
@@ -131,5 +134,47 @@ function Stat({ k, v, sub, wide }: { k: string; v: string; sub?: string; wide?: 
       <b className={wide ? "text-[24px] tracking-[-0.03em]" : "text-[17px] tracking-[-0.02em]"}>{v}</b>
       {sub ? <small className="ml-2 text-[12.5px] font-semibold text-muted">{sub}</small> : null}
     </div>
+  );
+}
+
+/** Main card (Jimboy, 2026-10-21): what the barber takes home. Share % of sales + 100% of tips. */
+function EarningsCard({ d }: { d: BarberPerformance | null }) {
+  const pct = d?.sharePct ?? 50;
+  const mine = (d?.barberShare ?? 0) + (d?.tips ?? 0);
+  return (
+    <section aria-label="Your earnings" className="relative isolate mt-4 overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
+      <p className="text-[12.5px] font-semibold text-on-ink-muted">Your earnings</p>
+      <b className="mt-0.5 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{d ? peso(mine) : "–"}</b>
+      <p className="mt-1 text-[12.5px] font-semibold text-on-ink-muted">{pct}% of sales{d?.tips ? " + all your tips" : ""}</p>
+      <div className="mt-3 rounded-[16px] bg-white/10 px-3 py-2.5">
+        <p className="text-[12.5px] font-semibold text-on-ink-muted">Sales {d ? peso(d.sales) : "–"} split {pct} / {100 - pct}</p>
+        <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
+          <span className="h-full bg-[#22c55e]" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+          <span><span className="block font-semibold text-on-ink-muted">You · {pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.barberShare ?? 0) : "–"}</b></span>
+          <span><span className="block font-semibold text-on-ink-muted">Shop · {100 - pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.shopShare ?? 0) : "–"}</b></span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between rounded-[16px] bg-white/10 px-3 py-2.5">
+        <span><span className="block text-[12.5px] font-semibold text-on-ink-muted">Tips · 100% yours</span><small className="text-[12px] font-semibold text-on-ink-muted">{d?.tipCount ? `${d.tipCount} tip${d.tipCount === 1 ? "" : "s"}` : "No tips yet"}</small></span>
+        <b className="text-[17px] tabular-nums">{d ? peso(d.tips ?? 0) : "–"}</b>
+      </div>
+    </section>
+  );
+}
+
+/** Speed: average time per cut (start to done). */
+function SpeedCard({ d }: { d: BarberPerformance | null }) {
+  const avg = d?.avgMins;
+  return (
+    <section aria-label="Speed" className="mt-3 flex items-center gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card">
+      <span aria-hidden className="inline-flex size-11 flex-none items-center justify-center rounded-[14px] bg-grey-100"><Timer size={22} strokeWidth={2} /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12.5px] font-semibold text-muted">Average time per cut</span>
+        <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{avg == null ? "–" : `${avg} min`}</b>
+      </span>
+      <span className="text-right text-[12.5px] font-semibold text-muted">{d?.fastestMins != null ? <>Fastest<b className="block text-[15px] text-ink tabular-nums">{d.fastestMins} min</b></> : "Start to done"}{d?.timedCuts ? <small className="block">{d.timedCuts} timed</small> : null}</span>
+    </section>
   );
 }

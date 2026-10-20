@@ -82,7 +82,7 @@ export function SalesDetailScreen() {
           <SalesChartCard className="mt-3" series={series} kind={range === "today" ? "hour" : "day"} sales={stats.sales} />
           {services.length ? (
             <section className="mt-5">
-              <h2 className="px-1 text-[13px] font-bold uppercase tracking-[0.04em] text-muted">Top services</h2>
+              <h2 className="px-1 text-[13px] font-bold text-muted">Top services</h2>
               <ul className="mt-2 flex flex-col gap-2">
                 {services.map((s) => (
                   <li key={s.name} className="flex items-center justify-between rounded-card bg-surface px-4 py-3 shadow-card">

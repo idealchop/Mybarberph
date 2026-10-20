@@ -1,3 +1,4 @@
+import { editChanges } from "@/lib/edit-log";
 import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
@@ -214,6 +215,9 @@ export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairReq
   if (typeof b.paid === "boolean") out.paid = b.paid;
   if (b.payMethod === "cash" || b.payMethod === "gcash" || b.payMethod === "online") out.payMethod = b.payMethod;
   if (typeof b.notes === "string") out.notes = str(b.notes, 500);
+  // Tip (centavos, up to ₱10,000): the barber's, separate from the price.
+  // A write without `tip` keeps the saved one (older clients); tip 0 removes it.
+  if (typeof b.tip === "number") { const t = Math.round(b.tip); out.tip = Number.isFinite(t) && t > 0 ? Math.min(t, 1_000_000) : 0; }
   if (b.homeStatus === "on_the_way" || b.homeStatus === "arrived") out.homeStatus = b.homeStatus;
   return out;
 }
@@ -309,6 +313,14 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     if (cur?.scheduledAt && !clean.scheduledAt) clean.scheduledAt = cur.scheduledAt;
     // Home-service fields are set by the River API only; the app can't change the address or fee.
     if (cur?.home) { clean.home = cur.home; if (cur.homeFee != null) clean.homeFee = cur.homeFee; }
+    // Edit log (server-derived, for accountability): who changed which details, and when.
+    if (clean.tip === undefined && cur?.tip) clean.tip = cur.tip;
+    if (!clean.tip) delete clean.tip;
+    if (cur?.editLog) clean.editLog = cur.editLog;
+    if (cur && cur.status === clean.status) {
+      const changes = editChanges(cur, clean);
+      if (changes.length) clean.editLog = [...(cur.editLog ?? []), { at: Date.now(), by: barber ? barber.barberName : "Owner", role: barber ? "barber" as const : "owner" as const, changes }].slice(-30);
+    }
     tx.set(ref, clean);
     return { saved: clean, before: cur, wrote: true };
   });

@@ -52,7 +52,7 @@ export function RequestStatus({ bookingId, shopId, shop, branchName, onBookAnoth
       {shop ? <ShopHeader shop={shop} branchName={branchName} compact /> : null}
       <div className="px-4">
         <div className="mt-4 flex items-center justify-between">
-          <span className="text-[12.5px] font-bold uppercase tracking-[0.04em] text-muted">Your ticket</span>
+          <span className="text-[12.5px] font-bold text-muted">Your ticket</span>
           <MonoText className="text-[13px]">{booking.ref}</MonoText>
         </div>
         {!done && !closed && !sitting && origin ? (

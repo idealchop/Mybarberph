@@ -23,6 +23,7 @@ import {
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
+import { customerName } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
@@ -105,12 +106,13 @@ function ActiveCard({
 }) {
   const offer = row ? visitOffer(row, haircut, treatments) : null;
   const elapsed = row?.startedAt ? elapsedLabel(row.startedAt, now) : "";
-  const who = row ? (row.customerLabel || row.contact || "Customer") : "Ready for next customer";
+  // No "Walk-in" label (Jimboy, 2026-10-21): show the name when there is one.
+  const who = row ? (customerName(row) || row.contact || "Now serving") : "Ready for next customer";
   return (
     <section className={`relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner px-4 py-4 text-on-ink ${row ? "live-hero" : "bg-ink"}`} aria-label="Current customer">
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
-        <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em]">Live</span></> : "Available"}</h2>
+        <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold">Live</span></> : "Available"}</h2>
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${offer.label} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
@@ -266,7 +268,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
 
       {adding ? (
         <section className="mt-5">
-          <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Walk-in</h2>
+          <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Walk-in</h2>
           <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
             <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
             <span className="min-w-0 flex-1">
@@ -397,7 +399,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
 
       {homeVisits.length ? (
         <section className="mt-5">
-          <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Home visits</h2>
+          <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Home visits</h2>
           <ul className="mt-2 flex flex-col gap-3">
             {homeVisits.map((row) => <HomeVisitCard key={row.id} row={row} seat={chair.label} />)}
           </ul>
@@ -405,7 +407,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
       ) : null}
 
       <section className="mt-5">
-        <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Waiting</h2>
+        <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Waiting</h2>
         {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current cut before you accept the next one.</p> : null}
         {waiting.length === 0 ? (
           <div className="mt-2 flex flex-col items-center rounded-card bg-surface px-4 py-6 text-center shadow-card">
@@ -457,7 +459,7 @@ function HomeVisitCard({ row, seat }: { row: ChairRequest; seat: string }) {
     <li className="rounded-card bg-surface px-4 py-3.5 shadow-card">
       <div className="flex items-center justify-between gap-2">
         <b className="truncate text-[15.5px]">{row.customerLabel || "Customer"}</b>
-        <span className="inline-flex h-5 flex-none items-center rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold uppercase text-on-ink">Home</span>
+        <span className="inline-flex h-5 flex-none items-center rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold text-on-ink">Home</span>
       </div>
       <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.slotLabel}{row.price ? ` · ₱${(row.price / 100).toLocaleString("en-PH")}` : ""}</p>
       <p className="mt-2 rounded-[12px] bg-grey-100 px-3 py-2 text-[13px] font-semibold">{home.address}<span className="block text-[12px] text-muted">{home.distanceKm} km{home.notes ? ` · ${home.notes}` : ""}{row.contact ? ` · ${row.contact}` : ""}</span></p>
@@ -492,7 +494,7 @@ function OnlineScan({
 
   return (
     <section className="mt-5">
-      <h2 className="px-1 text-[12.5px] font-extrabold uppercase tracking-[0.04em] text-muted">Scan</h2>
+      <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Scan</h2>
       <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Point the camera at the QR on the customer’s ticket.</p>
       <QrScanner className="mt-3" paused={Boolean(match)} onResult={(text) => { const c = parseTicketCode(text); setCode(c); setQuery(c.toLowerCase()); }} />
       {match ? <Button className="mt-2" size="sm" variant="secondary" fullWidth onClick={() => { setCode(""); setQuery(""); }}>Scan another</Button> : null}

@@ -1,7 +1,7 @@
 "use client";
 import { Avatar, Badge, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { ArrowLeft, Phone, User } from "lucide-react";
+import { ArrowLeft, History, Pencil, Phone, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { payMethodLabel } from "@/lib/pay-split";
@@ -93,7 +93,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
               </div>
               {row.paid ? (
                 <>
-                  <p className="mt-2 text-[14px] font-medium text-muted">Paid {peso(row.price ?? 0)}{onlinePaid ? " online" : ""}. Thank you!</p>
+                  <p className="mt-2 text-[14px] font-medium text-muted">Paid {peso(row.price ?? 0)}{onlinePaid ? " online" : ""}{row.tip ? ` + ${peso(row.tip)} tip for the barber` : ""}. Thank you!</p>
                   {onlinePaid ? null : <Button data-auth="action" variant="secondary" size="md" fullWidth className="mt-3" onClick={() => setPay({ paid: false, payMethod: undefined })}>Mark unpaid</Button>}
                 </>
               ) : (
@@ -143,7 +143,9 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
             ) : null}
 
             <p className="mt-4 px-1 text-[12.5px] font-semibold text-muted">Ticket {row.id}</p>
-            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">Need to change the price or service? Ask the shop owner.</p> : <Button data-auth="action" className="mt-3" fullWidth onClick={() => setEditing(true)}>Edit</Button>}
+            <EditLog row={row} />
+            <Button data-auth="action" className="mt-3" fullWidth variant="secondary" leadingIcon={<Pencil size={16} strokeWidth={2} />} onClick={() => setEditing(true)}>Edit information</Button>
+            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">The amount follows the shop menu. Ask the owner to change it.</p> : null}
           </>
         )}
       </div>
@@ -162,20 +164,21 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
   const [paid, setPaid] = useState(Boolean(row.paid));
   const [method, setMethod] = useState<"cash" | "gcash">(row.payMethod === "gcash" ? "gcash" : "cash");
   const [notes, setNotes] = useState(row.notes ?? "");
+  const [tip, setTip] = useState(row.tip ? String(row.tip / 100) : "");
   const onlinePaid = isOnlinePaid(row);
   const services = [haircut.name, ...treatments.map((t) => t.name)];
   const locked = barber ? lockedAmount(row, [haircut, ...treatments], service.trim() || row.serviceName) : null;
   const save = () => {
     const cents = locked ?? (Math.max(0, Math.round(Number(price.replace(/[^\d.]/g, "")) * 100) || 0));
     patchRequest(row.id, {
-      customerLabel: name.trim(), contact: phone.trim(), serviceName: service.trim() || row.serviceName, price: cents, notes: notes.trim() || undefined,
+      customerLabel: name.trim(), contact: phone.trim(), serviceName: service.trim() || row.serviceName, price: cents, notes: notes.trim() || undefined, tip: Math.max(0, Math.round(Number(tip) * 100) || 0),
       ...(onlinePaid ? {} : paid ? { paid: true, payMethod: method, payWhere: "shop" as const } : { paid: false, payMethod: undefined }),
     });
     onDone();
   };
   return (
     <Card className="mt-4 flex flex-col gap-3 px-4 py-4">
-      <b className="text-[16px]">Edit order</b>
+      <b className="text-[16px]">Edit information</b>
       <Input label="Customer name" value={name} onChange={(e) => setName(e.target.value)} />
       <Input label="Phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
       <label className="flex flex-col gap-1.5">
@@ -197,6 +200,7 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
           {paid ? <SegmentedControl label="Method" value={method} onChange={(v: string) => setMethod(v as "cash" | "gcash")} options={[{ value: "cash", label: "Cash" }, { value: "gcash", label: "GCash" }]} /> : null}
         </>
       )}
+      <Input label="Tip for the barber (₱)" inputMode="decimal" value={tip} placeholder="0" onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} />
       <label className="flex flex-col gap-1.5">
         <span className="text-[13px] font-bold">Notes</span>
         <textarea value={notes} maxLength={500} rows={3} onChange={(e) => setNotes(e.target.value)} className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" placeholder="Optional" />
@@ -205,6 +209,29 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
         <Button variant="secondary" className="flex-1" onClick={onDone}>Cancel</Button>
         <Button data-auth="action" className="flex-1" onClick={save}>Save</Button>
       </div>
+    </Card>
+  );
+}
+
+/** Accountability (Jimboy, 2026-10-21): every change to this visit's details, newest first. Written by the server. */
+function EditLog({ row }: { row: ChairRequest }) {
+  const log = (row.editLog ?? []).slice().reverse();
+  return (
+    <Card className="mt-4 px-4 py-3.5">
+      <div className="flex items-center justify-between"><b className="text-[16px]">Activity</b><History size={17} strokeWidth={2} className="text-muted" aria-hidden /></div>
+      {log.length === 0 ? <p className="mt-1.5 text-[13px] font-semibold text-muted">No edits. Changes to this visit show here with who made them.</p> : (
+        <ol className="mt-2 flex flex-col">
+          {log.map((e, i) => (
+            <li key={`${e.at}-${i}`} className="border-b border-line py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <b className="text-[14px]">{e.by}<span className="ml-1 text-[12px] font-semibold text-muted">{e.role === "barber" ? "Barber" : "Owner"}</span></b>
+                <small className="flex-none text-[12px] font-semibold text-muted">{when(e.at)}</small>
+              </div>
+              <ul className="mt-0.5 text-[13px] font-medium text-ink-2">{e.changes.map((c) => <li key={c}>{c}</li>)}</ul>
+            </li>
+          ))}
+        </ol>
+      )}
     </Card>
   );
 }

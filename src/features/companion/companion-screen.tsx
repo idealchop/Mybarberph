@@ -49,7 +49,7 @@ function Bubble({ m }: { m: CompanionMessage }) {
     <div className="companion-enter flex max-w-[90%] items-end gap-2">
       <CompanionAvatar size={28} state="still" />
       <div className={`whitespace-pre-wrap rounded-[18px] rounded-bl-[6px] px-3.5 py-2.5 text-[14px] font-medium shadow-card ${m.role === "alert" ? "bg-grey-100" : m.role === "tip" ? "bg-surface ring-1 ring-ink/15" : "bg-surface"}`}>
-        {tag ? <b className="mb-1 block text-[11.5px] uppercase tracking-[0.04em] text-muted">{tag}</b> : null}
+        {tag ? <b className="mb-1 block text-[11.5px] text-muted">{tag}</b> : null}
         {m.text.replace(/\*\*(.+?)\*\*/g, "$1")}
         {m.locked ? <Link href="/settings/billing" className="mt-2 block text-[13px] font-bold underline underline-offset-[3px]">See plans</Link> : null}
       </div>
