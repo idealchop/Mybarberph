@@ -101,7 +101,7 @@ export function SalesDataScreen() {
           </div>
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
-          <BarberRanking rows={barbers} range={range} showLoc={where === "all" && shops.enabled} remit={remit.data}
+          <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
           <ClaimHistory remit={remit.data} locName={locName} />
         </>

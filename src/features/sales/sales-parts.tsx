@@ -8,6 +8,11 @@ import { Spinner } from "@/components/common/button";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
 import type { Remit } from "./use-remit";
+import { BarberPortrait } from "@/features/settings";
+import { HOME_LOCATION_ID } from "@/lib/shop-locations";
+import type { ShopChair } from "@/lib/shop-chairs";
+
+const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 import { splitParts, type PaySplit } from "@/lib/pay-split";
 
 /** Collected money by payment method. "lines": one row per method (stat cards); "inline": "Cash ₱X · GCash ₱Y". */
@@ -144,20 +149,21 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
   );
 }
 
-export function BarberRanking({ rows, range, showLoc, remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; showLoc: boolean; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
+export function BarberRanking({ rows, range, chairs = [], remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; chairs?: ShopChair[]; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
   if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>;
+  const chairOf = (b: BarberStat) => chairs.find((c) => (c.barberId || c.id) === b.id && (c.locationId || HOME_LOCATION_ID) === b.locationId) ?? chairs.find((c) => (c.barberId || c.id) === b.id);
   return (
-    <ol className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2" aria-label="Barber ranking by sales">
-      {rows.map((b, i) => (
+    <ol className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2" aria-label="Barbers by sales">
+      {rows.map((b) => (
         <li key={`${b.id}@${b.locationId}`}>
           <Link href={href("barber", b.id, range, b.locationId)} className={cn("box-border block w-full min-w-0 bg-surface px-4 py-3.5 shadow-card", onClaim ? "rounded-t-card" : "rounded-card")}>
             <div className="flex items-center gap-3">
-              <span className={cn("inline-flex size-8 flex-none items-center justify-center rounded-full text-[13.5px] font-extrabold", i === 0 ? "bg-ink text-on-ink" : i < 3 ? "bg-grey-200" : "bg-grey-100 text-muted")} aria-label={`Rank ${i + 1}`}>{i + 1}</span>
+              {/* Avatar, not a rank (Jimboy, 2026-10-20): ranking lives in My Barbers. Same portrait as there. */}
+              {chairOf(b) ? <BarberPortrait chair={chairOf(b)!} size={40} /> : <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[14px] font-bold">{initials(b.name)}</span>}
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
-                {showLoc && b.locationName ? <small className="block truncate text-[12.5px] font-semibold text-muted">{b.locationName}</small> : null}
-                <small className="block truncate text-[12.5px] font-semibold text-muted">{[`${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].join(" · ")}</small>
-                <PaySplitText split={b} className="block truncate text-[12px] font-semibold text-muted" />
+                {b.locationName ? <small className="block truncate text-[12.5px] font-semibold text-muted">{b.locationName}</small> : null}
+                <small className="block truncate text-[12px] font-semibold text-muted">{[...splitParts(b).map((x) => `${x.label} ${peso(x.value)}`), `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].join(" · ")}</small>
               </span>
               <b className="flex-none text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
