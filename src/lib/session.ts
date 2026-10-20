@@ -95,15 +95,29 @@ export async function finishRedirectSignIn(): Promise<string | null> {
 let confirmation: ConfirmationResult | null = null;
 let verifier: RecaptchaVerifier | null = null;
 
-/** Sends a 6-digit code by SMS (Firebase phone auth, invisible reCAPTCHA on `buttonId`). */
-export async function sendPhoneCode(e164: string, buttonId: string) {
-  verifier?.clear();
+function resetVerifier() {
+  try { verifier?.clear(); } catch { /* already gone */ }
+  verifier = null;
+}
+
+/**
+ * Sends a 6-digit code by SMS (Firebase phone auth). reCAPTCHA runs invisibly in the background on a hidden
+ * container (`containerId`), so there's no checkbox; Google only shows a picture puzzle for suspicious traffic.
+ * The verifier is rebuilt on every attempt and cleared on any error or expiry, so a retry gets a fresh token.
+ */
+export async function sendPhoneCode(e164: string, containerId: string) {
+  resetVerifier();
   // Dev only: Firebase test numbers can skip reCAPTCHA for automated checks (opt-in per browser).
   if (process.env.NEXT_PUBLIC_AUTH_TEST_MODE === "1" && localStorage.getItem("bp.authTest") === "1") {
     firebaseAuth().settings.appVerificationDisabledForTesting = true;
   }
-  verifier = new RecaptchaVerifier(firebaseAuth(), buttonId, { size: "invisible" });
-  confirmation = await signInWithPhoneNumber(firebaseAuth(), e164, verifier);
+  verifier = new RecaptchaVerifier(firebaseAuth(), containerId, { size: "invisible", "expired-callback": resetVerifier });
+  try {
+    confirmation = await signInWithPhoneNumber(firebaseAuth(), e164, verifier);
+  } catch (err) {
+    resetVerifier();
+    throw err;
+  }
 }
 
 export async function confirmPhoneCode(code: string) {

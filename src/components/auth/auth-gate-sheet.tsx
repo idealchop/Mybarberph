@@ -61,7 +61,7 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
     setBusy(true);
     setError(null);
     try {
-      await sendPhoneCode(e164, "auth-phone-send");
+      await sendPhoneCode(e164, "auth-recaptcha");
       setStep("code");
     } catch (err) {
       setError(authErrorMessage(err));
@@ -121,8 +121,13 @@ function Sheet({ onClose, onAuthenticated }: { onClose: () => void; onAuthentica
                 onChange={(f, v) => { setFormatted(f); setE164(v); setError(null); }}
                 autoFocus
               />
-              <Button id="auth-phone-send" type="submit" fullWidth disabled={!e164 || busy} loading={busy} leadingIcon={<MessageSquareText size={18} strokeWidth={2.2} />}>{busy ? "Sending…" : "Text me a code"}</Button>
+              <Button type="submit" fullWidth disabled={!e164 || busy} loading={busy} leadingIcon={<MessageSquareText size={18} strokeWidth={2.2} />}>{busy ? "Sending…" : "Text me a code"}</Button>
               <Button type="button" fullWidth variant="ghost" leadingIcon={<ArrowLeft size={18} strokeWidth={2.2} />} onClick={() => setStep("methods")}>Back</Button>
+              {/* Invisible reCAPTCHA host (no widget). Google's floating badge is hidden in globals.css, so its notice goes here. */}
+              <div id="auth-recaptcha" aria-hidden />
+              <p className="text-center text-[10.5px] leading-snug text-muted">
+                Protected by reCAPTCHA. Google <a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Privacy</a> &amp; <a className="underline" href="https://policies.google.com/terms" target="_blank" rel="noreferrer">Terms</a> apply.
+              </p>
             </form>
           ) : null}
 

@@ -84,3 +84,6 @@
 .toast-progress { animation: toast-progress 3.2s linear forwards; }
 @keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .toast-progress { animation: none; } }
+
+/* Invisible reCAPTCHA (phone sign-in): hide Google's floating badge; the sign-in sheet shows the required notice. */
+.grecaptcha-badge { visibility: hidden !important; }
