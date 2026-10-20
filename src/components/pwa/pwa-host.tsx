@@ -1,4 +1,5 @@
 "use client";
+import { BUILD_ID } from "@/lib/app-version";
 /**
  * Registers the service worker and shows "Update available" when a newer deploy is live (Jimboy, 2026-10-20).
  * A new version is found by the SW update check and by /api/version, on load, when the tab comes back and
@@ -9,7 +10,7 @@ import { CheckCircle2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { isStandalone, listenForInstall } from "@/lib/pwa";
 
-const BUILD = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+const BUILD = BUILD_ID;
 const EVERY = 30 * 60_000;
 
 const ownVersion = (w: ServiceWorker | null | undefined) => !!w && new URL(w.scriptURL).searchParams.get("v") === BUILD;

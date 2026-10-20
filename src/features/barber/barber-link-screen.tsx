@@ -1,5 +1,6 @@
 "use client";
 import { HomeSkeleton } from "@/components/common/skeleton";
+import { PoweredBy } from "@/components/qr/shop-brand";
 import { completeCut } from "@/components/transactions/complete-flow";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 
@@ -429,6 +430,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
       <Button className="mt-6" fullWidth variant="secondary" leadingIcon={<History size={18} strokeWidth={1.75} />} onClick={() => setHistory(true)}>
         History{done.length ? ` · ${done.length}` : ""}
       </Button>
+      <PoweredBy />
       </>
       )}
     </main>

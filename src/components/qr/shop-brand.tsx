@@ -1,5 +1,6 @@
 "use client";
 import { Avatar } from "@river-apps/ui";
+import { AppVersion } from "@/components/common/app-version";
 import { RiverMark } from "@/components/shell/brand";
 import type { PublicShop } from "./use-public-shop";
 
@@ -23,6 +24,7 @@ export function PoweredBy() {
     <footer className="mt-10 flex flex-col items-center pb-6">
       <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold tracking-[-0.01em] text-ink"><RiverMark size={16} /> Barbers.ph</span>
       <span className="mt-0.5 text-[10.5px] font-semibold text-muted">Powered by River Apps</span>
+      <AppVersion className="mt-1" />
     </footer>
   );
 }

@@ -32,7 +32,8 @@ export function BookScreen() {
   const shopId = params.get("shop")?.trim() ?? "";
   const loc = params.get("loc")?.trim() ?? "";
   const { shop } = usePublicShop(shopId);
-  const branch = shop?.branches.find((item) => item.id === loc);
+  // Accept the branch id ("loc-katapatan-homes") or its short slug ("katapatan-homes").
+  const branch = loc ? shop?.branches.find((item) => item.id === loc || item.id === `loc-${loc}`) : undefined;
   const menu = (branch && shop?.servicesByLocation?.[branch.id]) || shop?.services || [];
   const haircut = menu.find((s) => s.kind === "haircut");
   const extras = menu.filter((s) => s.kind === "treatment");
@@ -66,7 +67,7 @@ export function BookScreen() {
       const res = await fetch("/api/public/bookings", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ shopId, locationId: loc || undefined, contact: who || undefined, customerLabel: who || undefined, ...(sched
+        body: JSON.stringify({ shopId, locationId: branch?.id ?? (loc || undefined), contact: who || undefined, customerLabel: who || undefined, ...(sched
           ? { scheduledAt: sched.scheduledAt, barberId: sched.barberId, serviceIds: sched.serviceIds, payPref: sched.pay }
           : { slotLabel: "Now", serviceIds: [haircut?.id ?? "haircut", ...chosen.map((t) => t.id)], payPref: pay }), payWhere: "shop" }),
       });
@@ -111,7 +112,7 @@ export function BookScreen() {
   if (view === "schedule" && shop) {
     return (
       <>
-        <ScheduleScreen shop={shop} locationId={loc} sending={sending} error={ask ? "" : error}
+        <ScheduleScreen shop={shop} locationId={branch?.id ?? loc} sending={sending} error={ask ? "" : error}
           onBack={() => { setSched(null); setView("form"); }}
           onSend={(r) => { setError(""); setSched(r); setAsk(true); }} />
         {sheet}
@@ -137,7 +138,7 @@ export function BookScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-6">
-      <ShopHeader shop={shop} branchName={branch?.name} trailing={
+      <ShopHeader shop={shop} branchName={branch ? branch.address || branch.area || branch.name : undefined} trailing={
         <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-grey-100 px-3.5 text-[13.5px] font-bold text-ink">
           <CalendarDays size={17} strokeWidth={2.1} aria-hidden /> Schedule
         </button>

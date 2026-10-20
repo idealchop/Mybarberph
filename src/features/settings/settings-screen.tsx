@@ -1,6 +1,7 @@
 "use client";
 
 import { FormSkeleton } from "@/components/common/skeleton";
+import { AppVersion } from "@/components/common/app-version";
 import { useCloud } from "@/lib/cloud";
 import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound, Smartphone } from "lucide-react";
 import Link from "next/link";
@@ -167,6 +168,7 @@ export function SettingsScreen() {
           <span aria-hidden> · </span>
           <Link href="/settings/map-credits" className="hover:underline">Map credits</Link>
         </p>
+        <AppVersion className="pb-2" />
       </div>
     </div>
   );
