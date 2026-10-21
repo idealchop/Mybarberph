@@ -330,59 +330,67 @@ export function ChairEditor({
   return (
     <FullScreen>
       <Back title={fresh ? "Add barber" : "Edit barber"} onBack={onBack} />
-      <div className="mt-5 flex items-end gap-3">
-        <div className="flex flex-none flex-col items-center">
+      <section aria-label="Barber details" className="mt-5 rounded-[20px] border border-grey-200 bg-surface p-4">
+        <div className="flex items-center gap-4">
           <button type="button" onClick={() => fileRef.current?.click()} disabled={up === "uploading"} aria-label={photo ? "Change photo" : "Upload photo"}
-            className="relative size-[68px] rounded-full bg-grey-100 ring-1 ring-line">
+            className="relative size-[76px] flex-none rounded-full bg-grey-100 ring-1 ring-line">
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={photo} alt={name || "Barber"} className="size-full rounded-full object-cover" />
-            ) : <span className="flex size-full items-center justify-center rounded-full border-2 border-grey-300 bg-grey-100"><Camera size={24} strokeWidth={2} className="text-ink-2" /></span>}
+            ) : <span className="flex size-full items-center justify-center rounded-full border-2 border-dashed border-grey-300 bg-grey-100"><Camera size={26} strokeWidth={2} className="text-ink-2" /></span>}
             {up === "uploading" ? <span className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70" role="status" aria-label="Uploading photo"><Loader2 size={20} className="animate-spin" /></span> : null}
-            {photo || up === "done" ? <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-6 items-center justify-center rounded-full bg-ink text-white ring-2 ring-surface">
-              {up === "done" ? <Check size={13} strokeWidth={3} /> : <Camera size={13} strokeWidth={2.2} />}
-            </span> : null}
+            <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-7 items-center justify-center rounded-full bg-ink text-white ring-2 ring-surface">
+              {up === "done" ? <Check size={14} strokeWidth={3} /> : <Camera size={14} strokeWidth={2.2} />}
+            </span>
           </button>
-          <span className="mt-1 h-4 text-[11px] font-bold" role="status">{up === "uploading" ? "Uploading…" : up === "done" ? "Uploaded" : ""}</span>
+          <div className="min-w-0 flex-1">
+            <b className="block truncate text-[17px] tracking-[-0.01em]">{name.trim() || (fresh ? "New barber" : "Barber")}</b>
+            <span className="mt-0.5 block text-[12.5px] font-semibold text-muted" role="status">{up === "uploading" ? "Uploading photo…" : up === "done" ? "Photo uploaded" : photo ? "Tap the photo to change it" : "Tap to add a photo"}</span>
+            {photo ? <button type="button" className="mt-1 text-[12.5px] font-semibold text-muted underline underline-offset-2" onClick={() => setPhoto("")}>Remove photo</button> : null}
+          </div>
           <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => void pickPhoto(e.target.files?.[0])} />
         </div>
-        <div className="mb-5 min-w-0 flex-1">
+        <div className="mt-4 grid gap-3 border-t border-grey-200 pt-4">
           <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Barber’s name" />
+          <Input label="Mobile number (optional)" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 16))} />
+          <Input label="Email (optional)" type="email" inputMode="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value.trim().slice(0, 120))} />
+          <p className="px-1 text-[12px] font-semibold text-muted">Used for booking alerts when SMS or email is turned on.</p>
         </div>
-      </div>
-      {photo ? <button type="button" className="text-[12.5px] font-bold text-muted underline underline-offset-2" onClick={() => setPhoto("")}>Remove photo</button> : null}
-      <div className="mt-4 grid gap-3">
-        <Input label="Mobile number (optional)" inputMode="tel" placeholder="09XX XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 16))} />
-        <Input label="Email (optional)" type="email" inputMode="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value.trim().slice(0, 120))} />
-        <p className="px-1 text-[12px] font-semibold text-muted">For booking alerts when SMS/email is turned on.</p>
-      </div>
-      <div className="mt-5">
-        <p className="px-1 text-[13px] font-bold">Income split</p>
-        <p className="px-1 text-[12.5px] font-semibold text-muted">The barber’s share of sales. Tips always go 100% to the barber.</p>
-        <div className="mt-2 flex items-center gap-2">
-          <button type="button" aria-pressed={share === "none"} onClick={() => setShare("none")}
-            className={`h-10 flex-1 rounded-pill text-[13.5px] font-bold ${share === "none" ? "bg-ink text-on-ink" : "bg-grey-100"}`}>None</button>
-          {[40, 50, 60, 70].map((v) => (
-            <button key={v} type="button" aria-pressed={share === String(v)} onClick={() => setShare(String(v))}
-              className={`h-10 flex-1 rounded-pill text-[13.5px] font-bold ${share === String(v) ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{v}%</button>
+      </section>
+      <section aria-label="Income split" className="mt-3 rounded-[20px] border border-grey-200 bg-surface p-4">
+        <b className="block text-[15px]">Income split</b>
+        <p className="mt-0.5 text-[12.5px] font-medium text-muted">The barber’s share of sales. Tips always go 100% to the barber.</p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {(["none", "40", "50", "60", "70"] as const).map((v) => (
+            <button key={v} type="button" aria-pressed={share === v} onClick={() => setShare(v)}
+              className={`h-11 rounded-pill text-[14px] font-bold transition-colors ${share === v ? "bg-ink text-on-ink" : "bg-grey-100 text-ink"}`}>{v === "none" ? "None" : `${v}%`}</button>
           ))}
-          <label className="flex h-10 w-[84px] flex-none items-center rounded-pill bg-grey-100 px-3 text-[13.5px] font-bold">
-            <input aria-label="Barber share percent" inputMode="numeric" value={share === "none" ? "" : share} placeholder="–" onChange={(e) => setShare(e.target.value.replace(/[^\d]/g, "").slice(0, 3))} className="w-full min-w-0 bg-transparent outline-none" />%
-          </label>
+          {(() => { const custom = share !== "none" && !["40", "50", "60", "70"].includes(share); return (
+            <label className={`flex h-11 items-center justify-center gap-0.5 rounded-pill px-3 text-[14px] font-bold ${custom ? "bg-ink text-on-ink" : "bg-grey-100"}`}>
+              <input aria-label="Barber share percent" inputMode="numeric" value={custom ? share : ""} placeholder="Custom" onChange={(e) => setShare(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                style={custom ? { width: `${Math.max(1, share.length) + 0.4}ch` } : undefined} className={`min-w-0 bg-transparent text-center outline-none ${custom ? "" : "w-full "}${custom ? "placeholder:text-on-ink/50" : "placeholder:text-ink-2"}`} />{custom ? <span aria-hidden>%</span> : null}
+            </label>); })()}
         </div>
-        <p className="mt-1.5 px-1 text-[12.5px] font-semibold text-ink-2">{sharePctNum == null ? "No split is set. Sales aren’t divided between barber and shop." : <>Barber {Math.min(100, Number(share) || 0)}% · Shop {100 - Math.min(100, Number(share) || 0)}%. On ₱1,000: barber ₱{(Math.min(100, Number(share) || 0) * 10).toLocaleString("en-PH")}, shop ₱{((100 - Math.min(100, Number(share) || 0)) * 10).toLocaleString("en-PH")}.</>}</p>
-      </div>
+        <p className="mt-3 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-semibold text-ink-2">{sharePctNum == null ? "No split is set. Sales aren’t divided between barber and shop." : <>Barber {sharePctNum}% · Shop {100 - sharePctNum}%. On ₱1,000: barber ₱{(sharePctNum * 10).toLocaleString("en-PH")}, shop ₱{((100 - sharePctNum) * 10).toLocaleString("en-PH")}.</>}</p>
+      </section>
       {shops.enabled && shops.branches.length > 1 ? (
-        <label className="mt-5 flex flex-col gap-1.5">
-          <span className="px-1 text-[13px] font-bold">Location</span>
-          <select value={loc} disabled={inService} onChange={(e) => setLoc(e.target.value)} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
-            {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-          <span className="px-1 text-[12px] font-semibold text-muted">{inService ? "Finish the current cut before moving this barber." : "Moving keeps the same barber link and sales history."}</span>
-        </label>
+        <section aria-label="Location" className="mt-3 rounded-[20px] border border-grey-200 bg-surface p-4">
+          <label className="flex flex-col gap-1.5">
+            <b className="text-[15px]">Location</b>
+            <select value={loc} disabled={inService} onChange={(e) => setLoc(e.target.value)} className="mt-1 h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+              {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <span className="text-[12px] font-semibold text-muted">{inService ? "Finish the current cut before moving this barber." : "Moving keeps the same barber link and sales history."}</span>
+          </label>
+        </section>
       ) : null}
-      {error ? <p className="mt-3 text-[13.5px] font-semibold">{error}</p> : null}
-      <Button data-auth="action" className="mt-6" fullWidth loading={saving} disabled={up === "uploading" || saving} onClick={() => {
+      {fresh ? null : <Button data-auth="action" className="mt-4" fullWidth variant="secondary" onClick={() => {
+        const error = onRemove();
+        if (error) setError(error);
+      }}>Remove barber</Button>}
+      <div className="sticky bottom-0 z-10 -mx-4 mt-4 bg-gradient-to-t from-canvas via-canvas to-canvas/0 px-4 pb-4 pt-5">
+      {error ? <p className="mb-2 text-[13.5px] font-semibold" role="alert">{error}</p> : null}
+      <Button data-auth="action" fullWidth loading={saving} disabled={up === "uploading" || saving} onClick={() => {
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Check the email address."); return; }
         const pct = Number(share);
         if (share !== "none" && (!share || !(pct >= 0 && pct <= 100))) { setError("Set the barber’s share from 0 to 100%, or pick None."); return; }
@@ -391,10 +399,7 @@ export function ChairEditor({
         setSaving(false);
         if (error) setError(error);
       }}>Save</Button>
-      {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={() => {
-        const error = onRemove();
-        if (error) setError(error);
-      }}>Remove barber</Button>}
+      </div>
     </FullScreen>
   );
 }

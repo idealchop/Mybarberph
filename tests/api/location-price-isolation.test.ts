@@ -54,3 +54,25 @@ describe("Edit service › single Save writes only changed locations", () => {
     expect(saved.find((b) => b.id === "loc-dita")!.priceOverrides).toEqual({ "t-shave": 90 });
   });
 });
+
+describe("HARD RULE: saving selected locations leaves everything else byte-identical", () => {
+  it("bulk price for 2 selected locations changes only those 2; unselected locations and the default price are unchanged", () => {
+    const list = [...branches(), { id: "loc-x", name: "X", priceOverrides: { "t-shave": 70 }, area: "Z", extra: { a: 1 } } as B];
+    const menu = { haircut: { name: "Haircut", price: 115 } };
+    const menuSnap = JSON.stringify(menu);
+    const before = list.map((b) => JSON.stringify(b));
+    const selected = ["loc-niugan", "loc-x"];
+    const draft = { ...draftFromBranches(list, "haircut"), ...Object.fromEntries(selected.map((id) => [id, "130"])) };
+    const changes = changedLocationPrices(list, "haircut", draft);
+    expect(changes.map((c) => c.id).sort()).toEqual([...selected].sort());
+    const saved = changes.reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, menu.haircut.price), list);
+    expect(saved).toHaveLength(list.length);
+    saved.forEach((b, i) => {
+      if (selected.includes(b.id)) expect(b.priceOverrides?.haircut).toBe(130);
+      else expect(JSON.stringify(b)).toBe(before[i]);
+    });
+    expect(saved.find((b) => b.id === "loc-x")!.priceOverrides).toEqual({ "t-shave": 70, haircut: 130 });
+    expect(JSON.stringify(menu)).toBe(menuSnap);
+    expect(list.map((b) => JSON.stringify(b))).toEqual(before);
+  });
+});
