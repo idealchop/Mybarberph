@@ -43,3 +43,12 @@ export function draftToOverrides(draft: Record<string, string>, defaults: { id: 
   }
   return cleanOverrides(raw);
 }
+
+/** One location's price for one service: blank or equal to the default = back to the default. */
+export function withPrice(overrides: PriceOverrides, id: string, value: string, def: number): PriceOverrides {
+  const next = { ...overrides };
+  const v = value.trim();
+  if (v === "" || Number(v) === def) delete next[id];
+  else next[id] = Number(v);
+  return cleanOverrides(next);
+}

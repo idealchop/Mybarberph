@@ -38,3 +38,12 @@ describe("location prices", () => {
     expect(draftToOverrides({ haircut: " " }, d)).toEqual({});
   });
 });
+
+import { withPrice } from "@/lib/location-prices";
+describe("per-row location price", () => {
+  it("sets one service, leaves others; blank or default clears it", () => {
+    expect(withPrice({ "t-shave": 95 }, "haircut", "200", 150)).toEqual({ "t-shave": 95, haircut: 200 });
+    expect(withPrice({ haircut: 200, "t-shave": 95 }, "haircut", "", 150)).toEqual({ "t-shave": 95 });
+    expect(withPrice({ haircut: 200 }, "haircut", "150", 150)).toEqual({});
+  });
+});
