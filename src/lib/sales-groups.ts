@@ -57,3 +57,17 @@ export function toggleMember(g: SalesGroup, kind: "loc" | "barber", id: string):
   const has = g[k].includes(id);
   return { ...g, [k]: has ? g[k].filter((x) => x !== id) : [...g[k], id] };
 }
+
+export interface LocationRow { id: string; name: string; cuts: number; gross: number; net: number; tips: number; barbers: { id: string; name: string; photoUrl?: string }[] }
+
+/** Every location in the group (₱0 when no sales yet) with the barbers there, highest amount first. */
+export function groupLocationRows(
+  g: SalesGroup, rep: GroupReport, chairs: (ChairLite & { photoUrl?: string })[], names: { loc: (id: string) => string }, mode: "gross" | "net" = "gross",
+): LocationRow[] {
+  const ids = [...new Set([...g.locationIds, ...rep.locations.map((l) => l.id)])];
+  return ids.map((id) => {
+    const l = rep.locations.find((x) => x.id === id);
+    const barbers = chairs.filter((c) => (c.locationId || "home") === id).map((c) => ({ id: c.barberId || c.id, name: (c.barberName || "").trim() || c.label, photoUrl: c.photoUrl }));
+    return { id, name: l?.name ?? names.loc(id), cuts: l?.cuts ?? 0, gross: l?.gross ?? 0, net: l?.net ?? 0, tips: l?.tips ?? 0, barbers };
+  }).sort((a, b) => b[mode] - a[mode] || a.name.localeCompare(b.name));
+}

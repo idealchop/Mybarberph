@@ -14,6 +14,7 @@ import { useShopChairs } from "@/lib/shop-chairs";
 import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
 import { barberStats, inRange, rankedBarbers } from "@/lib/sales-stats";
 import { SalesGroups } from "./sales-groups";
+import { showsLocationFilter } from "@/lib/sales-filters";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
 import { tipOf } from "@/lib/income-split";
@@ -92,7 +93,7 @@ export function SalesDataScreen() {
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        {shops.enabled && shops.branches.length > 1 ? (
+        {showsLocationFilter(view) && shops.enabled && shops.branches.length > 1 ? (
           <div className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-pill bg-surface px-3 shadow-card">
             <MapPin size={14} className="flex-none text-muted" aria-hidden />
             <LocationSwitcher className="flex-1 text-[12.5px] font-bold" value={where} allId="all" onChange={setLoc}
