@@ -5,7 +5,7 @@ import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
 
-type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number };
+type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 
 /** Finished visits per barber (Manila time) for salary and cash remittance. */
 export async function barberSales(shopId: string, q: { range?: string | null; from?: string | null; to?: string | null; loc?: string | null; barberId?: string | null }) {

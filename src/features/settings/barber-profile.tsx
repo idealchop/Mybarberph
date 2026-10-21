@@ -67,9 +67,9 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
       </section>
 
       <section aria-label="Income split" className="mt-3 rounded-card bg-ink px-4 py-4 text-on-ink">
-        <div className="flex items-baseline justify-between"><b className="text-[15px]">Income split</b><span className="text-[13px] font-bold">{pct}% barber · {100 - pct}% shop</span></div>
-        <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden><span className="h-full bg-[#22c55e]" style={{ width: `${pct}%` }} /></div>
-        <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">Last 7 days: {peso(week.sales)} sales · barber {peso(split.barber)} · shop {peso(split.shop)}{week.tips ? ` · tips ${peso(week.tips)} (all barber)` : ""}</p>
+        <div className="flex items-baseline justify-between"><b className="text-[15px]">Income split</b><span className="text-[13px] font-bold">{pct == null ? "None" : `${pct}% barber · ${100 - pct}% shop`}</span></div>
+        {pct == null ? null : <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden><span className="h-full bg-[#22c55e]" style={{ width: `${pct}%` }} /></div>}
+        <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">Last 7 days: {peso(week.sales)} sales{pct == null ? " · no split is set" : ` · barber ${peso(split.barber)} · shop ${peso(split.shop)}`}{week.tips ? ` · tips ${peso(week.tips)} (all barber)` : ""}</p>
       </section>
 
       <div className="mt-3 grid grid-cols-3 gap-2">

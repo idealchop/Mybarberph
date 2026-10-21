@@ -35,7 +35,7 @@ export interface BarberPerformance {
   services: { name: string; cuts: number; sales: number }[];
   claims: { id: string; amount: number; count: number; claimedAt: number }[];
   /** Income split (owner sets the barber's %). Tips are separate and 100% the barber's. */
-  sharePct?: number; barberShare?: number; shopShare?: number; tips?: number; tipCount?: number;
+  /** null = no split set. */ sharePct?: number | null; barberShare?: number; shopShare?: number; tips?: number; tipCount?: number;
   /** Speed: average and fastest minutes from start to done, over cuts with a timer. */
   avgMins?: number | null; fastestMins?: number | null; timedCuts?: number;
 }

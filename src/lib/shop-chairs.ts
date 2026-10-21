@@ -38,7 +38,10 @@ export interface ShopChair {
   /** Shop this chair belongs to. Missing means the first shop. */
   locationId?: string;
   /** Barber's share of sales, 0–100 (missing = 50%). Tips are always 100% the barber's. */
-  sharePct?: number;
+  /** Barber share 0–100; missing = None (no split). */
+  sharePct?: number | null;
+  /** True when the owner picked the split (tells a chosen 50% from the old default). */
+  shareSet?: boolean;
 }
 
 /** Barbers are named on their chair; there is no separate barber list. */
@@ -174,7 +177,7 @@ export function saveChair(chair: ShopChair): string {
   const exists = Boolean(prev);
   const next = exists
     ? cur.map((c) => c.id === chair.id
-      ? { ...c, label: saved.label, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, phone: saved.phone, email: saved.email, active: saved.active, linkToken: saved.linkToken, linkReviewAt: saved.linkReviewAt, locationId: saved.locationId, sharePct: saved.sharePct, number: saved.locationId !== c.locationId && saved.locationId ? nextChairNumber(saved.locationId) : saved.number }
+      ? { ...c, label: saved.label, barberId: saved.barberId, barberName: saved.barberName, photoUrl: saved.photoUrl, phone: saved.phone, email: saved.email, active: saved.active, linkToken: saved.linkToken, linkReviewAt: saved.linkReviewAt, locationId: saved.locationId, sharePct: saved.sharePct, shareSet: saved.shareSet, number: saved.locationId !== c.locationId && saved.locationId ? nextChairNumber(saved.locationId) : saved.number }
       : c)
     : [...cur, saved];
   try {

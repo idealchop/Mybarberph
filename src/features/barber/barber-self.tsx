@@ -139,25 +139,33 @@ function Stat({ k, v, sub, wide }: { k: string; v: string; sub?: string; wide?: 
 
 /** Main card (Jimboy, 2026-10-21): what the barber takes home. Share % of sales + 100% of tips. */
 function EarningsCard({ d }: { d: BarberPerformance | null }) {
-  const pct = d?.sharePct ?? 50;
-  const mine = (d?.barberShare ?? 0) + (d?.tips ?? 0);
+  const pct = d?.sharePct ?? null;
+  // None (no split set): just sales + tips, no barber/shop shares.
+  const mine = pct == null ? (d?.sales ?? 0) + (d?.tips ?? 0) : (d?.barberShare ?? 0) + (d?.tips ?? 0);
   return (
     <section aria-label="Your earnings" className="relative isolate mt-4 overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
-      <p className="text-[12.5px] font-semibold text-on-ink-muted">Your earnings</p>
+      <p className="text-[12.5px] font-semibold text-on-ink-muted">{pct == null ? "Your sales + tips" : "Your earnings"}</p>
       <b className="mt-0.5 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{d ? peso(mine) : "–"}</b>
-      <p className="mt-1 text-[12.5px] font-semibold text-on-ink-muted">{pct}% of sales{d?.tips ? " + all your tips" : ""}</p>
-      <div className="mt-3 rounded-[16px] bg-white/10 px-3 py-2.5">
-        <p className="text-[12.5px] font-semibold text-on-ink-muted">Sales {d ? peso(d.sales) : "–"} split {pct} / {100 - pct}</p>
-        <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
-          <span className="h-full bg-[#22c55e]" style={{ width: `${pct}%` }} />
+      <p className="mt-1 text-[12.5px] font-semibold text-on-ink-muted">{pct == null ? "No income split is set" : `${pct}% of sales${d?.tips ? " + all your tips" : ""}`}</p>
+      {pct == null ? (
+        <div className="mt-3 flex items-center justify-between rounded-[16px] bg-white/10 px-3 py-2.5">
+          <span className="text-[12.5px] font-semibold text-on-ink-muted">Sales</span>
+          <b className="text-[17px] tabular-nums">{d ? peso(d.sales) : "–"}</b>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
-          <span><span className="block font-semibold text-on-ink-muted">You · {pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.barberShare ?? 0) : "–"}</b></span>
-          <span><span className="block font-semibold text-on-ink-muted">Shop · {100 - pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.shopShare ?? 0) : "–"}</b></span>
+      ) : (
+        <div className="mt-3 rounded-[16px] bg-white/10 px-3 py-2.5">
+          <p className="text-[12.5px] font-semibold text-on-ink-muted">Sales {d ? peso(d.sales) : "–"} split {pct} / {100 - pct}</p>
+          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
+            <span className="h-full bg-[#22c55e]" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+            <span><span className="block font-semibold text-on-ink-muted">You · {pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.barberShare ?? 0) : "–"}</b></span>
+            <span><span className="block font-semibold text-on-ink-muted">Shop · {100 - pct}%</span><b className="text-[17px] tabular-nums">{d ? peso(d.shopShare ?? 0) : "–"}</b></span>
+          </div>
         </div>
-      </div>
+      )}
       <div className="mt-2 flex items-center justify-between rounded-[16px] bg-white/10 px-3 py-2.5">
-        <span><span className="block text-[12.5px] font-semibold text-on-ink-muted">Tips · 100% yours</span><small className="text-[12px] font-semibold text-on-ink-muted">{d?.tipCount ? `${d.tipCount} tip${d.tipCount === 1 ? "" : "s"}` : "No tips yet"}</small></span>
+        <span><span className="block text-[12.5px] font-semibold text-on-ink-muted">{pct == null ? "Tips" : "Tips · 100% yours"}</span><small className="text-[12px] font-semibold text-on-ink-muted">{d?.tipCount ? `${d.tipCount} tip${d.tipCount === 1 ? "" : "s"}` : "No tips yet"}</small></span>
         <b className="text-[17px] tabular-nums">{d ? peso(d.tips ?? 0) : "–"}</b>
       </div>
     </section>

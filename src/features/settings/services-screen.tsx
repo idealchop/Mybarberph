@@ -21,7 +21,7 @@ import {
   type ShopHaircut, type ShopTreatment,
 } from "@/lib/shop-services";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
-import { sharePct } from "@/lib/income-split";
+import { shareLabel, sharePct } from "@/lib/income-split";
 import { BarberProfile } from "./barber-profile";
 import { FullScreen } from "@/components/shell/full-screen";
 
@@ -150,7 +150,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
                     <BarberPortrait chair={chair} size={44} />
                     <span className="min-w-0">
                       <b className="block truncate text-[16px]">{chairBarberName(chair)}</b>
-                      <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""} · {sharePct(chair)}% share</small>
+                      <small className="block truncate text-[13px] font-medium text-muted">{off ? "Inactive" : holder ? `In service · ${holder}` : "Available"}{place ? ` · ${place}` : ""} · {shareLabel(sharePct(chair))}</small>
                     </span>
                   </button>
                   <button type="button" aria-label={`Edit ${chairBarberName(chair)}`} title="Edit barber" onClick={() => setEditing({ kind: "chair", chair, fresh: false })}
@@ -300,7 +300,8 @@ export function ChairEditor({
   const fileRef = useRef<HTMLInputElement>(null);
   const shops = useShopLocations();
   const [loc, setLoc] = useState(chair.locationId || HOME_LOCATION_ID);
-  const [share, setShare] = useState(String(sharePct(chair)));
+  const [share, setShare] = useState(sharePct(chair) == null ? "none" : String(sharePct(chair)));
+  const sharePctNum = share === "none" ? null : Math.min(100, Number(share) || 0);
   const [saving, setSaving] = useState(false);
 
   async function pickPhoto(file: File | undefined) {
@@ -350,15 +351,17 @@ export function ChairEditor({
         <p className="px-1 text-[13px] font-bold">Income split</p>
         <p className="px-1 text-[12.5px] font-semibold text-muted">The barber’s share of sales. Tips always go 100% to the barber.</p>
         <div className="mt-2 flex items-center gap-2">
+          <button type="button" aria-pressed={share === "none"} onClick={() => setShare("none")}
+            className={`h-10 flex-1 rounded-pill text-[13.5px] font-bold ${share === "none" ? "bg-ink text-on-ink" : "bg-grey-100"}`}>None</button>
           {[40, 50, 60, 70].map((v) => (
             <button key={v} type="button" aria-pressed={share === String(v)} onClick={() => setShare(String(v))}
               className={`h-10 flex-1 rounded-pill text-[13.5px] font-bold ${share === String(v) ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{v}%</button>
           ))}
           <label className="flex h-10 w-[84px] flex-none items-center rounded-pill bg-grey-100 px-3 text-[13.5px] font-bold">
-            <input aria-label="Barber share percent" inputMode="numeric" value={share} onChange={(e) => setShare(e.target.value.replace(/[^\d]/g, "").slice(0, 3))} className="w-full min-w-0 bg-transparent outline-none" />%
+            <input aria-label="Barber share percent" inputMode="numeric" value={share === "none" ? "" : share} placeholder="–" onChange={(e) => setShare(e.target.value.replace(/[^\d]/g, "").slice(0, 3))} className="w-full min-w-0 bg-transparent outline-none" />%
           </label>
         </div>
-        <p className="mt-1.5 px-1 text-[12.5px] font-semibold text-ink-2">Barber {Math.min(100, Number(share) || 0)}% · Shop {100 - Math.min(100, Number(share) || 0)}%. On ₱1,000: barber ₱{(Math.min(100, Number(share) || 0) * 10).toLocaleString("en-PH")}, shop ₱{((100 - Math.min(100, Number(share) || 0)) * 10).toLocaleString("en-PH")}.</p>
+        <p className="mt-1.5 px-1 text-[12.5px] font-semibold text-ink-2">{sharePctNum == null ? "No split is set. Sales aren’t divided between barber and shop." : <>Barber {Math.min(100, Number(share) || 0)}% · Shop {100 - Math.min(100, Number(share) || 0)}%. On ₱1,000: barber ₱{(Math.min(100, Number(share) || 0) * 10).toLocaleString("en-PH")}, shop ₱{((100 - Math.min(100, Number(share) || 0)) * 10).toLocaleString("en-PH")}.</>}</p>
       </div>
       {shops.enabled && shops.branches.length > 1 ? (
         <label className="mt-5 flex flex-col gap-1.5">
@@ -373,9 +376,9 @@ export function ChairEditor({
       <Button data-auth="action" className="mt-6" fullWidth loading={saving} disabled={up === "uploading" || saving} onClick={() => {
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Check the email address."); return; }
         const pct = Number(share);
-        if (!share || !(pct >= 0 && pct <= 100)) { setError("Set the barber’s share from 0 to 100%."); return; }
+        if (share !== "none" && (!share || !(pct >= 0 && pct <= 100))) { setError("Set the barber’s share from 0 to 100%, or pick None."); return; }
         setSaving(true);
-        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined, phone: phone.trim() || undefined, email: email || undefined, sharePct: Math.round(pct), locationId: loc });
+        const error = onSave({ ...chair, barberName: name.trim(), photoUrl: photo || undefined, phone: phone.trim() || undefined, email: email || undefined, sharePct: share === "none" ? null : Math.round(pct), shareSet: share !== "none", locationId: loc });
         setSaving(false);
         if (error) setError(error);
       }}>Save</Button>

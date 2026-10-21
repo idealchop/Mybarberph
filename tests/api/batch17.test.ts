@@ -3,13 +3,18 @@ import { customerName, cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/in
 import { editChanges } from "@/lib/edit-log";
 
 describe("income split", () => {
-  it("defaults to 50% and splits ₱1,000 into ₱500 / ₱500", () => {
-    expect(sharePct({})).toBe(50);
+  it("defaults to None (no split); a bare 50 from the old default is None too", () => {
+    expect(sharePct({})).toBeNull();
+    expect(sharePct({ sharePct: null, shareSet: false })).toBeNull();
+    expect(sharePct({ sharePct: 50 })).toBeNull();
+    expect(sharePct({ sharePct: 50, shareSet: true })).toBe(50);
+    expect(splitIncome(100_000, null)).toEqual({ barber: 0, shop: 100_000 });
     expect(splitIncome(100_000, 50)).toEqual({ barber: 50_000, shop: 50_000 });
   });
   it("uses the owner's share and clamps bad values", () => {
     expect(sharePct({ sharePct: 60 })).toBe(60);
-    expect(sharePct({ sharePct: 140 })).toBe(50);
+    expect(sharePct({ sharePct: 140, shareSet: true })).toBeNull();
+    expect(sharePct({ sharePct: 0, shareSet: true })).toBe(0);
     expect(splitIncome(100_001, 60)).toEqual({ barber: 60_001, shop: 40_000 });
   });
   it("reads tips as centavos", () => {
@@ -63,7 +68,7 @@ describe("sales groups", () => {
     const r = groupReport(rows, g, chairs, { loc: (id) => id });
     expect(r.cuts).toBe(2);
     expect(r.gross).toBe(200_000);
-    expect(r.net).toBe(40_000 + 50_000);
+    expect(r.net).toBe(40_000 + 100_000); // Ben has no split: nothing taken off
     expect(r.tips).toBe(5000);
     expect(r.barbers.map((b) => b.id).sort()).toEqual(["b1", "b2"]);
     expect(toggleMember(g, "loc", "home").locationIds).toEqual([]);

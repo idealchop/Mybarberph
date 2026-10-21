@@ -1,15 +1,23 @@
 /** Income split (Jimboy, 2026-10-21): the owner sets each barber's share of sales. Tips are 100% the barber's. */
-export const DEFAULT_SHARE_PCT = 50;
-
-/** A chair's barber share, 0–100 (missing or bad = the default 50%). */
-export function sharePct(chair?: { sharePct?: unknown } | null): number {
-  const n = Number(chair?.sharePct);
-  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.round(n) : DEFAULT_SHARE_PCT;
+/**
+ * A chair's barber share, 0–100, or null = None (no split; the default since 2026-10-21).
+ * Only an owner-chosen split counts: `shareSet: true`, or an older saved value other than 50
+ * (50 was the old default the editor saved for everyone, so a bare 50 reads as None).
+ */
+export function sharePct(chair?: { sharePct?: unknown; shareSet?: unknown } | null): number | null {
+  if (chair?.sharePct === null || chair?.sharePct === undefined || chair.sharePct === "") return null;
+  const n = Number(chair.sharePct);
+  if (!(Number.isFinite(n) && n >= 0 && n <= 100)) return null;
+  return chair.shareSet === true || Math.round(n) !== 50 ? Math.round(n) : null;
 }
 
+/** "60% share" / "No split" for lists. */
+export const shareLabel = (pct: number | null) => (pct == null ? "No split" : `${pct}% share`);
+
 /** Splits sales (centavos) into the barber's and the shop's part. The shop gets the rounding remainder. */
-export function splitIncome(sales: number, pct: number) {
-  const barber = Math.round((Math.max(0, sales) * Math.min(100, Math.max(0, pct))) / 100);
+/** None (null) = no split: nothing is taken off for the barber. */
+export function splitIncome(sales: number, pct: number | null) {
+  const barber = pct == null ? 0 : Math.round((Math.max(0, sales) * Math.min(100, Math.max(0, pct))) / 100);
   return { barber, shop: Math.max(0, sales) - barber };
 }
 

@@ -5,7 +5,7 @@ import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
 import { cloudStorage, useCloud } from "@/lib/cloud";
 import { peso } from "@/lib/format";
-import { sharePct } from "@/lib/income-split";
+import { shareLabel, sharePct } from "@/lib/income-split";
 import type { ChairRequest } from "@/lib/booking-types";
 import { chairBarberName, type ShopChair } from "@/lib/shop-chairs";
 import { groupReport, normalizeGroups, SALES_GROUPS_KEY, toggleMember, type GroupLine, type SalesGroup } from "@/lib/sales-groups";
@@ -66,7 +66,7 @@ export function SalesGroups({ rows, chairs, branches }: { rows: ChairRequest[]; 
         </div>
         <b className="mt-2 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(val(rep))}</b>
         <p className="mt-1 text-[12.5px] font-semibold text-on-ink-muted">
-          {mode === "gross" ? `Total sales · ${rep.cuts} cut${rep.cuts === 1 ? "" : "s"}` : `After barbers’ share of ${peso(rep.share)}`}{rep.tips ? ` · tips ${peso(rep.tips)} (barbers’)` : ""}
+          {mode === "gross" ? `Total sales · ${rep.cuts} cut${rep.cuts === 1 ? "" : "s"}` : `After barbers’ share of ${peso(rep.share)}${chairs.some((c) => sharePct(c) == null) ? " · barbers with no split: nothing taken off" : ""}`}{rep.tips ? ` · tips ${peso(rep.tips)} (barbers’)` : ""}
         </p>
         <Button size="sm" variant="white" className="mt-3" data-auth="action" leadingIcon={members ? <Pencil size={14} strokeWidth={2.2} /> : <Plus size={14} strokeWidth={2.2} />} onClick={() => setEditing(true)}>
           {members ? `Edit members · ${members}` : "Add locations or barbers"}
@@ -91,7 +91,7 @@ export function SalesGroups({ rows, chairs, branches }: { rows: ChairRequest[]; 
           </ul>
           <p className="mt-3 px-1 text-[13px] font-bold text-muted">Barbers</p>
           <ul className="mt-1 flex flex-col">
-            {chairs.map((c) => { const id = c.barberId || c.id; return <Pick key={c.id} on={g.barberIds.includes(id)} title={chairBarberName(c)} sub={`${branches.find((b) => b.id === (c.locationId || "home"))?.name ?? "Main"} · ${sharePct(c)}% share`} onTap={() => save(toggleMember(g, "barber", id))} />; })}
+            {chairs.map((c) => { const id = c.barberId || c.id; return <Pick key={c.id} on={g.barberIds.includes(id)} title={chairBarberName(c)} sub={`${branches.find((b) => b.id === (c.locationId || "home"))?.name ?? "Main"} · ${shareLabel(sharePct(c))}`} onTap={() => save(toggleMember(g, "barber", id))} />; })}
           </ul>
         </BottomSheet>
       ) : null}

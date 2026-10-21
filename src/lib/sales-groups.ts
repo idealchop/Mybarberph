@@ -16,7 +16,7 @@ export function normalizeGroups(raw: unknown): SalesGroup[] {
   return [1, 2, 3].map((n) => ({ id: `g${n}`, name: `Group ${n}`, locationIds: [], barberIds: [] }));
 }
 
-type ChairLite = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number };
+type ChairLite = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 export interface GroupLine { id: string; name: string; sub?: string; cuts: number; gross: number; net: number; tips: number }
 export interface GroupReport { cuts: number; gross: number; net: number; share: number; tips: number; locations: GroupLine[]; barbers: GroupLine[] }
 
