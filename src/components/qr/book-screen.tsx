@@ -18,12 +18,6 @@ import { ShopProfileView, StarLine } from "./shop-profile";
 import { Avatar, Input } from "@river-apps/ui";
 import { usePublicShop } from "./use-public-shop";
 
-/** Manila time greeting for the customer header. */
-function greet() {
-  const h = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila", hour: "numeric", hour12: false })) % 24;
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
 const ICONS: BarberIconName[] = ["scissors", "clipper", "pole", "razor", "towel", "ticket", "gift", "qr"];
 const icon = (v?: string | null, fallback: BarberIconName = "scissors") => (ICONS.includes(v as BarberIconName) ? (v as BarberIconName) : fallback);
 
@@ -149,70 +143,60 @@ export function BookScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-6">
-      {/* Customer page in the barber view's style (Jimboy, 2026-10-21): greeting header, dark hero, clean sections. */}
-      <header className="flex min-w-0 items-center gap-2.5 px-4 pt-5">
-        <button type="button" onClick={() => setView("profile")} aria-label={`${shop.name}: shop profile and reviews`} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <Avatar name={shop.name} src={shop.logoUrl || undefined} preset="sky" size={44} decorative={false} className="flex-none ring-1 ring-line" />
-          <span className="min-w-0">
-            <span className="block truncate text-[12px] font-medium text-muted">{greet()}, welcome to</span>
-            <span className="flex items-center gap-1"><b className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{shop.name}</b><ChevronRight size={16} className="flex-none text-subtle" aria-hidden /></span>
-            <span className="flex min-w-0 items-center gap-1.5"><StarLine rating={rating} />{branch ? <span className="truncate text-[12.5px] font-semibold text-muted">· {branch.name}</span> : null}</span>
-          </span>
-        </button>
-        <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-surface px-3.5 text-[13.5px] font-bold text-ink shadow-card">
-          <CalendarDays size={17} strokeWidth={2.1} aria-hidden /> Schedule
-        </button>
-      </header>
-      <div className="px-4">
+      {/* Simplified (Jimboy, 2026-10-21): 1) dark main card with the services + actions, 2) how to pay, 3) summary. No headings or helper text. */}
+      <div className="px-4 pt-4">
         {ticket ? (
-          <button type="button" onClick={() => setView("ticket")} className="mt-4 flex w-full items-center justify-between rounded-card bg-surface px-4 py-3 text-left shadow-card">
-            <span><b className="block text-[14.5px]">Back to my ticket</b><small className="text-[12px] font-semibold text-muted">See your place in the queue</small></span>
-            <ChevronRight size={20} />
+          <button type="button" onClick={() => setView("ticket")} className="mb-3 inline-flex h-9 items-center gap-1 rounded-pill bg-surface px-3.5 text-[13px] font-bold shadow-card">
+            Back to my ticket <ChevronRight size={16} aria-hidden />
           </button>
         ) : null}
-        <section aria-label="Book a haircut" className="relative isolate mt-4 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
-          <div className="relative z-10 min-w-0 flex-1">
-            <p className="text-[12px] font-medium text-on-ink-muted">Walk in now, no account needed</p>
-            <h2 className="mt-1 text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em]">Book a haircut</h2>
-            <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">{haircut.name}{haircut.price ? ` · ${peso(haircut.price)}` : ""} · pay at the shop or online</p>
-          </div>
-          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
-            {/* eslint-disable-next-line @next/next/no-img-element -- same 3D pole + scissors art as the barber view */}
-            <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" />
-          </div>
-        </section>
-
-        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Service</h3>
-        <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
-          <BarberIcon name={icon(haircut.icon, "clipper")} size={40} title={haircut.name} />
-          <span className="min-w-0 flex-1">
-            <b className="block truncate">{haircut.name}</b>
-            <small className="text-[12.5px] font-semibold text-on-ink/70">{haircut.price ? peso(haircut.price) : ""}</small>
-          </span>
-          {extras.length ? (
-            <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-8 flex-none items-center gap-1 rounded-pill bg-white px-3 text-[12.5px] font-bold text-ink">
-              <Plus size={14} strokeWidth={2.4} /> Add more
+        <section aria-label={`Book at ${shop.name}`} className="rounded-banner bg-ink p-3 text-on-ink">
+          <div className="flex min-w-0 items-center gap-2 px-1 pb-2">
+            <button type="button" onClick={() => setView("profile")} aria-label={`${shop.name}: shop profile and reviews`} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+              <Avatar name={shop.name} src={shop.logoUrl || undefined} preset="sky" size={32} decorative={false} className="flex-none" />
+              <span className="min-w-0">
+                <b className="flex items-center gap-0.5 truncate text-[15px] font-extrabold">{shop.name}<ChevronRight size={15} className="flex-none text-on-ink/60" aria-hidden /></b>
+                <span className="flex min-w-0 items-center gap-1.5 text-on-ink/70"><StarLine rating={rating} />{branch ? <span className="truncate text-[12px] font-semibold">· {branch.name}</span> : null}</span>
+              </span>
             </button>
-          ) : null}
-        </div>
-        {more || chosen.length ? (
-          <ul className="mt-2 flex flex-col gap-2" aria-label="More services">
+            <button type="button" onClick={() => { setError(""); setView("schedule"); }} aria-label="Schedule a booking" className="inline-flex h-9 flex-none items-center gap-1.5 rounded-pill bg-white/12 px-3 text-[13px] font-bold">
+              <CalendarDays size={16} strokeWidth={2.1} aria-hidden /> Schedule
+            </button>
+          </div>
+          <ul className="flex flex-col gap-1.5" aria-label="Services">
+            <li className="flex items-center gap-3 rounded-[16px] bg-white/8 px-3 py-2.5">
+              <BarberIcon name={icon(haircut.icon, "clipper")} size={40} title={haircut.name} />
+              <b className="min-w-0 flex-1 truncate">{haircut.name}</b>
+              <span className="text-[14px] font-bold tabular-nums">{haircut.price ? peso(haircut.price) : ""}</span>
+            </li>
             {(more ? extras : chosen).map((t) => {
               const on = picked.includes(t.id);
               return (
                 <li key={t.id}>
                   <button type="button" aria-pressed={on} onClick={() => setPicked((cur) => (on ? cur.filter((id) => id !== t.id) : [...cur, t.id]))}
-                    className={`flex w-full items-center gap-3 rounded-[16px] px-3 py-2 text-left ${on ? "bg-surface ring-2 ring-ink" : "bg-surface ring-1 ring-grey-200"}`}>
+                    className={`flex w-full items-center gap-3 rounded-[16px] px-3 py-2 text-left ${on ? "bg-white/15 ring-2 ring-white" : "bg-white/8"}`}>
                     <BarberIcon name={icon(t.icon)} size={36} title={t.name} />
                     <span className="min-w-0 flex-1 text-[14px] font-bold">{t.name}</span>
-                    <span className="text-[13px] font-semibold">{t.price ? `+${peso(t.price)}` : ""}</span>
-                    <span className={`flex size-6 flex-none items-center justify-center rounded-full ${on ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{on ? <Check size={14} strokeWidth={3} /> : null}</span>
+                    <span className="text-[13px] font-semibold tabular-nums">{t.price ? `+${peso(t.price)}` : ""}</span>
+                    <span className={`flex size-6 flex-none items-center justify-center rounded-full ${on ? "bg-white text-ink" : "bg-white/15"}`}>{on ? <Check size={14} strokeWidth={3} /> : null}</span>
                   </button>
                 </li>
               );
             })}
           </ul>
-        ) : null}
+          {error && !ask ? <p className="mt-2 px-1 text-[13px] font-semibold">{error}</p> : null}
+          <div className="mt-3 flex gap-2">
+            {extras.length ? (
+              <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-12 flex-none items-center gap-1 rounded-pill bg-white/12 px-4 text-[14px] font-bold">
+                <Plus size={16} strokeWidth={2.4} /> {more ? "Done" : "Add more"}
+              </button>
+            ) : null}
+            <button type="button" disabled={sending} onClick={() => { setError(""); setSched(null); setAsk(true); }}
+              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-pill bg-white px-4 text-[15px] font-extrabold text-ink disabled:opacity-60">
+              Send request · {peso(total)}
+            </button>
+          </div>
+        </section>
 
         <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
         <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">
@@ -224,10 +208,8 @@ export function BookScreen() {
           ))}
         </div>
         {pay === "online" && shop?.payQrUrl ? <PayQr url={shop.payQrUrl} shopName={shop.name} /> : null}
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the cut is done (GCash, Maya or bank QR).") : "You pay at the shop when the cut is done."}</p>
 
-        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Summary</h3>
-        <div className="mt-2 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
+        <div className="mt-5 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">
           <div className="flex justify-between text-[13.5px] font-semibold"><span>{haircut.name}</span><span className="tabular-nums">{peso(haircut.price ?? 0)}</span></div>
           {chosen.map((t) => <div key={t.id} className="mt-1 flex justify-between text-[13.5px] font-semibold"><span>{t.name}</span><span className="tabular-nums">{peso(t.price)}</span></div>)}
           <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-line pt-2">
@@ -235,8 +217,6 @@ export function BookScreen() {
             <b data-testid="book-total" className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{peso(total)}</b>
           </div>
         </div>
-        {error && !ask ? <p className="mt-2 text-[13px] font-semibold">{error}</p> : null}
-        <Button className="mt-4" fullWidth disabled={sending} onClick={() => { setError(""); setSched(null); setAsk(true); }}>Send request · {peso(total)}</Button>
       </div>
       <PoweredBy />
       {sheet}
