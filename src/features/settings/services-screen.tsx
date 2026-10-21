@@ -418,15 +418,13 @@ function HaircutEditor({ haircut, onBack, onSave, perLoc }: { haircut: ShopHairc
       <IconPick icons={HAIRCUT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
-        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">For new locations. Changing it doesn’t change any location below; select locations and tap “Use the default price” to apply it there.</p> : null}
+        {perLoc ? null : <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />}
       </div>
-      {perLoc ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} /> : null}
+      {perLoc ? <LocationPriceInputs basePrice={haircut.price ?? 0} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} onApplyAll={loc.applyAll} /> : null}
       <Button data-auth="action" className="mt-6" fullWidth onClick={async () => {
         if (!draft.name.trim()) return;
-        const def = Math.max(0, Math.round(Number(price) || 0));
         await new Promise((r) => setTimeout(r, 250));
-        if (perLoc) loc.save(def);
+        const def = perLoc ? loc.save() : Math.max(0, Math.round(Number(price) || 0));
         // Duration isn't asked; the internal default keeps time slots working.
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: def });
       }}>Save</Button>
@@ -456,15 +454,13 @@ function TreatmentEditor({
       <IconPick icons={TREATMENT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
-        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">For new locations. Changing it doesn’t change any location below; select locations and tap “Use the default price” to apply it there.</p> : null}
+        {perLoc && !fresh ? null : <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />}
       </div>
-      {perLoc && !fresh ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} /> : null}
+      {perLoc && !fresh ? <LocationPriceInputs basePrice={treatment.price ?? 0} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} onApplyAll={loc.applyAll} /> : null}
       <Button data-auth="action" className="mt-6" fullWidth onClick={async () => {
         if (!draft.name.trim()) return;
-        const def = Math.max(0, Math.round(Number(price) || 0));
         await new Promise((r) => setTimeout(r, 250));
-        if (perLoc && !fresh) loc.save(def);
+        const def = perLoc && !fresh ? loc.save() : Math.max(0, Math.round(Number(price) || 0));
         // Duration isn't asked; the internal default keeps time slots working.
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: def });
       }}>Save</Button>

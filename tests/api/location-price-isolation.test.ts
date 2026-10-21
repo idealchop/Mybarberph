@@ -77,3 +77,26 @@ describe("Edit service › Save writes only what it must", () => {
     saved.forEach((b, i) => expect(effectivePrice(b, "haircut", 20)).toBe(effectivePrice(list[i]!, "haircut", 115)));
   });
 });
+
+describe("Edit service › Apply to all", () => {
+  const applyAll = (list: B[], v: number) => Object.fromEntries(list.map((b) => [b.id, String(v)]));
+  it("Apply to all changes every location and the base price; Save stores it everywhere", () => {
+    const list = branches();
+    const { saved } = saveWith(list, 115, 130, applyAll(list, 130));
+    for (const b of saved) expect(effectivePrice(b, "haircut", 130)).toBe(130);
+    expect(saved.find((b) => b.id === "loc-dita")!.priceOverrides).toEqual({ "t-shave": 90 });
+  });
+  it("an individual edit after Apply to all wins for that location only", () => {
+    const list = branches();
+    const { saved } = saveWith(list, 115, 130, { ...applyAll(list, 130), "loc-sala": "99" });
+    const eff = Object.fromEntries(saved.map((b) => [b.id, effectivePrice(b, "haircut", 130)]));
+    expect(eff).toEqual({ home: 130, "loc-niugan": 130, "loc-dita": 130, "loc-sala": 99 });
+  });
+  it("without Apply to all, the base stays and untouched locations are not written", () => {
+    const list = branches();
+    const before = list.map((b) => JSON.stringify(b));
+    const { changes, saved } = saveWith(list, 115, 115, { "loc-niugan": "125" });
+    expect(changes.map((c) => c.id)).toEqual(["loc-niugan"]);
+    saved.forEach((b, i) => { if (b.id !== "loc-niugan") expect(JSON.stringify(b)).toBe(before[i]); });
+  });
+});
