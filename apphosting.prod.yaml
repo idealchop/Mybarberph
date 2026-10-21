@@ -5,6 +5,12 @@ env:
     value: "barbersdb"
   - variable: BARBERS_ENV
     value: "prod"
+  # AI Companion on prod (Jimboy, 2026-10-21): Home card, /companion, /api/companion/*.
+  - variable: COMPANION_ENABLED
+    value: "1"
+  # Monday tips runner auth (same secret as dev; no prod Cloud Scheduler job yet).
+  - variable: COMPANION_CRON_SECRET
+    secret: COMPANION_CRON_SECRET
   # Plan limits (walk-in cap, QR, shops, Companion questions). "0" = test phase: all features for every plan.
   - variable: PLAN_LIMITS_ENABLED
     value: "0"

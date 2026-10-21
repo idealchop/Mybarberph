@@ -10,7 +10,7 @@ env:
   # AI Companion (dev only for now): Monday tips runner auth for Cloud Scheduler.
   - variable: COMPANION_CRON_SECRET
     secret: COMPANION_CRON_SECRET
-  # Show the AI Companion (Home card, /companion, /api/companion/*). Leave unset on prod.
+  # Show the AI Companion (Home card, /companion, /api/companion/*). Also on in apphosting.prod.yaml since 2026-10-21.
   - variable: COMPANION_ENABLED
     value: "1"
   # Plan limits (walk-in cap, QR, shops, Companion questions). "0" = test phase: all features for every plan.
