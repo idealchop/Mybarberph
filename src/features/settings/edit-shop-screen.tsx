@@ -52,7 +52,7 @@ function ProfileEditor({
 }) {
   const router = useRouter();
   const { enabled } = useShopLocations();
-  const { haircut, treatments } = useShopMenu();
+  const { haircut, treatments } = useShopMenu("master");
   const logoRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

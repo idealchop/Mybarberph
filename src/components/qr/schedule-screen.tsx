@@ -43,7 +43,7 @@ function slotsFor(ymd: string, hours?: WeekHours | null): string[] {
 export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, error }: {
   shop: PublicShop; locationId: string; onBack: () => void; onSend: (r: ScheduleRequest) => void; sending: boolean; error: string;
 }) {
-  const menu = shop.services;
+  const menu = (locationId && shop.servicesByLocation?.[locationId]) || shop.services;
   const haircut = menu.find((s) => s.kind === "haircut") ?? menu[0];
   const [picked, setPicked] = useState<string[]>(haircut ? [haircut.id] : []);
   const [barbers, setBarbers] = useState<Barber[] | null>(null);

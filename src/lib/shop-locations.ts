@@ -19,6 +19,8 @@ export interface ShopBranch {
   about: string;
   location: ShopLocation | null;
   photoUrls: string[];
+  /** This location's own service prices in pesos ({ serviceId: price }); missing = default. */
+  priceOverrides?: Record<string, number>;
 }
 
 interface Store {

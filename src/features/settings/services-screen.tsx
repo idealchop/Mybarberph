@@ -35,7 +35,8 @@ type Editor =
 /** Services and chairs. `locationId` scopes it to one shop (Manage Shop); `embedded` drops the page header. */
 export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: string; embedded?: boolean } = {}) {
   const shops = useShopLocations();
-  const menu = useShopMenu(forLoc);
+  // Always the default prices: location prices are set in Manage shop › Edit shop details.
+  const menu = useShopMenu("master");
   const { haircut, services, saveHaircut, saveTreatment, removeTreatment, setEnabled, resetHaircut, resetTreatment, atLocation } = menu;
   const { chairs } = useShopChairs(forLoc ? { locationId: forLoc } : undefined);
   const place = forLoc ? shops.branches.find((b) => b.id === forLoc)?.name : shops.enabled ? shops.branch?.name : undefined;

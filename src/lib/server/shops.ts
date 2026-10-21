@@ -1,4 +1,5 @@
 import { editChanges } from "@/lib/edit-log";
+import { applyOverrides, cleanOverrides, toCentavos } from "@/lib/location-prices";
 import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
@@ -66,7 +67,7 @@ export interface ShopDoc {
   ratingSum?: number;
   /** Legacy (dev only, before 2026-10-20 23:58): separate GCash/Maya QRs. Read as payQrUrl. */
   payQr?: { gcash?: string; maya?: string };
-  branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"] }[];
+  branches: { id: string; name: string; address: string; area: string; location: ShopDoc["location"]; /** Centavos per service id (location prices). */ priceOverrides?: Record<string, number> }[];
   menu: { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon?: string }[];
   /** Menus for branches other than the first shop, keyed by location id. */
   menuByLocation?: Record<string, ShopDoc["menu"]>;
@@ -180,7 +181,7 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
     }
     const branches = (Array.isArray(parsed.branches) ? parsed.branches : []) as Record<string, unknown>[];
     batch.set(shopRef(shopId), {
-      branches: parsed.enabled ? branches.slice(0, 20).map((b) => ({ id: str(b.id, 60), name: str(b.name, 80), address: str(b.address), area: str(b.area, 120), location: loc(b.location) })) : [],
+      branches: parsed.enabled ? branches.slice(0, 20).map((b) => ({ id: str(b.id, 60), name: str(b.name, 80), address: str(b.address), area: str(b.area, 120), location: loc(b.location), priceOverrides: toCentavos(cleanOverrides(b.priceOverrides)) })) : [],
       updatedAt: now,
     }, { merge: true });
   }
@@ -415,19 +416,21 @@ export async function chairLink(token: string) {
 
 /** Public view used by the booking page and River Mobile. Never includes owner-only data. */
 /** Services are shop-wide: every location sells the main Services list. */
+/** Services are shop-wide; a location may set its own prices (branch.priceOverrides, centavos). */
 export function menuFor(s: ShopDoc, locationId?: string | null): ShopDoc["menu"] {
-  void locationId;
-  return s.menu || [];
+  const b = locationId ? (s.branches ?? []).find((x) => x.id === locationId) : undefined;
+  return applyOverrides(s.menu || [], b?.priceOverrides);
 }
 
 export function publicShop(id: string, s: ShopDoc) {
   return {
     id, name: s.name, address: s.address, area: s.area, phone: s.phone, about: s.about, hours: s.hours || null, hoursWeek: s.hoursWeek ?? null,
-    location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: s.branches ?? [],
+    location: s.location, photoUrls: s.photoUrls ?? [], logoUrl: s.logoUrl || null, branches: (s.branches ?? []).map(({ priceOverrides: _p, ...b }) => b),
     payQrUrl: s.payQrUrl || s.payQr?.gcash || s.payQr?.maya || null,
     rating: ratingSummary(s),
     services: (s.menu ?? []).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null })),
-    servicesByLocation: {} as Record<string, never[]>,
+    // Location prices: a location with its own prices gets its own list (others use `services`).
+    servicesByLocation: Object.fromEntries((s.branches ?? []).filter((b) => b.priceOverrides && Object.keys(b.priceOverrides).length).map((b) => [b.id, menuFor(s, b.id).map((m) => ({ id: m.id, name: m.name, durationMins: m.durationMins, price: m.price, kind: m.kind, icon: m.icon ?? null }))])) as Record<string, { id: string; name: string; durationMins: number; price: number; kind: "haircut" | "treatment"; icon: string | null }[]>,
     plan: entitledPlan(effectivePlan(s)) === "partner" ? "partner" : "paid",
     updatedAt: s.updatedAt,
   };

@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { ChairRequest } from "@/lib/booking-types";
 import { distanceKm, homeSlots, manilaAt, manilaYmd, parseHomeFile, type HomeLocationSettings } from "@/lib/home-service-model";
-import { publicBarbers, refCode, shopRef, type ShopDoc } from "./shops";
+import { menuFor, publicBarbers, refCode, shopRef, type ShopDoc } from "./shops";
 
 const s = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -13,8 +13,9 @@ function placeOf(shop: ShopDoc, locationId: string) {
   return b ? { name: b.name, address: b.address, location: b.location ?? null } : null;
 }
 
-function servicesFor(shop: ShopDoc, serviceIds: string[]) {
-  return (shop.menu ?? []).filter((m) => serviceIds.includes(m.id)).map((m) => ({ id: m.id, name: m.name, price: m.price, durationMins: m.durationMins, kind: m.kind }));
+function servicesFor(shop: ShopDoc, serviceIds: string[], locationId?: string) {
+  // Location prices apply to home visits from that location too.
+  return menuFor(shop, locationId).filter((m) => serviceIds.includes(m.id)).map((m) => ({ id: m.id, name: m.name, price: m.price, durationMins: m.durationMins, kind: m.kind }));
 }
 
 async function homeBarbers(shopId: string, locationId: string, cfg: HomeLocationSettings) {
@@ -27,7 +28,7 @@ export async function homeOffer(shopId: string, shop: ShopDoc, locationId: strin
   const file = parseHomeFile(shop.homeService);
   const cfg = file.locations[locationId];
   const place = placeOf(shop, locationId);
-  const services = servicesFor(shop, file.serviceIds);
+  const services = servicesFor(shop, file.serviceIds, locationId);
   if (!shop.listed || !cfg?.enabled || !place?.location || !services.length) return null;
   const dist = customer ? Math.round(distanceKm(customer, place.location) * 100) / 100 : null;
   if (dist != null && dist > cfg.radiusKm) return null;
@@ -112,7 +113,7 @@ export async function createHomeBooking(shopId: string, input: HomeBookingInput)
   if (!wanted.length) throw new Error("serviceIds is required");
   const off = wanted.filter((id) => !file.serviceIds.includes(id));
   if (off.length) throw new Error(`Not offered as home service: ${off.join(", ")}`);
-  const picked = servicesFor(shop, wanted);
+  const picked = servicesFor(shop, wanted, locationId);
   if (picked.length !== wanted.length) throw new Error("Unknown service");
   // Time: scheduledAt (ms) or date + time (Manila). Must be a free slot.
   const at = input.scheduledAt != null ? Number(input.scheduledAt) : input.date && input.time ? manilaAt(s(input.date, 10), s(input.time, 5)) : NaN;

@@ -14,6 +14,7 @@ import { LocationPicker } from "./location-picker";
 import { Back, ServicesScreen } from "./services-screen";
 import { FullScreen } from "@/components/shell/full-screen";
 import { Pencil } from "lucide-react";
+import { draftToOverrides, ServicePrices, useDefaultServices } from "./location-prices";
 
 /** Manage Shop: one location's name, address, pin, profile and its services & chairs. */
 export function ManageShopScreen() {
@@ -46,8 +47,16 @@ function Editor({ branch }: { branch: ShopBranch }) {
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const services = useDefaultServices();
+  const savedPrices = branch.priceOverrides ?? {};
+  const toDraft = () => Object.fromEntries(Object.entries(savedPrices).map(([k, v]) => [k, String(v)]));
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>(toDraft);
+  const [pricesEditing, setPricesEditing] = useState(false);
+  const nextPrices = draftToOverrides(priceDraft, services);
+  const pricesDirty = JSON.stringify(Object.entries(nextPrices).sort()) !== JSON.stringify(Object.entries(savedPrices).sort());
+  function openEditor() { setPriceDraft(toDraft()); setPricesEditing(false); setEditOpen(true); }
   const pinMoved = (pin?.lat ?? 0) !== (branch.location?.lat ?? 0) || (pin?.lng ?? 0) !== (branch.location?.lng ?? 0);
-  const dirty = name.trim() !== branch.name || phone !== (branch.phone ?? "") || about !== (branch.about ?? "") || address !== (branch.address ?? "") || pinMoved;
+  const dirty = name.trim() !== branch.name || phone !== (branch.phone ?? "") || about !== (branch.about ?? "") || address !== (branch.address ?? "") || pinMoved || pricesDirty;
 
   async function save() {
     setBusy(true); setNote("");
@@ -59,7 +68,8 @@ function Editor({ branch }: { branch: ShopBranch }) {
         const f = pin.formattedAddress || geo?.formatted || "";
         if (f) { loc = { ...pin, formattedAddress: f }; if (addr === (branch.address ?? "")) addr = f; }
       }
-      updateBranch(branch.id, { name: name.trim() || branch.name, phone: phone.trim(), about: about.trim(), address: addr, area, location: loc });
+      updateBranch(branch.id, { name: name.trim() || branch.name, phone: phone.trim(), about: about.trim(), address: addr, area, location: loc, priceOverrides: nextPrices });
+      setPricesEditing(false);
       setAddress(addr);
       setNote("Saved.");
     } finally { setBusy(false); }
@@ -92,7 +102,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
       <section className="mt-6 rounded-card bg-surface px-4 py-4 shadow-card" aria-label="Shop details">
         <div className="flex items-start justify-between gap-3">
           <b className="text-[16px]">Shop details</b>
-          <button type="button" data-auth="action" onClick={() => setEditOpen(true)} aria-label="Update shop details" title="Update"
+          <button type="button" data-auth="action" onClick={openEditor} aria-label="Update shop details" title="Update"
             className="inline-flex h-9 flex-none items-center gap-1.5 rounded-pill bg-grey-100 px-3 text-[13px] font-bold"><Pencil size={15} strokeWidth={2} />Update</button>
         </div>
         <dl className="mt-2 grid gap-2.5 text-[14px]">
@@ -102,6 +112,8 @@ function Editor({ branch }: { branch: ShopBranch }) {
           <div><dt className="text-[12px] font-semibold text-muted">Map pin</dt><dd className="font-semibold">{branch.location ? (branch.location.formattedAddress || "Pinned") : <span className="text-muted">No pin yet</span>}</dd></div>
         </dl>
       </section>
+
+      <div className="mt-6"><ServicePrices overrides={savedPrices} /></div>
 
       {branch.id === HOME_LOCATION_ID ? null : (
         <Card className="mt-6 px-4 py-4">
@@ -131,6 +143,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
           <textarea value={about} maxLength={300} rows={3} onChange={(e) => setAbout(e.target.value)} disabled={busy} className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" />
         </label>
         <LocationPicker value={pin} onChange={setPin} disabled={busy} />
+        <ServicePrices overrides={nextPrices} draft={priceDraft} setDraft={setPriceDraft} editing={pricesEditing} setEditing={setPricesEditing} disabled={busy} />
         <p className="text-[12.5px] font-semibold text-muted">Brand name, logo, hours and facades are in <a href="/settings/edit" className="font-bold underline underline-offset-[3px]">Shop profile</a>.</p>
 
           </div>

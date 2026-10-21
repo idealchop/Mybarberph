@@ -4,6 +4,7 @@ import { cloudStorage } from "@/lib/cloud";
 import { useEffect, useState } from "react";
 import type { BarberIconName } from "@/components/art";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { applyOverrides, priceAt } from "@/lib/location-prices";
 import { allOverrides, effectiveMenu, type EffectiveService, type ItemOverride, type LocationOverride, type MenuFile as ModelFile, type ServiceSource } from "@/lib/menu-model";
 
 type MenuFile = Omit<ModelFile, "haircut" | "treatments"> & { haircut: ShopHaircut; treatments: ShopTreatment[] };
@@ -93,7 +94,6 @@ export function useShopMenu(explicitId?: MenuScope) {
   const scope = explicitId || (loc.enabled ? (loc.viewingAll ? "master" : loc.scopeId || HOME_LOCATION_ID) : "master");
   // Services are shop-wide: every location uses (and edits) the main list; old per-location overrides are ignored.
   const atLocation = false as boolean;
-  void loc;
   const [file, setFile] = useState<MenuFile>({ haircut: defaultHaircut, treatments: [], overrides: {} });
   useEffect(() => {
     const pull = () => setFile(readFile());
@@ -106,9 +106,12 @@ export function useShopMenu(explicitId?: MenuScope) {
     };
   }, [scope]);
   const eff = effectiveMenu(file, atLocation ? scope : null);
-  const haircut = eff.haircut as ShopHaircut & { source: ServiceSource };
-  const services = eff.services as (ShopTreatment & EffectiveService)[];
-  const treatments = eff.treatments as ShopTreatment[];
+  // Location prices (Manage shop › Edit shop details): read-only views at a location show that location's price.
+  // Editors pass "master" so a location price is never saved as the default.
+  const prices = scope !== "master" && loc.enabled ? loc.branches.find((b) => b.id === scope)?.priceOverrides : undefined;
+  const haircut = { ...eff.haircut, price: priceAt({ id: "haircut", price: eff.haircut.price }, prices) } as ShopHaircut & { source: ServiceSource };
+  const services = applyOverrides(eff.services as (ShopTreatment & EffectiveService)[], prices);
+  const treatments = applyOverrides(eff.treatments as ShopTreatment[], prices);
 
   const commit = (fn: (f: MenuFile) => MenuFile) => { const next = fn(readFile()); setFile(next); write(next); };
   const ov = (f: MenuFile): LocationOverride => ({ ...(f.overrides?.[scope] ?? {}) });
