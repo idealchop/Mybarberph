@@ -2,17 +2,19 @@
 
 import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/page-back";
-import { queueLocation, refCode, seatWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
+import { queueLocation, refCode, seatOwnerWalkIn, seatWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { cloudSnapshot } from "@/lib/cloud";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
+
+const ME = "__me";
 
 /** Walk-in counter: they sit down immediately. Partner: 10 a day per shop; Pro and Lifetime: unlimited. */
 export function WalkInScreen() {
@@ -27,34 +29,44 @@ export function WalkInScreen() {
   const { chairs } = useShopChairs({ locationId: loc });
   const { rows } = useChairRequests();
   const busyLabels = new Set(rows.filter((r) => r.status === "in_chair" && r.chairLabel && (r.locationId || HOME_LOCATION_ID) === loc).map((r) => r.chairLabel!));
-  const [barberChair, setBarberChair] = useState("");
+  // From the Home hero (?me=1) the owner takes the customer himself; with no barbers that's the only choice.
+  const fromHome = useSearchParams().get("me") === "1";
+  const [barberChair, setBarberChair] = useState(fromHome ? ME : "");
+  const me = barberChair === ME || !chairs.length;
 
   const chosen = treatments.filter((t) => picked.includes(t.id));
   const menuTotal = (haircut.price ?? 0) + chosen.reduce((sum, t) => sum + (t.price ?? 0), 0);
   const serviceName = [haircut.name, ...chosen.map((t) => t.name)].join(" · ");
 
+  const newRow = (now: number) => ({
+    id: `wk-${now}`,
+    shopId: cloudSnapshot().shopId ?? "",
+    ref: refCode(),
+    channel: "walk-in" as const,
+    status: "accepted" as const,
+    contact: "",
+    customerLabel: name.trim() || "Walk-in",
+    serviceId: "haircut",
+    serviceName,
+    price: Math.round(menuTotal * 100),
+    slotLabel: "Now",
+    payWhere: "shop" as const,
+    paid: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
   const save = () => {
     if (allowance.atLimit) { setNote(allowance.message); return; }
     const now = Date.now();
+    if (me) {
+      seatOwnerWalkIn({ ...newRow(now) }, "Owner");
+      router.push(fromHome || !chairs.length ? "/" : "/queue");
+      return;
+    }
     const pick = chairs.find((c) => c.id === barberChair);
     if (pick && busyLabels.has(pick.label)) { setNote(`${chairBarberName(pick)} is busy. Pick another barber or any free barber.`); return; }
-    const row = {
-      id: `wk-${now}`,
-      shopId: cloudSnapshot().shopId ?? "",
-      ref: refCode(),
-      channel: "walk-in",
-      status: "accepted",
-      contact: "",
-      customerLabel: name.trim() || "Walk-in",
-      serviceId: "haircut",
-      serviceName,
-      price: Math.round(menuTotal * 100),
-      slotLabel: "Now",
-      payWhere: "shop",
-      paid: false,
-      createdAt: now,
-      updatedAt: now,
-    } as const;
+    const row = newRow(now);
     const chair = pick ? seatWalkInOnChair({ ...row }, pick.label, loc) : seatWalkIn({ ...row });
     if (!chair) {
       setNote("Every barber is busy, or none have been added in Services yet.");
@@ -118,12 +130,13 @@ export function WalkInScreen() {
           <span className="text-[13px] font-bold">Barber <span className="font-semibold text-muted">(optional)</span></span>
           <select value={barberChair} onChange={(e) => setBarberChair(e.target.value)} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
             <option value="">Any free barber</option>
+            <option value={ME}>Me, I’ll cut</option>
             {chairs.filter((c) => c.active !== false).map((c) => <option key={c.id} value={c.id} disabled={busyLabels.has(c.label)}>{chairBarberName(c)}{busyLabels.has(c.label) ? " (busy)" : ""}</option>)}
           </select>
         </label>
       ) : null}
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
-      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>Seat them</Button>
+      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>{me ? "Start the cut" : "Seat them"}</Button>
       </>
     </main>
   );

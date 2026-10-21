@@ -1,4 +1,5 @@
 import "server-only";
+import { isOwnerCut } from "@/lib/owner-cut";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
 
@@ -36,7 +37,7 @@ async function loadFresh(shopId: string) {
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
   const claims = claimsSnap.docs.map((d) => d.data() as RemitClaim);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds));
-  const open = doneSnap.docs.map((d) => d.data() as ChairRequest).filter((r) => isCash(r) && !claimed.has(r.id));
+  const open = doneSnap.docs.map((d) => d.data() as ChairRequest).filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: cash is already his
   return { chairs, claims, open };
 }
 

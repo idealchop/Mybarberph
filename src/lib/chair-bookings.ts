@@ -1,5 +1,6 @@
 "use client";
 
+import { OWNER_BARBER_ID } from "@/lib/owner-cut";
 import { useEffect, useState } from "react";
 import type { ChairRequest, ChairStatus } from "@/lib/booking-types";
 import { cloudBookings, saveBooking, useCloud } from "@/lib/cloud";
@@ -55,6 +56,12 @@ export function seatWalkIn(booking: ChairRequest): string | null {
   if (!label) return null;
   addWalkIn({ ...booking, locationId, status: "in_chair", chairLabel: label, seatLabel: label, startedAt: at, ...barberOf(label, locationId) });
   return label;
+}
+
+/** The owner takes this walk-in himself: in progress now, no chair used, saved as the owner's visit. */
+export function seatOwnerWalkIn(booking: ChairRequest, ownerName = "Owner"): string {
+  addWalkIn({ ...booking, locationId: locationForNew(booking), status: "in_chair", startedAt: Date.now(), barberId: OWNER_BARBER_ID, barberName: ownerName });
+  return "Owner";
 }
 
 /** Adds a walk-in and sits them in this chair. Returns the chair, or null when it is taken. */

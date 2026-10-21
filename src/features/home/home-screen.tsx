@@ -22,6 +22,9 @@ import { CompanionCard } from "@/features/companion";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
 import { ChevronRight } from "lucide-react";
+import { isOwnerCut, ownerCut } from "@/lib/owner-cut";
+import { completeCut } from "@/components/transactions/complete-flow";
+import { CheckCircle2 } from "lucide-react";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -86,9 +89,11 @@ export function HomeScreen() {
   });
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
   const toAccept = rows.filter((row) => row.status === "requested" || row.status === "accepted").length;
-  const busy = rows.filter((row) => row.status === "in_chair").length;
+  const busy = rows.filter((row) => row.status === "in_chair" && !isOwnerCut(row)).length;
   const oldest = rows.filter((row) => row.status === "in_chair" && row.startedAt).reduce((m, row) => Math.min(m, row.startedAt!), Infinity);
   const now = useTick(busy > 0);
+  // The owner's own walk-in in progress: the hero shows it live with Complete (Jimboy, 2026-10-21).
+  const mine = ownerCut(rows);
   const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
   const todays = rows.filter((row) => row.createdAt >= today0 && row.status !== "declined");
   const customers = todays.length;
@@ -149,7 +154,7 @@ export function HomeScreen() {
             </Link>
           </div>
         </header>
-        <section className={`relative isolate mx-4 mt-3 flex h-[150px] items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy ? "live-hero" : "bg-ink"}`}>
+        <section className={`relative isolate mx-4 mt-3 flex h-[150px] items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`}>
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
@@ -159,9 +164,21 @@ export function HomeScreen() {
               {todayTitle}
             </h2>
             <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{figures.cuts} cuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
+            {mine ? (
+              <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold" data-testid="owner-cut">
+                <span className="live-dot" aria-hidden /><span className="truncate">{mine.serviceName} · {mine.customerLabel || "Walk-in"}</span>
+                {mine.startedAt ? <b className="flex-none tabular-nums">{elapsedLabel(mine.startedAt, now)}</b> : null}
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-nowrap items-center gap-1.5">
-              <Button href="/queue/new" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
-              <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
+              {mine ? (
+                <Button variant="white" size="sm" className={PILL} leadingIcon={<CheckCircle2 size={14} strokeWidth={2.2} />} onClick={() => completeCut(mine)}>Complete</Button>
+              ) : (
+                <>
+                  <Button href="/queue/new?me=1" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
+                  <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
+                </>
+              )}
             </div>
           </div>
           <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
@@ -191,12 +208,18 @@ export function HomeScreen() {
             eyebrow={`Today · ${dayLabel}`}
             title={`${todayTitle} · ${figures.cuts} cuts`}
             titleSize="lg"
-            description={busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
+            description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
             actions={
               <div className="flex flex-nowrap items-center gap-2.5">
-                <Button href="/queue/new" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button>
-                <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
+                {mine ? (
+                  <Button variant="white" size="md" leadingIcon={<CheckCircle2 size={18} strokeWidth={2} />} onClick={() => completeCut(mine)}>Complete</Button>
+                ) : (
+                  <>
+                    <Button href="/queue/new?me=1" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button>
+                    <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
+                  </>
+                )}
               </div>
             }
             // eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP
