@@ -160,6 +160,13 @@ export function setLocationPrice(branchId: string, serviceId: string, value: str
   writeStore({ ...store, branches: setBranchPrice(store.branches, branchId, serviceId, value, def) });
 }
 
+/** Several locations' prices for one service in one write (only the given locations change). */
+export function setLocationPrices(serviceId: string, changes: { id: string; value: string }[], def: number) {
+  if (!changes.length) return;
+  const store = readLocationStore();
+  writeStore({ ...store, branches: changes.reduce((list, c) => setBranchPrice(list, c.id, serviceId, c.value, def), store.branches) });
+}
+
 export function removeBranch(id: string): string {
   if (id === HOME_LOCATION_ID) return "The first shop stays.";
   const store = readLocationStore();

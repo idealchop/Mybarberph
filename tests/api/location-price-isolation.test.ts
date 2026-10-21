@@ -38,3 +38,19 @@ describe("per-location price save only touches that location", () => {
     expect(Object.keys(pub.servicesByLocation).sort()).toEqual(["home", "loc-niugan"]);
   });
 });
+
+import { changedLocationPrices, draftFromBranches } from "@/lib/location-prices";
+describe("Edit service › single Save writes only changed locations", () => {
+  it("untouched boxes are not written; edits, clears and bulk-applies are", () => {
+    const list = branches();
+    const draft = draftFromBranches(list, "haircut");
+    expect(draft).toEqual({ home: "140", "loc-niugan": "", "loc-dita": "125", "loc-sala": "" });
+    expect(changedLocationPrices(list, "haircut", draft)).toEqual([]);
+    // bulk "Set price for 2 locations" = 120 on Niugan + Sala, and Dita cleared to default
+    const next = { ...draft, "loc-niugan": "120", "loc-sala": "120", "loc-dita": "" };
+    expect(changedLocationPrices(list, "haircut", next)).toEqual([{ id: "loc-niugan", value: "120" }, { id: "loc-dita", value: "" }, { id: "loc-sala", value: "120" }]);
+    const saved = next && changedLocationPrices(list, "haircut", next).reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, 115), list);
+    expect(saved.find((b) => b.id === "home")).toEqual(list[0]);
+    expect(saved.find((b) => b.id === "loc-dita")!.priceOverrides).toEqual({ "t-shave": 90 });
+  });
+});

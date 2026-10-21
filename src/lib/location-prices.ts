@@ -63,3 +63,17 @@ export function priceSummary(serviceId: string, branches: { priceOverrides?: Pri
 export function setBranchPrice<T extends { id: string; priceOverrides?: PriceOverrides }>(branches: T[], branchId: string, serviceId: string, value: string, def: number): T[] {
   return branches.map((b) => (b.id === branchId ? { ...b, priceOverrides: withPrice({ ...(b.priceOverrides ?? {}) }, serviceId, value, def) } : b));
 }
+
+/** Locations whose price box the owner actually changed (Edit service › Price per location). Untouched rows are left out. */
+export function changedLocationPrices(branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string, draft: Record<string, string>): { id: string; value: string }[] {
+  return branches.flatMap((b) => {
+    if (!(b.id in draft)) return [];
+    const was = b.priceOverrides?.[serviceId];
+    const now = (draft[b.id] ?? "").trim();
+    return now === (was == null ? "" : String(was)) ? [] : [{ id: b.id, value: now }];
+  });
+}
+
+/** Draft boxes from the saved prices: the location's own price, or blank for "uses default". */
+export const draftFromBranches = (branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string): Record<string, string> =>
+  Object.fromEntries(branches.map((b) => [b.id, b.priceOverrides?.[serviceId] == null ? "" : String(b.priceOverrides[serviceId])]));
