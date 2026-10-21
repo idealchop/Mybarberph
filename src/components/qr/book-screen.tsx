@@ -42,7 +42,7 @@ export function BookScreen() {
   const { shop } = usePublicShop(shopId);
   // Accept the branch id ("loc-katapatan-homes") or its short slug ("katapatan-homes").
   const branch = loc ? shop?.branches.find((item) => item.id === loc || item.id === `loc-${loc}`) : undefined;
-  const menu = (branch && shop?.servicesByLocation?.[branch.id]) || shop?.services || [];
+  const menu = shop?.servicesByLocation?.[branch?.id ?? "home"] || shop?.services || [];
   const haircut = menu.find((s) => s.kind === "haircut");
   const extras = menu.filter((s) => s.kind === "treatment");
   const [contact, setContact] = useState("");

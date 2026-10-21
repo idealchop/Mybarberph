@@ -468,7 +468,8 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   if (!shop) throw new Error("Shop not found");
   const ids = (Array.isArray(input.serviceIds) && input.serviceIds.length ? input.serviceIds : [input.serviceId]).filter(Boolean);
   const branchOk = input.locationId && shop.branches.some((b) => b.id === input.locationId);
-  const services = (branchOk && shop.servicesByLocation[input.locationId as string]) || shop.services;
+  // No location on the link = the main shop ("home"), which can have its own prices too.
+  const services = shop.servicesByLocation[branchOk ? (input.locationId as string) : "home"] || shop.services;
   const picked = services.filter((s) => ids.includes(s.id));
   if (!picked.length && services[0]) picked.push(services[0]);
   if (!picked.length) throw new Error("This shop has no services yet");
