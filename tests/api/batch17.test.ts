@@ -46,10 +46,12 @@ import { filterLocations } from "@/components/shell/location-switcher";
 
 describe("sales groups", () => {
   const done = (o: Partial<ChairRequest>) => ({ id: Math.random().toString(36), status: "done", price: 100_000, ...o }) as ChairRequest;
-  it("always has Group 1–3 and keeps names", () => {
+  it("defaults to Group 1–3; otherwise keeps exactly the saved groups and names", () => {
+    expect(normalizeGroups(null).map((x) => x.name)).toEqual(["Group 1", "Group 2", "Group 3"]);
     const g = normalizeGroups([{ id: "g2", name: " North ", locationIds: ["a", "a"] }]);
-    expect(g.map((x) => x.name)).toEqual(["Group 1", "North", "Group 3"]);
-    expect(g[1]!.locationIds).toEqual(["a"]);
+    expect(g.map((x) => x.name)).toEqual(["North"]);
+    expect(g[0]!.locationIds).toEqual(["a"]);
+    expect(normalizeGroups([{ id: "ga", name: "Group A" }, { id: "gb", name: "Group B" }, { id: "ga" }, { id: "bad id!" }]).map((x) => x.id)).toEqual(["ga", "gb"]);
   });
   it("sums a group's locations and barbers once, with net after the barber's share and tips apart", () => {
     const chairs = [{ id: "c1", label: "Jay", barberId: "b1", locationId: "home", sharePct: 60 }, { id: "c2", label: "Ben", barberId: "b2", locationId: "loc-x" }];

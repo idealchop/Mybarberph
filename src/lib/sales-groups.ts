@@ -5,15 +5,15 @@ import { sharePct, splitIncome, tipOf } from "@/lib/income-split";
 export interface SalesGroup { id: string; name: string; locationIds: string[]; barberIds: string[] }
 export const SALES_GROUPS_KEY = "barbers.sales-groups";
 
-/** Groups 1–3 always exist; saved names and members are kept. */
+/** Saved groups as the owner set them (1–5, e.g. just "Group A" and "Group B"); Group 1–3 when nothing is saved yet. */
 export function normalizeGroups(raw: unknown): SalesGroup[] {
   const saved = Array.isArray(raw) ? (raw as Partial<SalesGroup>[]) : [];
   const ids = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && x.length < 80))] : []);
-  const base = [1, 2, 3].map((n) => {
-    const s = saved.find((g) => g?.id === `g${n}`);
-    return { id: `g${n}`, name: (typeof s?.name === "string" && s.name.trim().slice(0, 40)) || `Group ${n}`, locationIds: ids(s?.locationIds), barberIds: ids(s?.barberIds) };
-  });
-  return base;
+  const clean = saved.filter((g) => g && typeof g.id === "string" && /^[\w-]{1,20}$/.test(g.id))
+    .filter((g, i, all) => all.findIndex((x) => x.id === g.id) === i).slice(0, 5)
+    .map((g, i) => ({ id: g.id as string, name: (typeof g.name === "string" && g.name.trim().slice(0, 40)) || `Group ${i + 1}`, locationIds: ids(g.locationIds), barberIds: ids(g.barberIds) }));
+  if (clean.length) return clean;
+  return [1, 2, 3].map((n) => ({ id: `g${n}`, name: `Group ${n}`, locationIds: [], barberIds: [] }));
 }
 
 type ChairLite = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number };
