@@ -64,16 +64,28 @@ export function setBranchPrice<T extends { id: string; priceOverrides?: PriceOve
   return branches.map((b) => (b.id === branchId ? { ...b, priceOverrides: withPrice({ ...(b.priceOverrides ?? {}) }, serviceId, value, def) } : b));
 }
 
-/** Locations whose price box the owner actually changed (Edit service › Price per location). Untouched rows are left out. */
-export function changedLocationPrices(branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string, draft: Record<string, string>): { id: string; value: string }[] {
+/**
+ * HARD RULE (Jimboy, 2026-10-21): a location's effective price never changes unless that location was edited/selected.
+ * `initial` = each location's effective price when the editor opened (own price, else the old default).
+ * - Edited box → its new value ("" = follow the new default).
+ * - Untouched box, no own price, default changed → pinned to the old default so it charges exactly what it did.
+ * - Anything else → not written.
+ */
+export function planLocationSave(
+  branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string,
+  oldDef: number, newDef: number, draft: Record<string, string>, initial: Record<string, string>,
+): { id: string; value: string }[] {
   return branches.flatMap((b) => {
-    if (!(b.id in draft)) return [];
-    const was = b.priceOverrides?.[serviceId];
-    const now = (draft[b.id] ?? "").trim();
-    return now === (was == null ? "" : String(was)) ? [] : [{ id: b.id, value: now }];
+    const now = (draft[b.id] ?? initial[b.id] ?? "").trim();
+    if (b.id in initial && now !== initial[b.id]) return [{ id: b.id, value: now }];
+    if (b.priceOverrides?.[serviceId] == null && newDef !== oldDef) return [{ id: b.id, value: String(oldDef) }];
+    return [];
   });
 }
 
-/** Draft boxes from the saved prices: the location's own price, or blank for "uses default". */
-export const draftFromBranches = (branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string): Record<string, string> =>
-  Object.fromEntries(branches.map((b) => [b.id, b.priceOverrides?.[serviceId] == null ? "" : String(b.priceOverrides[serviceId])]));
+/** Draft boxes showing each location's real current price (own price, else the default it charges today). */
+export const draftFromBranches = (branches: { id: string; priceOverrides?: PriceOverrides }[], serviceId: string, def: number): Record<string, string> =>
+  Object.fromEntries(branches.map((b) => [b.id, String(b.priceOverrides?.[serviceId] ?? def)]));
+
+/** Effective price after a save, for checks: own price, else the default. */
+export const effectivePrice = (b: { priceOverrides?: PriceOverrides }, serviceId: string, def: number) => b.priceOverrides?.[serviceId] ?? def;

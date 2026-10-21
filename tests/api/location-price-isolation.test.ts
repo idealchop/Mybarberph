@@ -39,40 +39,41 @@ describe("per-location price save only touches that location", () => {
   });
 });
 
-import { changedLocationPrices, draftFromBranches } from "@/lib/location-prices";
-describe("Edit service › single Save writes only changed locations", () => {
-  it("untouched boxes are not written; edits, clears and bulk-applies are", () => {
-    const list = branches();
-    const draft = draftFromBranches(list, "haircut");
-    expect(draft).toEqual({ home: "140", "loc-niugan": "", "loc-dita": "125", "loc-sala": "" });
-    expect(changedLocationPrices(list, "haircut", draft)).toEqual([]);
-    // bulk "Set price for 2 locations" = 120 on Niugan + Sala, and Dita cleared to default
-    const next = { ...draft, "loc-niugan": "120", "loc-sala": "120", "loc-dita": "" };
-    expect(changedLocationPrices(list, "haircut", next)).toEqual([{ id: "loc-niugan", value: "120" }, { id: "loc-dita", value: "" }, { id: "loc-sala", value: "120" }]);
-    const saved = next && changedLocationPrices(list, "haircut", next).reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, 115), list);
-    expect(saved.find((b) => b.id === "home")).toEqual(list[0]);
-    expect(saved.find((b) => b.id === "loc-dita")!.priceOverrides).toEqual({ "t-shave": 90 });
-  });
-});
+import { draftFromBranches, effectivePrice, planLocationSave } from "@/lib/location-prices";
+const saveWith = (list: B[], oldDef: number, newDef: number, edits: Record<string, string>) => {
+  const initial = draftFromBranches(list, "haircut", oldDef);
+  const changes = planLocationSave(list, "haircut", oldDef, newDef, { ...initial, ...edits }, initial);
+  return { changes, saved: changes.reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, newDef), list) };
+};
 
-describe("HARD RULE: saving selected locations leaves everything else byte-identical", () => {
-  it("bulk price for 2 selected locations changes only those 2; unselected locations and the default price are unchanged", () => {
-    const list = [...branches(), { id: "loc-x", name: "X", priceOverrides: { "t-shave": 70 }, area: "Z", extra: { a: 1 } } as B];
-    const menu = { haircut: { name: "Haircut", price: 115 } };
-    const menuSnap = JSON.stringify(menu);
+describe("Edit service › Save writes only what it must", () => {
+  it("boxes show each location's real price; untouched boxes with the same default are not written", () => {
+    const list = branches();
+    expect(draftFromBranches(list, "haircut", 115)).toEqual({ home: "140", "loc-niugan": "115", "loc-dita": "125", "loc-sala": "115" });
+    expect(saveWith(list, 115, 115, {}).changes).toEqual([]);
+  });
+  it("HARD RULE: bulk price for selected locations changes only those; every other location stays byte-identical", () => {
+    const list = [...branches(), { id: "loc-x", name: "X", priceOverrides: { "t-shave": 70 } } as B];
     const before = list.map((b) => JSON.stringify(b));
-    const selected = ["loc-niugan", "loc-x"];
-    const draft = { ...draftFromBranches(list, "haircut"), ...Object.fromEntries(selected.map((id) => [id, "130"])) };
-    const changes = changedLocationPrices(list, "haircut", draft);
-    expect(changes.map((c) => c.id).sort()).toEqual([...selected].sort());
-    const saved = changes.reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, menu.haircut.price), list);
-    expect(saved).toHaveLength(list.length);
-    saved.forEach((b, i) => {
-      if (selected.includes(b.id)) expect(b.priceOverrides?.haircut).toBe(130);
-      else expect(JSON.stringify(b)).toBe(before[i]);
-    });
+    const { changes, saved } = saveWith(list, 115, 115, { "loc-niugan": "130", "loc-x": "130" });
+    expect(changes.map((c) => c.id)).toEqual(["loc-niugan", "loc-x"]);
+    saved.forEach((b, i) => { if (!["loc-niugan", "loc-x"].includes(b.id)) expect(JSON.stringify(b)).toBe(before[i]); });
     expect(saved.find((b) => b.id === "loc-x")!.priceOverrides).toEqual({ "t-shave": 70, haircut: 130 });
-    expect(JSON.stringify(menu)).toBe(menuSnap);
     expect(list.map((b) => JSON.stringify(b))).toEqual(before);
+  });
+  it("HARD RULE: default 115 → 20 with 1 location selected: only that location's effective price changes", () => {
+    const list = branches();
+    const was = Object.fromEntries(list.map((b) => [b.id, effectivePrice(b, "haircut", 115)]));
+    const { saved } = saveWith(list, 115, 20, { "loc-sala": "" }); // Sala selected → "Use the default price"
+    const now = Object.fromEntries(saved.map((b) => [b.id, effectivePrice(b, "haircut", 20)]));
+    expect(now["loc-sala"]).toBe(20);
+    for (const id of ["home", "loc-niugan", "loc-dita"]) expect(now[id]).toBe(was[id]);
+    expect(saved.find((b) => b.id === "loc-niugan")!.priceOverrides).toEqual({ haircut: 115 });
+    expect(saved.find((b) => b.id === "loc-dita")).toEqual(list[2]);
+  });
+  it("default change with nothing selected changes no location's price", () => {
+    const list = branches();
+    const { saved } = saveWith(list, 115, 20, {});
+    saved.forEach((b, i) => expect(effectivePrice(b, "haircut", 20)).toBe(effectivePrice(list[i]!, "haircut", 115)));
   });
 });

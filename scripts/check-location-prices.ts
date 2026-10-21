@@ -11,7 +11,7 @@ type Branch = { id: string; name: string; priceOverrides?: Record<string, number
 
 async function main() {
   const { putState, loadState, getPublicShop } = await import("@/lib/server/shops");
-  const { changedLocationPrices, draftFromBranches, setBranchPrice } = await import("@/lib/location-prices");
+  const { planLocationSave, draftFromBranches, setBranchPrice } = await import("@/lib/location-prices");
   const keys = ["barbers.shop-menu", "barbers.shop-locations"];
   const st0 = await loadState(UID, keys);
   const pub0 = await getPublicShop(UID);
@@ -21,8 +21,8 @@ async function main() {
   const locs = JSON.parse(st0["barbers.shop-locations"]!) as { branches: Branch[] };
   const def = (JSON.parse(st0["barbers.shop-menu"]!) as { haircut: { price: number } }).haircut.price;
   const pick = locs.branches.filter((b) => !b.priceOverrides?.haircut).slice(1, 3).map((b) => b.id);
-  const draft = { ...draftFromBranches(locs.branches, "haircut"), ...Object.fromEntries(pick.map((id) => [id, "133"])) };
-  const changes = changedLocationPrices(locs.branches, "haircut", draft);
+  const initial = draftFromBranches(locs.branches, "haircut", def);
+  const changes = planLocationSave(locs.branches, "haircut", def, def, { ...initial, ...Object.fromEntries(pick.map((id) => [id, "133"])) }, initial);
   const next = changes.reduce((l, c) => setBranchPrice(l, c.id, "haircut", c.value, def), locs.branches);
   await putState(UID, "barbers.shop-locations", JSON.stringify({ ...locs, branches: next }));
   const st1 = await loadState(UID, keys);

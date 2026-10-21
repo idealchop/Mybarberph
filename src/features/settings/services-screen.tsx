@@ -408,7 +408,7 @@ export function ChairEditor({
 function HaircutEditor({ haircut, onBack, onSave, perLoc }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void; perLoc?: boolean }) {
   const [draft, setDraft] = useState(haircut);
   const [price, setPrice] = useState(haircut.price ? String(haircut.price) : "");
-  const loc = useLocationDraft("haircut");
+  const loc = useLocationDraft("haircut", haircut.price ?? 0);
 
   return (
     <FullScreen>
@@ -419,9 +419,9 @@ function HaircutEditor({ haircut, onBack, onSave, perLoc }: { haircut: ShopHairc
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
-        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">Used at every location that has no price of its own below.</p> : null}
+        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">For new locations. Changing it doesn’t change any location below; select locations and tap “Use the default price” to apply it there.</p> : null}
       </div>
-      {perLoc ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} /> : null}
+      {perLoc ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} /> : null}
       <Button data-auth="action" className="mt-6" fullWidth onClick={async () => {
         if (!draft.name.trim()) return;
         const def = Math.max(0, Math.round(Number(price) || 0));
@@ -446,7 +446,7 @@ function TreatmentEditor({
 }) {
   const [draft, setDraft] = useState(treatment);
   const [price, setPrice] = useState(treatment.price ? String(treatment.price) : "");
-  const loc = useLocationDraft(treatment.id);
+  const loc = useLocationDraft(treatment.id, treatment.price ?? 0);
 
   return (
     <FullScreen>
@@ -457,9 +457,9 @@ function TreatmentEditor({
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
-        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">Used at every location that has no price of its own below.</p> : null}
+        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">For new locations. Changing it doesn’t change any location below; select locations and tap “Use the default price” to apply it there.</p> : null}
       </div>
-      {perLoc && !fresh ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} /> : null}
+      {perLoc && !fresh ? <LocationPriceInputs defaultPrice={Math.max(0, Math.round(Number(price) || 0))} draft={loc.draft} setDraft={loc.setDraft} branches={loc.branches} initial={loc.initial} /> : null}
       <Button data-auth="action" className="mt-6" fullWidth onClick={async () => {
         if (!draft.name.trim()) return;
         const def = Math.max(0, Math.round(Number(price) || 0));
