@@ -52,3 +52,9 @@ export function withPrice(overrides: PriceOverrides, id: string, value: string, 
   else next[id] = Number(v);
   return cleanOverrides(next);
 }
+
+/** "Same price at all locations" / "Different at 3 locations" for a service on the Services list. */
+export function priceSummary(serviceId: string, branches: { priceOverrides?: PriceOverrides }[]): string {
+  const n = branches.filter((b) => b.priceOverrides?.[serviceId] != null).length;
+  return n ? `Different at ${n} location${n === 1 ? "" : "s"}` : "Same price at all locations";
+}

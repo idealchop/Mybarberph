@@ -47,3 +47,12 @@ describe("per-row location price", () => {
     expect(withPrice({ haircut: 200 }, "haircut", "150", 150)).toEqual({});
   });
 });
+
+import { priceSummary } from "@/lib/location-prices";
+describe("Services list price line", () => {
+  it("says same or how many locations differ", () => {
+    expect(priceSummary("haircut", [{}, { priceOverrides: { "t-x": 5 } }])).toBe("Same price at all locations");
+    expect(priceSummary("haircut", [{ priceOverrides: { haircut: 120 } }, {}, { priceOverrides: { haircut: 0 } }])).toBe("Different at 2 locations");
+    expect(priceSummary("haircut", [{ priceOverrides: { haircut: 120 } }])).toBe("Different at 1 location");
+  });
+});

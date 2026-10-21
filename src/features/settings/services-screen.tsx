@@ -22,6 +22,8 @@ import {
 } from "@/lib/shop-services";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { shareLabel, sharePct } from "@/lib/income-split";
+import { priceSummary } from "@/lib/location-prices";
+import { LocationPriceList } from "./location-prices";
 import { BarberProfile } from "./barber-profile";
 import { FullScreen } from "@/components/shell/full-screen";
 
@@ -43,6 +45,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
   const { rows } = useChairRequests();
   const [editing, setEditing] = useState<Editor | null>(null);
   const [note, setNote] = useState("");
+  const multi = shops.enabled && shops.branches.length > 1;
   const holders = useMemo(() => {
     const map: Record<string, string> = {};
     for (const row of rows) {
@@ -88,6 +91,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
     return (
       <HaircutEditor
         haircut={haircut}
+        perLoc={multi}
         onBack={() => setEditing(null)}
         onSave={(next) => {
           saveHaircut(next);
@@ -103,6 +107,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       <TreatmentEditor
         treatment={editing.treatment}
         fresh={editing.fresh}
+        perLoc={multi}
         onBack={() => setEditing(null)}
         onSave={(next) => {
           saveTreatment(next);
@@ -121,7 +126,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
 
   return (
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6"}>
-      {embedded ? <h2 className="px-1 text-[18px] font-extrabold tracking-[-0.02em]">My Barbers</h2> : <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Services" subtitle={shops.enabled ? "Services apply to every location." : "Your haircut and the other services you sell."} />}
+      {embedded ? <h2 className="px-1 text-[18px] font-extrabold tracking-[-0.02em]">My Barbers</h2> : <Topbar className="px-1" leading={<PageBack fallback="/settings" />} title="Services" subtitle={shops.enabled ? "Services apply to every location. Tap one to set a price per location." : "Your haircut and the other services you sell."} />}
       {note ? <p className="mt-3 rounded-[18px] bg-grey-100 px-4 py-3 text-[13.5px] font-semibold">{note}</p> : null}
 
       {!forLoc ? null : <section className={embedded ? "mt-2" : "mt-5"}>
@@ -166,11 +171,13 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
       <section className="mt-6">
         <h2 className="px-1 text-[13px] font-bold text-muted">Haircut</h2>
         <div className="mt-2 flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
+          <button type="button" onClick={() => setEditing({ kind: "haircut" })} aria-label={`Edit ${haircut.name}`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <BarberIcon name={haircut.icon} size={44} title={haircut.name} />
           <span className="min-w-0 flex-1">
             <b className="block text-[15.5px]">{haircut.name}</b>
-            <small className="text-[12.5px] font-semibold text-muted">{haircut.price ? `₱${haircut.price}` : "Set a price"}{atLocation ? ` · ${SOURCE[haircut.source]}` : ""}</small>
+            <small className="text-[12.5px] font-semibold text-muted">{haircut.price ? `₱${haircut.price}` : "Set a price"}{atLocation ? ` · ${SOURCE[haircut.source]}` : ""}{multi ? ` · ${priceSummary("haircut", shops.branches)}` : ""}</small>
           </span>
+          </button>
           <HomeToggle serviceId="haircut" name={haircut.name} />
           {atLocation && haircut.source === "changed" ? <Button data-auth="action" size="sm" variant="secondary" onClick={resetHaircut}>Use shared</Button> : null}
           <Button size="sm" variant="secondary" onClick={() => setEditing({ kind: "haircut" })}>Edit</Button>
@@ -191,11 +198,13 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
           <ul className="mt-2 flex flex-col gap-2">
             {services.map((treatment) => (
               <li key={treatment.id} className={`flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card ${treatment.enabled ? "" : "opacity-60"}`}>
+                <button type="button" onClick={() => setEditing({ kind: "treatment", treatment, fresh: false })} aria-label={`Edit ${treatment.name}`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <BarberIcon name={treatment.icon} size={44} title={treatment.name} />
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15.5px]">{treatment.name}</b>
-                  <small className="text-[12.5px] font-semibold text-muted">{treatment.price ? `₱${treatment.price}` : "Set a price"}{atLocation ? ` · ${treatment.enabled ? SOURCE[treatment.source] : "Off here"}` : ""}</small>
+                  <small className="text-[12.5px] font-semibold text-muted">{treatment.price ? `₱${treatment.price}` : "Set a price"}{atLocation ? ` · ${treatment.enabled ? SOURCE[treatment.source] : "Off here"}` : ""}{multi ? ` · ${priceSummary(treatment.id, shops.branches)}` : ""}</small>
                 </span>
+                </button>
                 <span className="flex flex-none flex-col items-end gap-2">
                   {atLocation && treatment.source !== "local" ? (
                     <button type="button" data-auth="action" role="switch" aria-checked={treatment.enabled} aria-label={`${treatment.name} at this shop`} onClick={() => setEnabled(treatment.id, !treatment.enabled)}
@@ -391,7 +400,7 @@ export function ChairEditor({
 }
 
 
-function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void }) {
+function HaircutEditor({ haircut, onBack, onSave, perLoc }: { haircut: ShopHaircut; onBack: () => void; onSave: (next: ShopHaircut) => void; perLoc?: boolean }) {
   const [draft, setDraft] = useState(haircut);
   const [price, setPrice] = useState(haircut.price ? String(haircut.price) : "");
 
@@ -410,13 +419,15 @@ function HaircutEditor({ haircut, onBack, onSave }: { haircut: ShopHaircut; onBa
         // Duration isn't asked; the internal default keeps time slots working.
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
+      {perLoc ? <LocationPriceList serviceId="haircut" defaultPrice={haircut.price ?? 0} /> : null}
     </FullScreen>
   );
 }
 
 function TreatmentEditor({
-  treatment, fresh, onBack, onSave, onRemove,
+  treatment, fresh, onBack, onSave, onRemove, perLoc,
 }: {
+  perLoc?: boolean;
   treatment: ShopTreatment;
   fresh: boolean;
   onBack: () => void;
@@ -442,6 +453,7 @@ function TreatmentEditor({
         onSave({ ...draft, name: draft.name.trim(), durationMins: draft.durationMins || 30, price: Math.max(0, Math.round(Number(price) || 0)) });
       }}>Save</Button>
       {fresh ? null : <Button data-auth="action" className="mt-2" fullWidth variant="secondary" onClick={onRemove}>Remove service</Button>}
+      {perLoc && !fresh ? <LocationPriceList serviceId={treatment.id} defaultPrice={treatment.price ?? 0} /> : null}
     </FullScreen>
   );
 }
