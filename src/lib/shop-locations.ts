@@ -1,4 +1,5 @@
 "use client";
+import { setBranchPrice } from "@/lib/location-prices";
 import { cloudStorage } from "@/lib/cloud";
 
 import { useEffect, useState } from "react";
@@ -148,6 +149,15 @@ export function updateBranch(id: string, patch: Partial<Omit<ShopBranch, "id">>)
     ...store,
     branches: store.branches.map((b) => b.id === id ? { ...b, ...patch, id } : b),
   });
+}
+
+/**
+ * Sets one location's price for one service (Services › Price per location). Reads the latest saved list at
+ * save time and changes only that location's entry for that service; every other location keeps its value.
+ */
+export function setLocationPrice(branchId: string, serviceId: string, value: string, def: number) {
+  const store = readLocationStore();
+  writeStore({ ...store, branches: setBranchPrice(store.branches, branchId, serviceId, value, def) });
 }
 
 export function removeBranch(id: string): string {

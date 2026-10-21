@@ -1,4 +1,5 @@
 "use client";
+import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { Avatar, Badge, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { ArrowLeft, History, Pencil, Phone, User } from "lucide-react";
@@ -154,7 +155,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
 }
 
 function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
-  const { haircut, treatments } = useShopMenu(row.locationId);
+  const { haircut, treatments } = useShopMenu(row.locationId || HOME_LOCATION_ID);
   // Barber link: Amount is read-only, the menu price of the chosen service (the server enforces this too).
   const barber = useCloud().mode === "barber";
   const [name, setName] = useState(row.customerLabel);

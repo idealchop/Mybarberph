@@ -58,3 +58,8 @@ export function priceSummary(serviceId: string, branches: { priceOverrides?: Pri
   const n = branches.filter((b) => b.priceOverrides?.[serviceId] != null).length;
   return n ? `Different at ${n} location${n === 1 ? "" : "s"}` : "Same price at all locations";
 }
+
+/** One location's price for one service, on a copy of the list: no other location (or the input) changes. */
+export function setBranchPrice<T extends { id: string; priceOverrides?: PriceOverrides }>(branches: T[], branchId: string, serviceId: string, value: string, def: number): T[] {
+  return branches.map((b) => (b.id === branchId ? { ...b, priceOverrides: withPrice({ ...(b.priceOverrides ?? {}) }, serviceId, value, def) } : b));
+}

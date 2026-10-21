@@ -14,7 +14,6 @@ import { LocationPicker } from "./location-picker";
 import { Back, ServicesScreen } from "./services-screen";
 import { FullScreen } from "@/components/shell/full-screen";
 import { Pencil } from "lucide-react";
-import { ServicePrices } from "./location-prices";
 
 /** Manage Shop: one location's name, address, pin, profile and its services & chairs. */
 export function ManageShopScreen() {
@@ -104,8 +103,6 @@ function Editor({ branch }: { branch: ShopBranch }) {
           <div><dt className="text-[12px] font-semibold text-muted">Map pin</dt><dd className="font-semibold">{branch.location ? (branch.location.formattedAddress || "Pinned") : <span className="text-muted">No pin yet</span>}</dd></div>
         </dl>
       </section>
-
-      <div className="mt-6"><ServicePrices branchId={branch.id} overrides={branch.priceOverrides} /></div>
 
       {branch.id === HOME_LOCATION_ID ? null : (
         <Card className="mt-6 px-4 py-4">

@@ -412,7 +412,8 @@ function HaircutEditor({ haircut, onBack, onSave, perLoc }: { haircut: ShopHairc
       <IconPick icons={HAIRCUT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
+        <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
+        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">Used at every location without its own price. To change one location only, use Price per location below.</p> : null}
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         if (!draft.name.trim()) return;
@@ -445,7 +446,8 @@ function TreatmentEditor({
       <IconPick icons={TREATMENT_ICONS} value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
       <div className="mt-4 flex flex-col gap-3">
         <Input label="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <Input label="Price (₱)" inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
+        <Input label={perLoc ? "Default price (₱)" : "Price (₱)"} inputMode="numeric" value={price} placeholder="e.g. 250" onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} />
+        {perLoc ? <p className="-mt-1 px-1 text-[12.5px] font-semibold text-muted">Used at every location without its own price. To change one location only, use Price per location below.</p> : null}
       </div>
       <Button data-auth="action" className="mt-6" fullWidth onClick={() => {
         if (!draft.name.trim()) return;

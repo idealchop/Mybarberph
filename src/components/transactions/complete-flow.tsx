@@ -1,4 +1,5 @@
 "use client";
+import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { Input } from "@river-apps/ui";
 import { isOnlineChoice } from "@/components/qr/pay-choices";
 import { payMethodLabel } from "@/lib/pay-split";
@@ -51,7 +52,7 @@ function CompletePaymentSheet({ row, onClose, onDone }: { row: ChairRequest; onC
   const onlinePaid = Boolean(row.paid) && row.payWhere === "online";
   // Barber link: the amount is the shop's menu price; only the owner can change it (the server enforces this too).
   const barber = useCloud().mode === "barber";
-  const { haircut, treatments } = useShopMenu(row.locationId || undefined);
+  const { haircut, treatments } = useShopMenu(row.locationId || HOME_LOCATION_ID);
   const menu = [haircut, ...treatments];
   // Default amount: the booked amount, else the menu prices (this shop) of the services on the visit. Never empty.
   const names = (row.serviceName || "").split(" · ");

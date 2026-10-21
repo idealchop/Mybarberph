@@ -418,7 +418,8 @@ export async function chairLink(token: string) {
 /** Services are shop-wide: every location sells the main Services list. */
 /** Services are shop-wide; a location may set its own prices (branch.priceOverrides, centavos). */
 export function menuFor(s: ShopDoc, locationId?: string | null): ShopDoc["menu"] {
-  const b = locationId ? (s.branches ?? []).find((x) => x.id === locationId) : undefined;
+  // A visit with no location is at the main shop ("home"), which can have its own prices too.
+  const b = (s.branches ?? []).find((x) => x.id === (locationId || "home"));
   return applyOverrides(s.menu || [], b?.priceOverrides);
 }
 

@@ -3,8 +3,7 @@ import { useState } from "react";
 import { Pencil, Search } from "lucide-react";
 import { BarberIcon } from "@/components/art";
 import { Button } from "@/components/common/button";
-import { withPrice, type PriceOverrides } from "@/lib/location-prices";
-import { useShopLocations } from "@/lib/shop-locations";
+import { setLocationPrice, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 export { draftToOverrides, withPrice } from "@/lib/location-prices";
 
@@ -70,7 +69,7 @@ export function PriceEditRow({ title, sub, icon, own, def, onSave }: {
 
 /** Services › Edit: one service's price at every location (same storage as Manage shop › Service prices). */
 export function LocationPriceList({ serviceId, defaultPrice }: { serviceId: string; defaultPrice: number }) {
-  const { branches, updateBranch } = useShopLocations();
+  const { branches } = useShopLocations();
   const [q, setQ] = useState("");
   const shown = q.trim() ? branches.filter((b) => b.name.toLowerCase().includes(q.trim().toLowerCase())) : branches;
   return (
@@ -86,28 +85,9 @@ export function LocationPriceList({ serviceId, defaultPrice }: { serviceId: stri
       <ul className="mt-3 grid gap-2">
         {shown.map((b) => (
           <PriceEditRow key={b.id} title={b.name} sub={b.area || undefined} own={b.priceOverrides?.[serviceId]} def={defaultPrice}
-            onSave={(v) => updateBranch(b.id, { priceOverrides: withPrice(b.priceOverrides ?? {}, serviceId, v, defaultPrice) })} />
+            onSave={(v) => setLocationPrice(b.id, serviceId, v, defaultPrice)} />
         ))}
         {shown.length === 0 ? <li className="rounded-[14px] bg-grey-100 px-3 py-4 text-center text-[13px] font-semibold text-muted">No location matches “{q}”.</li> : null}
-      </ul>
-    </section>
-  );
-}
-
-/** "Service prices" for one location (Manage shop): each row has its own pencil; Save writes only that row. */
-export function ServicePrices({ branchId, overrides }: { branchId: string; overrides?: PriceOverrides }) {
-  const services = useDefaultServices();
-  const { updateBranch } = useShopLocations();
-  const saved = overrides ?? {};
-  return (
-    <section className="rounded-card bg-surface px-4 py-4 shadow-card" aria-label="Service prices">
-      <b className="text-[16px]">Service prices</b>
-      <p className="mt-0.5 text-[12.5px] font-semibold text-muted">Tap the pencil to set a price for this location. Leave it blank to use the default.</p>
-      <ul className="mt-3 grid gap-2">
-        {services.map((s) => (
-          <PriceEditRow key={s.id} title={s.name} sub={`Default ${pesos(s.price)}`} icon={s.icon || "clipper"} own={saved[s.id]} def={s.price}
-            onSave={(v) => updateBranch(branchId, { priceOverrides: withPrice(saved, s.id, v, s.price) })} />
-        ))}
       </ul>
     </section>
   );

@@ -23,9 +23,10 @@ export function WalkInScreen() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
-  const { haircut, treatments } = useShopMenu();
   const [picked, setPicked] = useState<string[]>([]);
   const loc = queueLocation(shops);
+  // This location's prices (not the default, and not whichever location the owner happens to be viewing).
+  const { haircut, treatments } = useShopMenu(loc);
   const { chairs } = useShopChairs({ locationId: loc });
   const { rows } = useChairRequests();
   const busyLabels = new Set(rows.filter((r) => r.status === "in_chair" && r.chairLabel && (r.locationId || HOME_LOCATION_ID) === loc).map((r) => r.chairLabel!));
