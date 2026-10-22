@@ -74,10 +74,10 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
         <ServiceHero label="Schedule a visit" selected={chosen} menu={menu} art
           onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))}
           top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line="Schedule a visit at"
-            lead={<button type="button" onClick={onBack} aria-label="Back to walk-in" className="-ml-2 inline-flex size-9 flex-none items-center justify-center rounded-full text-on-ink"><ChevronLeft size={22} strokeWidth={2.2} /></button>}
-            meta={<><StarLine rating={shop.rating} className="flex-none whitespace-nowrap" />{branchName ? <span className="truncate text-[12.5px] font-semibold text-on-ink-muted">· {branchName}</span> : null}</>} />} />
+            lead={<button type="button" onClick={onBack} aria-label="Back to walk-in" className="-ml-2 mt-1.5 inline-flex size-9 flex-none items-center justify-center rounded-full text-on-ink"><ChevronLeft size={22} strokeWidth={2.2} /></button>}
+            meta={<StarLine rating={shop.rating} className="whitespace-nowrap" />} location={branchName} />} />
 
-        <p className="mt-5 text-[13px] font-bold">Barber</p>
+        <p className="mt-6 text-[13px] font-bold">Barber</p>
         <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Barber">
           {barbers === null ? [0, 1, 2, 3].map((i) => <span key={i} className="flex w-[76px] flex-none flex-col items-center gap-1.5"><Sk className="size-14 rounded-full" /><Sk className="h-3 w-12" /></span>) : (
             [{ id: "", name: "Any barber", photoUrl: null } as Barber, ...barbers].map((b) => {

@@ -157,10 +157,10 @@ export function BookScreen() {
         <ServiceHero label="Book a haircut" selected={[haircut, ...chosen]} menu={[haircut, ...extras]} locked={[haircut.id]}
           onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art
           top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line={`${greet()}, welcome to`} onClick={() => setView("profile")} ariaLabel={`${shop.name}: shop profile and reviews`}
-            meta={<><StarLine rating={rating} className="flex-none whitespace-nowrap" />{branch ? <span className="truncate text-[12.5px] font-semibold text-on-ink-muted">· {branch.name}</span> : null}</>} />}
+            meta={<StarLine rating={rating} className="whitespace-nowrap" />} location={branch?.name} />}
           actions={<HeroIconButton label="Schedule a visit" onClick={() => { setError(""); setView("schedule"); }}><CalendarDays size={17} strokeWidth={2.1} aria-hidden /></HeroIconButton>} />
 
-        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
+        <h3 className="mt-6 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
         <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">
           {payOptions(shop).map(([v, label, ic]) => (
             <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPay(v)}
