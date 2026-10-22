@@ -1,26 +1,21 @@
 "use client";
-import { Check, ChevronLeft, Timer } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Timer } from "lucide-react";
+import { AppLoader } from "@/components/common/app-loader";
 import { useEffect, useState } from "react";
-import type { BarberPerformance } from "@/lib/barber-sales";
+import { historyRange, type BarberPerformance, type HistoryPreset as Preset } from "@/lib/barber-sales";
 import { peso } from "@/lib/format";
 import { PaySplitText } from "@/features/sales";
 
-type Range = "week" | "month" | "custom";
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 const hourLabel = (h: number) => `${((h + 11) % 12) + 1}${h < 12 ? "am" : "pm"}`;
 
-/** The barber's own My sales page (from the header icon). Week / month / custom. */
-export function BarberPerformanceView({ token, who, place, onBack, extra }: { token: string; who: string; place?: string; onBack: () => void; extra?: React.ReactNode }) {
-  const [range, setRange] = useState<Range>("week");
-  const [from, setFrom] = useState(() => ymd(Date.now() - 13 * 86_400_000));
-  const [to, setTo] = useState(() => ymd(Date.now()));
-  const [today] = useState(() => ymd(Date.now()));
+/** Loads the barber's numbers for a query; refreshes every 30s while visible. */
+function usePerformance(token: string, qs: string) {
   const [data, setData] = useState<BarberPerformance | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
     let live = true;
-    const qs = range === "custom" ? `range=custom&from=${from}&to=${to}` : `range=${range}`;
     const pull = () => void fetch(`/api/barber/${token}/performance?${qs}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Couldn’t load your sales."))))
       .then((d: BarberPerformance) => { if (live) { setData(d); setErr(""); } })
@@ -31,12 +26,22 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
     const onVis = () => { if (document.visibilityState === "visible") pull(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { live = false; window.clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
-  }, [token, range, from, to]);
+  }, [token, qs]);
+  return { data, err, setData };
+}
+
+/** The barber's own My sales page (from the header icon): today only (Manila day, resets at midnight PHT). Past days live in History. */
+export function BarberPerformanceView({ token, who, place, onBack, extra }: { token: string; who: string; place?: string; onBack: () => void; extra?: React.ReactNode }) {
+  const [history, setHistory] = useState(false);
+  // Re-key at Manila midnight so "today" rolls over while the page stays open.
+  const [dayKey, setDayKey] = useState(() => ymd(Date.now()));
+  useEffect(() => { const t = window.setInterval(() => setDayKey(ymd(Date.now())), 60_000); return () => window.clearInterval(t); }, []);
+  const { data, err } = usePerformance(token, `range=today&d=${dayKey}`);
+  if (history) return <BarberHistoryView token={token} who={who} place={place} onBack={() => setHistory(false)} />;
+  if (!data && !err) return <AppLoader label="Loading your sales" />;
   const d = data;
   const maxHour = Math.max(1, ...(d?.hours.map((h) => h.cuts) ?? [1]));
-  const maxDay = Math.max(1, ...(d?.days.map((x) => x.cuts) ?? [1]));
   const top = d?.hours.slice().sort((a, b) => b.cuts - a.cuts)[0];
-  const topDay = d?.days.slice().sort((a, b) => b.cuts - a.cuts)[0];
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
       <div className="flex items-center gap-1">
@@ -47,21 +52,15 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
         </div>
       </div>
       {extra}
-      <div role="radiogroup" aria-label="Period" className="mt-3 grid grid-cols-3 rounded-pill bg-grey-100 p-1">
-        {([["week", "This week"], ["month", "This month"], ["custom", "Custom"]] as const).map(([v, l]) => (
-          <button key={v} type="button" role="radio" aria-checked={range === v} onClick={() => setRange(v)} className={`h-9 rounded-pill text-[13px] font-bold ${range === v ? "bg-surface text-ink shadow-card" : "text-muted"}`}>{l}</button>
-        ))}
-      </div>
-      {range === "custom" ? (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="text-[11px] font-bold text-muted">From<input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-surface px-2 text-[13px] font-semibold text-ink shadow-card" /></label>
-          <label className="text-[11px] font-bold text-muted">To<input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-surface px-2 text-[13px] font-semibold text-ink shadow-card" /></label>
-        </div>
-      ) : null}
       {err && !d ? <p className="mt-4 text-[13.5px] font-semibold">{err}</p> : null}
 
       <EarningsCard d={d} />
       <SpeedCard d={d} />
+      <button type="button" onClick={() => setHistory(true)} className="mt-3 flex w-full items-center gap-3 rounded-card bg-surface px-4 py-3.5 text-left shadow-card">
+        <span aria-hidden className="inline-flex size-11 flex-none items-center justify-center rounded-[14px] bg-grey-100"><CalendarDays size={22} strokeWidth={2} /></span>
+        <span className="min-w-0 flex-1"><b className="block text-[15px]">History</b><small className="text-[12.5px] font-semibold text-muted">Past days, earnings and tips</small></span>
+        <ChevronRight size={20} className="text-muted" aria-hidden />
+      </button>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Stat wide k="Sales" v={d ? peso(d.sales) : "–"} sub={d ? `${d.cuts} cut${d.cuts === 1 ? "" : "s"}` : undefined} />
@@ -105,14 +104,6 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
               ); })}
             </div>
           </section>
-          <section className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card" aria-label="Busiest days">
-            <div className="flex items-baseline justify-between"><b className="text-[15px]">Busiest days</b>{topDay?.cuts ? <small className="text-[12px] font-semibold text-muted">Most on {topDay.day}</small> : null}</div>
-            <ul className="mt-2 grid grid-cols-1 [&>*]:min-w-0 gap-1.5">
-              {d.days.map((x) => (
-                <li key={x.day} className="flex items-center gap-2 text-[12.5px] font-semibold"><span className="w-8 text-muted">{x.day}</span><span className="h-2.5 flex-1 rounded-full bg-grey-100"><span className="block h-full rounded-full bg-ink" style={{ width: `${(x.cuts / maxDay) * 100}%` }} /></span><span className="w-20 text-right tabular-nums">{x.cuts} · {peso(x.sales)}</span></li>
-              ))}
-            </ul>
-          </section>
           <section className="mt-4" aria-label="Services">
             <h2 className="px-1 text-[13px] font-bold text-muted">By service</h2>
             <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
@@ -122,7 +113,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
             </ul>
           </section>
         </>
-      ) : d ? <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this period.</p> : null}
+      ) : d ? <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts yet today.</p> : null}
     </main>
   );
 }
@@ -184,5 +175,75 @@ function SpeedCard({ d }: { d: BarberPerformance | null }) {
       </span>
       <span className="text-right text-[12.5px] font-semibold text-muted">{d?.fastestMins != null ? <>Fastest<b className="block text-[15px] text-ink tabular-nums">{d.fastestMins < 1 ? "<1" : d.fastestMins} min</b></> : "Start to done"}{d?.timedCuts ? <small className="block">{d.timedCuts} timed</small> : null}</span>
     </section>
+  );
+}
+
+const PRESETS: [Preset, string][] = [["7", "Last 7 days"], ["30", "Last 30 days"], ["month", "This month"], ["lastMonth", "Last month"], ["custom", "Custom"]];
+const longDay = (date: string) => new Date(`${date}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric" });
+
+/** History: past days (newest first) with a date range and a total for that range. */
+export function BarberHistoryView({ token, who, place, onBack }: { token: string; who: string; place?: string; onBack: () => void }) {
+  const [preset, setPreset] = useState<Preset>("7");
+  const [custom, setCustom] = useState(() => historyRange("7"));
+  const [now] = useState(() => Date.now());
+  const today = ymd(now);
+  const r = historyRange(preset, now, custom);
+  const { data: d, err } = usePerformance(token, `range=custom&from=${r.from}&to=${r.to}`);
+  const pct = d?.sharePct ?? null;
+  const loading = !d || d.from !== Date.parse(`${r.from}T00:00:00+08:00`);
+  const earn = d ? (pct == null ? d.sales : (d.barberShare ?? 0)) + (d.tips ?? 0) : 0;
+  return (
+    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
+      <div className="flex items-center gap-1">
+        <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink"><ChevronLeft size={26} strokeWidth={1.75} /></button>
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-extrabold leading-[1.15] tracking-[-0.03em]">History</h1>
+          <p className="truncate text-[13px] font-semibold text-muted">{[who, place].filter(Boolean).join(" · ")}</p>
+        </div>
+      </div>
+      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Date range">
+        {PRESETS.map(([v, l]) => (
+          <button key={v} type="button" role="radio" aria-checked={preset === v} onClick={() => setPreset(v)} className={`h-9 flex-none rounded-pill px-3.5 text-[13px] font-bold ${preset === v ? "bg-ink text-on-ink" : "bg-surface text-ink shadow-card"}`}>{l}</button>
+        ))}
+      </div>
+      {preset === "custom" ? (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="text-[12px] font-semibold text-muted">From<input type="date" value={custom.from} max={custom.to} onChange={(e) => e.target.value && setCustom({ ...custom, from: e.target.value })} className="mt-1 h-10 w-full rounded-[12px] bg-surface px-2 text-[14px] font-semibold text-ink shadow-card" /></label>
+          <label className="text-[12px] font-semibold text-muted">To<input type="date" value={custom.to} min={custom.from} max={today} onChange={(e) => e.target.value && setCustom({ ...custom, to: e.target.value })} className="mt-1 h-10 w-full rounded-[12px] bg-surface px-2 text-[14px] font-semibold text-ink shadow-card" /></label>
+        </div>
+      ) : null}
+      {err && !d ? <p className="mt-4 text-[13.5px] font-semibold">{err}</p> : null}
+      {!d && !err ? <AppLoader label="Loading history" /> : d ? (
+        <div className={loading ? "opacity-50 transition-opacity" : "transition-opacity"} aria-busy={loading}>
+          <section aria-label="Total for this range" className="mt-4 rounded-banner bg-ink px-4 py-4 text-on-ink">
+            <p className="text-[12.5px] font-semibold text-on-ink-muted">{longDay(r.from)} – {longDay(r.to)}</p>
+            <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{pct == null ? "Your sales + tips" : "Your earnings"}</p>
+            <b className="block text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(earn)}</b>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-[12.5px]">
+              <span className="rounded-[14px] bg-white/10 px-2.5 py-2"><span className="block font-semibold text-on-ink-muted">Sales</span><b className="text-[15px] tabular-nums">{peso(d.sales)}</b></span>
+              <span className="rounded-[14px] bg-white/10 px-2.5 py-2"><span className="block font-semibold text-on-ink-muted">{pct == null ? "Tips" : "Tips · yours"}</span><b className="text-[15px] tabular-nums">{peso(d.tips ?? 0)}</b></span>
+              <span className="rounded-[14px] bg-white/10 px-2.5 py-2"><span className="block font-semibold text-on-ink-muted">Cuts</span><b className="text-[15px] tabular-nums">{d.cuts}</b></span>
+            </div>
+            {pct != null ? <p className="mt-2 text-[12px] font-semibold text-on-ink-muted">You {pct}% {peso(d.barberShare ?? 0)} · Shop {100 - pct}% {peso(d.shopShare ?? 0)}</p> : null}
+          </section>
+          {d.byDate?.length ? (
+            <ul className="mt-4 overflow-hidden rounded-card bg-surface shadow-card" aria-label="Days">
+              {d.byDate.map((x) => (
+                <li key={x.date} className="border-b border-line px-4 py-3 last:border-b-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <b className="text-[14.5px]">{x.date === today ? `Today, ${longDay(x.date).split(", ")[1]}` : longDay(x.date)}</b>
+                    <b className="text-[15px] tabular-nums">{peso(x.earnings)}</b>
+                  </div>
+                  <div className="mt-0.5 flex justify-between gap-3 text-[12.5px] font-semibold text-muted">
+                    <span>{x.cuts} cut{x.cuts === 1 ? "" : "s"} · Sales {peso(x.sales)}{x.tips ? ` · Tips ${peso(x.tips)}` : ""}</span>
+                    <span>{pct == null ? "Sales + tips" : "Your earnings"}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>}
+        </div>
+      ) : null}
+    </main>
   );
 }

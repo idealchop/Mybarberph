@@ -1,14 +1,20 @@
 /** Per-barber sales for salary and remittance. Manila time (UTC+8, no DST); weeks run Monday to Sunday. */
 export interface BarberSalesRow { barberId: string; barberName: string; locationId?: string; locationName?: string; cuts: number; gross: number; cash: number; gcash: number; online: number; unpaid: number; remit: number }
-export interface BarberSales { range: "week" | "month" | "custom"; from: number; to: number; label: string; barbers: BarberSalesRow[]; total: BarberSalesRow }
+export interface BarberSales { range: "today" | "week" | "month" | "custom"; from: number; to: number; label: string; barbers: BarberSalesRow[]; total: BarberSalesRow }
 
 const DAY = 86_400_000;
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const at = (d: string) => Date.parse(`${d}T00:00:00+08:00`);
 const fmt = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
+/** The Manila calendar day (YYYY-MM-DD) a moment falls on; days reset at midnight PHT. */
+export const manilaYmd = ymd;
+/** Start of the Manila day for YYYY-MM-DD. */
+export const manilaDayStart = at;
+
 export function barberRange(range?: string | null, from?: string | null, to?: string | null, now = Date.now()) {
   const today = at(ymd(now));
+  if (range === "today") return { range: "today" as const, from: today, to: today + DAY, label: `Today, ${fmt(today)}` };
   if (range === "custom" && from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
     const f = at(from);
     const t = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? at(to) + DAY : today + DAY;
@@ -38,4 +44,23 @@ export interface BarberPerformance {
   /** null = no split set. */ sharePct?: number | null; barberShare?: number; shopShare?: number; tips?: number; tipCount?: number;
   /** Speed: average and fastest minutes from start to done, over cuts with a timer. */
   avgMins?: number | null; fastestMins?: number | null; timedCuts?: number;
+  /** Per Manila day, newest first (days with finished cuts only). earnings = your share (or sales when no split) + tips. */
+  byDate?: { date: string; cuts: number; sales: number; tips: number; earnings: number }[];
 }
+
+export type HistoryPreset = "7" | "30" | "month" | "lastMonth" | "custom";
+/** From/to (Manila YYYY-MM-DD, inclusive) for a History preset. */
+export function historyRange(p: HistoryPreset, now = Date.now(), custom?: { from: string; to: string }) {
+  const today = ymd(now);
+  const back = (n: number) => ymd(Date.parse(`${today}T00:00:00+08:00`) - n * 86_400_000);
+  if (p === "7") return { from: back(6), to: today };
+  if (p === "30") return { from: back(29), to: today };
+  if (p === "month") return { from: `${today.slice(0, 7)}-01`, to: today };
+  if (p === "lastMonth") {
+    const first = Date.parse(`${today.slice(0, 7)}-01T00:00:00+08:00`);
+    const lastPrev = ymd(first - 86_400_000);
+    return { from: `${lastPrev.slice(0, 7)}-01`, to: lastPrev };
+  }
+  return custom ?? { from: back(6), to: today };
+}
+

@@ -1,6 +1,6 @@
 import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
-import { barberRange, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
+import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
@@ -72,6 +72,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     walkIns: 0, onlineBookings: 0, claimedCash: 0, unclaimedCash: 0, hours: [], days: [], services: [],
     claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
+  const byDate = new Map<string, { cuts: number; sales: number; tips: number }>();
   const hours = new Map<number, number>(); const days = new Map<string, { cuts: number; sales: number }>(); const svc = new Map<string, { cuts: number; sales: number }>();
   let tips = 0, tipCount = 0, mins = 0, timed = 0, fastest = Infinity;
   const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -83,6 +84,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     const p = b.price || 0;
     out.cuts += 1; out.sales += p;
     const tp = tipOf(b); if (tp) { tips += tp; tipCount += 1; }
+    const dk = manilaYmd(b.completedAt); const dv = byDate.get(dk) ?? { cuts: 0, sales: 0, tips: 0 }; dv.cuts += 1; dv.sales += p; dv.tips += tp; byDate.set(dk, dv);
     const cm = cutMinutes(b); if (cm != null) { mins += cm; timed += 1; fastest = Math.min(fastest, cm); }
     if (!b.paid) out.unpaid += p;
     else {
@@ -100,6 +102,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   out.avg = out.cuts ? Math.round(out.sales / out.cuts) : 0;
   out.sharePct = sharePct(me);
   const split = splitIncome(out.sales, out.sharePct);
+  out.byDate = [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([date, v]) => ({ date, ...v, earnings: (out.sharePct == null ? v.sales : splitIncome(v.sales, out.sharePct).barber) + v.tips }));
   out.barberShare = split.barber; out.shopShare = split.shop; out.tips = tips; out.tipCount = tipCount;
   out.timedCuts = timed; out.avgMins = timed ? Math.round(mins / timed) : null; out.fastestMins = timed ? Math.round(fastest) : null;
   out.completionPct = out.cuts + out.declined ? Math.round((out.cuts / (out.cuts + out.declined)) * 100) : null;
