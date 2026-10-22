@@ -2,7 +2,7 @@
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { AppLoader } from "@/components/common/app-loader";
 import { EmptyBookings } from "@/components/common/empty-bookings";
-import { ChevronLeft, ChevronRight, Home as HomeIcon, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Home as HomeIcon, MapPin } from "lucide-react";
 import { mapsLink } from "@/lib/home-service-model";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/complete-flow";
@@ -207,15 +207,17 @@ const timeOf = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", {
 /** One finished visit: completion time, customer/ticket, service · barber, amount. Tap for details. */
 export function DoneRow({ row, place }: { row: ChairRequest; place?: string }) {
   const [open, setOpen] = useState(false);
-  const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || row.ref;
+  const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || "Walk-in";
   const mins = visitMinutes(row);
-  const [t, ampm] = timeOf(row.completedAt ?? row.updatedAt).split(" ");
+  const when = [timeOf(row.completedAt ?? row.updatedAt), mins != null ? `${mins} min` : ""].filter(Boolean).join(" · ");
   return (
     <li>
       <button type="button" onClick={() => setOpen(true)} aria-label={`Open ${row.ref}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-        <span className="flex w-[52px] flex-none flex-col items-start leading-tight"><b className="text-[15px] tabular-nums">{t}</b><small className="text-[11.5px] font-semibold text-muted">{ampm}</small>{mins != null ? <small className="mt-0.5 text-[11.5px] font-bold text-ink/70">{mins} min</small> : null}</span>
         <span className="min-w-0 flex-1 leading-[1.3]">
-          <b className="block truncate text-[14.5px]">{who}{who !== row.ref ? <span className="ml-1.5 text-[12px] font-semibold text-muted">{row.ref}</span> : null}</b>
+          <span className="flex min-w-0 items-center gap-2">
+            <b className="min-w-0 truncate text-[14.5px]">{who}</b>
+            <span className="inline-flex flex-none items-center gap-1 text-[12px] font-semibold text-muted tabular-nums"><Clock size={12} strokeWidth={2.2} aria-hidden />{when}</span>
+          </span>
           <span className="block truncate text-[12.5px] font-semibold text-muted">{[row.serviceName, row.barberName, place].filter(Boolean).join(" · ")}</span>
         </span>
         <span className="flex-none text-right leading-tight">
