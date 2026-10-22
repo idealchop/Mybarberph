@@ -33,22 +33,24 @@ export function ServiceHero({ kicker, title = "Book a haircut", selected, menu, 
             </div>
           ) : null}
         </div>
-        <ul className="relative z-10 mt-3 flex flex-col gap-1.5 border-t border-white/15 pt-3" aria-label="Selected services">
-          {selected.length ? selected.map((s) => (
-            <li key={s.id} className="flex items-center gap-2 text-[15px]">
-              <b className="min-w-0 flex-1 truncate">{s.name}</b>
-              <span className="font-bold tabular-nums">{s.price ? peso(s.price) : ""}</span>
-              {locked.includes(s.id) ? null : (
-                <button type="button" onClick={() => onRemove(s.id)} aria-label={`Remove ${s.name}`} className="inline-flex size-7 flex-none items-center justify-center rounded-full bg-white/15"><X size={14} strokeWidth={2.6} /></button>
-              )}
-            </li>
-          )) : <li className="text-[13.5px] font-semibold text-on-ink-muted">Pick a service</li>}
-        </ul>
-        {others.length ? (
-          <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="relative z-10 mt-3 inline-flex h-9 items-center gap-1 rounded-pill bg-white px-3.5 text-[13px] font-bold text-ink">
-            <Plus size={14} strokeWidth={2.4} /> Add more
-          </button>
-        ) : null}
+        <div className="relative z-10 mt-3 flex items-center gap-3 border-t border-white/15 pt-3">
+          <ul className="flex min-w-0 flex-1 flex-col gap-1.5" aria-label="Selected services">
+            {selected.length ? selected.map((s) => (
+              <li key={s.id} className="flex min-w-0 items-center gap-2 text-[15px]">
+                <b className="min-w-0 truncate">{s.name}</b>
+                <span className="flex-none font-bold tabular-nums text-on-ink-muted">{s.price ? peso(s.price) : ""}</span>
+                {locked.includes(s.id) ? null : (
+                  <button type="button" onClick={() => onRemove(s.id)} aria-label={`Remove ${s.name}`} className="inline-flex size-6 flex-none items-center justify-center rounded-full bg-white/15"><X size={13} strokeWidth={2.6} /></button>
+                )}
+              </li>
+            )) : <li className="text-[13.5px] font-semibold text-on-ink-muted">Pick a service</li>}
+          </ul>
+          {others.length ? (
+            <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-9 flex-none items-center gap-1 rounded-pill bg-white px-3.5 text-[13px] font-bold text-ink">
+              <Plus size={14} strokeWidth={2.4} /> Add more
+            </button>
+          ) : null}
+        </div>
       </section>
       {more && others.length ? (
         <ul className="mt-2 flex flex-col gap-2" aria-label="More services">
