@@ -2,7 +2,7 @@
 import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
-import { StatCard, cn } from "@river-apps/ui";
+import { cn } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useEffect, useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/page-back";
@@ -19,7 +19,7 @@ import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
 import { sharePct, tipOf } from "@/lib/income-split";
 import { OWNER_BARBER_ID } from "@/lib/owner-cut";
-import { BarberRanking, ClaimHistory, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
+import { BarberRanking, ClaimHistory, CollectionCards, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { BarberLeaderboard } from "./barber-leaderboard";
@@ -114,10 +114,8 @@ export function SalesDataScreen() {
 
       {view === "performance" ? (
         <>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<><PaySplitText split={report.collectedSplit} layout="lines" />{report.collectedShares && (report.collectedShares.shop || report.collectedShares.barber) ? <span className="mt-1 block border-t border-line pt-1 text-[12px] font-semibold text-muted">Shop share <b className="text-ink">{peso(report.collectedShares.shop)}</b></span> : null}</>} />
-            <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
-          </div>
+          <CollectionCards className="mt-4" collected={report.collected} split={report.collectedSplit} unpaid={report.unpaid}
+            shopShare={report.collectedShares && (report.collectedShares.shop || report.collectedShares.barber) ? report.collectedShares.shop + report.collectedShares.none : null} />
           {report.tips ? <p className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3 text-[13.5px] font-semibold shadow-card"><span>Tips for barbers <small className="block text-[12px] text-muted">Not part of sales · 100% the barbers’</small></span><b className="text-[17px] tabular-nums">{peso(report.tips)}</b></p> : null}
           <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}

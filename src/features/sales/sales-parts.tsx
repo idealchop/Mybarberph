@@ -76,7 +76,51 @@ function Mini({ k, v }: { k: string; v: string }) {
 /** Barbers tab: ranked by sales, badge 1/2/3…, location under the name. Tap for the barber's page. */
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
-/** Total cash barbers hold that the owner hasn't marked received. Claim: one barber → claim now; several → sheet with a Claim per barber. */
+const initial = (n: string) => (n.trim()[0] ?? "?").toUpperCase();
+function Initial({ name }: { name: string }) {
+  return <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold text-ink">{initial(name)}</span>;
+}
+function Chip({ label, value }: { label: string; value: string }) {
+  return <span className="inline-flex items-baseline gap-1 rounded-pill bg-grey-100 px-2.5 py-1 text-[12px] font-semibold text-muted">{label}<b className="font-bold tabular-nums text-ink">{value}</b></span>;
+}
+/** "of ₱2,750 total" under an owner-share amount (only when a barber split applies). */
+function OfTotal({ share, total }: { share: number; total: number }) {
+  return share !== total ? <small className="block text-[11.5px] font-semibold text-muted">of {peso(total)} total</small> : null;
+}
+
+function ClaimBtn({ busy, onClick }: { busy?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" data-auth="action" disabled={busy} onClick={onClick}
+      className="inline-flex h-10 flex-none items-center justify-center rounded-pill bg-ink px-5 text-[13.5px] font-bold text-on-ink disabled:opacity-50">{busy ? <span className="inline-flex items-center gap-1.5"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
+  );
+}
+
+/** Collected + Uncollected, balanced: same height, value on top, detail below. */
+export function CollectionCards({ collected, split, shopShare, unpaid, className }: { collected: number; split: PaySplit; shopShare?: number | null; unpaid: number; className?: string }) {
+  const parts = splitParts(split);
+  return (
+    <div className={cn("grid grid-cols-2 gap-3", className)}>
+      <section aria-label="Collected" className="flex flex-col rounded-card bg-surface px-4 py-3.5 shadow-card">
+        <span className="text-[12.5px] font-semibold text-muted">Collected</span>
+        <b className="mt-0.5 text-[24px] font-extrabold leading-tight tracking-[-0.03em] tabular-nums">{peso(collected)}</b>
+        <span className="mt-2 flex flex-col gap-0.5 text-[12.5px] font-semibold text-muted">
+          {parts.length ? parts.map((p) => <span key={p.key} className="flex justify-between gap-2"><span>{p.label}</span><b className="tabular-nums text-ink">{peso(p.value)}</b></span>) : <span>No payments yet</span>}
+        </span>
+        {shopShare != null ? <span className="mt-auto flex justify-between gap-2 border-t border-line pt-2 text-[12.5px] font-semibold text-muted"><span>Your share</span><b className="tabular-nums text-ink">{peso(shopShare)}</b></span> : null}
+      </section>
+      <section aria-label="Uncollected" className="flex flex-col rounded-card bg-surface px-4 py-3.5 shadow-card">
+        <span className="text-[12.5px] font-semibold text-muted">Uncollected</span>
+        <b className={cn("mt-0.5 text-[24px] font-extrabold leading-tight tracking-[-0.03em] tabular-nums", !unpaid && "text-muted")}>{peso(unpaid)}</b>
+        <span className="mt-auto flex items-center gap-2 pt-3">
+          <span aria-hidden className={cn("inline-flex size-7 items-center justify-center rounded-full", unpaid ? "bg-[#FFF4D6] text-[#8A5A00]" : "bg-[#E7F6EC] text-[#0B7A3E]")}>{unpaid ? "!" : <Check size={14} strokeWidth={3} />}</span>
+          <span className="text-[12.5px] font-semibold text-muted">{unpaid ? "Still unpaid" : "All paid"}</span>
+        </span>
+      </section>
+    </div>
+  );
+}
+
+/** Unclaimed remit: hero = your (owner) share of barbers' cash, Claim beside it; total + barbers' part as chips. */
 export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: { remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
   const [open, setOpen] = useState(false);
   const rows = remit?.unclaimed ?? [];
@@ -84,38 +128,43 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
   const busy = (u: { barberId: string; locationId: string }) => claiming === `${u.barberId}@${u.locationId}`;
   const own = (u: { amount: number; ownerShare?: number }) => u.ownerShare ?? u.amount;
   const ownerTotal = remit ? remit.ownerTotal ?? remit.total : 0;
-  const line = remit && rows.length && ownerTotal !== remit.total ? `Total sales ${peso(remit.total)} · Barber ${peso(remit.total - ownerTotal)}` : null;
+  const cuts = rows.reduce((s, u) => s + u.count, 0);
   return (
     <>
-      <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
-        <span className="min-w-0"><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (rows.length ? `${rows.reduce((s, u) => s + u.count, 0)} cash cuts · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small>{line ? <small className="block text-[12px] font-semibold text-muted">{line}</small> : null}</span>
-        <span className="flex flex-none items-center gap-2.5">
-          <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(ownerTotal) : "–"}</b>
-          {onClaim && rows.length ? (
-            <button type="button" data-auth="action" disabled={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))}
-              className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{one && busy(one) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
-          ) : null}
-        </span>
-      </div>
+      <section aria-label="Unclaimed remit" className={cn("rounded-card bg-surface px-4 py-4 shadow-card", className)}>
+        <div className="flex items-start justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-[13px] font-bold">Unclaimed remit</span>
+            <span className="block text-[12px] font-semibold text-muted">{remit ? (rows.length ? `${cuts} cash cut${cuts === 1 ? "" : "s"} · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</span>
+          </span>
+          {onClaim && rows.length ? <ClaimBtn busy={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))} /> : null}
+        </div>
+        <span className="mt-3 block text-[12.5px] font-semibold text-muted">Your share</span>
+        <b className={cn("block text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums", remit && !ownerTotal && "text-muted")}>{remit ? peso(ownerTotal) : "–"}</b>
+        {remit && rows.length ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Chip label="Total sales" value={peso(remit.total)} />
+            {remit.total !== ownerTotal ? <Chip label="Barbers" value={peso(remit.total - ownerTotal)} /> : null}
+          </div>
+        ) : null}
+      </section>
       {open && onClaim ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setOpen(false)}>
           <div role="dialog" aria-label="Claim remit" className="w-full max-w-[480px] rounded-t-[24px] bg-surface px-4 pb-6 pt-4 shadow-card" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-grey-200" />
-            <div className="flex items-center justify-between"><b className="text-[17px]">Claim remit</b><button type="button" onClick={() => setOpen(false)} className="text-[13px] font-bold text-muted">Done</button></div>
+            <div className="flex items-center justify-between"><b className="text-[18px]">Claim remit</b><button type="button" onClick={() => setOpen(false)} className="text-[13.5px] font-bold text-muted">Done</button></div>
+            <p className="mt-0.5 text-[12.5px] font-semibold text-muted">You claim your share of each barber’s cash.</p>
             {rows.length ? (
-              <ul className="mt-3 grid grid-cols-1 [&>*]:min-w-0 gap-2">
+              <ul className="mt-3 divide-y divide-line overflow-hidden rounded-[18px] border border-line">
                 {rows.map((u) => (
-                  <li key={`${u.barberId}@${u.locationId}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-grey-100 px-3.5 py-3">
-                    <span className="min-w-0">
+                  <li key={`${u.barberId}@${u.locationId}`} className="flex items-center gap-3 px-3.5 py-3">
+                    <Initial name={u.barberName} />
+                    <span className="min-w-0 flex-1">
                       <b className="block truncate text-[15px]">{u.barberName}</b>
                       <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
-                      {own(u) !== u.amount ? <small className="block truncate text-[12px] font-semibold text-ink-2">Total {peso(u.amount)} · Barber {peso(u.amount - own(u))}</small> : null}
                     </span>
-                    <span className="flex flex-none items-center gap-2.5">
-                      <b className="text-[15px] tabular-nums">{peso(own(u))}</b>
-                      <button type="button" data-auth="action" disabled={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)}
-                        className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy(u) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
-                    </span>
+                    <span className="flex-none text-right"><b className="block text-[16px] tabular-nums">{peso(own(u))}</b><OfTotal share={own(u)} total={u.amount} /></span>
+                    <ClaimBtn busy={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)} />
                   </li>
                 ))}
               </ul>
@@ -127,27 +176,30 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
   );
 }
 
-/** Claimed remit history: date, barber, amount. Claimed cash stays counted in Sales and Collected. */
+/** Claimed remit history: who, where, when; right = your share claimed, "of ₱X total". */
 export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5 }: { remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
   const [all, setAll] = useState(false);
   const rows = (remit?.claims ?? []).filter((c) => (!barberId || c.barberId === barberId) && (!locationId || c.locationId === locationId));
   if (!rows.length) return null;
   const shown = all ? rows : rows.slice(0, max);
   return (
-    <section className={cn("mt-4", className)} aria-label="Claimed remit">
-      <h2 className="px-1 text-[13px] font-bold text-muted">Claimed</h2>
-      <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
-        {shown.map((c) => (
-          <li key={c.id} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
-            <span className="min-w-0 flex-1">
-              <b className="block truncate text-[14px]">{barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName}</b>
-              <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" /><span className="min-w-0 truncate">Claimed by owner · {day(c.claimedAt)}</span></small>
-              {!barberId && locName?.(c.locationId) ? <small className="block truncate text-[12px] font-semibold text-muted">{locName(c.locationId)}</small> : null}
-              {(c.ownerShare ?? c.amount) !== c.amount ? <small className="block truncate text-[12px] font-semibold text-ink-2">Total {peso(c.amount)} · Barber {peso(c.amount - (c.ownerShare ?? c.amount))}</small> : null}
-            </span>
-            <b className="flex-none text-[14.5px] tabular-nums">{peso(c.ownerShare ?? c.amount)}</b>
-          </li>
-        ))}
+    <section className={cn("mt-5", className)} aria-label="Claimed remit">
+      <h2 className="px-1 text-[15px] font-bold">Claimed</h2>
+      <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
+        {shown.map((c) => {
+          const share = c.ownerShare ?? c.amount;
+          const who = barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName;
+          return (
+            <li key={c.id} className="flex items-center gap-3 px-4 py-3">
+              <Initial name={barberId ? "₱" : c.barberName} />
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[14.5px]">{who}</b>
+                <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none text-[#0B7A3E]" /><span className="min-w-0 truncate">{[!barberId ? locName?.(c.locationId) : "", day(c.claimedAt)].filter(Boolean).join(" · ")}</span></small>
+              </span>
+              <span className="flex-none text-right"><b className="block text-[15.5px] tabular-nums">{peso(share)}</b><OfTotal share={share} total={c.amount} /></span>
+            </li>
+          );
+        })}
       </ul>
       {rows.length > max ? <button type="button" onClick={() => setAll(!all)} className="mt-1.5 w-full py-1.5 text-center text-[12.5px] font-bold text-muted">{all ? "Show less" : `Show all ${rows.length}`}</button> : null}
     </section>
