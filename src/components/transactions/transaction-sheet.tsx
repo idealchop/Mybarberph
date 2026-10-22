@@ -2,13 +2,13 @@
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { Avatar, Badge, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { ArrowLeft, History, Pencil, Phone, User } from "lucide-react";
+import { ArrowLeft, History, Pencil, Phone, Trash2, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { payMethodLabel } from "@/lib/pay-split";
 import { peso } from "@/lib/format";
 import { useShopMenu } from "@/lib/shop-services";
-import { useCloud } from "@/lib/cloud";
+import { removeBooking, useCloud } from "@/lib/cloud";
 import { lockedAmount } from "@/lib/menu-amount";
 
 const when = (ms?: number) => ms ? new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
@@ -27,6 +27,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
   const { rows } = useChairRequests();
   const row = rows.find((r) => r.id === initial.id) ?? initial;
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", k);
@@ -146,7 +147,21 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
             <p className="mt-4 px-1 text-[12.5px] font-semibold text-muted">Ticket {row.id}</p>
             <EditLog row={row} />
             <Button data-auth="action" className="mt-3" fullWidth variant="secondary" leadingIcon={<Pencil size={16} strokeWidth={2} />} onClick={() => setEditing(true)}>Edit information</Button>
-            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">The amount follows the shop menu. Ask the owner to change it.</p> : null}
+            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">The amount follows the shop menu. Ask the owner to change it.</p> : (
+              <Button data-auth="action" className="mt-2 !text-[#DC2626]" fullWidth variant="ghost" leadingIcon={<Trash2 size={16} strokeWidth={2} />} onClick={() => setConfirmDelete(true)}>Delete walk-in</Button>
+            )}
+            {!barber && confirmDelete ? (
+              <div role="dialog" aria-modal="true" aria-label="Delete walk-in" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+                <Card className="w-full max-w-[400px] px-5 py-5">
+                  <b className="text-[17px]">Delete {row.ref}?</b>
+                  <p className="mt-1.5 text-[14px] text-muted">{[row.serviceName, peso(row.price || 0), row.barberName].filter(Boolean).join(" · ")}. It will be removed from sales and collections. This can&apos;t be undone; the delete is saved in the shop activity log.</p>
+                  <div className="mt-4 flex gap-2">
+                    <Button fullWidth variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                    <Button fullWidth className="!bg-[#DC2626]" onClick={() => { removeBooking(row.id); onClose(); }}>Delete</Button>
+                  </div>
+                </Card>
+              </div>
+            ) : null}
           </>
         )}
       </div>

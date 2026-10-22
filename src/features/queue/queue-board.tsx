@@ -9,7 +9,7 @@ import { completeCut } from "@/components/transactions/complete-flow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { Plus } from "lucide-react";
-import { EmptyState, SearchInput, StatCard } from "@river-apps/ui";
+import { EmptyState, SearchInput } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -19,14 +19,12 @@ import { peso } from "@/lib/format";
 import { ALL_LOCATIONS, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import {
-  completionLabel, markInChair, requestLocation, setRequestStatus, statusLabel, todayFigures, useQueueRequests,
+  completionLabel, markInChair, setRequestStatus, statusLabel, useQueueRequests,
   type ChairRequest,
   onlineOpenToday,
 } from "@/lib/chair-bookings";
 import { CountBadge } from "@/components/common/count-badge";
-import { RangeChips, useSalesRows } from "@/features/sales";
-import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
-import { doneInRange, doneLabel } from "@/lib/done-range";
+import { doneInRange } from "@/lib/done-range";
 
 type Channel = "walk-ins" | "online";
 
@@ -124,10 +122,6 @@ export function QueueBoard() {
   const { rows: loaded, ready, locationId: queueLoc, all: allLocs } = useQueueRequests();
   const placeOf = (r: ChairRequest) => (allLocs ? shops.branches.find((b) => b.id === (r.locationId || HOME_LOCATION_ID))?.name ?? "" : "");
   const rows = loaded.filter((r) => r.status !== "declined");
-  const figures = todayFigures(loaded);
-  // Done list: today (Manila) by default from the live queue; earlier days only when a date/range is picked.
-  const [doneRange, setDoneRange] = useState<SalesRange>("today");
-  const past = useSalesRows(rangeFetchDays(doneRange), true, doneRange !== "today");
 
   const walkIns = useMemo(() => rows.filter((r) => r.channel === "walk-in"), [rows]);
   const online = useMemo(() => rows.filter((r) => r.channel === "online"), [rows]);
@@ -143,10 +137,8 @@ export function QueueBoard() {
 
   const list = channel === "walk-ins" ? walkInList : onlineList;
   const open = list.filter((r) => r.status === "requested" || r.status === "accepted" || r.status === "in_chair");
-  const live = new Set(loaded.map((r) => r.id));
-  const pastRows = doneRange === "today" ? [] : (past ?? []).filter((r) => !live.has(r.id) && (allLocs || requestLocation(r) === queueLoc));
-  const done = doneInRange([...list, ...pastRows.filter((r) => r.channel === (channel === "walk-ins" ? "walk-in" : "online") && matches(r, search))], doneRange);
-  const anyDone = list.some((r) => r.status === "done");
+  // Today's finished visits (Manila day), newest first.
+  const done = doneInRange(list, "today").slice().sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt));
 
   if (!ready) return <AppLoader />;
   return (
@@ -186,13 +178,6 @@ export function QueueBoard() {
         </p>
         {channel === "walk-ins" ? <QueueWalkInButton locationId={queueLoc} /> : null}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard className="pb-3" label="Sales" value={peso(figures.sales)} caption={`${figures.cuts} cuts`} />
-        <StatCard className="pb-3" label="Collection" value={peso(figures.extra.filter((r) => r.paid).reduce((s, r) => s + (r.price || 0), 0))} caption="Paid today" />
-        <StatCard className="pb-3" label="Waiting" value={String(toAcceptCount)} />
-        <StatCard className="pb-3" label="Done" value={String(figures.cuts)} />
-      </div>
-
       <div className="mt-4 flex items-center gap-2">
         <SearchInput
           className="min-w-0 flex-1"
@@ -213,25 +198,41 @@ export function QueueBoard() {
       ) : null}
 
       <Section title="Now" rows={open} onFull={(message) => setFull(message)} placeOf={placeOf} />
-      {anyDone || doneRange !== "today" ? (
+      {done.length ? (
         <div className="mt-5">
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-1">
-            <p className="text-[12.5px] font-extrabold text-muted">{doneLabel(doneRange)}</p>
-            <RangeChips value={doneRange} onChange={setDoneRange} allowCustom />
-          </div>
-          {done.length ? (
-            <ul className="mt-3 flex flex-col gap-3" aria-label={doneLabel(doneRange)}>
-              {done.map((row) => <Row key={row.id} row={row} onFull={(message) => setFull(message)} place={placeOf(row)} />)}
-            </ul>
-          ) : (
-            <p className="mt-3 rounded-card bg-surface px-4 py-5 text-center text-[13.5px] font-semibold text-muted shadow-card">
-              {doneRange !== "today" && !past ? "Loading…" : doneRange === "today" ? "No finished visits yet today." : "No finished visits for this date."}
-            </p>
-          )}
+          <p className="px-1 text-[13px] font-bold text-muted">Completed today · {done.length}</p>
+          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card" aria-label="Completed today">
+            {done.map((row) => <DoneRow key={row.id} row={row} place={placeOf(row)} />)}
+          </ul>
         </div>
       ) : null}
-
     </div>
+  );
+}
+
+const timeOf = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
+
+/** One finished visit: completion time, customer/ticket, service · barber, amount. Tap for details. */
+export function DoneRow({ row, place }: { row: ChairRequest; place?: string }) {
+  const [open, setOpen] = useState(false);
+  const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || row.ref;
+  const [t, ampm] = timeOf(row.completedAt ?? row.updatedAt).split(" ");
+  return (
+    <li>
+      <button type="button" onClick={() => setOpen(true)} aria-label={`Open ${row.ref}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="flex w-[52px] flex-none flex-col items-start leading-tight"><b className="text-[15px] tabular-nums">{t}</b><small className="text-[11.5px] font-semibold text-muted">{ampm}</small></span>
+        <span className="min-w-0 flex-1 leading-[1.3]">
+          <b className="block truncate text-[14.5px]">{who}{who !== row.ref ? <span className="ml-1.5 text-[12px] font-semibold text-muted">{row.ref}</span> : null}</b>
+          <span className="block truncate text-[12.5px] font-semibold text-muted">{[row.serviceName, row.barberName, place].filter(Boolean).join(" · ")}</span>
+        </span>
+        <span className="flex-none text-right leading-tight">
+          <b className="block text-[15px] tabular-nums">{peso(row.price || 0)}</b>
+          <small className={`text-[11.5px] font-semibold ${row.paid ? "text-muted" : "text-[#B45309]"}`}>{row.paid ? payLabel(row).replace("Paid · ", "") : "Unpaid"}</small>
+        </span>
+        <ChevronRight size={16} strokeWidth={2} className="flex-none text-subtle" aria-hidden />
+      </button>
+      {open ? <TransactionSheet row={row} onClose={() => setOpen(false)} /> : null}
+    </li>
   );
 }
 

@@ -1,4 +1,4 @@
-import { editChanges } from "@/lib/edit-log";
+import { deleteSummary, editChanges } from "@/lib/edit-log";
 import { applyOverrides, cleanOverrides, toCentavos } from "@/lib/location-prices";
 import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
@@ -338,7 +338,7 @@ export async function deleteBooking(shopId: string, id: string) {
   const ref = shopRef(shopId).collection("bookings").doc(id);
   const prev = (await ref.get()).data() as ChairRequest | undefined;
   await ref.delete();
-  if (prev) await (await import("./activity")).logActivity(shopId, { type: "booking_deleted", actor: OWNER, locationId: prev.locationId || "home", ref: prev.ref, text: `Owner deleted ${prev.ref} (${prev.customerLabel || prev.contact || "customer"})` });
+  if (prev) await (await import("./activity")).logActivity(shopId, { type: "booking_deleted", actor: OWNER, locationId: prev.locationId || "home", ref: prev.ref, text: deleteSummary(prev) });
 }
 
 export async function findBookingByRef(shopId: string, ref: string) {

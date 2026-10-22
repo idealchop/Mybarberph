@@ -19,3 +19,10 @@ export function editChanges(a: Partial<ChairRequest>, b: Partial<ChairRequest>):
   return out;
 }
 
+
+/** Activity line for an owner delete: what was removed (for the shop log). */
+export function deleteSummary(b: Partial<ChairRequest>): string {
+  const amount = pesoText(b.price);
+  const bits = [b.serviceName, amount, b.barberName, b.paid ? "paid" : "unpaid"].filter(Boolean).join(" · ");
+  return `Owner deleted ${b.ref} (${b.customerLabel || b.contact || "customer"}) — ${bits}`;
+}
