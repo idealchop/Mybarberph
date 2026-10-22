@@ -1,7 +1,8 @@
 "use client";
 
 import { PayQr } from "./pay-qr";
-import { ServiceHero } from "./service-hero";
+import { HeroProfile, ServiceHero } from "./service-hero";
+import { StarLine } from "./shop-profile";
 import { payOptions, type PayChoice } from "./pay-options";
 import { Avatar } from "@river-apps/ui";
 import { ChevronLeft, Users } from "lucide-react";
@@ -60,6 +61,7 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
     return () => { live = false; };
   }, [shop.id, locationId]);
 
+  const branchName = shop.branches.find((b) => b.id === locationId)?.name;
   const slots = useMemo(() => slotsFor(day, shop.hoursWeek), [day, shop.hoursWeek]);
   const chosen = menu.filter((s) => picked.includes(s.id));
   const total = chosen.reduce((sum, s) => sum + s.price, 0);
@@ -68,16 +70,12 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-8">
-      <header className="flex items-center gap-1 border-b border-line bg-surface px-2 py-3">
-        <button type="button" onClick={onBack} aria-label="Back" className="inline-flex size-11 flex-none items-center justify-center rounded-full"><ChevronLeft size={24} strokeWidth={2.2} /></button>
-        <div className="min-w-0">
-          <h1 className="truncate text-[17px] font-extrabold leading-tight tracking-[-0.02em]">Schedule a visit</h1>
-          <p className="truncate text-[12.5px] font-semibold text-muted">{shop.name}{shop.branches.find((b) => b.id === locationId)?.name ? ` · ${shop.branches.find((b) => b.id === locationId)!.name}` : ""}</p>
-        </div>
-      </header>
       <div className="px-4">
-        <ServiceHero kicker="Pick a day and time" title="Schedule a haircut" selected={chosen} menu={menu}
-          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art />
+        <ServiceHero label="Schedule a visit" selected={chosen} menu={menu} art
+          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))}
+          top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line="Schedule a visit at"
+            lead={<button type="button" onClick={onBack} aria-label="Back to walk-in" className="-ml-2 inline-flex size-9 flex-none items-center justify-center rounded-full text-on-ink"><ChevronLeft size={22} strokeWidth={2.2} /></button>}
+            meta={<><StarLine rating={shop.rating} className="flex-none whitespace-nowrap" />{branchName ? <span className="truncate text-[12.5px] font-semibold text-on-ink-muted">· {branchName}</span> : null}</>} />} />
 
         <p className="mt-5 text-[13px] font-bold">Barber</p>
         <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Barber">

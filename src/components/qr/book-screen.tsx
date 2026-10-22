@@ -10,12 +10,12 @@ import { Sk } from "@/components/common/skeleton";
 import { Brand } from "@/components/shell/brand";
 import { ACTIVE_BOOKING_KEY, parseContact } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
-import { ServiceHero } from "./service-hero";
+import { HeroIconButton, HeroProfile, ServiceHero } from "./service-hero";
 import { ScheduleScreen, type ScheduleRequest } from "./schedule-screen";
 import { RequestStatus } from "./request-status";
 import { PoweredBy } from "./shop-brand";
 import { ShopProfileView, StarLine } from "./shop-profile";
-import { Avatar, Input } from "@river-apps/ui";
+import { Input } from "@river-apps/ui";
 import { usePublicShop } from "./use-public-shop";
 
 /** Manila time greeting for the customer header. */
@@ -147,30 +147,18 @@ export function BookScreen() {
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[440px] bg-canvas pb-6">
       {/* Customer page in the barber view's style (Jimboy, 2026-10-21): greeting header, dark hero, clean sections. */}
-      <header className="flex min-w-0 items-center gap-2.5 px-4 pt-5">
-        <button type="button" onClick={() => setView("profile")} aria-label={`${shop.name}: shop profile and reviews`} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <Avatar name={shop.name} src={shop.logoUrl || undefined} preset="sky" size={44} decorative={false} className="flex-none ring-1 ring-line" />
-          <span className="min-w-0">
-            <span className="block truncate text-[12px] font-medium text-muted">{greet()}, welcome to</span>
-            <span className="flex items-center gap-1"><b className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.02em]">{shop.name}</b><ChevronRight size={16} className="flex-none text-subtle" aria-hidden /></span>
-            <span className="flex min-w-0 items-center gap-1.5"><StarLine rating={rating} />{branch ? <span className="truncate text-[12.5px] font-semibold text-muted">· {branch.name}</span> : null}</span>
-          </span>
-        </button>
-        <button type="button" onClick={() => { setError(""); setView("schedule"); }} className="inline-flex h-10 flex-none items-center gap-1.5 rounded-pill bg-surface px-3.5 text-[13.5px] font-bold text-ink shadow-card">
-          <CalendarDays size={17} strokeWidth={2.1} aria-hidden /> Schedule
-        </button>
-      </header>
-      <div className="px-4">
+      <div className="px-4 pt-1">
         {ticket ? (
           <button type="button" onClick={() => setView("ticket")} className="mt-4 flex w-full items-center justify-between rounded-card bg-surface px-4 py-3 text-left shadow-card">
             <span><b className="block text-[14.5px]">Back to my ticket</b><small className="text-[12px] font-semibold text-muted">See your place in the queue</small></span>
             <ChevronRight size={20} />
           </button>
         ) : null}
-        <ServiceHero kicker="Walk in now, no account needed" selected={[haircut, ...chosen]} menu={[haircut, ...extras]} locked={[haircut.id]}
-          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art>
-          <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">Pay at the shop or online</p>
-        </ServiceHero>
+        <ServiceHero label="Book a haircut" selected={[haircut, ...chosen]} menu={[haircut, ...extras]} locked={[haircut.id]}
+          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art
+          top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line={`${greet()}, welcome to`} onClick={() => setView("profile")} ariaLabel={`${shop.name}: shop profile and reviews`}
+            meta={<><StarLine rating={rating} className="flex-none whitespace-nowrap" />{branch ? <span className="truncate text-[12.5px] font-semibold text-on-ink-muted">· {branch.name}</span> : null}</>} />}
+          actions={<HeroIconButton label="Schedule a visit" onClick={() => { setError(""); setView("schedule"); }}><CalendarDays size={17} strokeWidth={2.1} aria-hidden /></HeroIconButton>} />
 
         <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
         <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">

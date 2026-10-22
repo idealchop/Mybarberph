@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { ChevronRight, Plus, X } from "lucide-react";
+import { Avatar } from "@river-apps/ui";
 import { useState, type ReactNode } from "react";
 import { peso } from "@/lib/format";
 import { addableServices } from "@/lib/addable-services";
@@ -11,21 +12,23 @@ type Svc = { id: string; name: string; price: number };
  * The black "Book a haircut" hero card holding the selected service(s) and + Add more.
  * Add more lists only the services that aren't picked yet. Used by Walk-in and Schedule.
  */
-export function ServiceHero({ kicker, title = "Book a haircut", selected, menu, locked = [], onAdd, onRemove, art, children }: {
-  kicker: string; title?: string; selected: Svc[]; menu: Svc[]; locked?: string[];
-  onAdd: (id: string) => void; onRemove: (id: string) => void; art?: boolean; children?: ReactNode;
+export function ServiceHero({ label, top, actions, selected, menu, locked = [], onAdd, onRemove, art }: {
+  /** Accessible name of the card. */
+  label: string;
+  /** Shop profile block (avatar, greeting, name, reviews) shown on black. */
+  top: ReactNode;
+  /** Extra icon buttons next to + Add more (e.g. Schedule). */
+  actions?: ReactNode;
+  selected: Svc[]; menu: Svc[]; locked?: string[];
+  onAdd: (id: string) => void; onRemove: (id: string) => void; art?: boolean;
 }) {
   const [more, setMore] = useState(false);
   const others = addableServices(menu, selected.map((s) => s.id));
   return (
     <>
-      <section aria-label={title} className="relative isolate mt-4 overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
+      <section aria-label={label} className="relative isolate mt-4 overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
         <div className="flex min-h-[96px] items-center">
-          <div className="relative z-10 min-w-0 flex-1">
-            <p className="text-[12px] font-medium text-on-ink-muted">{kicker}</p>
-            <h2 className="mt-1 text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em]">{title}</h2>
-            {children}
-          </div>
+          <div className="relative z-10 min-w-0 flex-1 [&_.text-muted]:text-on-ink-muted [&_.text-subtle]:text-on-ink-muted">{top}</div>
           {art ? (
             <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
               {/* eslint-disable-next-line @next/next/no-img-element -- same 3D pole + scissors art as the barber view */}
@@ -45,11 +48,14 @@ export function ServiceHero({ kicker, title = "Book a haircut", selected, menu, 
               </li>
             )) : <li className="text-[13.5px] font-semibold text-on-ink-muted">Pick a service</li>}
           </ul>
-          {others.length ? (
-            <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-9 flex-none items-center gap-1 rounded-pill bg-white px-3.5 text-[13px] font-bold text-ink">
-              <Plus size={14} strokeWidth={2.4} /> Add more
-            </button>
-          ) : null}
+          <div className="flex flex-none items-center gap-2">
+            {others.length ? (
+              <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-9 items-center gap-1 rounded-pill bg-white px-3.5 text-[13px] font-bold text-ink">
+                <Plus size={14} strokeWidth={2.4} /> Add more
+              </button>
+            ) : null}
+            {actions}
+          </div>
         </div>
       </section>
       {more && others.length ? (
@@ -68,4 +74,31 @@ export function ServiceHero({ kicker, title = "Book a haircut", selected, menu, 
       ) : null}
     </>
   );
+}
+
+/** Shop profile line for the hero card: avatar, small line, shop name with chevron, rating/branch. */
+export function HeroProfile({ name, logoUrl, line, meta, onClick, ariaLabel, lead }: {
+  name: string; logoUrl?: string | null; line: string; meta: ReactNode; onClick?: () => void; ariaLabel?: string; lead?: ReactNode;
+}) {
+  const body = (
+    <>
+      <Avatar name={name} src={logoUrl || undefined} preset="sky" size={44} decorative={false} className="flex-none ring-1 ring-white/20" />
+      <span className="min-w-0">
+        <span className="block truncate text-[12px] font-medium text-on-ink-muted">{line}</span>
+        <span className="flex items-center gap-1"><b className="truncate text-[19px] font-extrabold leading-tight tracking-[-0.02em] text-on-ink">{name}</b>{onClick ? <ChevronRight size={16} className="flex-none text-on-ink-muted" aria-hidden /> : null}</span>
+        <span className="flex min-w-0 items-center gap-1.5 text-on-ink">{meta}</span>
+      </span>
+    </>
+  );
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {lead}
+      {onClick ? <button type="button" onClick={onClick} aria-label={ariaLabel} className="flex min-w-0 items-center gap-2.5 text-left">{body}</button> : <div className="flex min-w-0 items-center gap-2.5">{body}</div>}
+    </div>
+  );
+}
+
+/** Round icon button for the hero's bottom row (dark-on-white like + Add more). */
+export function HeroIconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return <button type="button" aria-label={label} title={label} onClick={onClick} className="inline-flex size-9 flex-none items-center justify-center rounded-full bg-white text-ink">{children}</button>;
 }
