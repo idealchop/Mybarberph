@@ -21,10 +21,9 @@ import { useShopMenu } from "@/lib/shop-services";
 import {
   completionLabel, markInChair, setRequestStatus, statusLabel, useQueueRequests,
   type ChairRequest,
-  onlineOpenToday,
 } from "@/lib/chair-bookings";
-import { CountBadge } from "@/components/common/count-badge";
 import { doneInRange } from "@/lib/done-range";
+import { visitMinutes } from "@/lib/visit-minutes";
 
 type Channel = "walk-ins" | "online";
 
@@ -125,7 +124,6 @@ export function QueueBoard() {
 
   const walkIns = useMemo(() => rows.filter((r) => r.channel === "walk-in"), [rows]);
   const online = useMemo(() => rows.filter((r) => r.channel === "online"), [rows]);
-  const onlineCount = onlineOpenToday(loaded).length;
   const walkInList = useMemo(() => walkIns.filter((r) => matches(r, search)), [walkIns, search]);
   const onlineList = useMemo(() => online.filter((r) => matches(r, search)), [online, search]);
   const inChair = rows.filter((r) => r.status === "in_chair").length;
@@ -157,12 +155,6 @@ export function QueueBoard() {
             </p>
           </div>
         </div>
-        {channel === "walk-ins" ? (
-          <button type="button" onClick={() => setChannel("online")} aria-label={`Online orders${onlineCount ? `, ${onlineCount} today` : ""}`} className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-bold text-ink">
-            Online
-            <CountBadge count={onlineCount} />
-          </button>
-        ) : null}
       </header>
 
       <div className="mt-4 flex items-center justify-between gap-3 px-1">
@@ -216,11 +208,12 @@ const timeOf = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", {
 export function DoneRow({ row, place }: { row: ChairRequest; place?: string }) {
   const [open, setOpen] = useState(false);
   const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || row.ref;
+  const mins = visitMinutes(row);
   const [t, ampm] = timeOf(row.completedAt ?? row.updatedAt).split(" ");
   return (
     <li>
       <button type="button" onClick={() => setOpen(true)} aria-label={`Open ${row.ref}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-        <span className="flex w-[52px] flex-none flex-col items-start leading-tight"><b className="text-[15px] tabular-nums">{t}</b><small className="text-[11.5px] font-semibold text-muted">{ampm}</small></span>
+        <span className="flex w-[52px] flex-none flex-col items-start leading-tight"><b className="text-[15px] tabular-nums">{t}</b><small className="text-[11.5px] font-semibold text-muted">{ampm}</small>{mins != null ? <small className="mt-0.5 text-[11.5px] font-bold text-ink/70">{mins} min</small> : null}</span>
         <span className="min-w-0 flex-1 leading-[1.3]">
           <b className="block truncate text-[14.5px]">{who}{who !== row.ref ? <span className="ml-1.5 text-[12px] font-semibold text-muted">{row.ref}</span> : null}</b>
           <span className="block truncate text-[12.5px] font-semibold text-muted">{[row.serviceName, row.barberName, place].filter(Boolean).join(" · ")}</span>

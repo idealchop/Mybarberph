@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deleteSummary } from "./edit-log";
+import { deleteSummary } from "@/lib/edit-log";
 describe("deleteSummary", () => {
   it("names the ticket, customer, service, amount and barber", () => {
     expect(deleteSummary({ ref: "W-12", customerLabel: "Ana", serviceName: "Haircut", price: 25000, barberName: "Jun", paid: true }))
