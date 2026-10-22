@@ -1,17 +1,24 @@
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
+import { claimOwnerShare, ownerShareOf, sharePct } from "@/lib/income-split";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
 
-type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string };
-export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string }
-export interface Unclaimed { barberId: string; barberName: string; locationId: string; amount: number; count: number; oldest: number }
+type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
+export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
+  /** Owner/shop share claimed (amount minus the barber's split; None = all). Older claims lack it and are computed on read. */ ownerShare?: number; sharePct?: number | null }
+export interface Unclaimed { barberId: string; barberName: string; locationId: string; amount: number; ownerShare: number; count: number; oldest: number }
 
 const HOME = "home";
 const keyOf = (r: ChairRequest, chairs: Chair[]) => {
   const bl = r.locationId || HOME;
   const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME) === bl);
   return { id: r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`, name: r.barberName || seat?.barberName?.trim() || r.seatLabel || "No barber", loc: bl };
+};
+/** The barber's split % for a barber id at a location (chair id or barber id). */
+const pctOf = (chairs: Chair[], id: string, loc: string) => {
+  const c = chairs.find((x) => (x.barberId === id || x.id === id) && (x.locationId || HOME) === loc) ?? chairs.find((x) => x.barberId === id || x.id === id);
+  return c ? sharePct(c) : null;
 };
 /** Cash the barber collected = done, paid, cash. */
 const isCash = (r: ChairRequest) => r.status === "done" && Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
@@ -49,12 +56,15 @@ export async function remitSummary(shopId: string, loc: string) {
     const k = keyOf(r, chairs);
     if (loc !== "all" && k.loc !== loc) continue;
     const id = `${k.id}@${k.loc}`;
-    const u = map.get(id) ?? { barberId: k.id, barberName: k.name, locationId: k.loc, amount: 0, count: 0, oldest: Date.now() };
-    u.amount += r.price || 0; u.count += 1; u.oldest = Math.min(u.oldest, r.completedAt ?? r.updatedAt ?? Date.now());
+    const u = map.get(id) ?? { barberId: k.id, barberName: k.name, locationId: k.loc, amount: 0, ownerShare: 0, count: 0, oldest: Date.now() };
+    u.amount += r.price || 0; u.ownerShare += ownerShareOf(r.price || 0, pctOf(chairs, k.id, k.loc)); u.count += 1; u.oldest = Math.min(u.oldest, r.completedAt ?? r.updatedAt ?? Date.now());
     map.set(id, u);
   }
-  const unclaimed = [...map.values()].sort((a, b) => b.amount - a.amount);
-  return { unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), claims: claims.filter((c) => loc === "all" || c.locationId === loc).slice(0, 100).map((c) => ({ ...c, count: c.bookingIds.length })) };
+  const unclaimed = [...map.values()].sort((a, b) => b.ownerShare - a.ownerShare);
+  return {
+    unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), ownerTotal: unclaimed.reduce((s, u) => s + u.ownerShare, 0),
+    claims: claims.filter((c) => loc === "all" || c.locationId === loc).slice(0, 100).map((c) => ({ ...c, count: c.bookingIds.length, ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
+  };
 }
 
 /** Owner marks a barber's cash as received: every unclaimed paid-cash visit for that barber at that location, up to now. A lock doc serialises claims so a double tap can't claim twice. */
@@ -71,6 +81,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
     const claim: RemitClaim = {
       id: ref.id, barberId, barberName: keyOf(mine[0]!, chairs).name, locationId,
       amount: mine.reduce((s, r) => s + (r.price || 0), 0), bookingIds: mine.map((r) => r.id),
+      ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, pctOf(chairs, barberId, locationId)), 0), sharePct: pctOf(chairs, barberId, locationId),
       from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy,
     };
     tx.set(ref, claim);

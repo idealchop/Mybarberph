@@ -60,3 +60,11 @@ export function splitLine(t: { shop: number; barber: number; none: number }, pes
   if (!t.shop && !t.barber) return null;
   return [`Shop ${peso(t.shop)}`, `Barber ${peso(t.barber)}`, t.none ? `No split ${peso(t.none)}` : ""].filter(Boolean).join(" · ");
 }
+
+/** The shop/owner's part of one cut: price minus the barber's share. No split (None) = the full amount is the owner's. */
+export const ownerShareOf = (price: number, pct: number | null) => (pct == null ? Math.max(0, price) : splitIncome(price, pct).shop);
+
+/** Owner share of a claim; old claims (before ownerShare was stored) are computed from the barber's current split. */
+export function claimOwnerShare(c: { amount: number; ownerShare?: number }, pct: number | null) {
+  return typeof c.ownerShare === "number" ? c.ownerShare : ownerShareOf(c.amount, pct);
+}

@@ -68,7 +68,6 @@ export function SalesDataScreen() {
     const c = chairs.find((x) => (r.barberId && (x.barberId === r.barberId || x.id === r.barberId)) || (!r.barberId && x.label === (r.seatLabel || r.chairLabel) && (x.locationId || HOME_LOCATION_ID) === bl));
     return c ? sharePct(c) : null;
   };
-  const pctFor = (barberId: string) => pctOf({ barberId });
   const base = salesReport(rows, unpaid, range, pctOf);
   const report = { ...base, tips: inRange(rows, range, "all").filter((r) => r.status === "done").reduce((s, r) => s + tipOf(r), 0) };
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
@@ -120,11 +119,11 @@ export function SalesDataScreen() {
             <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
           </div>
           {report.tips ? <p className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3 text-[13.5px] font-semibold shadow-card"><span>Tips for barbers <small className="block text-[12px] text-muted">Not part of sales · 100% the barbers’</small></span><b className="text-[17px] tabular-nums">{peso(report.tips)}</b></p> : null}
-          <UnclaimedCard className="mt-3" pctFor={pctFor} remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
+          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
-          <ClaimHistory remit={remit.data} locName={locName} pctFor={pctFor} />
+          <ClaimHistory remit={remit.data} locName={locName} />
         </>
       ) : null}
       {view === "services" ? (

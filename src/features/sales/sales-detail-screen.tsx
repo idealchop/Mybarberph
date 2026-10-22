@@ -51,7 +51,7 @@ export function SalesDetailScreen() {
   const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} cuts` }));
   const services = serviceStats(scoped, range, loc).slice(0, 6);
   const remit = useRemit(kind === "barber" ? "all" : id || "all");
-  const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + u.amount, 0);
+  const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + (u.ownerShare ?? u.amount), 0);
 
   if (!deep && !cloud.ready) return <AppLoader />;
   return (

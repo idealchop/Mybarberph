@@ -4,9 +4,9 @@ import { api } from "@/lib/cloud";
 import { useSession } from "@/lib/session";
 import { cached, fetchShared, invalidate } from "@/lib/swr";
 
-export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; count: number; oldest: number }
-export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[] }
-export interface Remit { unclaimed: UnclaimedRow[]; total: number; claims: ClaimRow[] }
+export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; ownerShare?: number; count: number; oldest: number }
+export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; ownerShare?: number; sharePct?: number | null }
+export interface Remit { unclaimed: UnclaimedRow[]; total: number; ownerTotal?: number; claims: ClaimRow[] }
 
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
 export function useRemit(loc: string) {

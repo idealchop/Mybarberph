@@ -4,7 +4,6 @@ import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
-import { splitLine, splitTotals } from "@/lib/income-split";
 import { Spinner } from "@/components/common/button";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
@@ -78,18 +77,20 @@ function Mini({ k, v }: { k: string; v: string }) {
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
 /** Total cash barbers hold that the owner hasn't marked received. Claim: one barber → claim now; several → sheet with a Claim per barber. */
-export function UnclaimedCard({ remit, className, onClaim, claiming, locName, pctFor }: { pctFor?: (barberId: string) => number | null; remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
+export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: { remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
   const [open, setOpen] = useState(false);
   const rows = remit?.unclaimed ?? [];
   const one = rows.length === 1 ? rows[0] : null;
   const busy = (u: { barberId: string; locationId: string }) => claiming === `${u.barberId}@${u.locationId}`;
-  const line = pctFor ? splitLine(splitTotals(rows.map((u) => ({ amount: u.amount, pct: pctFor(u.barberId) }))), peso) : null;
+  const own = (u: { amount: number; ownerShare?: number }) => u.ownerShare ?? u.amount;
+  const ownerTotal = remit ? remit.ownerTotal ?? remit.total : 0;
+  const line = remit && rows.length && ownerTotal !== remit.total ? `Total sales ${peso(remit.total)} · Barber ${peso(remit.total - ownerTotal)}` : null;
   return (
     <>
       <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
         <span className="min-w-0"><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (rows.length ? `${rows.reduce((s, u) => s + u.count, 0)} cash cuts · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small>{line ? <small className="block text-[12px] font-semibold text-muted">{line}</small> : null}</span>
         <span className="flex flex-none items-center gap-2.5">
-          <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
+          <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(ownerTotal) : "–"}</b>
           {onClaim && rows.length ? (
             <button type="button" data-auth="action" disabled={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))}
               className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{one && busy(one) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
@@ -108,10 +109,10 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName, pc
                     <span className="min-w-0">
                       <b className="block truncate text-[15px]">{u.barberName}</b>
                       <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
-                      {pctFor ? (() => { const l = splitLine(splitTotals([{ amount: u.amount, pct: pctFor(u.barberId) }]), peso); return l ? <small className="block truncate text-[12px] font-semibold text-muted">{l}</small> : null; })() : null}
+                      {own(u) !== u.amount ? <small className="block truncate text-[12px] font-semibold text-ink-2">Total {peso(u.amount)} · Barber {peso(u.amount - own(u))}</small> : null}
                     </span>
                     <span className="flex flex-none items-center gap-2.5">
-                      <b className="text-[15px] tabular-nums">{peso(u.amount)}</b>
+                      <b className="text-[15px] tabular-nums">{peso(own(u))}</b>
                       <button type="button" data-auth="action" disabled={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)}
                         className="inline-flex h-8 items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy(u) ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
                     </span>
@@ -127,7 +128,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName, pc
 }
 
 /** Claimed remit history: date, barber, amount. Claimed cash stays counted in Sales and Collected. */
-export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5, pctFor }: { pctFor?: (barberId: string) => number | null; remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
+export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5 }: { remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
   const [all, setAll] = useState(false);
   const rows = (remit?.claims ?? []).filter((c) => (!barberId || c.barberId === barberId) && (!locationId || c.locationId === locationId));
   if (!rows.length) return null;
@@ -142,9 +143,9 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
               <b className="block truncate text-[14px]">{barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName}</b>
               <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" /><span className="min-w-0 truncate">Claimed by owner · {day(c.claimedAt)}</span></small>
               {!barberId && locName?.(c.locationId) ? <small className="block truncate text-[12px] font-semibold text-muted">{locName(c.locationId)}</small> : null}
-              {pctFor ? (() => { const l = splitLine(splitTotals([{ amount: c.amount, pct: pctFor(c.barberId) }]), peso); return l ? <small className="block truncate text-[12px] font-semibold text-ink-2">{l}</small> : null; })() : null}
+              {(c.ownerShare ?? c.amount) !== c.amount ? <small className="block truncate text-[12px] font-semibold text-ink-2">Total {peso(c.amount)} · Barber {peso(c.amount - (c.ownerShare ?? c.amount))}</small> : null}
             </span>
-            <b className="flex-none text-[14.5px] tabular-nums">{peso(c.amount)}</b>
+            <b className="flex-none text-[14.5px] tabular-nums">{peso(c.ownerShare ?? c.amount)}</b>
           </li>
         ))}
       </ul>
@@ -215,7 +216,7 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
     <div className="flex items-center justify-between gap-3 rounded-b-card border-t border-dashed border-line bg-surface px-4 py-2.5 shadow-card">
       <span className="min-w-0 text-[12.5px] font-semibold">
         {open ? <><b className="text-[14px] tabular-nums">{peso(open.amount)}</b> <span className="text-muted">unclaimed · {open.count} cash cut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
-        {last ? <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-bold text-muted"><Check size={12} strokeWidth={3} /> Claimed {peso(last.amount)} · {day(last.claimedAt)}</span> : null}
+        {last ? <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-bold text-muted"><Check size={12} strokeWidth={3} /> Claimed {peso(last.ownerShare ?? last.amount)} · {day(last.claimedAt)}</span> : null}
       </span>
       {open ? (
         <button type="button" data-auth="action" disabled={busy} onClick={() => onClaim(b.id, b.locationId)}
