@@ -1,8 +1,8 @@
 "use client";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
-import { Avatar, Badge, Card, CardHeader, Input, SegmentedControl, StatusDot } from "@river-apps/ui";
+import { Avatar, Badge, Card, CardHeader, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { ArrowLeft, History, Pencil, Phone, Trash2, User } from "lucide-react";
+import { ArrowLeft, ChevronDown, History, Lock, Pencil, Phone, Plus, Trash2, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { payMethodLabel } from "@/lib/pay-split";
@@ -192,39 +192,78 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
     });
     onDone();
   };
+  const [showTip, setShowTip] = useState(Boolean(row.tip));
+  const [showNotes, setShowNotes] = useState(Boolean(row.notes));
+  const field = "h-10 w-full min-w-0 bg-transparent px-3 text-[14.5px] font-semibold outline-none placeholder:font-medium placeholder:text-muted";
+  const box = "rounded-[12px] bg-grey-100";
+  const seg = (on: boolean) => `h-8 flex-1 rounded-[9px] px-2.5 text-[13px] font-bold transition-colors ${on ? "bg-surface text-ink shadow-card" : "text-muted"}`;
+  const more = "inline-flex h-8 items-center gap-1 text-[13px] font-bold text-ink-2";
   return (
-    <Card className="mt-4 flex flex-col gap-3 px-4 py-4">
-      <b className="text-[16px]">Edit information</b>
-      <Input label="Customer name" value={name} onChange={(e) => setName(e.target.value)} />
-      <Input label="Phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[13px] font-bold">Service</span>
-        <select value={services.includes(service) ? service : "__custom"} onChange={(e) => { if (e.target.value !== "__custom") setService(e.target.value); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
-          {services.map((s) => <option key={s} value={s}>{s}</option>)}
-          {services.includes(service) ? null : <option value="__custom">{service}</option>}
-        </select>
-      </label>
-      {locked != null ? (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-bold">Amount</span>
-          <p aria-label="Amount, set by the shop menu" className="flex h-12 items-center justify-between rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold text-ink-2"><b className="text-ink">{peso(locked)}</b><span className="text-[12.5px] text-muted">Menu price</span></p>
-        </div>
-      ) : <Input label="Amount (₱)" inputMode="decimal" value={price} placeholder="e.g. 150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />}
-      {onlinePaid ? <p className="text-[13px] font-semibold text-muted">Paid online. Payment can’t be changed here.</p> : (
-        <>
-          <SegmentedControl label="Payment" value={paid ? "paid" : "unpaid"} onChange={(v: string) => setPaid(v === "paid")} options={[{ value: "paid", label: "Paid" }, { value: "unpaid", label: "Unpaid" }]} />
-          {paid ? <SegmentedControl label="Method" value={method} onChange={(v: string) => setMethod(v as "cash" | "gcash")} options={[{ value: "cash", label: "Cash" }, { value: "gcash", label: "GCash" }]} /> : null}
-        </>
-      )}
-      <Input label="Tip for the barber (₱)" inputMode="decimal" value={tip} placeholder="0" onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} />
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[13px] font-bold">Notes</span>
-        <textarea value={notes} maxLength={500} rows={3} onChange={(e) => setNotes(e.target.value)} className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" placeholder="Optional" />
-      </label>
-      <div className="mt-1 flex gap-2">
-        <Button variant="secondary" className="flex-1" onClick={onDone}>Cancel</Button>
-        <Button data-auth="action" className="flex-1" onClick={save}>Save</Button>
+    <Card className="mt-4 px-4 pb-4 pt-3">
+      <div className="flex items-center justify-between">
+        <b className="text-[15.5px] tracking-[-0.01em]">Edit information</b>
+        <button type="button" aria-label="Close edit" onClick={onDone} className="-mr-1.5 inline-flex size-9 items-center justify-center rounded-full text-muted active:bg-grey-100"><X size={18} strokeWidth={2.2} /></button>
       </div>
+
+      <div className={`mt-2 divide-y divide-line ${box}`}>
+        <input aria-label="Customer name" value={name} placeholder="Customer name" onChange={(e) => setName(e.target.value)} className={field} />
+        <input aria-label="Phone" inputMode="tel" value={phone} placeholder="Phone (optional)" onChange={(e) => setPhone(e.target.value)} className={field} />
+      </div>
+
+      <div className="mt-2.5 flex gap-2">
+        <label className={`relative min-w-0 flex-[1.4] ${box}`}>
+          <span className="sr-only">Service</span>
+          <select value={services.includes(service) ? service : "__custom"} onChange={(e) => { if (e.target.value !== "__custom") setService(e.target.value); }} className={`${field} appearance-none pr-8`}>
+            {services.map((s) => <option key={s} value={s}>{s}</option>)}
+            {services.includes(service) ? null : <option value="__custom">{service}</option>}
+          </select>
+          <ChevronDown size={15} strokeWidth={2.2} aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" />
+        </label>
+        {locked != null ? (
+          <p aria-label="Amount, set by the shop menu" title="Menu price" className={`flex h-10 flex-1 items-center justify-between gap-1 px-3 ${box}`}>
+            <b className="text-[14.5px] tabular-nums">{peso(locked)}</b><Lock size={13} strokeWidth={2.2} className="text-muted" aria-hidden />
+          </p>
+        ) : (
+          <label className={`flex flex-1 items-center pl-3 ${box}`}>
+            <span aria-hidden className="text-[14.5px] font-bold text-muted">₱</span>
+            <input aria-label="Amount (₱)" inputMode="decimal" value={price} placeholder="150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} className={`${field} pl-1 tabular-nums`} />
+          </label>
+        )}
+      </div>
+      {locked != null ? <p className="mt-1 px-1 text-[11.5px] font-semibold text-muted">Amount follows the shop menu.</p> : null}
+
+      {onlinePaid ? <p className="mt-2.5 px-1 text-[13px] font-semibold text-muted">Paid online. Payment can’t be changed here.</p> : (
+        <div className="mt-2.5 flex gap-2">
+          <div role="radiogroup" aria-label="Payment" className={`flex flex-1 gap-1 p-1 ${box}`}>
+            <button type="button" role="radio" aria-checked={paid} onClick={() => setPaid(true)} className={seg(paid)}>Paid</button>
+            <button type="button" role="radio" aria-checked={!paid} onClick={() => setPaid(false)} className={seg(!paid)}>Unpaid</button>
+          </div>
+          {paid ? (
+            <div role="radiogroup" aria-label="Method" className={`flex flex-1 gap-1 p-1 ${box}`}>
+              <button type="button" role="radio" aria-checked={method === "cash"} onClick={() => setMethod("cash")} className={seg(method === "cash")}>Cash</button>
+              <button type="button" role="radio" aria-checked={method === "gcash"} onClick={() => setMethod("gcash")} className={seg(method === "gcash")}>GCash</button>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {showTip ? (
+        <label className={`mt-2.5 flex items-center pl-3 ${box}`}>
+          <span className="flex-none text-[13px] font-bold text-muted">Tip ₱</span>
+          <input aria-label="Tip for the barber (₱)" autoFocus={!row.tip} inputMode="decimal" value={tip} placeholder="0" onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} className={`${field} pl-1.5 tabular-nums`} />
+        </label>
+      ) : null}
+      {showNotes ? (
+        <textarea aria-label="Notes" autoFocus={!row.notes} value={notes} maxLength={500} rows={2} onChange={(e) => setNotes(e.target.value)} placeholder="Note" className={`mt-2.5 block w-full resize-none px-3 py-2.5 text-[14.5px] font-medium outline-none placeholder:text-muted ${box}`} />
+      ) : null}
+      {!showTip || !showNotes ? (
+        <div className="mt-1.5 flex gap-4 px-1">
+          {!showTip ? <button type="button" className={more} onClick={() => setShowTip(true)}><Plus size={14} strokeWidth={2.4} aria-hidden />Add tip</button> : null}
+          {!showNotes ? <button type="button" className={more} onClick={() => setShowNotes(true)}><Plus size={14} strokeWidth={2.4} aria-hidden />Add note</button> : null}
+        </div>
+      ) : null}
+
+      <Button data-auth="action" fullWidth className="mt-3" onClick={save}>Save</Button>
     </Card>
   );
 }
