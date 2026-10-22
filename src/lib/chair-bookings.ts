@@ -1,4 +1,5 @@
 "use client";
+import { rowsForLocation } from "@/lib/queue-location";
 
 import { OWNER_BARBER_ID } from "@/lib/owner-cut";
 import { useEffect, useState } from "react";
@@ -179,7 +180,7 @@ export function useQueueRequests() {
   const locationId = queueLocation(loc);
   // All locations: every shop's tickets (walk-ins still add to queueLocation).
   const all = loc.enabled && loc.viewingAll;
-  const rows = data.ready && loc.ready ? data.rows.filter((row) => all || requestLocation(row) === locationId) : [];
+  const rows = data.ready && loc.ready ? rowsForLocation(data.rows, locationId, all, HOME_LOCATION_ID) : [];
   return { rows, ready: data.ready && loc.ready, locationId, all };
 }
 
