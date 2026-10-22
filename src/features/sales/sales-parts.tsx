@@ -4,6 +4,7 @@ import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
+import { splitLine, splitTotals } from "@/lib/income-split";
 import { Spinner } from "@/components/common/button";
 import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
@@ -77,15 +78,16 @@ function Mini({ k, v }: { k: string; v: string }) {
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
 /** Total cash barbers hold that the owner hasn't marked received. Claim: one barber → claim now; several → sheet with a Claim per barber. */
-export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: { remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
+export function UnclaimedCard({ remit, className, onClaim, claiming, locName, pctFor }: { pctFor?: (barberId: string) => number | null; remit: Remit | null; className?: string; onClaim?: (barberId: string, locationId: string) => void; claiming?: string; locName?: (id: string) => string }) {
   const [open, setOpen] = useState(false);
   const rows = remit?.unclaimed ?? [];
   const one = rows.length === 1 ? rows[0] : null;
   const busy = (u: { barberId: string; locationId: string }) => claiming === `${u.barberId}@${u.locationId}`;
+  const line = pctFor ? splitLine(splitTotals(rows.map((u) => ({ amount: u.amount, pct: pctFor(u.barberId) }))), peso) : null;
   return (
     <>
       <div className={cn("flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3.5 shadow-card", className)}>
-        <span className="min-w-0"><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (rows.length ? `${rows.reduce((s, u) => s + u.count, 0)} cash cuts · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small></span>
+        <span className="min-w-0"><b className="block text-[14px]">Unclaimed remit</b><small className="text-[12.5px] font-semibold text-muted">{remit ? (rows.length ? `${rows.reduce((s, u) => s + u.count, 0)} cash cuts · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</small>{line ? <small className="block text-[12px] font-semibold text-muted">{line}</small> : null}</span>
         <span className="flex flex-none items-center gap-2.5">
           <b className="text-[22px] font-extrabold tracking-[-0.03em] tabular-nums">{remit ? peso(remit.total) : "–"}</b>
           {onClaim && rows.length ? (
@@ -106,6 +108,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
                     <span className="min-w-0">
                       <b className="block truncate text-[15px]">{u.barberName}</b>
                       <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
+                      {pctFor ? (() => { const l = splitLine(splitTotals([{ amount: u.amount, pct: pctFor(u.barberId) }]), peso); return l ? <small className="block truncate text-[12px] font-semibold text-muted">{l}</small> : null; })() : null}
                     </span>
                     <span className="flex flex-none items-center gap-2.5">
                       <b className="text-[15px] tabular-nums">{peso(u.amount)}</b>
@@ -124,7 +127,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
 }
 
 /** Claimed remit history: date, barber, amount. Claimed cash stays counted in Sales and Collected. */
-export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5 }: { remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
+export function ClaimHistory({ remit, barberId, locationId, locName, className, max = 5, pctFor }: { pctFor?: (barberId: string) => number | null; remit: Remit | null; barberId?: string; locationId?: string; locName?: (id: string) => string; className?: string; max?: number }) {
   const [all, setAll] = useState(false);
   const rows = (remit?.claims ?? []).filter((c) => (!barberId || c.barberId === barberId) && (!locationId || c.locationId === locationId));
   if (!rows.length) return null;
@@ -139,6 +142,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
               <b className="block truncate text-[14px]">{barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName}</b>
               <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none" /><span className="min-w-0 truncate">Claimed by owner · {day(c.claimedAt)}</span></small>
               {!barberId && locName?.(c.locationId) ? <small className="block truncate text-[12px] font-semibold text-muted">{locName(c.locationId)}</small> : null}
+              {pctFor ? (() => { const l = splitLine(splitTotals([{ amount: c.amount, pct: pctFor(c.barberId) }]), peso); return l ? <small className="block truncate text-[12px] font-semibold text-ink-2">{l}</small> : null; })() : null}
             </span>
             <b className="flex-none text-[14.5px] tabular-nums">{peso(c.amount)}</b>
           </li>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChairRequest } from "@/lib/chair-bookings";
+import { splitTotals } from "@/lib/income-split";
 import { PAY_LABEL, payBucket, paySplit, type PaySplit } from "@/lib/pay-split";
 
 export type SalesRange = "today" | "week" | "month" | "all" | "custom";
@@ -46,6 +47,8 @@ export interface SalesReport {
   collected: number;
   /** Collected money by stored payment method (no method = other). */
   collectedSplit: PaySplit;
+  /** Collected money split by each barber's income split (only when pctOf is given). */
+  collectedShares?: { total: number; shop: number; barber: number; none: number };
   unpaid: number;
   average: number;
   series: SalesRow[];
@@ -108,7 +111,7 @@ function dayLabel(ms: number) {
 }
 
 /** Sales from this shop's finished visits (Manila days). `rows` is every visit in scope. */
-export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange): SalesReport {
+export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange, pctOf?: (r: ChairRequest) => number | null): SalesReport {
   const { end: now, span } = rangeWindow(range);
   const keys = Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY_MS));
   const prevKeys = new Set(Array.from({ length: span }, (_, i) => dayKey(now - (2 * span - 1 - i) * DAY_MS)));
@@ -172,6 +175,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     cuts,
     collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price, 0),
     collectedSplit: paySplit(extras),
+    collectedShares: pctOf ? splitTotals(extras.filter((r) => r.paid).map((r) => ({ amount: r.price, pct: pctOf(r) }))) : undefined,
     unpaid: unpaidCentavos,
     average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,

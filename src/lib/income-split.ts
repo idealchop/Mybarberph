@@ -43,3 +43,20 @@ export function cutMinutes(row: { startedAt?: number; completedAt?: number }): n
   // Ignore obviously forgotten timers (over 4 hours).
   return m > 240 ? null : m;
 }
+
+/** Shop/barber parts of several amounts, each with its barber's split % (null = no split; counted apart). Tips are never included. */
+export function splitTotals(items: { amount: number; pct: number | null }[]) {
+  const t = { total: 0, shop: 0, barber: 0, none: 0 };
+  for (const i of items) {
+    t.total += i.amount;
+    if (i.pct == null) { t.none += i.amount; continue; }
+    const s = splitIncome(i.amount, i.pct); t.shop += s.shop; t.barber += s.barber;
+  }
+  return t;
+}
+
+/** "Shop ₱1,375 · Barber ₱1,375" (+ "· No split ₱X" when mixed); null when no amount has a split. */
+export function splitLine(t: { shop: number; barber: number; none: number }, peso: (c: number) => string): string | null {
+  if (!t.shop && !t.barber) return null;
+  return [`Shop ${peso(t.shop)}`, `Barber ${peso(t.barber)}`, t.none ? `No split ${peso(t.none)}` : ""].filter(Boolean).join(" · ");
+}

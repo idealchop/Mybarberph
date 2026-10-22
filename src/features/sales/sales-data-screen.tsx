@@ -17,7 +17,8 @@ import { SalesGroups } from "./sales-groups";
 import { showsLocationFilter } from "@/lib/sales-filters";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
-import { tipOf } from "@/lib/income-split";
+import { sharePct, tipOf } from "@/lib/income-split";
+import { OWNER_BARBER_ID } from "@/lib/owner-cut";
 import { BarberRanking, ClaimHistory, PaySplitText, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
@@ -60,7 +61,15 @@ export function SalesDataScreen() {
   }, []);
 
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
-  const base = salesReport(rows, unpaid, range);
+  // Each visit's barber split % (owner's own cuts are all the shop's).
+  const pctOf = (r: { barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string }) => {
+    if (r.barberId === OWNER_BARBER_ID) return 0;
+    const bl = r.locationId || HOME_LOCATION_ID;
+    const c = chairs.find((x) => (r.barberId && (x.barberId === r.barberId || x.id === r.barberId)) || (!r.barberId && x.label === (r.seatLabel || r.chairLabel) && (x.locationId || HOME_LOCATION_ID) === bl));
+    return c ? sharePct(c) : null;
+  };
+  const pctFor = (barberId: string) => pctOf({ barberId });
+  const base = salesReport(rows, unpaid, range, pctOf);
   const report = { ...base, tips: inRange(rows, range, "all").filter((r) => r.status === "done").reduce((s, r) => s + tipOf(r), 0) };
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
@@ -107,15 +116,15 @@ export function SalesDataScreen() {
       {view === "performance" ? (
         <>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<PaySplitText split={report.collectedSplit} layout="lines" />} />
+            <StatCard className="pb-3" label="Collected" value={peso(report.collected)} caption={<><PaySplitText split={report.collectedSplit} layout="lines" />{report.collectedShares && (report.collectedShares.shop || report.collectedShares.barber) ? <span className="mt-1 block border-t border-line pt-1 text-[12px] font-semibold text-muted">Shop share <b className="text-ink">{peso(report.collectedShares.shop)}</b></span> : null}</>} />
             <StatCard className="pb-3" label="Uncollected" value={peso(report.unpaid)} caption={report.unpaid > 0 ? "Still unpaid" : "Nothing owed"} />
           </div>
           {report.tips ? <p className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3 text-[13.5px] font-semibold shadow-card"><span>Tips for barbers <small className="block text-[12px] text-muted">Not part of sales · 100% the barbers’</small></span><b className="text-[17px] tabular-nums">{peso(report.tips)}</b></p> : null}
-          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
+          <UnclaimedCard className="mt-3" pctFor={pctFor} remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
           {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
           <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
             onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
-          <ClaimHistory remit={remit.data} locName={locName} />
+          <ClaimHistory remit={remit.data} locName={locName} pctFor={pctFor} />
         </>
       ) : null}
       {view === "services" ? (
