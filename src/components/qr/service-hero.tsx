@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronRight, MapPin, Plus, X } from "lucide-react";
-import { Avatar } from "@river-apps/ui";
 import { useState, type ReactNode } from "react";
 import { peso } from "@/lib/format";
 import { addableServices } from "@/lib/addable-services";
@@ -76,13 +75,12 @@ export function ServiceHero({ label, top, actions, selected, menu, locked = [], 
   );
 }
 
-/** Shop profile for the hero card: avatar, small line, shop name with chevron, rating, location on its own line. */
-export function HeroProfile({ name, logoUrl, line, meta, location, onClick, ariaLabel, lead }: {
-  name: string; logoUrl?: string | null; line: string; meta: ReactNode; location?: string; onClick?: () => void; ariaLabel?: string; lead?: ReactNode;
+/** Shop profile for the hero card (no logo; the logo is on the profile sheet): small line, shop name with chevron, rating, location on its own line. */
+export function HeroProfile({ name, line, meta, location, onClick, ariaLabel, lead }: {
+  name: string; line: string; meta: ReactNode; location?: string; onClick?: () => void; ariaLabel?: string; lead?: ReactNode;
 }) {
   const body = (
     <>
-      <Avatar name={name} src={logoUrl || undefined} preset="sky" size={48} decorative={false} className="mt-0.5 flex-none ring-1 ring-white/20" />
       <span className="min-w-0 leading-tight">
         <span className="block text-[12.5px] font-medium text-on-ink-muted">{line}</span>
         <span className="mt-0.5 flex items-center gap-1"><b className="truncate text-[20px] font-extrabold tracking-[-0.02em] text-on-ink">{name}</b>{onClick ? <ChevronRight size={17} className="flex-none text-on-ink-muted" aria-hidden /> : null}</span>

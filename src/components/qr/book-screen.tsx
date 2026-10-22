@@ -156,7 +156,7 @@ export function BookScreen() {
         ) : null}
         <ServiceHero label="Book a haircut" selected={[haircut, ...chosen]} menu={[haircut, ...extras]} locked={[haircut.id]}
           onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art
-          top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line={`${greet()}, welcome to`} onClick={() => setView("profile")} ariaLabel={`${shop.name}: shop profile and reviews`}
+          top={<HeroProfile name={shop.name} line={`${greet()}, welcome to`} onClick={() => setView("profile")} ariaLabel={`${shop.name}: shop profile and reviews`}
             meta={<StarLine rating={rating} className="whitespace-nowrap" />} location={branch?.name} />}
           actions={<HeroIconButton label="Schedule a visit" onClick={() => { setError(""); setView("schedule"); }}><CalendarDays size={17} strokeWidth={2.1} aria-hidden /></HeroIconButton>} />
 

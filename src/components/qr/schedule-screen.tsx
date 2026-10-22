@@ -73,8 +73,8 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
       <div className="px-4">
         <ServiceHero label="Schedule a visit" selected={chosen} menu={menu} art
           onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))}
-          top={<HeroProfile name={shop.name} logoUrl={shop.logoUrl} line="Schedule a visit at"
-            lead={<button type="button" onClick={onBack} aria-label="Back to walk-in" className="-ml-2 mt-1.5 inline-flex size-9 flex-none items-center justify-center rounded-full text-on-ink"><ChevronLeft size={22} strokeWidth={2.2} /></button>}
+          top={<HeroProfile name={shop.name} line="Schedule a visit at"
+            lead={<button type="button" onClick={onBack} aria-label="Back to walk-in" className="-ml-2.5 mt-1 inline-flex size-9 flex-none items-center justify-center rounded-full text-on-ink"><ChevronLeft size={22} strokeWidth={2.2} /></button>}
             meta={<StarLine rating={shop.rating} className="whitespace-nowrap" />} location={branchName} />} />
 
         <p className="mt-6 text-[13px] font-bold">Barber</p>
