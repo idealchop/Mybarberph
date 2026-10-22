@@ -4,11 +4,12 @@ import { AppLoader } from "@/components/common/app-loader";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 import { ChevronLeft, ChevronRight, Clock, Home as HomeIcon, MapPin } from "lucide-react";
 import { mapsLink } from "@/lib/home-service-model";
-import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { completeCut } from "@/components/transactions/complete-flow";
 
 import { payLabel, TransactionSheet } from "@/components/transactions/transaction-sheet";
-import { Plus } from "lucide-react";
+import { CalendarDays } from "lucide-react";
+import { BottomSheet } from "@/components/common/bottom-sheet";
+import { doneOnDay, monthGrid, queueDayLabel, todayKey } from "@/lib/queue-day";
 import { EmptyState, SearchInput } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,7 +23,6 @@ import {
   completionLabel, markInChair, setRequestStatus, statusLabel, useQueueRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
-import { doneInRange } from "@/lib/done-range";
 import { visitMinutes } from "@/lib/visit-minutes";
 
 type Channel = "walk-ins" | "online";
@@ -117,6 +117,10 @@ export function QueueBoard() {
   const channel: Channel = useSearchParams().get("channel") === "online" ? "online" : "walk-ins";
   const [search, setSearch] = useState("");
   const [full, setFull] = useState("");
+  const [day, setDay] = useState(() => todayKey());
+  const [picking, setPicking] = useState(false);
+  const isToday = day === todayKey();
+  const dayText = queueDayLabel(day);
   const shops = useShopLocations();
   const { rows: loaded, ready, locationId: queueLoc, all: allLocs } = useQueueRequests();
   const placeOf = (r: ChairRequest) => (allLocs ? shops.branches.find((b) => b.id === (r.locationId || HOME_LOCATION_ID))?.name ?? "" : "");
@@ -134,9 +138,10 @@ export function QueueBoard() {
   };
 
   const list = channel === "walk-ins" ? walkInList : onlineList;
-  const open = list.filter((r) => r.status === "requested" || r.status === "accepted" || r.status === "in_chair");
-  // Today's finished visits (Manila day), newest first.
-  const done = doneInRange(list, "today").slice().sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt));
+  // Open tickets are live, so they only show on Today; a past day shows that day's finished visits.
+  const open = isToday ? list.filter((r) => r.status === "requested" || r.status === "accepted" || r.status === "in_chair") : [];
+  // Finished visits on the chosen Manila day, newest first.
+  const done = doneOnDay(list, day);
 
   if (!ready) return <AppLoader />;
   return (
@@ -159,7 +164,7 @@ export function QueueBoard() {
 
       <div className="mt-4 flex items-center justify-between gap-3 px-1">
         <p className="flex min-w-0 items-center text-[13px] font-bold text-muted">
-          Today
+          <span className={isToday ? "" : "text-ink"}>{dayText}</span>
           {shops.enabled ? (
             shops.branches.length > 1 ? (
               <LocationSwitcher className="ml-1 text-ink" value={shops.viewingAll ? ALL_LOCATIONS : queueLoc} allId={ALL_LOCATIONS} onChange={shops.setView}
@@ -168,7 +173,15 @@ export function QueueBoard() {
             ) : <span className="ml-1 truncate">· {allLocs ? "All locations" : shops.branches.find((b) => b.id === queueLoc)?.name ?? "Main"}</span>
           ) : null}
         </p>
-        {channel === "walk-ins" ? <QueueWalkInButton locationId={queueLoc} /> : null}
+        <div className="flex flex-none items-center gap-1.5">
+          {!isToday ? (
+            <button type="button" onClick={() => setDay(todayKey())} className="h-9 rounded-pill bg-surface px-3.5 text-[13px] font-bold shadow-card">Today</button>
+          ) : null}
+          <button type="button" aria-label={`Pick date, showing ${isToday ? "today" : dayText}`} aria-haspopup="dialog" onClick={() => setPicking(true)}
+            className={`inline-flex size-9 items-center justify-center rounded-full ${isToday ? "bg-surface text-ink shadow-card" : "bg-ink text-on-ink"}`}>
+            <CalendarDays size={18} strokeWidth={2} aria-hidden />
+          </button>
+        </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
         <SearchInput
@@ -183,22 +196,67 @@ export function QueueBoard() {
       {full ? <p className="mt-3 px-1 text-[13.5px] font-semibold">{full}</p> : null}
       {!ready ? (
         <p className="mt-4 rounded-card bg-grey-100 px-4 py-3 text-[13.5px] font-semibold text-muted">Loading the queue…</p>
-      ) : list.length === 0 ? (
+      ) : !isToday && done.length === 0 ? (
+        search ? <EmptyState className="mt-4" title="No matches" /> : (
+          <div className="mt-4 rounded-card bg-grey-50 px-5 py-6 text-center ring-1 ring-line">
+            <b className="block text-[16px] tracking-[-0.01em]">Nothing completed on {dayText}</b>
+            <p className="mt-1 text-[13px] font-medium text-muted">{channel === "online" ? "No online orders" : "No walk-ins"} were finished that day.</p>
+          </div>
+        )
+      ) : open.length === 0 && done.length === 0 ? (
         search ? <EmptyState className="mt-4" title="No matches" /> : channel === "online"
           ? <EmptyBookings className="mt-4" locationId={queueLoc} />
-          : <EmptyBookings className="mt-4" icon="ticket" title="No walk-ins yet" subtitle="Add a walk-in, or share your QR so customers can book" locationId={queueLoc} />
+          : <EmptyBookings className="mt-4" icon="ticket" title="No walk-ins yet" subtitle="Share your QR so customers can join the queue" locationId={queueLoc} />
       ) : null}
 
       <Section title="Now" rows={open} onFull={(message) => setFull(message)} placeOf={placeOf} />
       {done.length ? (
         <div className="mt-5">
-          <p className="px-1 text-[13px] font-bold text-muted">Completed today · {done.length}</p>
-          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card" aria-label="Completed today">
+          <p className="px-1 text-[13px] font-bold text-muted">Completed {isToday ? "today" : dayText} · {done.length}</p>
+          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card" aria-label={`Completed ${isToday ? "today" : dayText}`}>
             {done.map((row) => <DoneRow key={row.id} row={row} place={placeOf(row)} />)}
           </ul>
         </div>
       ) : null}
+      {picking ? <DayPicker value={day} onPick={(k) => { setDay(k); setPicking(false); }} onClose={() => setPicking(false)} /> : null}
     </div>
+  );
+}
+
+const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** Calendar sheet: one month at a time, future days disabled, today ringed, chosen day filled. */
+function DayPicker({ value, onPick, onClose }: { value: string; onPick: (key: string) => void; onClose: () => void }) {
+  const today = todayKey();
+  const [ym, setYm] = useState(() => { const [y = 2026, m = 1] = value.split("-").map(Number); return { y, m: m - 1 }; });
+  const [ty = 2026, tm = 1] = today.split("-").map(Number);
+  const atLatest = ym.y > ty || (ym.y === ty && ym.m >= tm - 1);
+  const shift = (d: number) => setYm(({ y, m }) => { const n = y * 12 + m + d; return { y: Math.floor(n / 12), m: n % 12 }; });
+  const title = new Date(Date.UTC(ym.y, ym.m, 15)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  return (
+    <BottomSheet title="Pick a date" subtitle="Show completed visits for one day" onClose={onClose}>
+      <div className="flex items-center justify-between px-1">
+        <button type="button" aria-label="Previous month" onClick={() => shift(-1)} className="inline-flex size-10 items-center justify-center rounded-full active:bg-grey-100"><ChevronLeft size={20} strokeWidth={2.2} aria-hidden /></button>
+        <b className="text-[15.5px]">{title}</b>
+        <button type="button" aria-label="Next month" disabled={atLatest} onClick={() => shift(1)} className="inline-flex size-10 items-center justify-center rounded-full active:bg-grey-100 disabled:opacity-30"><ChevronRight size={20} strokeWidth={2.2} aria-hidden /></button>
+      </div>
+      <div className="mt-2 grid grid-cols-7 gap-y-1 text-center" role="grid" aria-label={title}>
+        {WEEK.map((w, i) => <span key={i} className="py-1 text-[12px] font-bold text-muted">{w}</span>)}
+        {monthGrid(ym.y, ym.m).map((k, i) => {
+          if (!k) return <span key={`p${i}`} />;
+          const future = k > today, on = k === value, isT = k === today;
+          return (
+            <button key={k} type="button" disabled={future} aria-pressed={on} aria-label={queueDayLabel(k)} onClick={() => onPick(k)}
+              className={`mx-auto inline-flex size-10 items-center justify-center rounded-full text-[14.5px] font-bold tabular-nums disabled:text-subtle disabled:opacity-40 ${on ? "bg-ink text-on-ink" : isT ? "ring-1 ring-ink" : "active:bg-grey-100"}`}>
+              {Number(k.slice(8))}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex gap-2 pb-1">
+        <Button size="sm" variant="secondary" className="flex-1" onClick={() => onPick(today)}>Today</Button>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -244,20 +302,3 @@ function Section({ title, rows, onFull, placeOf }: { title: string; rows: ChairR
 }
 
 
-/** Compact "Walk-in" pill next to Today: opens the add walk-in flow; Partner shops at 10/day see Upgrade instead. */
-function QueueWalkInButton({ locationId }: { locationId: string }) {
-  const allowance = useWalkInAllowance(locationId);
-  if (allowance.atLimit) {
-    return (
-      <Button href="/settings/billing" size="sm" variant="secondary" className="h-9 rounded-pill px-3.5 text-[13px]" title={allowance.message}>
-        0 left · Upgrade
-      </Button>
-    );
-  }
-  return (
-    <Button href="/queue/new" size="sm" data-auth="action" className="h-9 rounded-pill px-3.5 text-[13px]" leadingIcon={<Plus size={16} strokeWidth={2.4} />}
-      aria-label={allowance.unlimited ? "Add walk-in" : `Add walk-in, ${allowance.label}`}>
-      Walk-in
-    </Button>
-  );
-}
