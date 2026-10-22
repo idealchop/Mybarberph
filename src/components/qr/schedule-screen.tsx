@@ -1,19 +1,17 @@
 "use client";
 
 import { PayQr } from "./pay-qr";
+import { ServiceHero } from "./service-hero";
 import { payOptions, type PayChoice } from "./pay-options";
 import { Avatar } from "@river-apps/ui";
-import { Check, ChevronLeft, Users } from "lucide-react";
+import { ChevronLeft, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { BarberIcon, type BarberIconName } from "@/components/art";
 import { Button } from "@/components/common/button";
 import { Sk } from "@/components/common/skeleton";
 import { peso } from "@/lib/format";
 import { DAYS, timeLabel, type WeekHours } from "@/lib/shop-hours";
 import type { PublicShop } from "./use-public-shop";
 
-const ICONS: BarberIconName[] = ["scissors", "clipper", "pole", "razor", "towel", "ticket", "gift", "qr"];
-const icon = (v?: string | null): BarberIconName => (ICONS.includes(v as BarberIconName) ? (v as BarberIconName) : "scissors");
 
 type Barber = { id: string; name: string; photoUrl: string | null };
 export type ScheduleRequest = { serviceIds: string[]; barberId?: string; scheduledAt: number; pay: PayChoice; total: number };
@@ -78,23 +76,8 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
         </div>
       </header>
       <div className="px-4">
-        <p className="mt-5 text-[13px] font-bold">Services</p>
-        <ul className="mt-2 flex flex-col gap-2" aria-label="Services">
-          {menu.map((s) => {
-            const on = picked.includes(s.id);
-            return (
-              <li key={s.id}>
-                <button type="button" aria-pressed={on} onClick={() => setPicked((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))}
-                  className={`flex w-full items-center gap-3 rounded-[16px] bg-surface px-3 py-2 text-left ${on ? "ring-2 ring-ink" : "ring-1 ring-grey-200"}`}>
-                  <BarberIcon name={icon(s.icon)} size={36} title={s.name} />
-                  <span className="min-w-0 flex-1 text-[14px] font-bold">{s.name}</span>
-                  <span className="text-[13px] font-semibold tabular-nums">{s.price ? peso(s.price) : ""}</span>
-                  <span className={`flex size-6 flex-none items-center justify-center rounded-full ${on ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{on ? <Check size={14} strokeWidth={3} /> : null}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <ServiceHero kicker="Pick a day and time" title="Schedule a haircut" selected={chosen} menu={menu}
+          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art />
 
         <p className="mt-5 text-[13px] font-bold">Barber</p>
         <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Barber">

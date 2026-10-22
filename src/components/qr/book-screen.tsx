@@ -3,14 +3,14 @@
 import { PayQr } from "./pay-qr";
 import { payOptions, type PayChoice } from "./pay-options";
 import { Button } from "@/components/common/button";
-import { CalendarDays, Check, ChevronRight, Plus, X } from "lucide-react";
+import { CalendarDays, ChevronRight, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarberIcon, type BarberIconName } from "@/components/art";
 import { Sk } from "@/components/common/skeleton";
 import { Brand } from "@/components/shell/brand";
 import { ACTIVE_BOOKING_KEY, parseContact } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
+import { ServiceHero } from "./service-hero";
 import { ScheduleScreen, type ScheduleRequest } from "./schedule-screen";
 import { RequestStatus } from "./request-status";
 import { PoweredBy } from "./shop-brand";
@@ -24,8 +24,6 @@ function greet() {
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-const ICONS: BarberIconName[] = ["scissors", "clipper", "pole", "razor", "towel", "ticket", "gift", "qr"];
-const icon = (v?: string | null, fallback: BarberIconName = "scissors") => (ICONS.includes(v as BarberIconName) ? (v as BarberIconName) : fallback);
 
 /** The customer's current ticket at this shop, kept on the phone so they can always get back to it. */
 const ticketKey = (shopId: string) => `${ACTIVE_BOOKING_KEY}:${shopId}`;
@@ -47,7 +45,6 @@ export function BookScreen() {
   const extras = menu.filter((s) => s.kind === "treatment");
   const [contact, setContact] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [more, setMore] = useState(false);
   const [sched, setSched] = useState<ScheduleRequest | null>(null);
   const [pay, setPay] = useState<PayChoice>("cash");
   const [error, setError] = useState("");
@@ -170,49 +167,10 @@ export function BookScreen() {
             <ChevronRight size={20} />
           </button>
         ) : null}
-        <section aria-label="Book a haircut" className="relative isolate mt-4 flex min-h-[150px] items-center overflow-hidden rounded-banner bg-ink px-4 py-4 text-on-ink">
-          <div className="relative z-10 min-w-0 flex-1">
-            <p className="text-[12px] font-medium text-on-ink-muted">Walk in now, no account needed</p>
-            <h2 className="mt-1 text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em]">Book a haircut</h2>
-            <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">{haircut.name}{haircut.price ? ` · ${peso(haircut.price)}` : ""} · pay at the shop or online</p>
-          </div>
-          <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
-            {/* eslint-disable-next-line @next/next/no-img-element -- same 3D pole + scissors art as the barber view */}
-            <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" />
-          </div>
-        </section>
-
-        <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Service</h3>
-        <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
-          <BarberIcon name={icon(haircut.icon, "clipper")} size={40} title={haircut.name} />
-          <span className="min-w-0 flex-1">
-            <b className="block truncate">{haircut.name}</b>
-            <small className="text-[12.5px] font-semibold text-on-ink/70">{haircut.price ? peso(haircut.price) : ""}</small>
-          </span>
-          {extras.length ? (
-            <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="inline-flex h-8 flex-none items-center gap-1 rounded-pill bg-white px-3 text-[12.5px] font-bold text-ink">
-              <Plus size={14} strokeWidth={2.4} /> Add more
-            </button>
-          ) : null}
-        </div>
-        {more || chosen.length ? (
-          <ul className="mt-2 flex flex-col gap-2" aria-label="More services">
-            {(more ? extras : chosen).map((t) => {
-              const on = picked.includes(t.id);
-              return (
-                <li key={t.id}>
-                  <button type="button" aria-pressed={on} onClick={() => setPicked((cur) => (on ? cur.filter((id) => id !== t.id) : [...cur, t.id]))}
-                    className={`flex w-full items-center gap-3 rounded-[16px] px-3 py-2 text-left ${on ? "bg-surface ring-2 ring-ink" : "bg-surface ring-1 ring-grey-200"}`}>
-                    <BarberIcon name={icon(t.icon)} size={36} title={t.name} />
-                    <span className="min-w-0 flex-1 text-[14px] font-bold">{t.name}</span>
-                    <span className="text-[13px] font-semibold">{t.price ? `+${peso(t.price)}` : ""}</span>
-                    <span className={`flex size-6 flex-none items-center justify-center rounded-full ${on ? "bg-ink text-on-ink" : "bg-grey-100"}`}>{on ? <Check size={14} strokeWidth={3} /> : null}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+        <ServiceHero kicker="Walk in now, no account needed" selected={[haircut, ...chosen]} menu={[haircut, ...extras]} locked={[haircut.id]}
+          onAdd={(id) => setPicked((cur) => [...cur, id])} onRemove={(id) => setPicked((cur) => cur.filter((x) => x !== id))} art>
+          <p className="mt-1 truncate text-[12.5px] font-medium text-on-ink-muted">Pay at the shop or online</p>
+        </ServiceHero>
 
         <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">How will you pay?</h3>
         <div className={`mt-2 grid gap-2 grid-cols-2`} role="radiogroup" aria-label="How will you pay">
