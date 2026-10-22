@@ -33,7 +33,7 @@ export function ServiceHero({ kicker, title = "Book a haircut", selected, menu, 
             </div>
           ) : null}
         </div>
-        <div className="relative z-10 mt-3 flex items-center gap-3 border-t border-white/15 pt-3">
+        <div className="relative z-10 mt-3 flex items-center gap-3">
           <ul className="flex min-w-0 flex-1 flex-col gap-1.5" aria-label="Selected services">
             {selected.length ? selected.map((s) => (
               <li key={s.id} className="flex min-w-0 items-center gap-2 text-[15px]">
