@@ -122,3 +122,8 @@
 .sheet-up { animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .sheet-fade { animation: sheet-fade 0.18s ease-out; }
 @media (prefers-reduced-motion: reduce) { .sheet-up, .sheet-fade { animation: none; } }
+
+/* iOS zooms the page when a focused field is under 16px. Keep every field at 16px on phones (pinch zoom stays on). */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+}

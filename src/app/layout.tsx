@@ -23,7 +23,7 @@ export const revalidate = 60;
  */
 const CHUNK_RECOVERY = `(function(){var k="bp.chunkReload";addEventListener("error",function(e){var t=e.target,u=t&&(t.src||t.href)||"";if(u.indexOf("/_next/static/")<0)return;try{var last=+sessionStorage.getItem(k)||0;if(Date.now()-last<60000)return;sessionStorage.setItem(k,String(Date.now()))}catch(_){return}var l=new URL(location.href);l.searchParams.set("_v",Date.now().toString(36));location.replace(l.toString())},true)})();`;
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0A0A0A", interactiveWidget: "resizes-content" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0A0A0A", interactiveWidget: "resizes-content", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

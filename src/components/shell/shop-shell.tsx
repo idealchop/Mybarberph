@@ -64,7 +64,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
           />
         }
         mobileTabBar={focus ? undefined : <ShopTabBar items={tabs} activeKey={active ?? ""} />}
-        mainClassName={focus ? "pb-0" : undefined}
+        mainClassName={focus ? "pb-0" : "pb-[calc(env(safe-area-inset-bottom)+96px)] lg:pb-0"}
       >
         {children}
       </AppShell>
