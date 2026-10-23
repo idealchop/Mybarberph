@@ -82,7 +82,7 @@ export function QueueBoard() {
         search && dayDone.length ? <EmptyState className="mt-4" title="No matches" /> : (
           <div className="mt-4 rounded-card bg-grey-50 px-5 py-6 text-center ring-1 ring-line">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons3d/ticket.png" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
+            <img src="/icons3d/barbers/128/orders.webp" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
             <b className="mt-3 block text-[16px] tracking-[-0.01em]">{isToday ? "No completed orders yet" : `Nothing completed on ${dayText}`}</b>
             <p className="mt-1 text-[13px] font-medium text-muted">{isToday ? "Finished walk-ins and online orders show up here." : "No walk-ins or online orders were finished that day."}</p>
           </div>

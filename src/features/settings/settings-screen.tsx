@@ -4,7 +4,8 @@ import { AppLoader } from "@/components/common/app-loader";
 import { AppVersion } from "@/components/common/app-version";
 import { useCloud } from "@/lib/cloud";
 import { useInstallHidden } from "@/lib/pwa";
-import { ChevronRight, CreditCard, History, LogOut, MapPin, Package, Pencil, KeyRound, Smartphone } from "lucide-react";
+import { ChevronRight, LogOut, MapPin, Pencil, KeyRound } from "lucide-react";
+import { RiverIcon } from "@/components/common/river-icon";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -40,11 +41,11 @@ export function SettingsScreen() {
   const locationCount = shops.enabled ? Math.max(1, shops.branches.length) : profile.locations;
 
   const links = [
-    { href: "/settings/services", icon: Package, title: "Services", subtitle: "Haircut and other services" },
-    { href: "/history", icon: History, title: "History", subtitle: "Past visits and bookings" },
-    { href: "/settings/billing", icon: CreditCard, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
+    { href: "/settings/services", icon: "services" as const, title: "Services", subtitle: "Haircut and other services" },
+    { href: "/history", icon: "orders" as const, title: "History", subtitle: "Past visits and bookings" },
+    { href: "/settings/billing", icon: "billing" as const, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
     // Hidden once installed on this phone; /settings/install stays reachable and shows "Installed".
-    ...(installHidden ? [] : [{ href: "/settings/install", icon: Smartphone, title: "Install app", subtitle: "Open Barbers.ph from your home screen" }]),
+    ...(installHidden ? [] : [{ href: "/settings/install", icon: "install" as const, title: "Install app", subtitle: "Open Barbers.ph from your home screen" }]),
   ];
 
   if (!cloudReady) return <AppLoader />;
@@ -64,7 +65,7 @@ export function SettingsScreen() {
         ) : null}
         <div className="flex items-center gap-3.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={profile.logoUrl || "/icons3d/house.png"} alt={profile.name ? `${profile.name} logo` : "Shop"} width={72} height={72}
+          <img src={profile.logoUrl || "/icons3d/barbers/256/home.webp"} alt={profile.name ? `${profile.name} logo` : "Shop"} width={72} height={72}
             className={cn("size-[72px] flex-none rounded-[22px]", profile.logoUrl ? "object-cover shadow-tile ring-1 ring-line" : "bg-grey-50 object-contain p-1.5")} />
           <div className="min-w-0 flex-1 pr-8">
             <div>
@@ -111,14 +112,13 @@ export function SettingsScreen() {
           <b className="block px-1 pt-3 text-[16px]">Setup</b>
           <ul className="mt-1">
             {links.map((it) => {
-              const Icon = it.icon;
               return (
                 <li key={it.href}>
                   <Link href={it.href} className="block rounded-tile">
                     <ListItem
                       variant="row"
                       className="py-2"
-                      leading={<span className="inline-flex size-10 items-center justify-center rounded-tile bg-grey-100"><Icon size={18} strokeWidth={1.75} /></span>}
+                      leading={<RiverIcon name={it.icon} size={40} />}
                       title={it.title}
                       subtitle={it.subtitle}
                       trailing={<ChevronRight size={20} strokeWidth={1.75} className="text-subtle" />}

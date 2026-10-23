@@ -156,7 +156,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
     return (<>
       <div className="mt-4 rounded-card bg-surface px-6 py-10 text-center shadow-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons3d/bar-chart.png" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
+        <img src="/icons3d/barbers/128/reports.webp" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
         <b className="mt-2 block text-[16px]">No visits in this range yet</b>
         <p className="mt-1 text-[13px] font-semibold text-muted">Finish a few cuts and your shop’s performance shows up here: peak hours, busiest days, service mix and top barbers.</p>
       </div></>

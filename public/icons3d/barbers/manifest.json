@@ -1,0 +1,360 @@
+{
+  "name": "barbers-ph-3d-icons",
+  "version": "1.0.0",
+  "app": "Barbers.ph",
+  "style": "River 3D glossy soft plastic (River UI kit docs/icons/ICON-STYLE.md), top-left light, soft contact shadow, transparent background",
+  "palette": {
+    "blue": "#2F8CF0",
+    "orange": "#F57C1F",
+    "green": "#4CB860",
+    "teal": "#20B2AA",
+    "yellow": "#F8C32E",
+    "cream": "#F6F0E4"
+  },
+  "sizes": {
+    "webp": [
+      256,
+      128
+    ]
+  },
+  "icons": [
+    {
+      "concept": "home",
+      "group": "nav",
+      "aliases": [
+        "shop",
+        "barbershop",
+        "storefront",
+        "dashboard"
+      ],
+      "files": {
+        "webp256": "256/home.webp",
+        "webp128": "128/home.webp"
+      }
+    },
+    {
+      "concept": "orders",
+      "group": "nav",
+      "aliases": [
+        "queue",
+        "ticket",
+        "history",
+        "visits"
+      ],
+      "files": {
+        "webp256": "256/orders.webp",
+        "webp128": "128/orders.webp"
+      }
+    },
+    {
+      "concept": "moments",
+      "group": "nav",
+      "aliases": [
+        "ai",
+        "sparkle",
+        "magic"
+      ],
+      "files": {
+        "webp256": "256/moments.webp",
+        "webp128": "128/moments.webp"
+      }
+    },
+    {
+      "concept": "services",
+      "group": "service",
+      "aliases": [
+        "clipper",
+        "scissors",
+        "menu"
+      ],
+      "files": {
+        "webp256": "256/services.webp",
+        "webp128": "128/services.webp"
+      }
+    },
+    {
+      "concept": "haircut",
+      "group": "service",
+      "aliases": [
+        "cut",
+        "fade",
+        "trim"
+      ],
+      "files": {
+        "webp256": "256/haircut.webp",
+        "webp128": "128/haircut.webp"
+      }
+    },
+    {
+      "concept": "beard",
+      "group": "service",
+      "aliases": [
+        "beard-trim",
+        "trimmer",
+        "moustache"
+      ],
+      "files": {
+        "webp256": "256/beard.webp",
+        "webp128": "128/beard.webp"
+      }
+    },
+    {
+      "concept": "shave",
+      "group": "service",
+      "aliases": [
+        "razor",
+        "straight-razor",
+        "hot-towel-shave"
+      ],
+      "files": {
+        "webp256": "256/shave.webp",
+        "webp128": "128/shave.webp"
+      }
+    },
+    {
+      "concept": "hair-wash",
+      "group": "service",
+      "aliases": [
+        "wash",
+        "shampoo",
+        "towel"
+      ],
+      "files": {
+        "webp256": "256/hair-wash.webp",
+        "webp128": "128/hair-wash.webp"
+      }
+    },
+    {
+      "concept": "kids-cut",
+      "group": "service",
+      "aliases": [
+        "kids",
+        "child",
+        "junior"
+      ],
+      "files": {
+        "webp256": "256/kids-cut.webp",
+        "webp128": "128/kids-cut.webp"
+      }
+    },
+    {
+      "concept": "styling",
+      "group": "service",
+      "aliases": [
+        "pomade",
+        "wax",
+        "style"
+      ],
+      "files": {
+        "webp256": "256/styling.webp",
+        "webp128": "128/styling.webp"
+      }
+    },
+    {
+      "concept": "chair",
+      "group": "shop",
+      "aliases": [
+        "seat",
+        "station",
+        "chairs"
+      ],
+      "files": {
+        "webp256": "256/chair.webp",
+        "webp128": "128/chair.webp"
+      }
+    },
+    {
+      "concept": "pole",
+      "group": "shop",
+      "aliases": [
+        "barber-pole",
+        "brand",
+        "locked"
+      ],
+      "files": {
+        "webp256": "256/pole.webp",
+        "webp128": "128/pole.webp"
+      }
+    },
+    {
+      "concept": "staff",
+      "group": "people",
+      "aliases": [
+        "barber",
+        "profile",
+        "account"
+      ],
+      "files": {
+        "webp256": "256/staff.webp",
+        "webp128": "128/staff.webp"
+      }
+    },
+    {
+      "concept": "customers",
+      "group": "people",
+      "aliases": [
+        "clients",
+        "walk-ins"
+      ],
+      "files": {
+        "webp256": "256/customers.webp",
+        "webp128": "128/customers.webp"
+      }
+    },
+    {
+      "concept": "bookings",
+      "group": "nav",
+      "aliases": [
+        "calendar",
+        "appointments",
+        "schedule"
+      ],
+      "files": {
+        "webp256": "256/bookings.webp",
+        "webp128": "128/bookings.webp"
+      }
+    },
+    {
+      "concept": "qr",
+      "group": "commerce",
+      "aliases": [
+        "scan",
+        "check-in",
+        "ticket-scan"
+      ],
+      "files": {
+        "webp256": "256/qr.webp",
+        "webp128": "128/qr.webp"
+      }
+    },
+    {
+      "concept": "reports",
+      "group": "nav",
+      "aliases": [
+        "sales",
+        "analytics",
+        "chart"
+      ],
+      "files": {
+        "webp256": "256/reports.webp",
+        "webp128": "128/reports.webp"
+      }
+    },
+    {
+      "concept": "payments",
+      "group": "commerce",
+      "aliases": [
+        "coins",
+        "cash",
+        "wallet"
+      ],
+      "files": {
+        "webp256": "256/payments.webp",
+        "webp128": "128/payments.webp"
+      }
+    },
+    {
+      "concept": "trophy",
+      "group": "people",
+      "aliases": [
+        "leaderboard",
+        "top-barber",
+        "award"
+      ],
+      "files": {
+        "webp256": "256/trophy.webp",
+        "webp128": "128/trophy.webp"
+      }
+    },
+    {
+      "concept": "waiting-area",
+      "group": "shop",
+      "aliases": [
+        "lounge",
+        "waiting",
+        "bench"
+      ],
+      "files": {
+        "webp256": "256/waiting-area.webp",
+        "webp128": "128/waiting-area.webp"
+      }
+    },
+    {
+      "concept": "location",
+      "group": "system",
+      "aliases": [
+        "pin",
+        "map",
+        "address",
+        "branch"
+      ],
+      "files": {
+        "webp256": "256/location.webp",
+        "webp128": "128/location.webp"
+      }
+    },
+    {
+      "concept": "install",
+      "group": "system",
+      "aliases": [
+        "phone",
+        "app",
+        "pwa"
+      ],
+      "files": {
+        "webp256": "256/install.webp",
+        "webp128": "128/install.webp"
+      }
+    },
+    {
+      "concept": "billing",
+      "group": "commerce",
+      "aliases": [
+        "plan",
+        "subscription",
+        "pro"
+      ],
+      "files": {
+        "webp256": "256/billing.webp",
+        "webp128": "128/billing.webp"
+      }
+    },
+    {
+      "concept": "rewards",
+      "group": "commerce",
+      "aliases": [
+        "gift",
+        "loyalty",
+        "promo"
+      ],
+      "files": {
+        "webp256": "256/rewards.webp",
+        "webp128": "128/rewards.webp"
+      }
+    },
+    {
+      "concept": "empty-queue",
+      "group": "empty",
+      "aliases": [
+        "no-queue",
+        "empty-chair"
+      ],
+      "files": {
+        "webp256": "256/empty-queue.webp",
+        "webp128": "128/empty-queue.webp"
+      }
+    },
+    {
+      "concept": "empty-bookings",
+      "group": "empty",
+      "aliases": [
+        "no-bookings",
+        "empty-calendar"
+      ],
+      "files": {
+        "webp256": "256/empty-bookings.webp",
+        "webp128": "128/empty-bookings.webp"
+      }
+    }
+  ]
+}

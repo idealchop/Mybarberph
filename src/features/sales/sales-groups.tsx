@@ -1,6 +1,6 @@
 "use client";
 import { Check, ChevronDown, Pencil, Plus, Users } from "lucide-react";
-import { BarberIcon } from "@/components/art";
+import { RiverIcon } from "@/components/common/river-icon";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
@@ -84,7 +84,7 @@ function GroupCard({ g, rep, mode, chairs, locName, open, onToggle, onEdit, onRe
   return (
     <li className="overflow-hidden rounded-card bg-surface shadow-card">
       <button type="button" aria-expanded={open} aria-label={`${g.name}, ${peso(total)}`} onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-4 text-left">
-        <BarberIcon name="shop" size={44} />
+        <RiverIcon name="home" size={44} />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[15px]">{g.name}</b>
           <b className="mt-0.5 block text-[26px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(total)}</b>

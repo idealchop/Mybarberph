@@ -20,7 +20,7 @@ import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { CompanionCard } from "@/features/companion";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
-import { BarberIcon } from "@/components/art";
+import { RiverIcon } from "@/components/common/river-icon";
 import { ChevronRight } from "lucide-react";
 import { isOwnerCut, ownerCut } from "@/lib/owner-cut";
 import { completeCut } from "@/components/transactions/complete-flow";
@@ -115,7 +115,7 @@ export function HomeScreen() {
                 <div className="flex min-h-11 min-w-0 items-center gap-2 py-1 pl-1 pr-1.5">
                   <Link href="/settings" aria-label="My Account" className="flex-none">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={profile.logoUrl || "/icons3d/house.png"} alt="" width={36} height={36} className={`size-9 rounded-[11px] ${profile.logoUrl ? "object-cover ring-1 ring-line" : "bg-grey-50 object-contain p-0.5"}`} />
+                    <img src={profile.logoUrl || "/icons3d/barbers/128/home.webp"} alt="" width={36} height={36} className={`size-9 rounded-[11px] ${profile.logoUrl ? "object-cover ring-1 ring-line" : "bg-grey-50 object-contain p-0.5"}`} />
                   </Link>
                   <span className="flex min-w-0 flex-col leading-[1.2]">
                     <Link href="/settings" className="max-w-[170px] truncate text-[14px] font-extrabold tracking-[-0.01em]">{shopName}</Link>
@@ -317,14 +317,14 @@ function useTick(on: boolean) {
 /** Shortcuts under the Companion card (Jimboy, 2026-10-21). */
 export function HomeShortcuts({ className = "" }: { className?: string }) {
   const items = [
-    { href: "/settings/shops", icon: "shop" as const, title: "Manage shops", sub: "Locations, barbers, QR" },
-    { href: "/settings/services", icon: "scissors" as const, title: "Services", sub: "Prices and payment QR" },
+    { href: "/settings/shops", icon: "home" as const, title: "Manage shops", sub: "Locations, barbers, QR" },
+    { href: "/settings/services", icon: "services" as const, title: "Services", sub: "Prices and payment QR" },
   ];
   return (
     <nav aria-label="Shortcuts" className={`grid grid-cols-2 gap-3 ${className}`}>
       {items.map((it) => (
         <Link key={it.href} href={it.href} className="relative flex min-w-0 flex-col items-start rounded-card bg-surface px-3.5 pb-3 pt-3 shadow-card active:scale-[0.99]">
-          <BarberIcon name={it.icon} size={44} />
+          <RiverIcon name={it.icon} size={44} />
           <b className="mt-2 block w-full truncate text-[15px] tracking-[-0.01em]">{it.title}</b>
           <small className="block w-full truncate text-[12px] font-semibold text-muted">{it.sub}</small>
           <ChevronRight size={16} className="absolute right-3 top-3.5 text-subtle" aria-hidden />

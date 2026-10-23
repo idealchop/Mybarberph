@@ -1,12 +1,14 @@
-/** River Mobile 3D icons (river-mobile-ui assets/icons3d, ~300px PNG = 3x+ at nav sizes). */
-const SRC: Record<string, string> = { home: "/icons3d/house.png", queue: "/icons3d/ticket.png", moments: "/icons3d/sparkle.png" };
+import { riverIconSrc, type RiverIconName } from "@/components/common/river-icon";
+
+/** Barbers.ph 3D icons: Home (barbershop), Queue (barber ticket), Moments (sparkle with scissors). */
+const NAME: Record<string, RiverIconName> = { home: "home", queue: "orders", moments: "moments" };
 
 /** Inactive items are muted (greyscale, faded); the active item is full colour. */
 export function NavIcon3D({ name, size, active }: { name: string; size: number; active?: boolean }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={SRC[name] ?? SRC.home}
+      src={riverIconSrc(NAME[name] ?? "home", size)}
       alt=""
       aria-hidden
       width={size}

@@ -1,12 +1,11 @@
 "use client";
 import { CoinIcon } from "@river-apps/icons";
-import { BarberIcon } from "@/components/art";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { PageBack } from "@/components/shell/page-back";
 
 const FEATURES = [
-  { art: <BarberIcon name="pole" size={30} />, text: "Run your barbershop from your phone" },
-  { art: <Icon3d src="/icons3d/calendar.png" />, text: "Take walk-ins and online bookings" },
+  { art: <Icon3d src="/icons3d/barbers/128/home.webp" />, text: "Run your barbershop from your phone" },
+  { art: <Icon3d src="/icons3d/barbers/128/bookings.webp" />, text: "Take walk-ins and online bookings" },
   { art: <CoinIcon size={30} />, text: "Track sales, Cash and GCash, and barber performance" },
 ];
 

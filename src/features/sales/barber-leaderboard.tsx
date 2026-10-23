@@ -86,7 +86,7 @@ export function BarberLeaderboard({ range, where, all }: { range: SalesRange; wh
       {!sorted.length && needle ? <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barber named “{q.trim()}”.</p> : !sorted.length ? (
         <div className="mt-4 rounded-card bg-surface px-6 py-10 text-center shadow-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons3d/bar-chart.png" alt="" width={52} height={52} className="mx-auto size-[52px] object-contain" />
+          <img src="/icons3d/barbers/128/trophy.webp" alt="" width={52} height={52} className="mx-auto size-[52px] object-contain" />
           <b className="mt-2 block text-[15px]">No barbers yet</b>
           <p className="mt-1 text-[13px] font-semibold text-muted">Add barbers in Manage Shop. Their sales and speed rank here.</p>
         </div>

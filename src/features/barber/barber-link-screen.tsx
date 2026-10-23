@@ -30,9 +30,9 @@ import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-se
 
 /** Install view (Jimboy, 2026-10-20): barber-focused lines. */
 const BARBER_FEATURES = [
-  { art: <BarberIcon name="clipper" size={30} />, text: "Take walk-ins in a tap" },
-  { art: <Icon3d src="/icons3d/ticket.png" />, text: "Scan customer tickets" },
-  { art: <Icon3d src="/icons3d/bar-chart.png" />, text: "See my sales and cuts" },
+  { art: <Icon3d src="/icons3d/barbers/128/customers.webp" />, text: "Take walk-ins in a tap" },
+  { art: <Icon3d src="/icons3d/barbers/128/qr.webp" />, text: "Scan customer tickets" },
+  { art: <Icon3d src="/icons3d/barbers/128/reports.webp" />, text: "See my sales and cuts" },
 ];
 
 const PILL = "relative h-8 gap-1 rounded-pill px-3 text-[13px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -412,7 +412,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         {waiting.length === 0 ? (
           <div className="mt-2 flex flex-col items-center rounded-card bg-surface px-4 py-6 text-center shadow-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons3d/couch.png" alt="" width={52} height={52} className="size-[52px] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.12)]" />
+            <img src="/icons3d/barbers/128/waiting-area.webp" alt="" width={52} height={52} className="size-[52px] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.12)]" />
             <b className="mt-2 text-[14.5px]">No one waiting</b>
             <span className="text-[12.5px] font-semibold text-muted">New walk-ins and online bookings show up here.</span>
           </div>

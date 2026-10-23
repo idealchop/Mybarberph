@@ -41,7 +41,7 @@ function DraggablePin({ map, pin, onPin, disabled }: { map: MapLibreMap; pin: La
     el.setAttribute("aria-label", "Shop pin. Drag to adjust.");
     el.style.cssText = "width:44px;height:58px;cursor:grab;touch-action:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.18))";
     const img = document.createElement("img");
-    img.src = "/icons3d/pin.png"; img.alt = ""; img.draggable = false;
+    img.src = "/icons3d/barbers/128/location.webp"; img.alt = ""; img.draggable = false;
     img.style.cssText = "width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none";
     el.appendChild(img);
     const mk = new maplibregl.Marker({ element: el, anchor: "bottom", draggable: !disabled }).setLngLat([pin.lng, pin.lat]).addTo(map);

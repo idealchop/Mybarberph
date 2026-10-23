@@ -28,8 +28,8 @@ export interface ShopTreatment {
   icon: BarberIconName;
 }
 
-export const HAIRCUT_ICONS: BarberIconName[] = ["clipper", "scissors", "pole"];
-export const TREATMENT_ICONS: BarberIconName[] = ["razor", "towel", "scissors", "gift", "clipper"];
+export const HAIRCUT_ICONS: BarberIconName[] = ["clipper", "scissors", "kids", "pole"];
+export const TREATMENT_ICONS: BarberIconName[] = ["razor", "beard", "towel", "styling", "scissors", "gift", "clipper"];
 
 const KEY = "barbers.shop-menu";
 const EVENT = "barbers-services";

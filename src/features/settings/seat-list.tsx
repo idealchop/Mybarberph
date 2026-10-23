@@ -1,11 +1,11 @@
 "use client";
 
-import { BarberIcon } from "@/components/art";
+import { RiverIcon } from "@/components/common/river-icon";
 import { chairBarberName, seatTime, type ShopChair } from "@/lib/shop-chairs";
 
 /** The chair’s own mark. A barber photo never replaces this. */
 export function ChairMark({ label, size = 44 }: { label: string; size?: number }) {
-  return <BarberIcon name="pole" size={size} title={label} />;
+  return <RiverIcon name="chair" size={size} title={label} />;
 }
 
 /** Portrait of the barber on this seat. Shown online when customers book. */
