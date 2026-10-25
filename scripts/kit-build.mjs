@@ -10,7 +10,8 @@ if (!existsSync(`${kit}/packages/ui/src/index.ts`)) {
     "\n✖ The River Apps UI Kit is missing (vendor/river-apps-ui-kit).\n" +
     "  It is a private git submodule. With access to github.com/idealchop/river-apps-ui-kit run:\n" +
     "    git submodule update --init --recursive\n" +
-    "  then npm install && npm run build again. See README.md → Setup.\n",
+    "  then npm install && npm run build again. See README.md → Setup.\n" +
+    "  App Hosting builds need the build-only secret GITHUB_SUBMODULE_TOKEN (docs/environments.md).\n",
   );
   process.exit(1);
 }

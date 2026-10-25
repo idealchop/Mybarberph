@@ -17,6 +17,11 @@ env:
     value: "bp_session"
   - variable: NEXT_PUBLIC_MAP_STYLE_URL
     value: "https://storage.googleapis.com/rivermobile-ph-maps/maps/v2026-10/river-style.json"
+  # Build-only. Checks out the private kit and maps submodules. Never available at runtime.
+  - variable: GITHUB_SUBMODULE_TOKEN
+    secret: GITHUB_SUBMODULE_TOKEN
+    availability:
+      - BUILD
 # Secrets (create with `firebase apphosting:secrets:set <NAME>` and grant both backends, then uncomment):
 #  - variable: RIVER_MOBILE_API_KEY
 #    secret: RIVER_MOBILE_API_KEY
