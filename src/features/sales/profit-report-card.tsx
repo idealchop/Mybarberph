@@ -29,24 +29,21 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
   const report = profitWeek(rows, chairs, where, 0, Date.now(), branches);
   return (
     <Link href="/sales/profit" aria-label="Open the profit report" className={`block rounded-card bg-surface px-3.5 py-3 shadow-card ${className}`}>
-      <span className="flex items-center gap-2">
+      <span className="flex items-start gap-2">
         <span className="min-w-0 flex-1">
-          <b className="block text-[15px]">Profit report</b>
+          <b className="block text-[15px]">Weekly profit</b>
           <span className="mt-0.5 block truncate text-[12.5px] font-semibold text-muted">{report.label}</span>
         </span>
-        <ChevronRight size={18} className="flex-none text-muted" aria-hidden />
+        <b className="flex-none text-[16px] tabular-nums">{peso(report.total)}</b>
+        <ChevronRight size={18} className="mt-0.5 flex-none text-muted" aria-hidden />
       </span>
-      <span className="mt-2.5 grid grid-cols-7 gap-1" aria-hidden>
+      <span className="mt-2.5 flex justify-between gap-1 overflow-x-auto" aria-hidden>
         {report.days.map((d, i) => (
-          <span key={d.key} className="min-w-0 text-center">
+          <span key={d.key} className="w-max min-w-10 flex-none text-center">
             <span className="block text-[10.5px] font-bold text-muted">{d.dow}</span>
-            <span className="mt-0.5 block whitespace-nowrap text-[10.5px] font-extrabold tabular-nums">{cell(report.daily[i] ?? 0)}</span>
+            <span className="mt-0.5 block whitespace-nowrap text-[10px] font-extrabold tabular-nums">{cell(report.daily[i] ?? 0)}</span>
           </span>
         ))}
-      </span>
-      <span className="mt-2.5 flex items-baseline justify-between border-t border-line pt-2">
-        <span className="text-[12.5px] font-semibold text-muted">Week total</span>
-        <b className="text-[16px] tabular-nums">{peso(report.total)}</b>
       </span>
     </Link>
   );
