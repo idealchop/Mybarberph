@@ -12,6 +12,35 @@ export const manilaYmd = ymd;
 /** Start of the Manila day for YYYY-MM-DD. */
 export const manilaDayStart = at;
 
+/**
+ * Inclusive Manila days for a sales filter. Owner Collection and a barber's My sales both use this,
+ * so Today / 7 days / 30 days / this month / a custom range cover the same cuts.
+ * `to` is exclusive (start of the day after the last day).
+ */
+export function periodBounds(range: string, now = Date.now(), custom?: { from: string; to: string } | null) {
+  const today = at(ymd(now));
+  const end = today + DAY;
+  if (range === "today") return { from: today, to: end };
+  if (range === "week") return { from: today - 6 * DAY, to: end };
+  if (range === "d30") return { from: today - 29 * DAY, to: end };
+  if (range === "month") return { from: at(`${ymd(now).slice(0, 7)}-01`), to: end };
+  if (range === "custom" && custom?.from && /^\d{4}-\d{2}-\d{2}$/.test(custom.from)) {
+    const f = at(custom.from);
+    const raw = custom.to && /^\d{4}-\d{2}-\d{2}$/.test(custom.to) ? at(custom.to) + DAY : end;
+    const to = Math.max(f + DAY, Math.min(raw, f + 62 * DAY));
+    return { from: Math.min(f, to - DAY), to };
+  }
+  return { from: today - 27 * DAY, to: end };
+}
+
+/** Every Manila day in a period, newest first (YYYY-MM-DD). */
+export function periodDays(range: string, now = Date.now(), custom?: { from: string; to: string } | null) {
+  const { from, to } = periodBounds(range, now, custom);
+  const days: string[] = [];
+  for (let t = to - DAY; t >= from; t -= DAY) days.push(ymd(t));
+  return days;
+}
+
 export function barberRange(range?: string | null, from?: string | null, to?: string | null, now = Date.now()) {
   const today = at(ymd(now));
   if (range === "today") return { range: "today" as const, from: today, to: today + DAY, label: `Today, ${fmt(today)}` };

@@ -1,15 +1,24 @@
 "use client";
 
 import type { ChairRequest } from "@/lib/chair-bookings";
+import { periodBounds } from "@/lib/barber-sales";
 import { splitTotals } from "@/lib/income-split";
 import { PAY_LABEL, payBucket, paySplit, type PaySplit } from "@/lib/pay-split";
 
-export type SalesRange = "today" | "week" | "month" | "all" | "custom";
+export type SalesRange = "today" | "week" | "d30" | "month" | "all" | "custom";
 
 export const SALES_RANGES: { value: SalesRange; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "week", label: "7d" },
   { value: "all", label: "All time" },
+];
+
+/** Same chips on owner Sales and a barber's My sales. Today is the daily view. */
+export const DAY_RANGES: { value: SalesRange; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "7 days" },
+  { value: "d30", label: "30 days" },
+  { value: "month", label: "Month" },
 ];
 
 let earliest = 0;
@@ -18,19 +27,27 @@ export function noteEarliest(rows: { createdAt?: number; completedAt?: number; u
   for (const r of rows) { const t = Math.min(r.createdAt || Infinity, r.completedAt || Infinity, r.updatedAt || Infinity); if (Number.isFinite(t) && t > 0 && (!earliest || t < earliest)) earliest = t; }
 }
 /** How many days of rows a range needs from the server. */
-export function rangeFetchDays(range: SalesRange) { return range === "all" ? 3650 : range === "custom" ? 124 : 28; }
+export function rangeFetchDays(range: SalesRange) {
+  if (range === "all") return 3650;
+  if (range === "custom") return 124;
+  if (range === "d30" || range === "month") return 40;
+  if (range === "week") return 10;
+  return 3;
+}
 
 let custom: { from: string; to: string } | null = null;
 /** Sets the dates used when the range is "custom" (YYYY-MM-DD, Manila, inclusive). */
 export function setCustomRange(from: string, to: string) { custom = from && to ? (from <= to ? { from, to } : { from: to, to: from }) : null; }
-/** End time (noon of the last Manila day) and number of days for a range. */
+export function getCustomRange() { return custom; }
+/** Last instant of the range and how many Manila days it covers. Days match `periodBounds`. */
 export function rangeWindow(range: SalesRange, now = Date.now()) {
-  if (range === "custom" && custom) {
-    const f = Date.parse(`${custom.from}T12:00:00+08:00`), t = Date.parse(`${custom.to}T12:00:00+08:00`);
-    return { end: Math.min(t, now), span: Math.max(1, Math.min(62, Math.round((Math.min(t, now) - f) / 86_400_000) + 1)) };
+  if (range === "all") {
+    const end = periodBounds("today", now).to;
+    const from = earliest ? Date.parse(`${new Date(earliest + 8 * 3600_000).toISOString().slice(0, 10)}T00:00:00+08:00`) : end - 28 * 86_400_000;
+    return { end: end - 1, span: Math.max(1, Math.min(3650, Math.round((end - from) / 86_400_000))) };
   }
-  if (range === "all") return { end: now, span: Math.max(1, Math.min(3650, earliest ? Math.ceil((now - earliest) / 86_400_000) + 1 : 28)) };
-  return { end: now, span: range === "today" ? 1 : range === "week" ? 7 : 28 };
+  const b = periodBounds(range, now, custom);
+  return { end: b.to - 1, span: Math.max(1, Math.round((b.to - b.from) / 86_400_000)) };
 }
 
 export interface SalesRow {
@@ -111,13 +128,13 @@ function dayLabel(ms: number) {
 }
 
 /** Sales from this shop's finished visits (Manila days). `rows` is every visit in scope. */
-export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range: SalesRange, pctOf?: (r: ChairRequest) => number | null): SalesReport {
+export function salesReport(rows: ChairRequest[], _unpaidInRange: number, range: SalesRange, pctOf?: (r: ChairRequest) => number | null): SalesReport {
   const { end: now, span } = rangeWindow(range);
   const keys = Array.from({ length: span }, (_, i) => dayKey(now - (span - 1 - i) * DAY_MS));
   const prevKeys = new Set(Array.from({ length: span }, (_, i) => dayKey(now - (2 * span - 1 - i) * DAY_MS)));
   const inRange = new Set(keys);
   const done = rows.filter((r) => r.status === "done");
-  const doneAt = (r: ChairRequest) => r.completedAt ?? r.updatedAt;
+  const doneAt = (r: ChairRequest) => r.completedAt || 0;
   const extras = done.filter((r) => inRange.has(dayKey(doneAt(r))));
   const previous = done.filter((r) => prevKeys.has(dayKey(doneAt(r))));
   const rangeSales = extras.reduce((sum, item) => sum + item.price, 0);
@@ -176,7 +193,7 @@ export function salesReport(rows: ChairRequest[], unpaidCentavos: number, range:
     collected: extras.filter((r) => r.paid).reduce((sum, r) => sum + r.price, 0),
     collectedSplit: paySplit(extras),
     collectedShares: pctOf ? splitTotals(extras.filter((r) => r.paid).map((r) => ({ amount: r.price, pct: pctOf(r) }))) : undefined,
-    unpaid: unpaidCentavos,
+    unpaid: extras.filter((r) => !r.paid).reduce((sum, r) => sum + r.price, 0),
     average: cuts > 0 ? Math.round(rangeSales / cuts) : 0,
     series,
     seriesKind: span === 1 ? "hour" : "day",

@@ -14,7 +14,7 @@ export function rangeKeys(range: SalesRange) {
 
 export function inRange(rows: ChairRequest[], range: SalesRange, loc: string) {
   const { keys } = rangeKeys(range);
-  const at = (r: ChairRequest) => r.completedAt ?? r.updatedAt ?? r.createdAt;
+  const at = (r: ChairRequest) => (r.status === "done" ? r.completedAt || 0 : r.completedAt ?? r.updatedAt ?? r.createdAt);
   return rows.filter((r) => (loc === "all" || (r.locationId || HOME_LOCATION_ID) === loc) && keys.has(dayKey(at(r))));
 }
 
@@ -32,7 +32,7 @@ export interface BarberStat {
   rating: number | null; ratings: number;
 }
 
-function doneAt(r: ChairRequest) { return r.completedAt ?? r.updatedAt ?? r.createdAt; }
+function doneAt(r: ChairRequest) { return r.status === "done" ? r.completedAt || 0 : r.completedAt ?? r.updatedAt ?? r.createdAt; }
 
 /** All bookings that started or finished in the range (for completion rate). */
 function scoped(rows: ChairRequest[], range: SalesRange, loc: string) {

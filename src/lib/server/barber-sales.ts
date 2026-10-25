@@ -50,7 +50,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   const r = barberRange(q.range, q.from, q.to);
   const shop = shopRef(shopId);
   const [snap, claimSnap, state] = await Promise.all([
-    shop.collection("bookings").where("createdAt", ">=", r.from - 2 * 86_400_000).where("createdAt", "<", r.to).get(),
+    shop.collection("bookings").where("completedAt", ">=", r.from).where("completedAt", "<", r.to).get(),
     shop.collection("remitClaims").where("barberId", "==", q.barberId).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);

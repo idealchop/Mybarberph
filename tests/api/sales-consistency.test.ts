@@ -77,6 +77,16 @@ describe("Sales: every view agrees for the same shop, location and period", () =
     expect(serviceStats(visits, "today", "all").reduce((s, x) => s + x.sales, 0)).toBe(all.sales);
   });
 
+  it("TC-SALES-ODD-02 a cut booked long before the range still counts on the day it was finished", async () => {
+    const booked = NOW - 20 * 86_400_000;
+    fs.store["shops/shop-a/bookings/BK-LATE01"] = v("BK-LATE01", "sa", "Haircut", 30_000, "cash", { createdAt: booked, updatedAt: booked, completedAt: NOW - 60_000 });
+    const sa = [...visits, v("BK-LATE01", "sa", "Haircut", 30_000, "cash", { createdAt: booked, completedAt: NOW - 60_000 })].filter((x) => x.locationId === "sa");
+    expect(salesReport(sa, 0, "today")).toMatchObject({ sales: 110_000, cuts: 3 });
+    const mine = await barberPerformance("shop-a", { range: "today", barberId: "b-keith", chairId: "c-keith-sa", locationId: "sa" });
+    expect(mine).toMatchObject({ sales: 110_000, cuts: 3 });
+    expect(mine.byDate?.find((d) => d.cuts === 3)?.sales).toBe(110_000);
+  });
+
   it("TC-SALES-NEG-03 regression: a turned-off chair hides only an empty row at that location; sales never drop out of the ranking", () => {
     const withJay = [...visits, v("BK-JAY001", "sa", "Haircut", 25_000, "cash", { barberId: "b-jay", barberName: "Jay", seatLabel: "Jay" })];
     const off = [{ ...chairs[0]!, active: false }, chairs[1]!, chairs[2]!];

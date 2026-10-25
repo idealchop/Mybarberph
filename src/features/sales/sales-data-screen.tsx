@@ -7,19 +7,20 @@ import { Button } from "@/components/common/button";
 import { useEffect, useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/page-back";
 import { useChairRequests } from "@/lib/chair-bookings";
-import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
-import { rangeFetchDays, salesReport, type SalesRange } from "@/lib/sales-report";
+import { DAY_RANGES, getCustomRange, rangeFetchDays, type SalesRange } from "@/lib/sales-report";
+import { periodBounds, periodDays } from "@/lib/barber-sales";
+import { DaySales } from "./day-sales";
 import { barberStats, inRange, rankedBarbers } from "@/lib/sales-stats";
 import { SalesGroups } from "./sales-groups";
 import { showsLocationFilter } from "@/lib/sales-filters";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
-import { sharePct, tipOf } from "@/lib/income-split";
+import { ownerShareOf, sharePct } from "@/lib/income-split";
 import { OWNER_BARBER_ID } from "@/lib/owner-cut";
-import { BarberRanking, ClaimHistory, CollectionCards, RangeChips, UnclaimedCard } from "./sales-parts";
+import { BarberRanking, ClaimHistory, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { BarberLeaderboard } from "./barber-leaderboard";
@@ -55,12 +56,12 @@ export function SalesDataScreen() {
       const v = q.get("view") ?? q.get("tab");
       setView(v === "services" ? "services" : v === "barbers" ? "barbers" : v === "groups" ? "groups" : "performance");
       if (q.get("loc")) setLoc(q.get("loc")!);
-      if (q.get("r") === "week" || q.get("r") === "month" || q.get("r") === "today") setRange(q.get("r") as SalesRange);
+      const r = q.get("r");
+      if (r === "week" || r === "month" || r === "today" || r === "d30" || r === "all" || r === "custom") setRange(r);
     }, 0);
     return () => window.clearTimeout(t);
   }, []);
 
-  const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   // Each visit's barber split % (owner's own cuts are all the shop's).
   const pctOf = (r: { barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string }) => {
     if (r.barberId === OWNER_BARBER_ID) return 0;
@@ -68,8 +69,18 @@ export function SalesDataScreen() {
     const c = chairs.find((x) => (r.barberId && (x.barberId === r.barberId || x.id === r.barberId)) || (!r.barberId && x.label === (r.seatLabel || r.chairLabel) && (x.locationId || HOME_LOCATION_ID) === bl));
     return c ? sharePct(c) : null;
   };
-  const base = salesReport(rows, unpaid, range, pctOf);
-  const report = { ...base, tips: inRange(rows, range, "all").filter((r) => r.status === "done").reduce((s, r) => s + tipOf(r), 0) };
+  const bounds = periodBounds(range, Date.now(), range === "custom" ? getCustomRange() : null);
+  const todayKey = periodDays("today")[0] ?? "";
+  const commissionDays = periodDays(range, Date.now(), range === "custom" ? getCustomRange() : null).map((date) => ({ date, amount: 0, cuts: 0 }));
+  const byDay = new Map(commissionDays.map((d) => [d.date, d]));
+  for (const r of rows) {
+    if (r.status !== "done" || !r.completedAt || r.completedAt < bounds.from || r.completedAt >= bounds.to) continue;
+    const day = byDay.get(periodDays("today", r.completedAt)[0] ?? "");
+    if (!day) continue;
+    day.cuts += 1;
+    day.amount += ownerShareOf(r.price || 0, pctOf(r));
+  }
+  const commission = commissionDays.reduce((s, d) => s + d.amount, 0);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
@@ -109,27 +120,27 @@ export function SalesDataScreen() {
               options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
           </div>
         ) : null}
-        <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
+        <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} ranges={DAY_RANGES} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
       </div>
 
       {view === "performance" ? (
-        <>
-          <CollectionCards className="mt-4" collected={report.collected} split={report.collectedSplit} unpaid={report.unpaid}
-            shopShare={report.collectedShares && (report.collectedShares.shop || report.collectedShares.barber) ? report.collectedShares.shop + report.collectedShares.none : null} />
-          {report.tips ? <p className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3 text-[13.5px] font-semibold shadow-card"><span>Tips for barbers <small className="block text-[12px] text-muted">Not part of sales · 100% the barbers’</small></span><b className="text-[17px] tabular-nums">{peso(report.tips)}</b></p> : null}
-          <UnclaimedCard className="mt-3" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
-          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
-          <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
-            onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
-          <ClaimHistory remit={remit.data} locName={locName} />
-        </>
+        <DaySales eyebrow="Your commission" total={commission} days={commissionDays} today={todayKey} empty="No finished cuts in this range." />
       ) : null}
       {view === "services" ? (
         <>
           <PerformanceDashboard f={pf} all={all} range={range} where={where} branches={branches} chairs={chairs} />
         </>
       ) : null}
-      {view === "barbers" ? <BarberLeaderboard range={range} where={where} all={all} /> : null}
+      {view === "barbers" ? (
+        <>
+          <UnclaimedCard className="mt-4" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
+          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
+          <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
+            onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
+          <ClaimHistory remit={remit.data} locName={locName} />
+          <BarberLeaderboard range={range} where={where} all={all} />
+        </>
+      ) : null}
       {view === "groups" ? <SalesGroups rows={inRange(all, range, "all")} chairs={chairs} branches={branches} /> : null}
       <Button className="mt-6" variant="secondary" fullWidth href="/history">See each visit in History</Button>
     </div>

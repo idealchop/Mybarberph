@@ -3,7 +3,7 @@ import { cn } from "@river-apps/ui";
 import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BarberPortrait } from "@/features/settings";
+import { BarberPortrait } from "@/features/settings/seat-list";
 import { peso } from "@/lib/format";
 import type { SalesRange } from "@/lib/sales-report";
 import type { ChairRequest } from "@/lib/chair-bookings";

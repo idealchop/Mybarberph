@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { barberRange, historyRange, manilaYmd } from "@/lib/barber-sales";
+import { barberRange, historyRange, manilaYmd, periodBounds, periodDays } from "@/lib/barber-sales";
+import { rangeWindow } from "@/lib/sales-report";
 
 
 const at = (iso: string) => Date.parse(iso);
@@ -25,5 +26,20 @@ describe("My sales: today is the Manila day (resets at midnight PHT)", () => {
     expect(historyRange("lastMonth", now)).toEqual({ from: "2026-09-01", to: "2026-09-30" });
     const c = barberRange("custom", "2026-10-20", "2026-10-21", now);
     expect([c.from, c.to]).toEqual([at("2026-10-19T16:00:00Z"), at("2026-10-21T16:00:00Z")]);
+  });
+  it("owner and barber day filters cover the same Manila days", () => {
+    const now = at("2026-10-21T16:10:00Z"); // 00:10 PHT Oct 22
+    expect(periodDays("today", now)).toEqual(["2026-10-22"]);
+    expect(periodDays("week", now)).toEqual(["2026-10-22", "2026-10-21", "2026-10-20", "2026-10-19", "2026-10-18", "2026-10-17", "2026-10-16"]);
+    expect(periodDays("d30", now)).toHaveLength(30);
+    expect(periodDays("d30", now).at(-1)).toBe("2026-09-23");
+    expect(periodDays("month", now).at(-1)).toBe("2026-10-01");
+    expect(periodDays("month", now)[0]).toBe("2026-10-22");
+    for (const range of ["today", "week", "d30", "month"] as const) {
+      const days = periodDays(range, now);
+      const w = rangeWindow(range, now);
+      expect(w.span).toBe(days.length);
+      expect(w.end).toBe(periodBounds(range, now).to - 1);
+    }
   });
 });

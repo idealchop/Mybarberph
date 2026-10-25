@@ -14,7 +14,7 @@ import { useAuthGate } from "@/components/auth/auth-gate-provider";
 import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
-import { SalesChartCard } from "@/features/sales";
+import { ProfitReportCard, SalesChartCard } from "@/features/sales";
 import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
@@ -190,6 +190,7 @@ export function HomeScreen() {
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
           <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
+        <ProfitReportCard className="mx-4 mt-3" />
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
         <CompanionCard className="mx-4 mt-3" />
         <HomeShortcuts className="mx-4 mt-3" />
@@ -250,6 +251,7 @@ export function HomeScreen() {
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
           <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
+        <ProfitReportCard className="mt-5" />
         <CompanionCard className="mt-5" />
         <HomeShortcuts className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />

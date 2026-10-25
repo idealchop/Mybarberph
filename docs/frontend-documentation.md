@@ -10,7 +10,7 @@ Next.js 16 App Router, React 19, Tailwind 4, River Apps UI kit (`vendor/river-ap
 | :--- | :--- | :--- |
 | `/` → `/home` | everyone | Guest-first home; sign-in sheet when an action needs an account |
 | `/queue`, `/queue/new`, `/queue/seats` | owner | Live queue, walk-in, chairs. "Done today" list with a date chip |
-| `/sales`, `/sales/detail`, `/sales/barbers`, `/sales/performance` | owner | Collected split Cash / GCash (+ Online / Other when present) |
+| `/sales`, `/sales/detail`, `/sales/barbers`, `/sales/performance`, `/sales/profit` | owner | Collected split Cash / GCash (+ Online / Other when present). Profit report is a Sunday–Saturday grid of each barber’s finished sales; Home links to it. |
 | `/history`, `/scan`, `/qr` | owner | Visits list; ticket scan; shop QR |
 | `/moments`, `/moments/profile` | owner | Community feed |
 | `/companion` | owner | AI companion (flagged) |
