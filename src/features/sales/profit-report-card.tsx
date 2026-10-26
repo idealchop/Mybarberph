@@ -6,13 +6,14 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { profitWeek } from "@/lib/profit-report";
+import { compactPeso, profitWeek } from "@/lib/profit-report";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useSalesRows } from "./use-sales-rows";
 
-const cell = (n: number) => (n ? peso(n) : "–");
+const cell = (n: number) => (n ? compactPeso(n) : "–");
+const todayKey = (now: number) => new Date(now + 8 * 3600_000).toISOString().slice(0, 10);
 
 /** Home preview of this week’s profit report. The whole card opens the full grid. */
 export function ProfitReportCard({ className = "" }: { className?: string }) {
@@ -39,13 +40,17 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
         <b className="flex-none text-[16px] tabular-nums">{peso(report.total)}</b>
         <ChevronRight size={18} className="mt-0.5 flex-none text-muted" aria-hidden />
       </span>
-      <span className="mt-2.5 flex justify-between gap-1 overflow-x-auto" aria-hidden>
-        {report.days.map((d, i) => (
-          <span key={d.key} className="w-max min-w-10 flex-none text-center">
-            <span className="block text-[10.5px] font-bold text-muted">{d.dow}</span>
-            <span className="mt-0.5 block whitespace-nowrap text-[10px] font-extrabold tabular-nums">{cell(report.daily[i] ?? 0)}</span>
-          </span>
-        ))}
+      <span className="mt-2.5 grid grid-cols-7 gap-0.5" aria-hidden>
+        {report.days.map((d, i) => {
+          const today = d.key === todayKey(now);
+          const future = d.key > todayKey(now);
+          return (
+            <span key={d.key} className={`rounded-md py-1 text-center ${today ? "bg-grey-100" : ""}`}>
+              <span className={`block text-[10.5px] font-bold ${today ? "text-ink" : "text-muted"}`}>{d.dow}</span>
+              <span className={`mt-0.5 block whitespace-nowrap text-[11px] font-extrabold tabular-nums ${future ? "text-muted opacity-40" : ""}`}>{future ? "–" : cell(report.daily[i] ?? 0)}</span>
+            </span>
+          );
+        })}
       </span>
     </Link>
   );

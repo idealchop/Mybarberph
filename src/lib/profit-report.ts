@@ -1,4 +1,4 @@
-/** Owner profit report: one Manila week (Sunday–Saturday), sales of finished cuts per barber per day. */
+/** Owner profit report: one Manila week (Monday–Sunday), sales of finished cuts per barber per day. */
 
 const DAY = 86_400_000;
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -7,7 +7,7 @@ const noon = (ms: number) => new Date(ms + 12 * 3600_000);
 
 export interface ProfitDay {
   key: string;
-  /** Sun, Mon, … */
+  /** Mon, Tue, … */
   dow: string;
   /** 10/25/2026 */
   date: string;
@@ -18,7 +18,7 @@ export interface ProfitRow {
   name: string;
   locationId: string;
   locationName: string;
-  /** Sales (centavos) for each day of the week, Sunday first. */
+  /** Sales (centavos) for each day of the week, Monday first. */
   days: number[];
   total: number;
 }
@@ -53,10 +53,10 @@ export interface ProfitVisit {
   chairLabel?: string;
 }
 
-/** Sunday 00:00 Manila of the week `offset` weeks from the week that contains `now`. `to` is the next Sunday. */
+/** Monday 00:00 Manila of the week `offset` weeks from the week that contains `now`. `to` is the next Monday. */
 export function weekBounds(offset = 0, now = Date.now()) {
   const today = at(ymd(now));
-  const dow = new Date(today + 8 * 3600_000).getUTCDay();
+  const dow = (new Date(today + 8 * 3600_000).getUTCDay() + 6) % 7; // Mon = 0 … Sun = 6
   const from = today - dow * DAY + offset * 7 * DAY;
   const days: ProfitDay[] = Array.from({ length: 7 }, (_, i) => {
     const ms = from + i * DAY;
@@ -67,9 +67,11 @@ export function weekBounds(offset = 0, now = Date.now()) {
     };
   });
   const startLabel = noon(from).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
-  const endLabel = noon(from + 6 * DAY).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
+  const end = noon(from + 6 * DAY);
+  const sameMonth = noon(from).getUTCMonth() === end.getUTCMonth();
+  const endLabel = end.toLocaleDateString("en-US", { timeZone: "Asia/Manila", ...(sameMonth ? {} : { month: "short" }), day: "numeric" });
   const year = noon(from + 6 * DAY).toLocaleDateString("en-US", { timeZone: "Asia/Manila", year: "numeric" });
-  return { from, to: from + 7 * DAY, days, label: `Week of ${startLabel} - ${endLabel}, ${year}` };
+  return { from, to: from + 7 * DAY, days, label: `${startLabel} – ${endLabel}, ${year}` };
 }
 
 function seatOf(r: ProfitVisit, chairs: ProfitChair[], loc: string) {
@@ -131,4 +133,12 @@ export function profitWeek(
   const daily = [0, 0, 0, 0, 0, 0, 0];
   for (const row of list) row.days.forEach((n, i) => { daily[i] = (daily[i] ?? 0) + n; });
   return { ...bounds, rows: list, daily, total: daily.reduce((s, n) => s + n, 0) };
+}
+
+/** Short amount for tight grids: 980 → "980", 1,600 → "1.6k", 12,400 → "12k" (pesos, from centavos). */
+export function compactPeso(centavos: number): string {
+  const v = Math.round(centavos / 100);
+  if (Math.abs(v) < 1000) return String(v);
+  const k = v / 1000;
+  return `${Math.abs(k) < 10 ? Math.round(k * 10) / 10 : Math.round(k)}k`;
 }

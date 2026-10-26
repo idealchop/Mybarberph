@@ -8,7 +8,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { profitWeek } from "@/lib/profit-report";
+import { compactPeso, profitWeek } from "@/lib/profit-report";
 import { cn } from "@river-apps/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -18,8 +18,17 @@ import { useSalesRows } from "./use-sales-rows";
 const FETCH_DAYS = 70;
 const todayKey = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 
-const pinL = "sticky left-0 z-10";
-const pinR = "sticky right-0 z-10";
+/** One grid cell: short amount on phones, full peso on desktop; future days are a faint dash. */
+function Amount({ n, future, bold }: { n: number; future: boolean; bold?: boolean }) {
+  if (future) return <span className="text-muted opacity-40">–</span>;
+  if (!n) return <span className="font-semibold text-muted">–</span>;
+  return (
+    <span className={bold ? "font-bold" : "font-semibold"}>
+      <span className="lg:hidden">{compactPeso(n)}</span>
+      <span className="hidden lg:inline">{peso(n)}</span>
+    </span>
+  );
+}
 
 /** Full weekly profit report: barbers down the side, finished-cut sales across the week. */
 export function ProfitReportScreen() {
@@ -54,7 +63,7 @@ export function ProfitReportScreen() {
         <button type="button" aria-label="Previous week" onClick={() => setOffset((n) => Math.max(-8, n - 1))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink">
           <ChevronLeft size={18} />
         </button>
-        <p className="min-w-0 truncate text-[13.5px] font-semibold">{report.label}</p>
+        <p className="min-w-0 whitespace-nowrap text-[13.5px] font-semibold tabular-nums">{report.label}</p>
         <button type="button" aria-label="Next week" disabled={offset >= 0} onClick={() => setOffset((n) => Math.min(0, n + 1))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
           <ChevronRight size={18} />
         </button>
@@ -79,63 +88,70 @@ export function ProfitReportScreen() {
 
       {report.rows.length === 0 ? null : (
         <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-separate border-spacing-0 text-[12.5px] lg:min-w-full">
-              <thead>
-                <tr className="text-left text-[11px] font-bold text-on-ink">
-                  <th scope="col" className={cn(pinL, "bg-ink px-3 py-2.5")}>Barber</th>
-                  {report.days.map((d) => {
-                    const isToday = d.key === today;
-                    return (
-                      <th key={d.key} scope="col" className={cn("min-w-[4.75rem] bg-ink px-2 py-2 text-center font-bold", isToday && "text-white")}>
-                        <span className="block text-[12px]">{d.dow}</span>
-                        <span className={cn("mt-0.5 block text-[10px] font-semibold", isToday ? "text-white" : "text-on-ink-muted")}>
-                          {isToday ? "Today" : showYear ? d.date : d.date.slice(0, 5)}
-                        </span>
-                      </th>
-                    );
-                  })}
-                  <th scope="col" className={cn(pinR, "bg-ink px-3 py-2.5 text-right")}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.rows.map((row) => (
-                  <tr key={`${row.id}@${row.locationId}`} className="group">
-                    <th scope="row" className={cn(pinL, "border-b border-line bg-surface px-3 py-2.5 text-left shadow-[4px_0_8px_-6px_rgba(0,0,0,0.35)]")}>
-                      <Link href={`/sales/detail?kind=barber&id=${encodeURIComponent(row.id)}&loc=${encodeURIComponent(row.locationId)}&r=week`} className="block max-w-[9.5rem] truncate font-semibold">{row.name}</Link>
-                      {where === "all" && row.locationName ? <span className="mt-0.5 block max-w-[9.5rem] truncate text-[11px] font-medium text-muted">{row.locationName}</span> : null}
+          <table className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] lg:text-[12.5px]">
+            <colgroup>
+              <col className="w-[4.6rem] lg:w-[11rem]" />
+              {report.days.map((d) => <col key={d.key} />)}
+              <col className="w-[2.9rem] lg:w-[7rem]" />
+            </colgroup>
+            <thead>
+              <tr className="text-[10.5px] font-bold text-on-ink lg:text-[11px]">
+                <th scope="col" className="bg-ink py-2 pl-2.5 pr-1 text-left lg:px-3">Barber</th>
+                {report.days.map((d) => {
+                  const isToday = d.key === today;
+                  return (
+                    <th key={d.key} scope="col" className={cn("bg-ink px-0 py-1.5 text-center font-bold", isToday && "bg-[#333] text-white")}>
+                      <span className="block leading-tight">{d.dow}</span>
+                      <span className={cn("block text-[9.5px] font-semibold leading-tight", isToday ? "text-white" : "text-on-ink-muted")}>
+                        {isToday ? "Today" : showYear ? d.date.slice(0, 5) + "/" + d.date.slice(-2) : d.date.slice(0, 5).replace(/^0/, "")}
+                      </span>
                     </th>
-                    {row.days.map((n, i) => {
-                      const day = report.days[i];
-                      const isToday = day?.key === today;
-                      return (
-                        <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line px-2 py-2.5 text-center tabular-nums", isToday && "bg-grey-100")}>
-                          {n ? <span className="font-semibold">{peso(n)}</span> : <span className="text-muted">–</span>}
-                        </td>
-                      );
-                    })}
-                    <td className={cn(pinR, "border-b border-line bg-surface px-3 py-2.5 text-right font-bold tabular-nums shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.35)]")}>{peso(row.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="font-bold">
-                  <th scope="row" className={cn(pinL, "bg-grey-100 px-3 py-3 text-left")}>Daily totals</th>
-                  {report.daily.map((n, i) => {
+                  );
+                })}
+                <th scope="col" className="bg-ink py-2 pl-1 pr-2.5 text-right lg:px-3">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.rows.map((row) => (
+                <tr key={`${row.id}@${row.locationId}`}>
+                  <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
+                    <Link href={`/sales/detail?kind=barber&id=${encodeURIComponent(row.id)}&loc=${encodeURIComponent(row.locationId)}&r=week`} className="block truncate font-semibold">{row.name}</Link>
+                    {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
+                  </th>
+                  {row.days.map((n, i) => {
                     const day = report.days[i];
+                    const isToday = day?.key === today;
+                    const future = !!day && day.key > today;
                     return (
-                      <td key={day?.key ?? i} className="bg-grey-100 px-2 py-3 text-center tabular-nums">
-                        {n ? peso(n) : <span className="font-semibold text-muted">–</span>}
+                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line px-0 py-2.5 text-center tabular-nums", isToday && "bg-grey-100")}>
+                        <Amount n={n} future={future} />
                       </td>
                     );
                   })}
-                  <td className={cn(pinR, "bg-grey-100 px-3 py-2.5 text-right")}>
-                    <span className="inline-flex rounded-pill bg-ink px-2.5 py-1 text-[12.5px] font-bold text-on-ink tabular-nums">{peso(report.total)}</span>
+                  <td className="whitespace-nowrap border-b border-line py-2.5 pl-1 pr-2.5 text-right font-bold tabular-nums lg:px-3">
+                    <span className="lg:hidden">{compactPeso(row.total)}</span><span className="hidden lg:inline">{peso(row.total)}</span>
                   </td>
                 </tr>
-              </tfoot>
-            </table>
-          </div>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold">
+                <th scope="row" className="bg-grey-100 py-3 pl-2.5 pr-1 text-left leading-tight lg:px-3">Totals</th>
+                {report.daily.map((n, i) => {
+                  const day = report.days[i];
+                  return (
+                    <td key={day?.key ?? i} className="whitespace-nowrap bg-grey-100 px-0 py-3 text-center tabular-nums">
+                      <Amount n={n} future={!!day && day.key > today} bold />
+                    </td>
+                  );
+                })}
+                <td className="whitespace-nowrap bg-grey-100 py-3 pl-1 pr-2.5 text-right tabular-nums lg:px-3">
+                  <span className="lg:hidden">{compactPeso(report.total)}</span><span className="hidden lg:inline">{peso(report.total)}</span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Amounts in ₱ · 1.6k = ₱1,600 · tap a barber for details</p>
         </div>
       )}
     </div>
