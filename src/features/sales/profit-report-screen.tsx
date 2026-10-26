@@ -1,5 +1,6 @@
 "use client";
 
+import { useNow } from "@/lib/use-now";
 import { AppLoader } from "@/components/common/app-loader";
 import { PageBack } from "@/components/shell/page-back";
 import { useChairRequests } from "@/lib/chair-bookings";
@@ -28,6 +29,7 @@ export function ProfitReportScreen() {
   const deep = useSalesRows(FETCH_DAYS);
   const cloud = useChairRequests();
   const rows = deep ?? cloud.rows;
+  const now = useNow();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState("");
   const branches = useMemo(
@@ -35,7 +37,7 @@ export function ProfitReportScreen() {
     [shops.enabled, shops.branches, profile.name],
   );
   const where = picked || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
-  const report = profitWeek(rows, chairs, where, offset, Date.now(), branches);
+  const report = profitWeek(rows, chairs, where, offset, now, branches);
   const filters = [{ id: "all", name: "All" }, ...(shops.enabled && branches.length > 1 ? branches : [])];
   const today = todayKey();
   const showYear = new Set(report.days.map((d) => d.date.slice(-4))).size > 1;

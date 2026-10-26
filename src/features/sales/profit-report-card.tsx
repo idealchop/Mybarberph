@@ -1,5 +1,6 @@
 "use client";
 
+import { useNow } from "@/lib/use-now";
 import { useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -26,7 +27,8 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
     [shops.enabled, shops.branches, profile.name],
   );
   const where = shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all";
-  const report = profitWeek(rows, chairs, where, 0, Date.now(), branches);
+  const now = useNow();
+  const report = profitWeek(rows, chairs, where, 0, now, branches);
   return (
     <Link href="/sales/profit" aria-label="Open the profit report" className={`block rounded-card bg-surface px-3.5 py-3 shadow-card ${className}`}>
       <span className="flex items-start gap-2">

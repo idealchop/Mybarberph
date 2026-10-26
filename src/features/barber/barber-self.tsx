@@ -1,4 +1,5 @@
 "use client";
+import { useNow } from "@/lib/use-now";
 import { ChevronLeft } from "lucide-react";
 import { AppLoader } from "@/components/common/app-loader";
 import { useEffect, useState } from "react";
@@ -35,9 +36,10 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
   const [range, setRange] = useState<SalesRange>("today");
   const [dayKey, setDayKey] = useState(() => ymd(Date.now()));
   useEffect(() => { const t = window.setInterval(() => setDayKey(ymd(Date.now())), 60_000); return () => window.clearInterval(t); }, []);
+  const now = useNow();
   const custom = range === "custom" ? getCustomRange() : null;
-  const days = periodDays(range, Date.now(), custom);
-  const bounds = periodBounds(range, Date.now(), custom);
+  const days = periodDays(range, now, custom);
+  const bounds = periodBounds(range, now, custom);
   const from = days[days.length - 1] ?? dayKey;
   const to = days[0] ?? dayKey;
   const { data, err } = usePerformance(token, `range=custom&from=${from}&to=${to}&d=${dayKey}`);

@@ -1,4 +1,5 @@
 "use client";
+import { useNow } from "@/lib/use-now";
 import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
@@ -69,9 +70,10 @@ export function SalesDataScreen() {
     const c = chairs.find((x) => (r.barberId && (x.barberId === r.barberId || x.id === r.barberId)) || (!r.barberId && x.label === (r.seatLabel || r.chairLabel) && (x.locationId || HOME_LOCATION_ID) === bl));
     return c ? sharePct(c) : null;
   };
-  const bounds = periodBounds(range, Date.now(), range === "custom" ? getCustomRange() : null);
+  const now = useNow();
+  const bounds = periodBounds(range, now, range === "custom" ? getCustomRange() : null);
   const todayKey = periodDays("today")[0] ?? "";
-  const commissionDays = periodDays(range, Date.now(), range === "custom" ? getCustomRange() : null).map((date) => ({ date, amount: 0, cuts: 0 }));
+  const commissionDays = periodDays(range, now, range === "custom" ? getCustomRange() : null).map((date) => ({ date, amount: 0, cuts: 0 }));
   const byDay = new Map(commissionDays.map((d) => [d.date, d]));
   for (const r of rows) {
     if (r.status !== "done" || !r.completedAt || r.completedAt < bounds.from || r.completedAt >= bounds.to) continue;
