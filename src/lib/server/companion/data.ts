@@ -10,7 +10,7 @@ export interface ShopData {
   shopName: string;
   plan: string;
   bookings: ChairRequest[];
-  chairs: { label: string; barberName: string; locationId: string }[];
+  chairs: { id: string; label: string; barberId: string; barberName: string; locationId: string }[];
   branches: { id: string; name: string }[];
 }
 
@@ -23,8 +23,12 @@ export function manilaDay(ms: number) {
 }
 
 export async function loadShopData(shopId: string, shopName: string, plan: string): Promise<ShopData> {
-  const [snap, state] = await Promise.all([
-    shopRef(shopId).collection("bookings").where("createdAt", ">=", Date.now() - 120 * DAY).orderBy("createdAt", "desc").limit(5000).get(),
+  const since = Date.now() - 120 * DAY;
+  const col = shopRef(shopId).collection("bookings");
+  // Same reads as Sales: recent tickets by creation, plus anything finished in the window (an old ticket finished today still counts today).
+  const [snap, doneSnap, state] = await Promise.all([
+    col.where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(5000).get(),
+    col.where("completedAt", ">=", since).orderBy("completedAt", "desc").limit(5000).get(),
     loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations", "barbers.shop-profile"]),
   ]);
   const parse = (k: string) => { try { return JSON.parse(state[k] || "null"); } catch { return null; } };
@@ -32,13 +36,20 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
   const locRaw = parse("barbers.shop-locations");
   const profile = parse("barbers.shop-profile");
   const chairs = (Array.isArray(chairsRaw) ? chairsRaw : []).map((c: Record<string, unknown>) => ({
-    label: String(c.label ?? ""), barberName: String(c.barberName ?? "") || String(c.label ?? "Chair"), locationId: String(c.locationId ?? HOME),
+    id: String(c.id ?? ""), barberId: String(c.barberId ?? ""), label: String(c.label ?? ""), barberName: String(c.barberName ?? "") || String(c.label ?? "Chair"), locationId: String(c.locationId ?? HOME),
   }));
   const branchesRaw = locRaw && Array.isArray(locRaw.branches) ? locRaw.branches : [];
   const branches = branchesRaw.length
     ? branchesRaw.map((b: Record<string, unknown>) => ({ id: String(b.id ?? HOME), name: String(b.name ?? "Shop") }))
     : [{ id: HOME, name: shopName || profile?.name || "Main shop" }];
-  return { shopName: shopName || profile?.name || "your shop", plan, bookings: snap.docs.map((d) => d.data() as ChairRequest), chairs, branches };
+  return { shopName: shopName || profile?.name || "your shop", plan, bookings: mergeBookings([...snap.docs, ...doneSnap.docs].map((d) => ({ ...(d.data() as ChairRequest), id: d.id }))), chairs, branches };
+}
+
+/** One row per ticket (the two reads overlap). */
+export function mergeBookings(rows: ChairRequest[]): ChairRequest[] {
+  const seen = new Map<string, ChairRequest>();
+  for (const r of rows) { const k = String((r as { id?: string }).id ?? ""); if (!k) { seen.set(`_${seen.size}`, r); continue; } if (!seen.has(k)) seen.set(k, r); }
+  return [...seen.values()];
 }
 
 /** Accepts a branch id or its name (the model often passes "San Antonio"); unknown → whole shop, never an empty filter. */
@@ -55,14 +66,22 @@ function scope(d: ShopData, locationId?: string) {
   // Single-shop accounts store visits without a location (= home).
   return d.bookings.filter((b) => (b.locationId || HOME) === id || (d.branches.length === 1 && !b.locationId));
 }
+/** Finished cuts in [from, to), by completion time (same rule as Sales: only status "done", counted on completedAt). */
 const doneIn = (rows: ChairRequest[], from: number, to = Date.now() + 1) =>
   rows.filter((b) => b.status === "done" && (b.completedAt ?? b.updatedAt) >= from && (b.completedAt ?? b.updatedAt) < to);
+const doneAt = (b: ChairRequest) => b.completedAt ?? b.updatedAt;
 const total = (rows: ChairRequest[]) => pesos(rows.reduce((s, b) => s + (b.price || 0), 0));
 const clampDays = (n: unknown, def = 7) => Math.max(1, Math.min(120, Math.round(Number(n) || def)));
 const who = (b: ChairRequest) => (b.contact || b.customerLabel || "").trim().toLowerCase();
-function barberOf(d: ShopData, b: ChairRequest) {
+/** The barber on a visit, like Sales: the visit's barberId first, then its saved barber name, then the chair at THAT branch. */
+export function barberOf(d: ShopData, b: ChairRequest) {
+  const loc = b.locationId || HOME;
+  if (b.barberId === "owner") return b.barberName?.trim() || "Owner";
+  const byId = b.barberId ? d.chairs.find((x) => (x.barberId === b.barberId || x.id === b.barberId) && x.locationId === loc) ?? d.chairs.find((x) => x.barberId === b.barberId || x.id === b.barberId) : undefined;
+  if (byId?.barberName) return byId.barberName;
+  if (b.barberName?.trim()) return b.barberName.trim();
   const seat = b.seatLabel || b.chairLabel || "";
-  const c = d.chairs.find((x) => x.label === seat && x.locationId === (b.locationId || HOME)) ?? d.chairs.find((x) => x.label === seat);
+  const c = d.chairs.find((x) => x.label === seat && x.locationId === loc);
   return c?.barberName || seat || "Unassigned";
 }
 
@@ -73,6 +92,7 @@ export function windowStart(days: number, now = Date.now()) {
 
 export function getSales(d: ShopData, a: { days?: number; locationId?: string }) {
   const days = clampDays(a.days);
+  const unknownBranch = !!a.locationId && a.locationId !== "all" && !resolveLocation(d, a.locationId);
   const rows = scope(d, a.locationId);
   const now = Date.now();
   const start = windowStart(days, now);
@@ -82,7 +102,7 @@ export function getSales(d: ShopData, a: { days?: number; locationId?: string })
   for (const b of cur) { const k = manilaDay(b.completedAt ?? b.updatedAt); byDay[k] ??= { sales: 0, cuts: 0 }; byDay[k].sales += pesos(b.price); byDay[k].cuts++; }
   const unpaid = rows.filter((b) => b.status === "done" && !b.paid && (b.completedAt ?? b.updatedAt) >= start);
   const s = total(cur);
-  return { days, salesPhp: s, cuts: cur.length, avgTicketPhp: cur.length ? Math.round(s / cur.length) : 0, previousPeriodSalesPhp: total(prev), previousPeriodCuts: prev.length, unpaidPhp: total(unpaid), byDay };
+  return { days, period: `${manilaDay(start)} to ${manilaDay(now)} (Manila)`, branch: unknownBranch ? `unknown branch "${a.locationId}"; these are ALL branches` : resolveLocation(d, a.locationId) ? d.branches.find((b) => b.id === resolveLocation(d, a.locationId))?.name : "all branches", salesPhp: s, cuts: cur.length, avgTicketPhp: cur.length ? Math.round(s / cur.length) : 0, previousPeriodSalesPhp: total(prev), previousPeriodCuts: prev.length, unpaidPhp: total(unpaid), byDay };
 }
 
 export function getBookings(d: ShopData, a: { days?: number; locationId?: string }) {
@@ -109,11 +129,15 @@ export function topServices(d: ShopData, a: { days?: number; locationId?: string
 export function staffPerformance(d: ShopData, a: { days?: number; locationId?: string }) {
   const days = clampDays(a.days, 30);
   const all = scope(d, a.locationId);
-  const rows = doneIn(all, Date.now() - days * DAY);
-  const m = new Map<string, { barber: string; cuts: number; salesPhp: number; minutes: number; customers: Set<string>; returned: Set<string>; days: Set<string> }>();
+  const now = Date.now();
+  const from = windowStart(days, now);
+  const rows = doneIn(all, from, now + 1);
+  const branchName = (id: string) => d.branches.find((b) => b.id === id)?.name ?? "";
+  const m = new Map<string, { barber: string; branch: string; cuts: number; salesPhp: number; minutes: number; customers: Set<string>; returned: Set<string>; days: Set<string> }>();
   for (const b of rows) {
-    const k = barberOf(d, b);
-    const r = m.get(k) ?? { barber: k, cuts: 0, salesPhp: 0, minutes: 0, customers: new Set(), returned: new Set(), days: new Set() };
+    const name = barberOf(d, b), loc = b.locationId || HOME;
+    const k = `${name}@${loc}`;
+    const r = m.get(k) ?? { barber: name, branch: branchName(loc), cuts: 0, salesPhp: 0, minutes: 0, customers: new Set(), returned: new Set(), days: new Set() };
     r.cuts++; r.salesPhp += pesos(b.price);
     if (b.startedAt && b.completedAt && b.completedAt > b.startedAt) r.minutes += Math.min(180, (b.completedAt - b.startedAt) / 60_000);
     r.days.add(manilaDay(b.completedAt ?? b.updatedAt));
@@ -125,9 +149,10 @@ export function staffPerformance(d: ShopData, a: { days?: number; locationId?: s
     m.set(k, r);
   }
   return {
-    days,
+    days, period: `${manilaDay(from)} to ${manilaDay(now)} (Manila, ${days === 1 ? "today only" : `today and the ${days - 1} days before`})`,
+    branch: resolveLocation(d, a.locationId) ? branchName(resolveLocation(d, a.locationId)!) : "all branches (one row per barber per branch)",
     barbers: [...m.values()].map((r) => ({
-      barber: r.barber, cuts: r.cuts, salesPhp: r.salesPhp, avgTicketPhp: r.cuts ? Math.round(r.salesPhp / r.cuts) : 0,
+      barber: r.barber, branch: r.branch, cuts: r.cuts, salesPhp: r.salesPhp, avgTicketPhp: r.cuts ? Math.round(r.salesPhp / r.cuts) : 0,
       daysWorked: r.days.size, chairUsePct: r.days.size ? Math.round((r.minutes / (r.days.size * 600)) * 100) : null,
       rebookingRatePct: r.customers.size ? Math.round((r.returned.size / r.customers.size) * 100) : null, knownCustomers: r.customers.size,
     })).sort((x, y) => y.salesPhp - x.salesPhp),
@@ -215,4 +240,55 @@ export function chairPerformance(d: ShopData, from: number, locationId?: string)
   })).sort((a, b) => b.salesCentavos - a.salesCentavos || a.chair.localeCompare(b.chair));
   const sales = chairs.reduce((s, c) => s + c.salesCentavos, 0), cuts = chairs.reduce((s, c) => s + c.cuts, 0);
   return { chairs, totals: { salesCentavos: sales, cuts, avgTicketCentavos: cuts ? Math.round(sales / cuts) : 0 }, branches: d.branches };
+}
+
+/** Monday 00:00 Manila of the week containing `now` (weeks run Monday to Sunday, like the profit report). */
+export function weekStart(now = Date.now()) {
+  const today = Date.parse(`${manilaDay(now)}T00:00:00+08:00`);
+  const dow = (new Date(today + 8 * 3600_000).getUTCDay() + 6) % 7;
+  return today - dow * DAY;
+}
+
+/**
+ * Fixed figures for the chat context: today and this week (Mon–Sun), per branch and shop total,
+ * and every barber's numbers per branch. Finished cuts only, counted on their Manila completion day.
+ */
+export function scoreboard(d: ShopData, now = Date.now()) {
+  const today = Date.parse(`${manilaDay(now)}T00:00:00+08:00`);
+  const week = weekStart(now);
+  const end = now + 1;
+  const multi = d.branches.length > 1;
+  const inBranch = (b: ChairRequest, id: string) => (b.locationId || HOME) === id || (!multi && !b.locationId);
+  const sum = (rows: ChairRequest[]) => ({ cuts: rows.length, salesPhp: total(rows) });
+  const done = doneIn(d.bookings, week, end);
+  const isToday = (b: ChairRequest) => doneAt(b) >= today;
+  const branches = d.branches.map((br) => {
+    const rows = done.filter((b) => inBranch(b, br.id));
+    const m = new Map<string, ChairRequest[]>();
+    for (const b of rows) { const k = barberOf(d, b); m.set(k, [...(m.get(k) ?? []), b]); }
+    for (const c of d.chairs) if (inBranch({ locationId: c.locationId } as ChairRequest, br.id) && !m.has(c.barberName)) m.set(c.barberName, []);
+    return {
+      branch: br.name, locationId: br.id, today: sum(rows.filter(isToday)), thisWeek: sum(rows),
+      barbers: [...m].map(([barber, list]) => ({ barber, today: sum(list.filter(isToday)), thisWeek: sum(list) })).sort((x, y) => y.today.cuts - x.today.cuts || y.thisWeek.cuts - x.thisWeek.cuts),
+    };
+  });
+  return {
+    todayDate: manilaDay(now), weekFrom: manilaDay(week), weekTo: manilaDay(week + 6 * DAY),
+    total: { today: sum(done.filter(isToday)), thisWeek: sum(done) }, branches,
+  };
+}
+
+/** Plain-text scoreboard for the system context. */
+export function scoreboardText(d: ShopData, now = Date.now()) {
+  const s = scoreboard(d, now);
+  const f = (x: { cuts: number; salesPhp: number }) => `${x.cuts} cuts, ₱${x.salesPhp.toLocaleString("en-PH")}`;
+  const lines = [
+    `Finished cuts only, counted on the Manila day they were completed. TODAY = ${s.todayDate}. THIS WEEK = ${s.weekFrom} (Mon) to ${s.weekTo} (Sun), so far.`,
+    `WHOLE SHOP (all branches combined): today ${f(s.total.today)}; this week ${f(s.total.thisWeek)}.`,
+  ];
+  for (const b of s.branches) {
+    lines.push(`BRANCH ${b.branch} (id ${b.locationId}): today ${f(b.today)}; this week ${f(b.thisWeek)}.`);
+    for (const r of b.barbers) lines.push(`  - ${r.barber} at ${b.branch}: today ${f(r.today)}; this week ${f(r.thisWeek)}.`);
+  }
+  return lines.join("\n");
 }
