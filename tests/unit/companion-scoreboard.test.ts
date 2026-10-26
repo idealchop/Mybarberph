@@ -12,22 +12,22 @@ const cut = (p: Partial<ChairRequest>): ChairRequest => ({ id: `r${++n}`, status
 function shop(): ShopData {
   const bookings: ChairRequest[] = [];
   // Glenmar at Banay-Banay I: 15 finished today.
-  for (let i = 0; i < 15; i++) bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", seatLabel: "Chair 1", completedAt: at(`2026-10-26T${String(8 + Math.floor(i / 3)).padStart(2, "0")}:${String((i % 3) * 15).padStart(2, "0")}:00`) }));
+  for (let i = 0; i < 15; i++) bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", completedAt: at(`2026-10-26T${String(8 + Math.floor(i / 3)).padStart(2, "0")}:${String((i % 3) * 15).padStart(2, "0")}:00`) }));
   // Same barber yesterday (Sunday) and just before Manila midnight (16:30Z Oct 25 = 00:30 Oct 26 Manila counts; 15:30Z = 23:30 Oct 25 doesn't).
-  for (let i = 0; i < 6; i++) bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", seatLabel: "Chair 1", completedAt: at("2026-10-25T14:00:00") + i * 60_000 }));
-  bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", seatLabel: "Chair 1", completedAt: Date.parse("2026-10-25T15:30:00Z") }));
-  // Other barbers / another branch today, with the same chair label.
-  for (let i = 0; i < 10; i++) bookings.push(cut({ locationId: "bb1", barberId: "jun", barberName: "Jun", seatLabel: "Chair 2", completedAt: at("2026-10-26T10:00:00") + i * 60_000 }));
-  for (let i = 0; i < 14; i++) bookings.push(cut({ locationId: "bb2", barberId: "rey", barberName: "Rey", seatLabel: "Chair 1", completedAt: at("2026-10-26T11:00:00") + i * 60_000 }));
+  for (let i = 0; i < 6; i++) bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", completedAt: at("2026-10-25T14:00:00") + i * 60_000 }));
+  bookings.push(cut({ locationId: "bb1", barberId: "glen", barberName: "Glenmar Paclibar", completedAt: Date.parse("2026-10-25T15:30:00Z") }));
+  // Other barbers / another branch today.
+  for (let i = 0; i < 10; i++) bookings.push(cut({ locationId: "bb1", barberId: "jun", barberName: "Jun", completedAt: at("2026-10-26T10:00:00") + i * 60_000 }));
+  for (let i = 0; i < 14; i++) bookings.push(cut({ locationId: "bb2", barberId: "rey", barberName: "Rey", completedAt: at("2026-10-26T11:00:00") + i * 60_000 }));
   // Unfinished tickets today never count.
   bookings.push(cut({ locationId: "bb1", barberId: "glen", status: "in_chair", completedAt: undefined, updatedAt: NOW }));
   bookings.push(cut({ locationId: "bb1", barberId: "glen", status: "accepted", completedAt: undefined, updatedAt: NOW }));
   return {
     shopName: "Boyet Barbershop", plan: "pro", bookings,
-    chairs: [
-      { id: "c1", label: "Chair 1", barberId: "glen", barberName: "Glenmar Paclibar", locationId: "bb1" },
-      { id: "c2", label: "Chair 2", barberId: "jun", barberName: "Jun", locationId: "bb1" },
-      { id: "c3", label: "Chair 1", barberId: "rey", barberName: "Rey", locationId: "bb2" },
+    barbers: [
+      { id: "c1", barberId: "glen", barberName: "Glenmar Paclibar", locationId: "bb1" },
+      { id: "c2", barberId: "jun", barberName: "Jun", locationId: "bb1" },
+      { id: "c3", barberId: "rey", barberName: "Rey", locationId: "bb2" },
     ],
     branches: [{ id: "bb1", name: "Banay-Banay I" }, { id: "bb2", name: "Banay-Banay II" }],
   };
@@ -71,10 +71,11 @@ describe("Companion scoreboard (today = Manila day, finished cuts only)", () => 
     expect(r.barbers.find((b) => b.barber === "Rey")?.branch).toBe("Banay-Banay II");
   });
 
-  it("the same chair label in two branches maps to the right barber", () => {
+  it("barberOf matches by barberId, then the saved barber name, never a seat label", () => {
     const d = shop();
-    expect(barberOf(d, cut({ locationId: "bb2", seatLabel: "Chair 1" }))).toBe("Rey");
-    expect(barberOf(d, cut({ locationId: "bb1", seatLabel: "Chair 1" }))).toBe("Glenmar Paclibar");
+    expect(barberOf(d, cut({ locationId: "bb2", barberId: "rey" }))).toBe("Rey");
+    expect(barberOf(d, cut({ locationId: "bb1", barberName: "Walk-in Ben" }))).toBe("Walk-in Ben");
+    expect(barberOf(d, cut({ locationId: "bb1", seatLabel: "Chair 1" }))).toBe("Unassigned");
   });
 
   it("getSales says which branch and dates it covers; an unknown branch is flagged, not silently the whole shop", () => {

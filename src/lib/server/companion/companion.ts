@@ -91,7 +91,7 @@ const DECLS = [
   { name: "getSales", description: "Sales (PHP), cuts, average ticket, unpaid amount and day-by-day totals vs the previous equal period.", parameters: ranged("Sales window") },
   { name: "getBookings", description: "Booking counts by status, walk-in vs online, source, hour of day and weekday.", parameters: ranged("Bookings window") },
   { name: "topServices", description: "Best-selling services by revenue and count.", parameters: ranged("Services window", { limit: num }) },
-  { name: "staffPerformance", description: "Per-barber revenue, cuts, average ticket, chair use % and rebooking rate %.", parameters: ranged("Staff window") },
+  { name: "staffPerformance", description: "Per-barber revenue, cuts, average ticket, days worked and rebooking rate %.", parameters: ranged("Staff window") },
   { name: "branchComparison", description: "Sales per branch side by side.", parameters: { type: "OBJECT", properties: { days: num } } },
   { name: "inactiveCustomers", description: "Customers who haven't come back in N days. Set includeContacts=true ONLY when the owner explicitly asks for names or numbers.", parameters: ranged("Inactive window", { includeContacts: { type: "BOOLEAN" } }) },
   { name: "goalProgress", description: "The owner's saved goals and progress this month (sales so far, projection, needed per day).", parameters: { type: "OBJECT", properties: {} } },
@@ -139,7 +139,7 @@ function menuLine(shop: ShopDoc, data: T.ShopData) {
 
 function context(shop: ShopDoc, data: T.ShopData, plan: string, goals: T.Goal[]) {
   const today = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  return `\n\n## This shop\nName: ${data.shopName}\nArea: ${shop.area || shop.address || "Philippines"}\nPlan: ${plan}${isPaid(plan) ? "" : " (Partner: limited Companion)"}\nToday (Manila): ${today} (${T.manilaDay(Date.now())})\nBranches: ${data.branches.map((b) => `${b.name} (id ${b.id})`).join(", ")}\nBarbers: ${data.chairs.map((c) => `${c.barberName} (${data.branches.find((b) => b.id === c.locationId)?.name ?? c.locationId})`).join(", ") || "none added"}\nMenu (shop-wide, every branch): ${menuLine(shop, data)}\n\n## Scoreboard (exact figures, same rules as the Sales screen; use these first)\n${T.scoreboardText(data)}\n\nSaved goals: ${goals.map((g) => g.text).join("; ") || "none yet"}`;
+  return `\n\n## This shop\nName: ${data.shopName}\nArea: ${shop.area || shop.address || "Philippines"}\nPlan: ${plan}${isPaid(plan) ? "" : " (Partner: limited Companion)"}\nToday (Manila): ${today} (${T.manilaDay(Date.now())})\nBranches: ${data.branches.map((b) => `${b.name} (id ${b.id})`).join(", ")}\nBarbers: ${data.barbers.map((c) => `${c.barberName} (${data.branches.find((b) => b.id === c.locationId)?.name ?? c.locationId})`).join(", ") || "none added"}\nMenu (shop-wide, every branch): ${menuLine(shop, data)}\n\n## Scoreboard (exact figures, same rules as the Sales screen; use these first)\n${T.scoreboardText(data)}\n\nSaved goals: ${goals.map((g) => g.text).join("; ") || "none yet"}`;
 }
 
 /** One owner question → tool calls → answer. Returns the saved assistant message. */

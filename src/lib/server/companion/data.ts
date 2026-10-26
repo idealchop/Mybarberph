@@ -10,7 +10,8 @@ export interface ShopData {
   shopName: string;
   plan: string;
   bookings: ChairRequest[];
-  chairs: { id: string; label: string; barberId: string; barberName: string; locationId: string }[];
+  /** The shop's barbers (stored under "barbers.shop-chairs", the app's only barber list; each record is one barber). */
+  barbers: { id: string; barberId: string; barberName: string; locationId: string }[];
   branches: { id: string; name: string }[];
 }
 
@@ -32,17 +33,18 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
     loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations", "barbers.shop-profile"]),
   ]);
   const parse = (k: string) => { try { return JSON.parse(state[k] || "null"); } catch { return null; } };
-  const chairsRaw = parse("barbers.shop-chairs");
+  // "barbers.shop-chairs" is the app's barber list (the same records Sales reads); seat labels are ignored.
+  const barbersRaw = parse("barbers.shop-chairs");
   const locRaw = parse("barbers.shop-locations");
   const profile = parse("barbers.shop-profile");
-  const chairs = (Array.isArray(chairsRaw) ? chairsRaw : []).map((c: Record<string, unknown>) => ({
-    id: String(c.id ?? ""), barberId: String(c.barberId ?? ""), label: String(c.label ?? ""), barberName: String(c.barberName ?? "") || String(c.label ?? "Chair"), locationId: String(c.locationId ?? HOME),
-  }));
+  const barbers = (Array.isArray(barbersRaw) ? barbersRaw : [])
+    .map((c: Record<string, unknown>) => ({ id: String(c.id ?? ""), barberId: String(c.barberId ?? ""), barberName: String(c.barberName ?? "").trim(), locationId: String(c.locationId ?? HOME) }))
+    .filter((c: { barberName: string }) => c.barberName);
   const branchesRaw = locRaw && Array.isArray(locRaw.branches) ? locRaw.branches : [];
   const branches = branchesRaw.length
     ? branchesRaw.map((b: Record<string, unknown>) => ({ id: String(b.id ?? HOME), name: String(b.name ?? "Shop") }))
     : [{ id: HOME, name: shopName || profile?.name || "Main shop" }];
-  return { shopName: shopName || profile?.name || "your shop", plan, bookings: mergeBookings([...snap.docs, ...doneSnap.docs].map((d) => ({ ...(d.data() as ChairRequest), id: d.id }))), chairs, branches };
+  return { shopName: shopName || profile?.name || "your shop", plan, bookings: mergeBookings([...snap.docs, ...doneSnap.docs].map((d) => ({ ...(d.data() as ChairRequest), id: d.id }))), barbers, branches };
 }
 
 /** One row per ticket (the two reads overlap). */
@@ -73,16 +75,14 @@ const doneAt = (b: ChairRequest) => b.completedAt ?? b.updatedAt;
 const total = (rows: ChairRequest[]) => pesos(rows.reduce((s, b) => s + (b.price || 0), 0));
 const clampDays = (n: unknown, def = 7) => Math.max(1, Math.min(120, Math.round(Number(n) || def)));
 const who = (b: ChairRequest) => (b.contact || b.customerLabel || "").trim().toLowerCase();
-/** The barber on a visit, like Sales: the visit's barberId first, then its saved barber name, then the chair at THAT branch. */
+/** The barber on a visit, like Sales: the visit's barberId (matched to a barber record, preferring this branch), then its saved barber name. */
 export function barberOf(d: ShopData, b: ChairRequest) {
   const loc = b.locationId || HOME;
   if (b.barberId === "owner") return b.barberName?.trim() || "Owner";
-  const byId = b.barberId ? d.chairs.find((x) => (x.barberId === b.barberId || x.id === b.barberId) && x.locationId === loc) ?? d.chairs.find((x) => x.barberId === b.barberId || x.id === b.barberId) : undefined;
+  const match = (x: ShopData["barbers"][number]) => x.barberId === b.barberId || x.id === b.barberId;
+  const byId = b.barberId ? d.barbers.find((x) => match(x) && x.locationId === loc) ?? d.barbers.find(match) : undefined;
   if (byId?.barberName) return byId.barberName;
-  if (b.barberName?.trim()) return b.barberName.trim();
-  const seat = b.seatLabel || b.chairLabel || "";
-  const c = d.chairs.find((x) => x.label === seat && x.locationId === loc);
-  return c?.barberName || seat || "Unassigned";
+  return b.barberName?.trim() || "Unassigned";
 }
 
 /** Calendar-aligned like the Sales screen: "N days" = today plus the N-1 Manila days before it. */
@@ -125,7 +125,7 @@ export function topServices(d: ShopData, a: { days?: number; locationId?: string
   return { days, services: [...m.values()].sort((x, y) => y.salesPhp - x.salesPhp).slice(0, Math.max(1, Math.min(20, a.limit ?? 10))) };
 }
 
-/** Per-barber revenue, cuts, chair use (minutes seated vs a 10-hour day) and rebooking rate. */
+/** Per-barber revenue, cuts, average ticket, days worked and rebooking rate. */
 export function staffPerformance(d: ShopData, a: { days?: number; locationId?: string }) {
   const days = clampDays(a.days, 30);
   const all = scope(d, a.locationId);
@@ -133,13 +133,12 @@ export function staffPerformance(d: ShopData, a: { days?: number; locationId?: s
   const from = windowStart(days, now);
   const rows = doneIn(all, from, now + 1);
   const branchName = (id: string) => d.branches.find((b) => b.id === id)?.name ?? "";
-  const m = new Map<string, { barber: string; branch: string; cuts: number; salesPhp: number; minutes: number; customers: Set<string>; returned: Set<string>; days: Set<string> }>();
+  const m = new Map<string, { barber: string; branch: string; cuts: number; salesPhp: number; customers: Set<string>; returned: Set<string>; days: Set<string> }>();
   for (const b of rows) {
     const name = barberOf(d, b), loc = b.locationId || HOME;
     const k = `${name}@${loc}`;
-    const r = m.get(k) ?? { barber: name, branch: branchName(loc), cuts: 0, salesPhp: 0, minutes: 0, customers: new Set(), returned: new Set(), days: new Set() };
+    const r = m.get(k) ?? { barber: name, branch: branchName(loc), cuts: 0, salesPhp: 0, customers: new Set(), returned: new Set(), days: new Set() };
     r.cuts++; r.salesPhp += pesos(b.price);
-    if (b.startedAt && b.completedAt && b.completedAt > b.startedAt) r.minutes += Math.min(180, (b.completedAt - b.startedAt) / 60_000);
     r.days.add(manilaDay(b.completedAt ?? b.updatedAt));
     const c = who(b);
     if (c) {
@@ -153,10 +152,10 @@ export function staffPerformance(d: ShopData, a: { days?: number; locationId?: s
     branch: resolveLocation(d, a.locationId) ? branchName(resolveLocation(d, a.locationId)!) : "all branches (one row per barber per branch)",
     barbers: [...m.values()].map((r) => ({
       barber: r.barber, branch: r.branch, cuts: r.cuts, salesPhp: r.salesPhp, avgTicketPhp: r.cuts ? Math.round(r.salesPhp / r.cuts) : 0,
-      daysWorked: r.days.size, chairUsePct: r.days.size ? Math.round((r.minutes / (r.days.size * 600)) * 100) : null,
+      daysWorked: r.days.size,
       rebookingRatePct: r.customers.size ? Math.round((r.returned.size / r.customers.size) * 100) : null, knownCustomers: r.customers.size,
     })).sort((x, y) => y.salesPhp - x.salesPhp),
-    note: "Chair use = minutes seated / 10-hour days worked. Rebooking = known customers who came back after a visit with this barber.",
+    note: "Rebooking = known customers who came back after a visit with this barber.",
   };
 }
 
@@ -206,40 +205,35 @@ export function goalProgress(d: ShopData, goals: Goal[]) {
 }
 
 /**
- * Per chair (and its barber) at one location or all: revenue, cuts, average ticket,
- * utilization (minutes seated / 10-hour days worked) and rebooking rate. Done visits from `from` on.
+ * Per barber at one location or all: revenue, cuts, average ticket and rebooking rate.
+ * Done visits from `from` on. Barbers with no visits in the window still show (zeros).
  */
-export function chairPerformance(d: ShopData, from: number, locationId?: string) {
+export function barberPerformance(d: ShopData, from: number, locationId?: string) {
   const all = scope(d, locationId);
   const rows = doneIn(all, from);
-  const key = (b: ChairRequest) => `${b.locationId || HOME}::${b.seatLabel || b.chairLabel || "No chair"}`;
-  const m = new Map<string, { chair: string; locationId: string; barber: string; cuts: number; sales: number; minutes: number; days: Set<string>; customers: Set<string>; returned: Set<string> }>();
+  const m = new Map<string, { barber: string; locationId: string; cuts: number; sales: number; customers: Set<string>; returned: Set<string> }>();
   for (const b of rows) {
-    const k = key(b);
-    const r = m.get(k) ?? { chair: b.seatLabel || b.chairLabel || "No chair", locationId: b.locationId || HOME, barber: barberOf(d, b), cuts: 0, sales: 0, minutes: 0, days: new Set(), customers: new Set(), returned: new Set() };
+    const barber = barberOf(d, b), loc = b.locationId || HOME, k = `${loc}::${barber}`;
+    const r = m.get(k) ?? { barber, locationId: loc, cuts: 0, sales: 0, customers: new Set(), returned: new Set() };
     r.cuts++; r.sales += b.price || 0;
-    if (b.startedAt && b.completedAt && b.completedAt > b.startedAt) r.minutes += Math.min(180, (b.completedAt - b.startedAt) / 60_000);
-    r.days.add(manilaDay(b.completedAt ?? b.updatedAt));
     const c = who(b);
     if (c) { r.customers.add(c); if (all.some((o) => o !== b && who(o) === c && o.createdAt > b.createdAt && o.status !== "declined")) r.returned.add(c); }
     m.set(k, r);
   }
-  // Chairs with no visits in the window still show (zeros), so idle chairs are visible.
-  for (const c of d.chairs) {
-    const want = resolveLocation(d, locationId);
-    if (want && c.locationId !== want) continue;
-    const k = `${c.locationId}::${c.label}`;
-    if (!m.has(k)) m.set(k, { chair: c.label, locationId: c.locationId, barber: c.barberName, cuts: 0, sales: 0, minutes: 0, days: new Set(), customers: new Set(), returned: new Set() });
+  const want = resolveLocation(d, locationId);
+  for (const x of d.barbers) {
+    if (want && x.locationId !== want) continue;
+    const k = `${x.locationId}::${x.barberName}`;
+    if (!m.has(k)) m.set(k, { barber: x.barberName, locationId: x.locationId, cuts: 0, sales: 0, customers: new Set(), returned: new Set() });
   }
   const branchName = (id: string) => d.branches.find((b) => b.id === id)?.name ?? "";
-  const chairs = [...m.values()].map((r) => ({
-    chair: r.chair, barber: r.barber, locationId: r.locationId, location: branchName(r.locationId),
+  const barbers = [...m.values()].map((r) => ({
+    barber: r.barber, locationId: r.locationId, location: branchName(r.locationId),
     cuts: r.cuts, salesCentavos: r.sales, avgTicketCentavos: r.cuts ? Math.round(r.sales / r.cuts) : 0,
-    utilizationPct: r.days.size ? Math.round((r.minutes / (r.days.size * 600)) * 100) : null,
     rebookingPct: r.customers.size ? Math.round((r.returned.size / r.customers.size) * 100) : null,
-  })).sort((a, b) => b.salesCentavos - a.salesCentavos || a.chair.localeCompare(b.chair));
-  const sales = chairs.reduce((s, c) => s + c.salesCentavos, 0), cuts = chairs.reduce((s, c) => s + c.cuts, 0);
-  return { chairs, totals: { salesCentavos: sales, cuts, avgTicketCentavos: cuts ? Math.round(sales / cuts) : 0 }, branches: d.branches };
+  })).sort((a, b) => b.salesCentavos - a.salesCentavos || a.barber.localeCompare(b.barber));
+  const sales = barbers.reduce((s, c) => s + c.salesCentavos, 0), cuts = barbers.reduce((s, c) => s + c.cuts, 0);
+  return { barbers, totals: { salesCentavos: sales, cuts, avgTicketCentavos: cuts ? Math.round(sales / cuts) : 0 }, branches: d.branches };
 }
 
 /** Monday 00:00 Manila of the week containing `now` (weeks run Monday to Sunday, like the profit report). */
@@ -266,7 +260,7 @@ export function scoreboard(d: ShopData, now = Date.now()) {
     const rows = done.filter((b) => inBranch(b, br.id));
     const m = new Map<string, ChairRequest[]>();
     for (const b of rows) { const k = barberOf(d, b); m.set(k, [...(m.get(k) ?? []), b]); }
-    for (const c of d.chairs) if (inBranch({ locationId: c.locationId } as ChairRequest, br.id) && !m.has(c.barberName)) m.set(c.barberName, []);
+    for (const c of d.barbers) if (inBranch({ locationId: c.locationId } as ChairRequest, br.id) && !m.has(c.barberName)) m.set(c.barberName, []);
     return {
       branch: br.name, locationId: br.id, today: sum(rows.filter(isToday)), thisWeek: sum(rows),
       barbers: [...m].map(([barber, list]) => ({ barber, today: sum(list.filter(isToday)), thisWeek: sum(list) })).sort((x, y) => y.today.cuts - x.today.cuts || y.thisWeek.cuts - x.thisWeek.cuts),

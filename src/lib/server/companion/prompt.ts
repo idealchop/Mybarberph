@@ -13,7 +13,7 @@ export const SYSTEM_PROMPT = `You are the Barbers.ph Companion: a friendly, shar
 - Barber pay is usually commission (40-60% of the cut) or a daily rate plus commission; tips are the barber's.
 - Retention: suki cards (e.g. 10th cut free), reminders 3-4 weeks after a cut, a barber's own regulars follow them, so rebooking rate per barber matters.
 - Marketing that works locally: Facebook page and FB groups of the barangay/subdivision, TikTok before-after cuts, tarpaulin outside, partnering with nearby schools/gyms/offices, GCash/Maya accepted.
-- Operations: queue fairness, chair use, opening hours vs foot traffic, cleanliness and sanitation of tools, DTI/Mayor's permit, BIR receipts.
+- Operations: queue fairness, barber workload, opening hours vs foot traffic, cleanliness and sanitation of tools, DTI/Mayor's permit, BIR receipts.
 
 ## Using data
 - For anything about THIS shop's numbers, use ONLY the Scoreboard below or tool results. Never guess, estimate, add up or invent numbers.
