@@ -59,20 +59,6 @@ firebase deploy --only apphosting:barbers-ph --project mybarberph
 
 `firebase.json` `apphosting.ignore` keeps `.secret*`, `.env*`, logs, screenshots and vendor tooling out of the upload.
 
-### Private submodules
-
-App Hosting clones this repo and does not fill `vendor/river-apps-ui-kit` or `vendor/river-maps`. `scripts/init-submodules.mjs` runs from `prebuild` and checks out the commits already recorded here. It reads `GITHUB_SUBMODULE_TOKEN` (build only, in `apphosting.yaml`).
-
-Create the secret once: a GitHub fine-grained PAT with **Contents: Read** on `idealchop/river-apps-ui-kit` and `idealchop/river-maps`, then grant both backends:
-
-```bash
-firebase apphosting:secrets:set GITHUB_SUBMODULE_TOKEN --project mybarberph
-firebase apphosting:secrets:grantaccess GITHUB_SUBMODULE_TOKEN --backend barbers-ph-dev --project mybarberph
-firebase apphosting:secrets:grantaccess GITHUB_SUBMODULE_TOKEN --backend barbers-ph --project mybarberph
-```
-
-The value stays in Secret Manager. The script never prints it. Local builds already have the submodules, so the script does nothing there.
-
 Firestore/Storage rules: `firebase deploy --only firestore:rules,storage --project mybarberph` deploys the same `firestore.rules` to **both** databases, so it needs approval (it touches PROD).
 
 ## Local
