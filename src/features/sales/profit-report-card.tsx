@@ -34,7 +34,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
     <Link href="/sales/profit" aria-label="Open the profit report" className={`block rounded-card bg-surface px-3.5 py-3 shadow-card ${className}`}>
       <span className="flex items-start gap-2">
         <span className="min-w-0 flex-1">
-          <b className="block text-[15px]">Weekly profit</b>
+          <b className="block text-[15px]">Your weekly profit</b>
           <span className="mt-0.5 block truncate text-[12.5px] font-semibold text-muted">{report.label}</span>
         </span>
         <b className="flex-none text-[16px] tabular-nums">{peso(report.total)}</b>

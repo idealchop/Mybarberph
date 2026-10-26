@@ -1,4 +1,10 @@
-/** Owner profit report: one Manila week (Monday–Sunday), sales of finished cuts per barber per day. */
+/**
+ * Owner profit report: one Manila week (Monday–Sunday), the owner's share of finished cuts per barber per day.
+ * Each cut counts price minus the barber's income split (same as Sales → "Your commission" and Claim amounts);
+ * no split set = the whole price is the owner's; the owner's own cuts are all the owner's. Tips are never counted.
+ */
+import { ownerShareOf, sharePct } from "@/lib/income-split";
+
 
 const DAY = 86_400_000;
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -18,7 +24,7 @@ export interface ProfitRow {
   name: string;
   locationId: string;
   locationName: string;
-  /** Sales (centavos) for each day of the week, Monday first. */
+  /** Owner's share (centavos) for each day of the week, Monday first. */
   days: number[];
   total: number;
 }
@@ -40,6 +46,8 @@ export interface ProfitChair {
   barberName?: string;
   locationId?: string;
   active?: boolean;
+  sharePct?: unknown;
+  shareSet?: unknown;
 }
 
 export interface ProfitVisit {
@@ -123,7 +131,9 @@ export function profitWeek(
     const day = Math.floor((r.completedAt - bounds.from) / DAY);
     if (day < 0 || day > 6) continue;
     const row = ensure(id, bl, rowName(id, r.barberName, seat));
-    const amount = r.price || 0;
+    const chair = id === "owner" ? undefined : chairs.find((c) => (r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) && (c.locationId || "home") === bl)
+      ?? chairs.find((c) => r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) ?? seat;
+    const amount = ownerShareOf(r.price || 0, id === "owner" ? null : chair ? sharePct(chair) : null);
     row.days[day] = (row.days[day] ?? 0) + amount;
     row.total += amount;
   }

@@ -50,4 +50,27 @@ describe("Weekly profit report", () => {
     expect(report.total).toBe(80_000);
     expect(report.rows.find((r) => r.id === "b-jay")).toBeUndefined();
   });
+
+  it("shows only the owner's share after each barber's split", () => {
+    const mon = Date.parse("2026-10-26T04:00:00+08:00");
+    const chairs = [
+      { id: "c1", label: "Chair 1", barberId: "b-40", barberName: "Forty", sharePct: 40, shareSet: true },
+      { id: "c2", label: "Chair 2", barberId: "b-none", barberName: "NoSplit" },
+      { id: "c3", label: "Chair 3", barberId: "b-old50", barberName: "Old50", sharePct: 50 },
+    ];
+    const rows = [
+      { status: "done", completedAt: mon, price: 35_000, barberId: "b-40", tip: 5_000 },
+      { status: "done", completedAt: mon, price: 25_000, barberId: "b-none" },
+      { status: "done", completedAt: mon, price: 20_000, barberId: "b-old50" },
+      { status: "done", completedAt: mon, price: 30_000, barberId: "owner" },
+    ];
+    const report = profitWeek(rows, chairs, "all", 0, NOW);
+    const by = (id: string) => report.rows.find((r) => r.id === id);
+    expect(by("b-40")?.days[0]).toBe(21_000); // ₱350, barber keeps 40% → owner ₱210 (tip ignored)
+    expect(by("b-none")?.total).toBe(25_000); // no split: all the owner's
+    expect(by("b-old50")?.total).toBe(20_000); // bare legacy 50 reads as no split, like Sales
+    expect(by("owner")?.total).toBe(30_000);
+    expect(report.daily[0]).toBe(96_000);
+    expect(report.total).toBe(96_000);
+  });
 });

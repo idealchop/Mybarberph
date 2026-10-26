@@ -71,10 +71,10 @@ export function ProfitReportScreen() {
         <Link href="/sales?view=barbers" className="inline-flex h-8 flex-none items-center rounded-pill bg-surface px-3 text-[12.5px] font-bold text-ink ring-1 ring-line">Claiming</Link>
       </div>
 
-      <section aria-label="Week sales" className="mt-3 rounded-banner bg-ink px-4 py-4 text-on-ink">
-        <p className="text-[12.5px] font-semibold text-on-ink-muted">Week sales</p>
+      <section aria-label="Your profit" className="mt-3 rounded-banner bg-ink px-4 py-4 text-on-ink">
+        <p className="text-[12.5px] font-semibold text-on-ink-muted">Your profit</p>
         <b className="mt-0.5 block text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(report.total)}</b>
-        <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
+        <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
       </section>
 
       {filters.length > 1 ? (
@@ -151,7 +151,7 @@ export function ProfitReportScreen() {
               </tr>
             </tfoot>
           </table>
-          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Amounts in ₱ · 1.6k = ₱1,600 · tap a barber for details</p>
+          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600</p>
         </div>
       )}
     </div>
