@@ -8,14 +8,20 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { compactPeso, profitWeek } from "@/lib/profit-report";
+import { compactPeso, groupProfitRows, profitWeek, type ProfitRow } from "@/lib/profit-report";
+import { useCloud } from "@/lib/cloud";
+import { normalizeGroups, SALES_GROUPS_KEY } from "@/lib/sales-groups";
 import { cn } from "@river-apps/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useSalesRows } from "./use-sales-rows";
 
 const FETCH_DAYS = 70;
+const VIEW_KEY = "barbers.profit-report-view";
+/** Same names and order as the Sales tabs' grouping: plain list, or the owner's saved Sales groups. */
+const VIEWS = [{ value: "list", label: "List" }, { value: "groups", label: "Sales group" }] as const;
+type View = (typeof VIEWS)[number]["value"];
 const todayKey = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 
 /** The barber's profile (Sales detail), for the week or focused on one Manila day, at that row's branch. */
@@ -45,6 +51,10 @@ export function ProfitReportScreen() {
   const now = useNow();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState("");
+  const [view, setViewState] = useState<View>(() => { try { return typeof window !== "undefined" && localStorage.getItem(VIEW_KEY) === "groups" ? "groups" : "list"; } catch { return "list"; } });
+  const setView = (v: View) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ } };
+  const cloudValues = useCloud().values;
+  const salesGroups = useMemo(() => { try { return normalizeGroups(JSON.parse(cloudValues[SALES_GROUPS_KEY] || "null")); } catch { return normalizeGroups(null); } }, [cloudValues]);
   const branches = useMemo(
     () => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]),
     [shops.enabled, shops.branches, profile.name],
@@ -53,7 +63,38 @@ export function ProfitReportScreen() {
   const report = profitWeek(rows, chairs, where, offset, now, branches);
   const filters = [{ id: "all", name: "All" }, ...(shops.enabled && branches.length > 1 ? branches : [])];
   const today = todayKey();
+  const canGroup = where === "all" && filters.length > 1;
+  const grouped = canGroup && view === "groups" ? groupProfitRows(report.rows, salesGroups) : null;
   const showYear = new Set(report.days.map((d) => d.date.slice(-4))).size > 1;
+
+  const renderRow = (row: ProfitRow) => (
+                <tr key={`${row.id}@${row.locationId}`}>
+                  <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
+                    <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
+                    {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
+                  </th>
+                  {row.days.map((n, i) => {
+                    const day = report.days[i];
+                    const isToday = day?.key === today;
+                    const future = !!day && day.key > today;
+                    return (
+                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", isToday && "bg-grey-100")}>
+                        {n && !future && day ? (
+                          <Link href={barberHref(row, day.key)} aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${peso(n)}. Open profile for that day`}
+                            className="flex min-h-11 items-center justify-center py-1 active:bg-grey-200">
+                            <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span>
+                          </Link>
+                        ) : (
+                          <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={future} /></span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="whitespace-nowrap border-b border-line py-2.5 pl-1 pr-2.5 text-right font-bold tabular-nums lg:px-3">
+                    <span className="lg:hidden">{compactPeso(row.total)}</span><span className="hidden lg:inline">{peso(row.total)}</span>
+                  </td>
+                </tr>
+  );
 
   if (!deep && !cloud.ready) return <AppLoader />;
   return (
@@ -90,6 +131,18 @@ export function ProfitReportScreen() {
         </div>
       ) : null}
 
+      {canGroup ? (
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-[12.5px] font-semibold text-muted">{grouped ? "Grouped like Sales → Sales group" : "Every barber"}</p>
+          <div role="radiogroup" aria-label="Group rows" className="flex flex-none rounded-pill bg-grey-100 p-0.5">
+            {VIEWS.map((v) => (
+              <button key={v.value} type="button" role="radio" aria-checked={view === v.value} onClick={() => setView(v.value)}
+                className={cn("h-8 rounded-pill px-4 text-[13px] font-bold", view === v.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{v.label}</button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {report.rows.length === 0 ? null : (
         <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
           <table className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] lg:text-[12.5px]">
@@ -116,34 +169,19 @@ export function ProfitReportScreen() {
               </tr>
             </thead>
             <tbody>
-              {report.rows.map((row) => (
-                <tr key={`${row.id}@${row.locationId}`}>
-                  <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
-                    <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
-                    {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
-                  </th>
-                  {row.days.map((n, i) => {
-                    const day = report.days[i];
-                    const isToday = day?.key === today;
-                    const future = !!day && day.key > today;
-                    return (
-                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", isToday && "bg-grey-100")}>
-                        {n && !future && day ? (
-                          <Link href={barberHref(row, day.key)} aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${peso(n)}. Open profile for that day`}
-                            className="flex min-h-11 items-center justify-center py-1 active:bg-grey-200">
-                            <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span>
-                          </Link>
-                        ) : (
-                          <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={future} /></span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="whitespace-nowrap border-b border-line py-2.5 pl-1 pr-2.5 text-right font-bold tabular-nums lg:px-3">
-                    <span className="lg:hidden">{compactPeso(row.total)}</span><span className="hidden lg:inline">{peso(row.total)}</span>
-                  </td>
-                </tr>
-              ))}
+              {grouped ? grouped.map((g) => (
+                <Fragment key={g.id}>
+                  <tr><th scope="rowgroup" colSpan={report.days.length + 2} className="border-b border-line bg-grey-100 py-1.5 pl-2.5 pr-2 text-left text-[11px] font-extrabold lg:px-3">
+                    <span className="block truncate">{g.name}</span>
+                  </th></tr>
+                  {g.rows.map((row) => renderRow(row))}
+                  <tr className="font-bold">
+                    <th scope="row" className="border-b border-line py-2 pl-2.5 pr-1 text-left text-[10.5px] text-muted lg:px-3">Subtotal</th>
+                    {g.days.map((n, k) => { const day = report.days[k]; return <td key={day?.key ?? k} className="whitespace-nowrap border-b border-line px-0 py-2 text-center tabular-nums"><Amount n={n} future={!!day && day.key > today} bold /></td>; })}
+                    <td className="whitespace-nowrap border-b border-line py-2 pl-1 pr-2.5 text-right tabular-nums lg:px-3"><span className="lg:hidden">{compactPeso(g.total)}</span><span className="hidden lg:inline">{peso(g.total)}</span></td>
+                  </tr>
+                </Fragment>
+              )) : report.rows.map((row) => renderRow(row))}
             </tbody>
             <tfoot>
               <tr className="font-bold">

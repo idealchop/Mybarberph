@@ -152,3 +152,37 @@ export function compactPeso(centavos: number): string {
   const k = v / 1000;
   return `${Math.abs(k) < 10 ? Math.round(k * 10) / 10 : Math.round(k)}k`;
 }
+
+export interface ProfitGroup {
+  id: string;
+  name: string;
+  rows: ProfitRow[];
+  /** Subtotal of the rows above, per day (Monday first) and for the week. */
+  days: number[];
+  total: number;
+}
+
+/**
+ * Rows grouped like the Sales → "Sales group" tab: one section per saved group, in the owner's order and names.
+ * A barber is in a group when their branch is one of its locations or they were added by name (the same rule as Sales).
+ * Groups with no barbers this week are left out; barbers in no group come last under "Not in a group".
+ * A barber in two groups shows in both, so subtotals can overlap; the overall Totals row is unchanged.
+ */
+export function groupProfitRows(rows: ProfitRow[], groups: { id: string; name: string; locationIds: string[]; barberIds: string[] }[]): ProfitGroup[] {
+  const make = (id: string, name: string, list: ProfitRow[]): ProfitGroup => {
+    const days = [0, 0, 0, 0, 0, 0, 0];
+    for (const r of list) r.days.forEach((n, i) => { days[i] = (days[i] ?? 0) + n; });
+    return { id, name, rows: list, days, total: days.reduce((s, n) => s + n, 0) };
+  };
+  const placed = new Set<ProfitRow>();
+  const out: ProfitGroup[] = [];
+  for (const g of groups) {
+    const list = rows.filter((r) => g.locationIds.includes(r.locationId) || g.barberIds.includes(r.id));
+    if (!list.length) continue;
+    list.forEach((r) => placed.add(r));
+    out.push(make(g.id, g.name, list));
+  }
+  const rest = rows.filter((r) => !placed.has(r));
+  if (rest.length) out.push(make("none", "Not in a group", rest));
+  return out;
+}
