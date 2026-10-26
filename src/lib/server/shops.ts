@@ -1,5 +1,5 @@
 import { deleteSummary, editChanges } from "@/lib/edit-log";
-import { MANUAL_SOURCE, manualTimeError } from "@/lib/manual-record";
+import { MANUAL_SOURCE, manualPayError, manualTimeError } from "@/lib/manual-record";
 import { applyOverrides, cleanOverrides, toCentavos } from "@/lib/location-prices";
 import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
@@ -292,8 +292,9 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     const at = clean.completedAt ?? NaN;
     const err = manualTimeError(Number.isFinite(at) ? at : null);
     if (err) throw new Error(err);
+    const payErr = manualPayError(clean);
+    if (payErr) throw new Error(payErr);
     clean.status = "done"; clean.createdAt = at; clean.startedAt = at;
-    if (clean.paid && !clean.payMethod) clean.payMethod = "cash";
     clean.editLog = [{ at: Date.now(), by: "Owner", role: "owner", changes: [`Manually added for ${new Date(at).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}`] }];
   } else if (!prev && clean.channel === "walk-in") {
     // Server time decides the day; a client can't backdate a walk-in around the limit.

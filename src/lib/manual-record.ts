@@ -15,6 +15,9 @@ export function manilaTime(day: string, time: string): number | null {
   return Number.isFinite(ms) && new Date(ms + 8 * 3600_000).toISOString().slice(0, 10) === day ? ms : null;
 }
 
+/** Manual records are always paid at the shop, in cash or GCash (never unpaid). */
+export const manualPayError = (r: { paid?: boolean; payMethod?: string }) => (r.paid === true && (r.payMethod === "cash" || r.payMethod === "gcash") ? "" : "A record added by hand must be paid in Cash or GCash.");
+
 /** Why a manual time can't be used ("" = fine): not in the future, and not older than MANUAL_MAX_DAYS. */
 export function manualTimeError(at: number | null, now = Date.now()): string {
   if (at == null) return "Pick a valid time.";
@@ -31,7 +34,7 @@ export function defaultManualTime(day: string, now = Date.now()) {
 
 export interface ManualRecordInput {
   day: string; time: string; barberId: string; barberName: string; locationId: string;
-  serviceName: string; price: number; payMethod: "cash" | "gcash" | "unpaid"; customerLabel?: string; ref: string; shopId: string;
+  serviceName: string; price: number; payMethod: "cash" | "gcash"; customerLabel?: string; ref: string; shopId: string;
 }
 
 /** The booking row for a manual record (finished walk-in on that day), or an error message. */
@@ -39,12 +42,12 @@ export function manualRecord(i: ManualRecordInput, now = Date.now()) {
   const at = manilaTime(i.day, i.time);
   const err = manualTimeError(at, now);
   if (err) return { error: err } as const;
-  const paid = i.payMethod !== "unpaid";
+  if (i.payMethod !== "cash" && i.payMethod !== "gcash") return { error: "Pick Cash or GCash." } as const;
   return {
     row: {
       id: `wk-m${now}`, shopId: i.shopId, ref: i.ref, channel: "walk-in" as const, status: "done" as const, source: MANUAL_SOURCE,
       contact: "", customerLabel: i.customerLabel?.trim() || "Walk-in", serviceId: "haircut", serviceName: i.serviceName || "Haircut",
-      price: Math.max(0, Math.round(i.price)), slotLabel: "Added", payWhere: "shop" as const, paid, ...(paid ? { payMethod: i.payMethod as "cash" | "gcash" } : {}),
+      price: Math.max(0, Math.round(i.price)), slotLabel: "Added", payWhere: "shop" as const, paid: true, payMethod: i.payMethod,
       barberId: i.barberId, barberName: i.barberName, locationId: i.locationId,
       createdAt: at!, startedAt: at!, completedAt: at!, updatedAt: now,
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultManualTime, manilaTime, manualRecord, manualTimeError } from "@/lib/manual-record";
+import { defaultManualTime, manilaTime, manualPayError, manualRecord, manualTimeError } from "@/lib/manual-record";
 import { dayClaim } from "@/lib/profit-claim";
 
 const NOW = Date.parse("2026-10-26T15:00:00+08:00"); // Mon Oct 26, 3 PM Manila
@@ -27,8 +27,18 @@ describe("Manual records from the profit report", () => {
     expect(r.row).toMatchObject({ status: "done", channel: "walk-in", source: "manual", paid: true, payMethod: "cash", barberId: "glen", locationId: "bb1", price: 20_000 });
     expect(r.row.completedAt).toBe(Date.parse("2026-10-22T14:30:00+08:00"));
     expect(r.row.createdAt).toBe(r.row.completedAt);
-    const unpaid = manualRecord({ day: "2026-10-22", time: "14:30", barberId: "glen", barberName: "G", locationId: "bb1", serviceName: "Haircut", price: 1, payMethod: "unpaid", ref: "x", shopId: "s" }, NOW);
-    expect("row" in unpaid && unpaid.row && "payMethod" in unpaid.row).toBe(false);
+    const gcash = manualRecord({ day: "2026-10-22", time: "14:30", barberId: "glen", barberName: "G", locationId: "bb1", serviceName: "Haircut", price: 1, payMethod: "gcash", ref: "x", shopId: "s" }, NOW);
+    expect("row" in gcash && gcash.row).toMatchObject({ paid: true, payMethod: "gcash" });
+    const unpaid = manualRecord({ day: "2026-10-22", time: "14:30", barberId: "glen", barberName: "G", locationId: "bb1", serviceName: "Haircut", price: 1, payMethod: "unpaid" as never, ref: "x", shopId: "s" }, NOW);
+    expect("error" in unpaid && unpaid.error).toContain("Cash or GCash");
+  });
+
+  it("the server rule rejects unpaid (or method-less) manual records", () => {
+    expect(manualPayError({ paid: true, payMethod: "cash" })).toBe("");
+    expect(manualPayError({ paid: true, payMethod: "gcash" })).toBe("");
+    expect(manualPayError({ paid: false })).not.toBe("");
+    expect(manualPayError({ paid: true })).not.toBe("");
+    expect(manualPayError({ paid: true, payMethod: "online" })).not.toBe("");
   });
 
   it("the add form defaults to now on today and noon on a past day", () => {

@@ -92,7 +92,7 @@ function AddRecord({ t, onDone }: { t: DayTarget; onDone: () => void }) {
   const [typed, setPrice] = useState<string | null>(null);
   const price = typed ?? String(menu.find((m) => m.name === service)?.price ?? "");
   const [at, setAt] = useState(defaultManualTime(t.day));
-  const [pay, setPay] = useState<"cash" | "gcash" | "unpaid">("cash");
+  const [pay, setPay] = useState<"cash" | "gcash">("cash");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const box = "rounded-[12px] bg-grey-100";
@@ -124,7 +124,7 @@ function AddRecord({ t, onDone }: { t: DayTarget; onDone: () => void }) {
           <input aria-label="Amount (₱)" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} className={`${field} pl-1 tabular-nums`} /></label>
       </div>
       <div role="radiogroup" aria-label="Payment" className={`mt-2.5 flex gap-1 p-1 ${box}`}>
-        {(["cash", "gcash", "unpaid"] as const).map((p) => <button key={p} type="button" role="radio" aria-checked={pay === p} onClick={() => setPay(p)} className={seg(pay === p)}>{p === "cash" ? "Cash" : p === "gcash" ? "GCash" : "Unpaid"}</button>)}
+        {(["cash", "gcash"] as const).map((p) => <button key={p} type="button" role="radio" aria-checked={pay === p} onClick={() => setPay(p)} className={seg(pay === p)}>{p === "cash" ? "Cash" : "GCash"}</button>)}
       </div>
       <label className={`mt-2.5 block ${box}`}><span className="sr-only">Customer name</span><input aria-label="Customer name" value={name} placeholder="Customer name (optional)" onChange={(e) => setName(e.target.value)} className={field} /></label>
       {err ? <p className="mt-2 px-1 text-[12.5px] font-semibold">{err}</p> : null}
