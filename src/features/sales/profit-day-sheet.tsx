@@ -1,9 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
-import { ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronRight, Clock, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
+import { RiverIcon } from "@/components/common/river-icon";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { refCode } from "@/lib/chair-bookings";
 import { cloudSnapshot, saveBooking } from "@/lib/cloud";
@@ -13,77 +14,114 @@ import { defaultManualTime, manualRecord } from "@/lib/manual-record";
 import { dayClaim, remitKey } from "@/lib/profit-claim";
 import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
+import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const longDay = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", year: "numeric" });
+const payText = (r: ChairRequest) => (!r.paid ? "Unpaid" : r.payMethod === "gcash" ? "GCash" : r.payMethod === "online" ? "Online" : "Cash");
 
 export interface DayTarget { id: string; name: string; locationId: string; locationName: string; day: string }
+
+/** Barber face (photo when the shop added one) or initials, River style. */
+function Face({ name, photo, size = 44 }: { name: string; photo?: string; size?: number }) {
+  const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  // eslint-disable-next-line @next/next/no-img-element
+  if (photo) return <img src={photo} alt="" className="flex-none rounded-full object-cover" style={{ width: size, height: size }} />;
+  return <span aria-hidden className="flex flex-none items-center justify-center rounded-full bg-ink text-[15px] font-extrabold text-on-ink" style={{ width: size, height: size }}>{initials || "?"}</span>;
+}
 
 /** Weekly Profit Report → tap a barber's day: claim that day's cash, see/edit its records, add a missed one. */
 export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: DayTarget; rows: ChairRequest[]; chairs: ShopChair[]; profileHref: string; onClose: () => void }) {
   const remit = useRemit(t.locationId);
   const [open, setOpen] = useState<ChairRequest | null>(null);
   const [adding, setAdding] = useState(false);
+  const add = useAddRecord(t, () => setAdding(false));
+  const photo = chairs.find((c) => (c.barberId === t.id || c.id === t.id) && (c.locationId || "home") === t.locationId)?.photoUrl;
   const records = useMemo(() => rows
     .filter((r) => r.status === "done" && r.completedAt && ymd(r.completedAt) === t.day)
     .filter((r) => { const k = remitKey(r, chairs); return k.id === t.id && k.loc === t.locationId; })
     .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0)), [rows, chairs, t]);
   const claim = dayClaim(records, chairs, t.id, t.locationId, t.day, (id) => Boolean(remit.claimOf(id)));
   const busy = remit.busy === `${t.id}@${t.locationId}`;
+  const dayTotal = records.reduce((s, r) => s + (r.price || 0), 0);
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
+
   return (
-    <BottomSheet title={t.name} subtitle={`${longDay(t.day)}${t.locationName ? ` · ${t.locationName}` : ""}`} onClose={onClose} tall>
-      {adding ? <AddRecord t={t} onDone={() => setAdding(false)} /> : (
-        <>
-          <section aria-label="Claim" className="rounded-[16px] bg-grey-100 px-3.5 py-3">
-            <p className="text-[12.5px] font-bold text-muted">Claim · cash from this day</p>
-            {claim.owner ? <p className="mt-1 text-[13.5px] font-semibold text-muted">Your own cuts. Nothing to claim.</p>
-              : !remit.data ? <p className="mt-1 text-[13.5px] font-semibold text-muted">Loading…</p>
+    <BottomSheet title={adding ? "Add record" : t.name} subtitle={adding ? `${t.name}${t.locationName ? ` · ${t.locationName}` : ""}` : `${longDay(t.day)}${t.locationName ? ` · ${t.locationName}` : ""}`}
+      onClose={adding ? () => setAdding(false) : onClose} tall
+      footer={adding ? (
+        <Button data-auth="action" fullWidth onClick={add.save} className="!h-14 !text-[16px]">
+          Save record{add.amount > 0 ? ` · ${peso(add.amount)}` : ""}
+        </Button>
+      ) : undefined}>
+      {adding ? <AddRecordForm t={t} photo={photo} f={add} /> : (
+        <div className="flex flex-col gap-5 pb-2 pt-1">
+          <section aria-label="Claim" className="rounded-[22px] bg-ink px-4 pb-4 pt-3.5 text-on-ink">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[12.5px] font-semibold text-on-ink-muted">Cash to claim · this day</p>
+              {claim.claimed > 0 ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/15 px-2.5 text-[11.5px] font-bold"><Check size={12} strokeWidth={3} aria-hidden />{peso(claim.claimed)} claimed</span> : null}
+            </div>
+            {claim.owner ? <p className="mt-1.5 text-[15px] font-bold">Your own cuts. Nothing to claim.</p>
+              : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
               : claim.open > 0 ? (
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <b className="block text-[24px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open)}</b>
-                    <small className="mt-1 block text-[12px] font-semibold text-muted">Your share of {peso(claim.openCash)} cash · {claim.openCount} cut{claim.openCount === 1 ? "" : "s"}{claim.claimed ? ` · ${peso(claim.claimed)} already claimed` : ""}</small>
-                  </span>
-                  <Button data-auth="action" size="md" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}>{busy ? "Claiming…" : "Claim"}</Button>
-                </div>
+                <>
+                  <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open)}</b>
+                  <p className="mt-1.5 text-[12.5px] font-semibold text-on-ink-muted">Your share of {peso(claim.openCash)} cash · {claim.openCount} cut{claim.openCount === 1 ? "" : "s"}</p>
+                  <button type="button" data-auth="action" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}
+                    className="mt-3.5 flex h-12 w-full items-center justify-center rounded-pill bg-surface text-[15px] font-extrabold text-ink active:opacity-80 disabled:opacity-60">{busy ? "Claiming…" : `Claim ${peso(claim.open)}`}</button>
+                </>
               ) : claim.claimed > 0 ? (
-                <p className="mt-1 text-[15px] font-bold">Claimed {peso(claim.claimed)} <span className="text-[12.5px] font-semibold text-muted">· {claim.claimedCount} cut{claim.claimedCount === 1 ? "" : "s"}</span></p>
-              ) : <p className="mt-1 text-[13.5px] font-semibold text-muted">No unclaimed cash this day.</p>}
-            {remit.error ? <p className="mt-1.5 text-[12.5px] font-semibold">{remit.error}</p> : null}
+                <p className="mt-1.5 flex items-center gap-2 text-[17px] font-extrabold"><Check size={18} strokeWidth={3} aria-hidden />All claimed <span className="text-[12.5px] font-semibold text-on-ink-muted">· {claim.claimedCount} cut{claim.claimedCount === 1 ? "" : "s"}</span></p>
+              ) : <p className="mt-1.5 text-[15px] font-bold">No unclaimed cash this day.</p>}
+            {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{remit.error}</p> : null}
           </section>
 
-          <div className="mt-4 flex items-center justify-between px-1">
-            <b className="text-[14.5px]">Records</b>
-            <button type="button" onClick={() => setAdding(true)} className="inline-flex h-8 items-center gap-1 rounded-pill bg-ink px-3 text-[12.5px] font-bold text-on-ink"><Plus size={14} strokeWidth={2.4} aria-hidden />Add record</button>
-          </div>
-          {records.length === 0 ? <p className="mt-2 rounded-[14px] bg-grey-100 px-3 py-4 text-center text-[13px] font-semibold text-muted">No records this day. Add one you missed.</p> : (
-            <ul className="mt-1 flex flex-col divide-y divide-line">
-              {records.map((r) => (
-                <li key={r.id}>
-                  <button type="button" onClick={() => setOpen(r)} className="flex w-full items-center gap-3 py-2.5 text-left active:bg-grey-100">
-                    <span className="w-[4.2rem] flex-none text-[12.5px] font-semibold tabular-nums text-muted">{time(r.completedAt)}</span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[14px]">{r.serviceName || "Service"}</b>
-                      <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", !r.paid ? "Unpaid" : r.payMethod === "gcash" ? "GCash" : r.payMethod === "online" ? "Online" : "Cash", remit.claimOf(r.id) ? "Claimed" : "", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
-                    </span>
-                    <b className="flex-none tabular-nums">{peso(r.price || 0)}</b>
-                    <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link href={profileHref} className="mt-4 block text-center text-[13px] font-bold underline decoration-line underline-offset-2">Open {t.name}’s profile for this day</Link>
-        </>
+          <section aria-label="Records">
+            <div className="flex items-end justify-between px-1">
+              <span><b className="block text-[16px] tracking-[-0.01em]">Records</b><small className="block text-[12.5px] font-semibold text-muted">{records.length} cut{records.length === 1 ? "" : "s"} · {peso(dayTotal)}</small></span>
+            </div>
+            {records.length === 0 ? (
+              <div className="mt-2.5 flex flex-col items-center rounded-[20px] bg-grey-100 px-4 py-6 text-center">
+                <RiverIcon name="empty-queue" size={56} />
+                <p className="mt-2 text-[14px] font-bold">No records this day</p>
+                <p className="text-[12.5px] font-semibold text-muted">Add one you missed or encoded offline.</p>
+              </div>
+            ) : (
+              <ul className="mt-2.5 overflow-hidden rounded-[20px] bg-grey-100">
+                {records.map((r) => (
+                  <li key={r.id} className="border-b border-line last:border-b-0">
+                    <button type="button" onClick={() => setOpen(r)} className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-3 text-left active:bg-grey-200">
+                      <span className="w-[3.9rem] flex-none text-[12.5px] font-bold tabular-nums text-muted">{time(r.completedAt)}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[14.5px]">{r.serviceName || "Service"}</b>
+                        <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", payText(r), remit.claimOf(r.id) ? "Claimed" : "", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      <b className="flex-none text-[15px] tabular-nums">{peso(r.price || 0)}</b>
+                      <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" onClick={() => setAdding(true)}
+              className="mt-3 flex h-12 w-full items-center justify-center gap-1.5 rounded-pill border-2 border-dashed border-grey-300 text-[14.5px] font-bold text-ink active:bg-grey-100">
+              <Plus size={17} strokeWidth={2.6} aria-hidden />Add record
+            </button>
+          </section>
+
+          <Link href={profileHref} className="flex h-11 items-center justify-center gap-1 text-[13.5px] font-bold text-ink-2">
+            Open {t.name}’s profile for this day<ChevronRight size={15} aria-hidden />
+          </Link>
+        </div>
       )}
     </BottomSheet>
   );
 }
 
-function AddRecord({ t, onDone }: { t: DayTarget; onDone: () => void }) {
+/** Add-record state and save (logic unchanged from v1.0.15: Cash or GCash, finished walk-in on that day). */
+function useAddRecord(t: DayTarget, onDone: () => void) {
   const { haircut, treatments } = useShopMenu(t.locationId);
   const menu = [haircut, ...treatments].filter((m) => m?.name);
   const [picked, setService] = useState("");
@@ -95,9 +133,6 @@ function AddRecord({ t, onDone }: { t: DayTarget; onDone: () => void }) {
   const [pay, setPay] = useState<"cash" | "gcash">("cash");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
-  const box = "rounded-[12px] bg-grey-100";
-  const field = "h-10 w-full min-w-0 bg-transparent px-3 text-[14.5px] font-semibold outline-none";
-  const seg = (on: boolean) => `h-8 flex-1 rounded-[9px] px-2 text-[13px] font-bold ${on ? "bg-surface text-ink shadow-card" : "text-muted"}`;
   const save = () => {
     const r = manualRecord({ day: t.day, time: at, barberId: t.id, barberName: t.name, locationId: t.locationId, serviceName: service, price: Math.round((Number(price) || 0) * 100), payMethod: pay, customerLabel: name, ref: refCode(), shopId: cloudSnapshot().shopId ?? "" });
     if (!(Number(price) > 0)) { setErr("Enter the amount."); return; }
@@ -105,33 +140,93 @@ function AddRecord({ t, onDone }: { t: DayTarget; onDone: () => void }) {
     saveBooking(r.row as ChairRequest);
     onDone();
   };
+  return { menu, service, pick: (s: string) => { setService(s); setPrice(null); }, price, setPrice, at, setAt, pay, setPay, name, setName, err, save, amount: Math.round((Number(price) || 0) * 100) };
+}
+
+function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: ReturnType<typeof useAddRecord> }) {
+  const [showName, setShowName] = useState(false);
+  const label = "px-1 text-[13px] font-bold text-muted";
+  const svcIcon = (n: string) => { const s = n.toLowerCase(); return s.includes("beard") ? "beard" : s.includes("shave") ? "shave" : s.includes("kid") ? "kids-cut" : s.includes("wash") || s.includes("shampoo") ? "hair-wash" : s.includes("styl") ? "styling" : "haircut"; };
   return (
-    <div>
-      <p className="px-1 text-[13px] font-bold">Add record · {longDay(t.day)}</p>
-      <p className="px-1 text-[12px] font-semibold text-muted">A finished cut for {t.name}, counted on this day.</p>
-      <div className="mt-3 flex gap-2">
-        <label className={`flex-1 ${box}`}><span className="sr-only">Date</span><input aria-label="Date" value={t.day} readOnly className={`${field} text-muted`} /></label>
-        <label className={`flex-1 ${box}`}><span className="sr-only">Time</span><input aria-label="Time" type="time" value={at} onChange={(e) => setAt(e.target.value)} className={field} /></label>
+    <div className="flex flex-col gap-5 pb-2 pt-1">
+      <div className="flex items-center gap-3 rounded-[22px] bg-grey-100 px-3.5 py-3">
+        <Face name={t.name} photo={photo} />
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[16px]">{t.name}</b>
+          <small className="block truncate text-[12.5px] font-semibold text-muted">A finished cut, counted on this day</small>
+        </span>
+        <span className="flex-none rounded-pill bg-ink px-3 py-1.5 text-[12.5px] font-bold text-on-ink">{longDay(t.day).replace(/, \d{4}$/, "")}</span>
       </div>
-      <div className="mt-2.5 flex gap-2">
-        <label className={`min-w-0 flex-[1.4] ${box}`}>
-          <span className="sr-only">Service</span>
-          <select aria-label="Service" value={service} onChange={(e) => { setService(e.target.value); setPrice(null); }} className={`${field} appearance-none`}>
-            {menu.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
-          </select>
+
+      <label className="block">
+        <span className={label}>Time</span>
+        <span className="mt-1.5 flex h-16 items-center gap-3 rounded-[18px] bg-grey-100 px-4">
+          <Clock size={22} strokeWidth={2.2} className="flex-none text-muted" aria-hidden />
+          <input aria-label="Time" type="time" value={f.at} onChange={(e) => f.setAt(e.target.value)}
+            className="h-full min-w-0 flex-1 bg-transparent text-[24px] font-extrabold tracking-[-0.02em] tabular-nums outline-none" />
+        </span>
+      </label>
+
+      <div>
+        <p className={label}>Service</p>
+        <div role="radiogroup" aria-label="Service" className="mt-1.5 grid grid-cols-2 gap-2">
+          {f.menu.map((m) => {
+            const on = m.name === f.service;
+            return (
+              <button key={m.name} type="button" role="radio" aria-checked={on} aria-label={`${m.name}, ${peso(Math.round((m.price ?? 0) * 100))}`} onClick={() => f.pick(m.name)}
+                className={cn("flex min-h-[64px] items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left transition-colors", on ? "bg-ink text-on-ink" : "bg-grey-100 text-ink active:bg-grey-200")}>
+                <RiverIcon name={svcIcon(m.name)} size={36} />
+                <span className="min-w-0">
+                  <b className="block truncate text-[14px] leading-tight">{m.name}</b>
+                  <small className={cn("block text-[12.5px] font-semibold tabular-nums", on ? "text-on-ink-muted" : "text-muted")}>{peso(Math.round((m.price ?? 0) * 100))}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <label className="block">
+        <span className={label}>Amount</span>
+        <span className="mt-1.5 flex h-14 items-center rounded-[18px] bg-grey-100 px-4">
+          <span aria-hidden className="text-[20px] font-extrabold text-muted">₱</span>
+          <input aria-label="Amount (₱)" inputMode="decimal" value={f.price} onChange={(e) => f.setPrice(e.target.value.replace(/[^\d.]/g, ""))}
+            className="h-full min-w-0 flex-1 bg-transparent pl-1.5 text-[20px] font-extrabold tabular-nums outline-none" />
+          <small className="flex-none text-[12px] font-semibold text-muted">{f.price === String(f.menu.find((m) => m.name === f.service)?.price ?? "") ? "Menu price" : "Edited"}</small>
+        </span>
+      </label>
+
+      <div>
+        <p className={label}>Paid with</p>
+        <div role="radiogroup" aria-label="Payment" className="mt-1.5 grid grid-cols-2 gap-2">
+          {([["cash", "Cash", "payments"], ["gcash", "GCash", "qr"]] as const).map(([v, l, icon]) => {
+            const on = f.pay === v;
+            return (
+              <button key={v} type="button" role="radio" aria-checked={on} aria-label={l} onClick={() => f.setPay(v)}
+                className={cn("flex h-14 items-center justify-center gap-2 rounded-pill text-[15.5px] font-extrabold transition-colors", on ? "bg-ink text-on-ink" : "bg-grey-100 text-ink active:bg-grey-200")}>
+                <RiverIcon name={icon} size={30} />{l}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {showName || f.name ? (
+        <label className="block">
+          <span className={label}>Customer name</span>
+          <span className="mt-1.5 flex h-14 items-center gap-2.5 rounded-[18px] bg-grey-100 px-4">
+            <UserRound size={19} strokeWidth={2.2} className="flex-none text-muted" aria-hidden />
+            <input aria-label="Customer name" autoFocus value={f.name} placeholder="Optional" onChange={(e) => f.setName(e.target.value)}
+              className="h-full min-w-0 flex-1 bg-transparent text-[16px] font-semibold outline-none placeholder:font-medium placeholder:text-muted" />
+          </span>
         </label>
-        <label className={`flex flex-1 items-center pl-3 ${box}`}><span aria-hidden className="font-bold text-muted">₱</span>
-          <input aria-label="Amount (₱)" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} className={`${field} pl-1 tabular-nums`} /></label>
-      </div>
-      <div role="radiogroup" aria-label="Payment" className={`mt-2.5 flex gap-1 p-1 ${box}`}>
-        {(["cash", "gcash"] as const).map((p) => <button key={p} type="button" role="radio" aria-checked={pay === p} onClick={() => setPay(p)} className={seg(pay === p)}>{p === "cash" ? "Cash" : "GCash"}</button>)}
-      </div>
-      <label className={`mt-2.5 block ${box}`}><span className="sr-only">Customer name</span><input aria-label="Customer name" value={name} placeholder="Customer name (optional)" onChange={(e) => setName(e.target.value)} className={field} /></label>
-      {err ? <p className="mt-2 px-1 text-[12.5px] font-semibold">{err}</p> : null}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={onDone}>Cancel</Button>
-        <Button data-auth="action" onClick={save}>Save record</Button>
-      </div>
+      ) : (
+        <button type="button" onClick={() => setShowName(true)} className="-mt-1 inline-flex h-10 items-center gap-1.5 self-start px-1 text-[14px] font-bold text-ink-2">
+          <Plus size={16} strokeWidth={2.6} aria-hidden />Add customer name
+        </button>
+      )}
+
+      {f.err ? <p role="alert" className="rounded-[14px] bg-grey-100 px-3.5 py-2.5 text-[13px] font-bold">{f.err}</p> : null}
     </div>
   );
 }
