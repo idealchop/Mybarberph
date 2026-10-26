@@ -1,4 +1,5 @@
 import { deleteSummary, editChanges } from "@/lib/edit-log";
+import { MANUAL_SOURCE, manualTimeError } from "@/lib/manual-record";
 import { applyOverrides, cleanOverrides, toCentavos } from "@/lib/location-prices";
 import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
@@ -285,7 +286,16 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   const getShopDoc = () => (shopDoc ??= shopRef(shopId).get().then((d) => d.data() as ShopDoc | undefined));
   // Barber links can't change the amount: it is the menu price, whatever the client sent.
   if (barber) clean.price = barberPrice(await getShopDoc(), clean, prev);
-  if (!prev && clean.channel === "walk-in") {
+  // Owner-added record from the Weekly Profit Report (encoded later, e.g. when offline): a finished walk-in on a past day.
+  const manual = !prev && !barber && clean.channel === "walk-in" && clean.source === MANUAL_SOURCE;
+  if (manual) {
+    const at = clean.completedAt ?? NaN;
+    const err = manualTimeError(Number.isFinite(at) ? at : null);
+    if (err) throw new Error(err);
+    clean.status = "done"; clean.createdAt = at; clean.startedAt = at;
+    if (clean.paid && !clean.payMethod) clean.payMethod = "cash";
+    clean.editLog = [{ at: Date.now(), by: "Owner", role: "owner", changes: [`Manually added for ${new Date(at).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}`] }];
+  } else if (!prev && clean.channel === "walk-in") {
     // Server time decides the day; a client can't backdate a walk-in around the limit.
     clean.createdAt = Date.now();
     const shop = await getShopDoc();
@@ -302,6 +312,7 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (clean.paid && !clean.payMethod) clean.payMethod = prev?.payMethod ?? (clean.payWhere === "online" ? "online" : "cash");
   if (!clean.paid) delete clean.payMethod;
   if (prev?.source) clean.source = prev.source;
+  else if (!manual && clean.source === MANUAL_SOURCE) delete clean.source;
   // A booking keeps its original time (and so its day for the walk-in limit).
   if (prev?.createdAt) clean.createdAt = prev.createdAt;
   // Customer-only fields: the shop can't change them by saving the row.
@@ -323,6 +334,7 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     if (clean.tip === undefined && cur?.tip) clean.tip = cur.tip;
     if (!clean.tip) delete clean.tip;
     if (cur?.editLog) clean.editLog = cur.editLog;
+    if (cur && manual) return { saved: cur, before: cur, wrote: false };
     if (cur && cur.status === clean.status) {
       const changes = editChanges(cur, clean);
       if (changes.length) clean.editLog = [...(cur.editLog ?? []), { at: Date.now(), by: barber ? barber.barberName : "Owner", role: barber ? "barber" as const : "owner" as const, changes }].slice(-30);

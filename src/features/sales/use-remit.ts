@@ -26,12 +26,12 @@ export function useRemit(loc: string) {
     const t = window.setInterval(() => { if (document.visibilityState === "visible") void load().catch(() => undefined); }, 30_000);
     return () => window.clearInterval(t);
   }, [user, load]);
-  const claim = async (barberId: string, locationId: string) => {
+  const claim = async (barberId: string, locationId: string, day?: string) => {
     const key = `${barberId}@${locationId}`;
     if (busy) return;
     setBusy(key); setError("");
     try {
-      await api("/api/shop/remit-claims", { method: "POST", body: JSON.stringify({ barberId, locationId }) });
+      await api("/api/shop/remit-claims", { method: "POST", body: JSON.stringify({ barberId, locationId, ...(day ? { day } : {}) }) });
       invalidate("remit:");
       await load();
     } catch (e) { setError((e as Error).message); } finally { setBusy(""); }

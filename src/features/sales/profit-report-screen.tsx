@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { useSalesRows } from "./use-sales-rows";
+import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
 
 const FETCH_DAYS = 70;
 const VIEW_KEY = "barbers.profit-report-view";
@@ -47,7 +48,16 @@ export function ProfitReportScreen() {
   const { chairs } = useShopChairs({ all: true });
   const deep = useSalesRows(FETCH_DAYS);
   const cloud = useChairRequests();
-  const rows = deep ?? cloud.rows;
+  // Deep rows (70 days) plus live edits: a record added, edited or deleted from the day sheet shows at once.
+  const rows = useMemo(() => {
+    if (!deep) return cloud.rows;
+    const live = new Map(cloud.rows.map((r) => [r.id, r]));
+    const liveFrom = cloud.rows.reduce((m, r) => Math.min(m, r.createdAt), Infinity);
+    const kept = deep.filter((r) => live.has(r.id) || r.createdAt < liveFrom).map((r) => live.get(r.id) ?? r);
+    const ids = new Set(kept.map((r) => r.id));
+    return [...kept, ...cloud.rows.filter((r) => !ids.has(r.id))];
+  }, [deep, cloud.rows]);
+  const [sheet, setSheet] = useState<DayTarget | null>(null);
   const now = useNow();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState("");
@@ -79,11 +89,12 @@ export function ProfitReportScreen() {
                     const future = !!day && day.key > today;
                     return (
                       <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", isToday && "bg-grey-100")}>
-                        {n && !future && day ? (
-                          <Link href={barberHref(row, day.key)} aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${peso(n)}. Open profile for that day`}
-                            className="flex min-h-11 items-center justify-center py-1 active:bg-grey-200">
-                            <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span>
-                          </Link>
+                        {!future && day ? (
+                          <button type="button" onClick={() => setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: day.key })}
+                            aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${n ? peso(n) : "no sales"}. Claim, records and add`}
+                            className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
+                            {n ? <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
+                          </button>
                         ) : (
                           <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={future} /></span>
                         )}
@@ -113,7 +124,7 @@ export function ProfitReportScreen() {
           <ChevronRight size={18} />
         </button>
         <span className="min-w-2 flex-1" />
-        <Link href="/sales?view=barbers" className="inline-flex h-8 flex-none items-center rounded-pill bg-surface px-3 text-[12.5px] font-bold text-ink ring-1 ring-line">Claiming</Link>
+        <Link href={`/sales?view=barbers${where !== "all" ? `&loc=${encodeURIComponent(where)}` : ""}`} className="inline-flex h-8 flex-none items-center rounded-pill bg-surface px-3 text-[12.5px] font-bold text-ink ring-1 ring-line">Claiming</Link>
       </div>
 
       <section aria-label="Your profit" className="mt-3 rounded-banner bg-ink px-4 py-4 text-on-ink">
@@ -200,9 +211,10 @@ export function ProfitReportScreen() {
               </tr>
             </tfoot>
           </table>
-          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · tap an amount for that day</p>
+          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · tap a day to claim, edit or add</p>
         </div>
       )}
+      {sheet ? <ProfitDaySheet t={sheet} rows={rows} chairs={chairs} profileHref={barberHref(sheet, sheet.day)} onClose={() => setSheet(null)} /> : null}
     </div>
   );
 }

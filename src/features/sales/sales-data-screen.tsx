@@ -1,4 +1,5 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { useNow } from "@/lib/use-now";
 import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
@@ -50,8 +51,10 @@ export function SalesDataScreen() {
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
   const [view, setView] = useState<View>("performance");
   const [pf, setPf] = useState<PerfFilters>({});
+  // Re-read on every URL change too (e.g. Weekly Profit Report → Claiming while Sales is already mounted).
+  const search = useSearchParams().toString();
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
+    const q = new URLSearchParams(search);
     const t = window.setTimeout(() => {
       // Anything but "services" (incl. the old overview tab) opens Collection.
       const v = q.get("view") ?? q.get("tab");
@@ -61,7 +64,7 @@ export function SalesDataScreen() {
       if (r === "week" || r === "month" || r === "today" || r === "d30" || r === "all" || r === "custom") setRange(r);
     }, 0);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [search]);
 
   // Each visit's barber split % (owner's own cuts are all the shop's).
   const pctOf = (r: { barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string }) => {

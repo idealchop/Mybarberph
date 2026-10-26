@@ -67,14 +67,16 @@ export async function remitSummary(shopId: string, loc: string) {
   };
 }
 
-/** Owner marks a barber's cash as received: every unclaimed paid-cash visit for that barber at that location, up to now. A lock doc serialises claims so a double tap can't claim twice. */
-export async function claimRemit(shopId: string, barberId: string, locationId: string, claimedBy: string): Promise<RemitClaim> {
+/** Owner marks a barber's cash as received: every unclaimed paid-cash visit for that barber at that location, up to now (or on one Manila `day`). A lock doc serialises claims so a double tap can't claim twice. */
+export async function claimRemit(shopId: string, barberId: string, locationId: string, claimedBy: string, day?: string): Promise<RemitClaim> {
   const shop = shopRef(shopId);
   const lock = shop.collection("private").doc("remitLock");
   return shop.firestore.runTransaction(async (tx) => {
     await tx.get(lock);
     const { chairs, open } = await load(shopId, true);
-    const mine = open.filter((r) => { const k = keyOf(r, chairs); return k.id === barberId && k.loc === locationId; });
+    // `day` (YYYY-MM-DD, Manila) limits the claim to that day's cuts (Weekly Profit Report); otherwise everything up to now.
+    const onDay = (r: ChairRequest) => !day || new Date((r.completedAt ?? r.updatedAt ?? 0) + 8 * 3600_000).toISOString().slice(0, 10) === day;
+    const mine = open.filter((r) => { const k = keyOf(r, chairs); return k.id === barberId && k.loc === locationId && onDay(r); });
     if (!mine.length) throw new Error("Nothing to claim for this barber.");
     const ref = shop.collection("remitClaims").doc();
     const times = mine.map((r) => r.completedAt ?? r.updatedAt ?? Date.now());

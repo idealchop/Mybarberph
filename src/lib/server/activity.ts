@@ -38,6 +38,11 @@ export async function bookingActivity(shopId: string, prev: ChairRequest | undef
   const base = { actor, locationId: next.locationId || "home", ref: next.ref };
   const svc = next.serviceName || "a cut";
   const by = actor.role === "barber" ? actor.name : next.barberName || actor.name;
+  if (!prev && next.source === "manual") {
+    const day = new Date(next.completedAt ?? next.createdAt).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    await logActivity(shopId, { ...base, type: "walkin_added", amount: next.price, text: `${actor.name} manually added a record for ${next.barberName || "a barber"} on ${day} · ${svc} · ${peso(next.price || 0)} ${pay(next)}` });
+    return;
+  }
   if (!prev) {
     if (next.channel === "walk-in") await logActivity(shopId, { ...base, type: "walkin_added", text: `${actor.name} added walk-in ${who(next)} · ${svc}` });
     else await logActivity(shopId, { ...base, type: "booking_added", text: `${actor.name} added booking ${next.ref} for ${who(next)}` });
