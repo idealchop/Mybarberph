@@ -18,6 +18,10 @@ import { useSalesRows } from "./use-sales-rows";
 const FETCH_DAYS = 70;
 const todayKey = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 
+/** The barber's profile (Sales detail), for the week or focused on one Manila day, at that row's branch. */
+const barberHref = (row: { id: string; locationId: string }, day?: string) =>
+  `/sales/detail?kind=barber&id=${encodeURIComponent(row.id)}&loc=${encodeURIComponent(row.locationId)}${day ? `&day=${day}` : "&r=week"}`;
+
 /** One grid cell: short amount on phones, full peso on desktop; future days are a faint dash. */
 function Amount({ n, future, bold }: { n: number; future: boolean; bold?: boolean }) {
   if (future) return <span className="text-muted opacity-40">–</span>;
@@ -115,7 +119,7 @@ export function ProfitReportScreen() {
               {report.rows.map((row) => (
                 <tr key={`${row.id}@${row.locationId}`}>
                   <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
-                    <Link href={`/sales/detail?kind=barber&id=${encodeURIComponent(row.id)}&loc=${encodeURIComponent(row.locationId)}&r=week`} className="block truncate font-semibold">{row.name}</Link>
+                    <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
                     {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
                   </th>
                   {row.days.map((n, i) => {
@@ -123,8 +127,15 @@ export function ProfitReportScreen() {
                     const isToday = day?.key === today;
                     const future = !!day && day.key > today;
                     return (
-                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line px-0 py-2.5 text-center tabular-nums", isToday && "bg-grey-100")}>
-                        <Amount n={n} future={future} />
+                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", isToday && "bg-grey-100")}>
+                        {n && !future && day ? (
+                          <Link href={barberHref(row, day.key)} aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${peso(n)}. Open profile for that day`}
+                            className="flex min-h-11 items-center justify-center py-1 active:bg-grey-200">
+                            <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span>
+                          </Link>
+                        ) : (
+                          <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={future} /></span>
+                        )}
                       </td>
                     );
                   })}
@@ -151,7 +162,7 @@ export function ProfitReportScreen() {
               </tr>
             </tfoot>
           </table>
-          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600</p>
+          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · tap an amount for that day</p>
         </div>
       )}
     </div>

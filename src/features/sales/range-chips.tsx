@@ -3,7 +3,7 @@
 import { cn } from "@river-apps/ui";
 import { CalendarDays } from "lucide-react";
 import { useState } from "react";
-import { SALES_RANGES, setCustomRange, type SalesRange } from "@/lib/sales-report";
+import { SALES_RANGES, getCustomRange, setCustomRange, type SalesRange } from "@/lib/sales-report";
 
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const short = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
@@ -11,8 +11,9 @@ const short = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString(
 /** Compact date chips. Sales passes the shared day filters; History keeps the default set. */
 export function RangeChips({ value, onChange, className, allowCustom = false, ranges = SALES_RANGES }: { value: SalesRange; onChange: (v: SalesRange) => void; className?: string; allowCustom?: boolean; ranges?: { value: SalesRange; label: string }[] }) {
   const [open, setOpen] = useState(false);
-  const [from, setFrom] = useState(() => ymd(Date.now() - 13 * 86_400_000));
-  const [to, setTo] = useState(() => ymd(Date.now()));
+  // Start from the active custom range (e.g. a day opened from the profit report), else the last 14 days.
+  const [from, setFrom] = useState(() => (value === "custom" && getCustomRange()?.from) || ymd(Date.now() - 13 * 86_400_000));
+  const [to, setTo] = useState(() => (value === "custom" && getCustomRange()?.to) || ymd(Date.now()));
   const [today] = useState(() => ymd(Date.now()));
   const apply = (f: string, t: string) => { setCustomRange(f, t); onChange("custom"); };
   return (
@@ -25,7 +26,7 @@ export function RangeChips({ value, onChange, className, allowCustom = false, ra
         {allowCustom ? (
           <button type="button" aria-pressed={value === "custom"} aria-label="Custom dates" aria-expanded={open} onClick={() => setOpen(!open)}
             className={cn("inline-flex h-8 items-center gap-1 rounded-pill px-2.5 text-[12.5px] font-bold", value === "custom" ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>
-            <CalendarDays size={14} strokeWidth={2} />{value === "custom" ? `${short(from)}–${short(to)}` : null}
+            <CalendarDays size={14} strokeWidth={2} />{value === "custom" ? (from === to ? short(from) : `${short(from)}–${short(to)}`) : null}
           </button>
         ) : null}
       </div>

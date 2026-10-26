@@ -9,7 +9,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { rangeFetchDays, type SalesRange } from "@/lib/sales-report";
+import { rangeFetchDays, setCustomRange, type SalesRange } from "@/lib/sales-report";
 import { BarberDetail } from "./barber-detail";
 import { barberKey, barberStats, busyMinutes, dailySeries, inRange, locationStats, serviceStats } from "@/lib/sales-stats";
 import { SalesChartCard } from "./sales-chart";
@@ -23,7 +23,12 @@ export function SalesDetailScreen() {
   const kind = q.get("kind") === "barber" ? "barber" : "location";
   const id = q.get("id") || "";
   const locHint = q.get("loc") || "";
-  const [range, setRange] = useState<SalesRange>((q.get("r") as SalesRange) || "week");
+  // `?day=YYYY-MM-DD` (from the profit report's day cells) opens focused on that one Manila day.
+  const [range, setRange] = useState<SalesRange>(() => {
+    const day = q.get("day") || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) { setCustomRange(day, day); return "custom"; }
+    return (q.get("r") as SalesRange) || "week";
+  });
   const shops = useShopLocations();
   const { profile } = useShopProfile();
   const { chairs } = useShopChairs({ all: true });
