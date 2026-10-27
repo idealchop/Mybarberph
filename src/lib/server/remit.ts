@@ -3,6 +3,7 @@ import { isOwnerCut } from "@/lib/owner-cut";
 import { claimOwnerShare, ownerShareOf, sharePct } from "@/lib/income-split";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
+import { cutBarberId } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
@@ -13,7 +14,7 @@ const HOME = "home";
 const keyOf = (r: ChairRequest, chairs: Chair[]) => {
   const bl = r.locationId || HOME;
   const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME) === bl);
-  return { id: r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`, name: r.barberName || seat?.barberName?.trim() || r.seatLabel || "No barber", loc: bl };
+  return { id: cutBarberId(r, chairs), name: r.barberName || seat?.barberName?.trim() || r.seatLabel || "No barber", loc: bl };
 };
 /** The barber's split % for a barber id at a location (chair id or barber id). */
 const pctOf = (chairs: Chair[], id: string, loc: string) => {

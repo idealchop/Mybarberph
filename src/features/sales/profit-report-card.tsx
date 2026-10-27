@@ -11,6 +11,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useSalesRows } from "./use-sales-rows";
+import { mergeLiveRows } from "@/lib/cut-count";
 
 const cell = (n: number) => (n ? compactPeso(n) : "–");
 const todayKey = (now: number) => new Date(now + 8 * 3600_000).toISOString().slice(0, 10);
@@ -22,7 +23,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
   const { chairs } = useShopChairs({ all: true });
   const deep = useSalesRows(70);
   const cloud = useChairRequests();
-  const rows = deep ?? cloud.rows;
+  const rows = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
   const branches = useMemo(
     () => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]),
     [shops.enabled, shops.branches, profile.name],

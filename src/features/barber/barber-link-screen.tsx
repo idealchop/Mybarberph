@@ -23,6 +23,7 @@ import {
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
+import { cutBarberId } from "@/lib/cut-count";
 import { customerName } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
@@ -202,8 +203,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const placeId = chair.locationId || HOME_LOCATION_ID;
   const here = (row: ChairRequest) => requestLocation(row) === placeId;
   const myId = chair.barberId || chair.id;
-  // Same rule as the server (barberAccess): a visit is mine by barberId, or by my chair on older rows without one.
-  const mine = (row: ChairRequest) => here(row) && (row.barberId ? row.barberId === myId : (row.seatLabel === chair.label || row.chairLabel === chair.label));
+  // Same "whose cut" rule as the owner's Sales and Profit report (src/lib/cut-count.ts).
+  const mine = (row: ChairRequest) => here(row) && cutBarberId(row, chairs) === myId;
   const current = rows.find((row) => row.status === "in_chair" && row.chairLabel === chair.label && here(row));
   const waiting = rows
     .filter((row) => here(row) && !row.home && (row.status === "requested" || row.status === "accepted") && !row.chairLabel)

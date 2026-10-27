@@ -4,6 +4,7 @@ import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } f
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
+import { cutBarberId } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 
@@ -24,7 +25,7 @@ export async function barberSales(shopId: string, q: { range?: string | null; fr
     if (loc && bl !== loc) continue;
     const seat = chairs.find((c) => c.label === (b.seatLabel || b.chairLabel) && (c.locationId || "home") === bl);
     // Same identity rule as the owner's client stats and barberPerformance (chair id for chair-only rows).
-    const id = b.barberId || seat?.barberId || seat?.id || `seat:${bl}:${b.seatLabel || "-"}`;
+    const id = cutBarberId(b, chairs);
     if (q.barberId && id !== q.barberId) continue;
     const name = b.barberName || seat?.barberName?.trim() || (b.seatLabel ? `${b.seatLabel} (no barber)` : "No barber");
     const key = `${id}@${bl}`;
@@ -59,11 +60,10 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   const myLoc = q.locationId || me?.locationId || "home";
   const isMine = (b: ChairRequest) => {
     const bl = b.locationId || "home";
-    const seat = chairs.find((c) => c.label === (b.seatLabel || b.chairLabel) && (c.locationId || "home") === bl);
     // A link is one chair at one location: count only that location, as the link's Queue/History and the
     // owner's per-location Sales do. (Before, a barber on chairs in two branches got both branches here.)
     if (bl !== myLoc) return false;
-    return (b.barberId || seat?.barberId || seat?.id) === q.barberId || (!b.barberId && Boolean(me) && (b.seatLabel || b.chairLabel) === me!.label);
+    return cutBarberId(b, chairs) === q.barberId;
   };
   const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; bookingIds: string[]; claimedAt: number }).sort((a, b) => b.claimedAt - a.claimedAt);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));

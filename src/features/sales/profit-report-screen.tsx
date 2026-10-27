@@ -19,6 +19,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useSalesRows } from "./use-sales-rows";
 import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
 import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar";
+import { mergeLiveRows } from "@/lib/cut-count";
 
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
@@ -51,14 +52,7 @@ export function ProfitReportScreen() {
   const deep = useSalesRows(FETCH_DAYS);
   const cloud = useChairRequests();
   // Deep rows (70 days) plus live edits: a record added, edited or deleted from the day sheet shows at once.
-  const rows = useMemo(() => {
-    if (!deep) return cloud.rows;
-    const live = new Map(cloud.rows.map((r) => [r.id, r]));
-    const liveFrom = cloud.rows.reduce((m, r) => Math.min(m, r.createdAt), Infinity);
-    const kept = deep.filter((r) => live.has(r.id) || r.createdAt < liveFrom).map((r) => live.get(r.id) ?? r);
-    const ids = new Set(kept.map((r) => r.id));
-    return [...kept, ...cloud.rows.filter((r) => !ids.has(r.id))];
-  }, [deep, cloud.rows]);
+  const rows = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
   const [sheet, setSheet] = useState<DayTarget | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const now = useNow();

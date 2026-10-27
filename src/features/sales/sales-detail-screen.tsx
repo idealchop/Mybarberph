@@ -16,6 +16,7 @@ import { SalesChartCard } from "./sales-chart";
 import { ClaimHistory, RangeChips } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
+import { mergeLiveRows } from "@/lib/cut-count";
 
 /** Personal detail page for one location or one barber: sales, cuts, cash/GCash, remit, completion, trends. */
 export function SalesDetailScreen() {
@@ -34,7 +35,8 @@ export function SalesDetailScreen() {
   const { chairs } = useShopChairs({ all: true });
   const deep = useSalesRows(rangeFetchDays(range));
   const cloud = useChairRequests();
-  const all = deep ?? cloud.rows;
+  // History plus live rows, so a cut the barber just finished shows here at once (as on their link).
+  const all = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
 
   const title = useMemo(() => {

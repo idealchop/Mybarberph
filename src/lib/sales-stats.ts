@@ -2,6 +2,7 @@
 import type { ChairRequest } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { rangeWindow, type SalesRange } from "@/lib/sales-report";
+import { cutBarberId } from "@/lib/cut-count";
 import { addToSplit, payBucket } from "@/lib/pay-split";
 
 const DAY = 86_400_000;
@@ -89,7 +90,7 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
   for (const r of done) {
     const bl = r.locationId || HOME_LOCATION_ID;
     const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === bl);
-    const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
+    const id = cutBarberId(r, chairs);
     const name = r.barberName || seat?.barberName?.trim() || (r.seatLabel ? `${r.seatLabel}` : "No barber");
     const row = map.get(`${id}@${bl}`) ?? { id, name, locationId: bl, locationName: nameOf(bl), sales: 0, cuts: 0, avg: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, completionPct: null, rating: null, ratings: 0 };
     row.cuts += 1; row.sales += r.price || 0;
@@ -105,8 +106,7 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
   for (const row of map.values()) {
     row.avg = row.cuts ? Math.round(row.sales / row.cuts) : 0;
     row.completionPct = completion(scoped(rows, range, row.locationId).filter((r) => {
-      const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === row.locationId);
-      const id = r.barberId || seat?.barberId || seat?.id || `seat:${row.locationId}:${r.seatLabel || "-"}`;
+      const id = cutBarberId(r, chairs);
       return id === row.id;
     }));
   }
@@ -116,9 +116,7 @@ export function barberStats(rows: ChairRequest[], range: SalesRange, loc: string
 type ChairLite = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string };
 /** The barber key a visit counts toward (snapshot id, else the seat's barber). */
 export function barberKey(r: ChairRequest, chairs: ChairLite[]) {
-  const bl = r.locationId || HOME_LOCATION_ID;
-  const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || HOME_LOCATION_ID) === bl);
-  return r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
+  return cutBarberId(r, chairs);
 }
 
 /** Daily series for a detail trend chart (Manila days in range). */

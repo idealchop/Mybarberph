@@ -27,6 +27,7 @@ import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { BarberLeaderboard } from "./barber-leaderboard";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
+import { mergeLiveRows } from "@/lib/cut-count";
 
 // Three tabs (Jimboy, 2026-10-20): Collection (default), Performance, My Barbers. Old ?view=overview links land on Collection.
 // Batch 17 (Jimboy, 2026-10-21): My Barbers moves back to the top-right; the third tab is Sales group.
@@ -45,7 +46,8 @@ export function SalesDataScreen() {
   const cloud = useChairRequests();
   const [range, setRange] = useState<SalesRange>("today");
   const deep = useSalesRows(rangeFetchDays(range));
-  const all = deep ?? cloud.rows;
+  // History plus live rows, so a cut the barber just finished shows here at once (as on their link).
+  const all = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);

@@ -4,6 +4,7 @@
  * a cut is claimed when a remit claim lists its booking id. Amounts are the owner's share (price minus the barber's split).
  */
 import { ownerShareOf, sharePct } from "@/lib/income-split";
+import { cutBarberId } from "@/lib/cut-count";
 
 type Visit = { id: string; status?: string; paid?: boolean; payMethod?: string; price?: number; barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string; completedAt?: number; updatedAt?: number };
 type Chair = { id: string; label?: string; barberId?: string; locationId?: string; sharePct?: unknown; shareSet?: unknown };
@@ -14,8 +15,7 @@ const isCash = (r: Visit) => r.status === "done" && Boolean(r.paid) && (r.payMet
 /** The remit key of a visit (same as the server's): its barberId, else the seat's barber at that branch. */
 export function remitKey(r: Visit, chairs: Chair[]) {
   const bl = r.locationId || "home";
-  const seat = chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || "home") === bl);
-  return { id: r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`, loc: bl };
+  return { id: cutBarberId(r, chairs), loc: bl };
 }
 
 export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locationId: string, ymd: string, isClaimed: (bookingId: string) => boolean) {

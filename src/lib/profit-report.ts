@@ -4,6 +4,7 @@
  * no split set = the whole price is the owner's; the owner's own cuts are all the owner's. Tips are never counted.
  */
 import { ownerShareOf, sharePct } from "@/lib/income-split";
+import { cutBarberId } from "@/lib/cut-count";
 
 
 const DAY = 86_400_000;
@@ -136,7 +137,7 @@ function profitGrid(
     const bl = r.locationId || "home";
     if (loc !== "all" && bl !== loc) continue;
     const seat = seatOf(r, chairs, bl);
-    const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
+    const id = cutBarberId(r, chairs);
     const day = colOf(r.completedAt);
     if (day < 0 || day >= cols) continue;
     const row = ensure(id, bl, rowName(id, r.barberName, seat));

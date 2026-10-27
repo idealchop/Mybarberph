@@ -1,5 +1,6 @@
 "use client";
 import { rowsForLocation } from "@/lib/queue-location";
+import { isFinishedCut } from "@/lib/cut-count";
 
 import { OWNER_BARBER_ID } from "@/lib/owner-cut";
 import { useEffect, useState } from "react";
@@ -150,7 +151,8 @@ export function markDone(id: string, pay?: DonePayment) {
 /** Today in Manila, from this shop's finished visits. */
 export function todayFigures(rows: ChairRequest[]) {
   const today = manilaDay(Date.now());
-  const extra = rows.filter((row) => row.status === "done" && manilaDay(row.completedAt ?? row.updatedAt) === today);
+  // Shared rule (cut-count.ts): a finished cut counts on the Manila day it finished, like Sales and the barber link.
+  const extra = rows.filter((row) => isFinishedCut(row) && manilaDay(row.completedAt!) === today);
   return { sales: extra.reduce((sum, row) => sum + row.price, 0), cuts: extra.length, extra };
 }
 
