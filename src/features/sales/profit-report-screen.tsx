@@ -18,6 +18,7 @@ import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { useSalesRows } from "./use-sales-rows";
 import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
+import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar";
 
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
@@ -61,6 +62,7 @@ export function ProfitReportScreen() {
     return [...kept, ...cloud.rows.filter((r) => !ids.has(r.id))];
   }, [deep, cloud.rows]);
   const [sheet, setSheet] = useState<DayTarget | null>(null);
+  const [dayOpen, setDayOpen] = useState<string | null>(null);
   const now = useNow();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState("");
@@ -169,6 +171,8 @@ export function ProfitReportScreen() {
         ) : null}
       </div>
 
+      {month ? <ProfitMonthCalendar m={month} today={today} onPick={setDayOpen} /> : null}
+
       {report.rows.length === 0 ? null : (
         <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
           <table className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] lg:text-[12.5px]">
@@ -221,9 +225,12 @@ export function ProfitReportScreen() {
               </tr>
             </tfoot>
           </table>
-          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · {month ? "per Monday–Sunday week within the month" : "tap a day to claim, edit or add"}</p>
         </div>
       )}
+      {month && dayOpen && !sheet ? (
+        <ProfitDayBreakdown m={month} date={dayOpen} groups={grouped ? salesGroups : null} showBranch={where === "all"} onClose={() => setDayOpen(null)}
+          onBarber={(r) => setSheet({ id: r.id, name: r.name, locationId: r.locationId, locationName: r.locationName, day: dayOpen })} />
+      ) : null}
       {sheet ? <ProfitDaySheet t={sheet} rows={rows} chairs={chairs} profileHref={barberHref(sheet, sheet.day)} onClose={() => setSheet(null)} /> : null}
     </div>
   );

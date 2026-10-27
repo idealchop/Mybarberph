@@ -197,7 +197,13 @@ export function groupProfitRows(rows: ProfitRow[], groups: { id: string; name: s
 }
 
 export interface ProfitMonthWeek { key: string; label: string; range: string; from: number; to: number }
-export interface ProfitMonth { from: number; to: number; label: string; month: string; weeks: ProfitMonthWeek[]; rows: ProfitRow[]; daily: number[]; total: number }
+export interface ProfitMonth {
+  from: number; to: number; label: string; month: string; weeks: ProfitMonthWeek[]; rows: ProfitRow[]; daily: number[]; total: number;
+  /** Calendar: one entry per day of the month (YYYY-MM-DD), and each barber's owner share per day (same order). */
+  dates: string[]; byDay: ProfitRow[]; dayTotals: number[];
+  /** Blank cells before day 1 in a Monday-first calendar (0 = the 1st is a Monday). */
+  lead: number;
+}
 
 /**
  * Month view: one Manila calendar month (`offset` months from the month containing `now`), one column per
@@ -223,5 +229,17 @@ export function profitMonth(
   const colOf = (ms: number) => weeks.findIndex((w) => ms >= w.from && ms < w.to);
   const grid = profitGrid(rows, chairs, loc, from, to, weeks.length, colOf, branches);
   const label = noon(from).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "long", year: "numeric" });
-  return { from, to, label, month: key(yy, mm), weeks, ...grid };
+  const n = Math.round((to - from) / DAY);
+  const dates = Array.from({ length: n }, (_, i) => ymd(from + i * DAY));
+  const days = profitGrid(rows, chairs, loc, from, to, n, (ms) => Math.floor((ms - from) / DAY), branches);
+  const lead = (new Date(from + 8 * 3600_000).getUTCDay() + 6) % 7;
+  return { from, to, label, month: key(yy, mm), weeks, ...grid, dates, byDay: days.rows, dayTotals: days.daily, lead };
+}
+
+/** One day's amounts from a month calendar: each barber with their owner share that day (only barbers with sales, highest first). */
+export function dayBreakdown(m: Pick<ProfitMonth, "dates" | "byDay">, date: string): ProfitRow[] {
+  const i = m.dates.indexOf(date);
+  if (i < 0) return [];
+  return m.byDay.map((r) => ({ ...r, days: [r.days[i] ?? 0], total: r.days[i] ?? 0 })).filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 }

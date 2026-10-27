@@ -97,3 +97,29 @@ describe("Monthly profit report", () => {
     expect(m.total).toBe(12_000);
   });
 });
+
+import { dayBreakdown } from "@/lib/profit-report";
+describe("Month calendar by day", () => {
+  const NOW3 = Date.parse("2026-10-27T10:00:00+08:00");
+  it("has one cell per day and the right Monday-first lead", () => {
+    const m = profitMonth([], [], "all", 0, NOW3);
+    expect(m.dates).toHaveLength(31);
+    expect(m.dates[0]).toBe("2026-10-01");
+    expect(m.lead).toBe(3); // Oct 1 2026 is a Thursday
+    expect(profitMonth([], [], "all", -1, NOW3).lead).toBe(1); // Sep 1 2026 is a Tuesday
+  });
+  it("day totals and the day breakdown use the owner share on the Manila day", () => {
+    const chairs = [{ id: "c1", label: "K", barberId: "k", barberName: "Keith", locationId: "sa", sharePct: 40, shareSet: true }, { id: "c2", label: "J", barberId: "j", barberName: "Jay", locationId: "sa" }];
+    const rows = [
+      { status: "done", completedAt: Date.parse("2026-10-05T23:50:00+08:00"), price: 10_000, locationId: "sa", barberId: "k" },
+      { status: "done", completedAt: Date.parse("2026-10-05T09:00:00+08:00"), price: 20_000, locationId: "sa", barberId: "j" },
+      { status: "done", completedAt: Date.parse("2026-10-06T00:05:00+08:00"), price: 10_000, locationId: "sa", barberId: "k" },
+    ];
+    const m = profitMonth(rows, chairs, "all", 0, NOW3);
+    expect(m.dayTotals[4]).toBe(26_000);
+    expect(m.dayTotals[5]).toBe(6_000);
+    const d = dayBreakdown(m, "2026-10-05");
+    expect(d.map((r) => [r.name, r.total])).toEqual([["Jay", 20_000], ["Keith", 6_000]]);
+    expect(dayBreakdown(m, "2026-10-07")).toEqual([]);
+  });
+});
