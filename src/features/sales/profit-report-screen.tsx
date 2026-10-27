@@ -23,10 +23,8 @@ import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
 const MONTHS_BACK = 2;
-const VIEW_KEY = "barbers.profit-report-view";
-/** Same names and order as the Sales tabs' grouping: plain list, or the owner's saved Sales groups. */
-const VIEWS = [{ value: "list", label: "List" }, { value: "groups", label: "Sales group" }] as const;
-type View = (typeof VIEWS)[number]["value"];
+/** Off = plain barber list; on = grouped by the owner's saved Sales groups (Jimboy, 2026-10-27: one toggle, starts off). */
+type View = "list" | "groups";
 const todayKey = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 
 /** The barber's profile (Sales detail), for the week or focused on one Manila day, at that row's branch. */
@@ -68,8 +66,7 @@ export function ProfitReportScreen() {
   const [picked, setPicked] = useState("");
   const [mode, setMode] = useState<"week" | "month">("week");
   const [monthOffset, setMonthOffset] = useState(0);
-  const [view, setViewState] = useState<View>(() => { try { return typeof window !== "undefined" && localStorage.getItem(VIEW_KEY) === "groups" ? "groups" : "list"; } catch { return "list"; } });
-  const setView = (v: View) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ } };
+  const [view, setView] = useState<View>("list");
   const cloudValues = useCloud().values;
   const salesGroups = useMemo(() => { try { return normalizeGroups(JSON.parse(cloudValues[SALES_GROUPS_KEY] || "null")); } catch { return normalizeGroups(null); } }, [cloudValues]);
   const branches = useMemo(
@@ -158,12 +155,8 @@ export function ProfitReportScreen() {
           </div>
         ) : <span className="flex-1" />}
         {canGroup ? (
-          <div role="radiogroup" aria-label="Group rows" className="flex flex-none rounded-pill bg-grey-100 p-0.5">
-            {VIEWS.map((v) => (
-              <button key={v.value} type="button" role="radio" aria-checked={view === v.value} onClick={() => setView(v.value)}
-                className={cn("h-8 whitespace-nowrap rounded-pill px-3 text-[12.5px] font-bold", view === v.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{v.label}</button>
-            ))}
-          </div>
+          <button type="button" aria-pressed={view === "groups"} onClick={() => setView(view === "groups" ? "list" : "groups")}
+            className={cn("h-9 flex-none whitespace-nowrap rounded-pill px-3.5 text-[12.5px] font-bold shadow-card", view === "groups" ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>Sales group</button>
         ) : null}
         <button type="button" aria-pressed={!!month} aria-label={month ? "Show week view" : "Show month view"} title={month ? "Week view" : "Month view"}
           onClick={() => { setMode(month ? "week" : "month"); setMonthOffset(0); }}
