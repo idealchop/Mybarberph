@@ -130,16 +130,16 @@ function ActiveCard({
               >
                 Walk-in
               </Button>
-              <Button
-                variant="ghost-inverse"
-                size="sm"
-                className={PILL}
+              {/* Icon only (Jimboy, 2026-10-27); 44px tap target. */}
+              <button
+                type="button"
                 aria-label="Scan QR"
-                leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}
+                title="Scan QR"
                 onClick={onScan}
+                className="inline-flex size-11 flex-none items-center justify-center rounded-full bg-white/10 text-on-ink ring-1 ring-white/25 active:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                Scan QR
-              </Button>
+                <ScanLine size={18} strokeWidth={2} aria-hidden />
+              </button>
             </>
           )}
         </div>

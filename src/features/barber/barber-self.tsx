@@ -63,6 +63,16 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
       {!loaded && !err ? <AppLoader label="Loading your sales" /> : (
         <DaySales eyebrow="Your earnings" total={total} days={rows} today={dayKey} empty="No finished cuts in this range." />
       )}
+      {loaded && data && data.sharePct != null ? (
+        <section aria-label="Split" className="mt-3 grid grid-cols-2 gap-2">
+          {[["Your split", data.sharePct, data.barberShare ?? 0], ["Owner", 100 - data.sharePct, data.shopShare ?? 0]].map(([label, pct, amt]) => (
+            <div key={String(label)} className="rounded-card bg-surface px-3.5 py-3 shadow-card">
+              <p className="text-[12.5px] font-semibold text-muted">{label} · {pct}%</p>
+              <b className="mt-0.5 block text-[17px] tabular-nums">{peso(Number(amt))}</b>
+            </div>
+          ))}
+        </section>
+      ) : null}
       {data && data.unclaimedCash ? (
         <section className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3.5 shadow-card" aria-label="Cash to hand to the shop">
           <span className="text-[13.5px] font-semibold">Cash to hand over</span>
