@@ -1,19 +1,24 @@
 "use client";
 
 import { Badge, cn, type NavItem } from "@river-apps/ui";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { bottomGap, keyboardOpen } from "@/lib/viewport-gap";
+import { barOffset, bottomGap, keyboardOpen } from "@/lib/viewport-gap";
 
 const noop = () => () => {};
 const editable = (el: Element | null) => !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable);
 
 /**
- * Keeps the bar on the visible bottom edge on iOS (installed PWA included): follows the visual viewport, nudges
- * Safari to drop a stale layout viewport after the keyboard closes, and hides the bar while typing.
+ * Keeps the bar on the visible bottom edge on iOS (installed PWA included). Root cause of the "nav floats mid-screen"
+ * bug: after the keyboard, a sheet's scroll-lock or a toolbar change, iOS can keep a stale, shorter layout viewport
+ * that `position: fixed; bottom: 0` anchors to, while window.innerHeight already reports the new value, so a gap
+ * inferred from innerHeight is 0 and the bar stays high. Instead we MEASURE where the bar really is and move it by
+ * the difference to the visual viewport's bottom; re-checked on window scroll, viewport changes and body style
+ * changes (sheet open/close). The bar hides while typing.
  */
-function useBottomPin() {
+function useBottomPin(ref: React.RefObject<HTMLElement | null>) {
   const [state, setState] = useState({ gap: 0, hidden: false });
+  const gapRef = useRef(0);
   useEffect(() => {
     const vv = window.visualViewport;
     let raf = 0;
@@ -23,45 +28,52 @@ function useBottomPin() {
         const h = window.innerHeight;
         const vh = vv?.height ?? h, top = vv?.offsetTop ?? 0;
         const typing = editable(document.activeElement) && keyboardOpen(h, vh);
-        const next = { gap: typing ? 0 : bottomGap(h, vh, top), hidden: typing };
-        setState((p) => (p.gap === next.gap && p.hidden === next.hidden ? p : next));
+        const el = ref.current;
+        const bottom = el && !typing ? el.getBoundingClientRect().bottom - gapRef.current : null;
+        const gap = typing ? 0 : bottom == null ? bottomGap(h, vh, top) : barOffset(bottom, vh, top);
+        gapRef.current = gap;
+        setState((p) => (p.gap === gap && p.hidden === typing ? p : { gap, hidden: typing }));
       });
     };
     // After an input loses focus iOS can keep the shrunken layout viewport until something scrolls: nudge it.
     const onBlur = () => window.setTimeout(() => { window.scrollTo(window.scrollX, window.scrollY); update(); }, 60);
+    const later = () => { update(); window.setTimeout(update, 350); };
+    const mo = new MutationObserver(later);
+    mo.observe(document.body, { attributes: true, attributeFilter: ["style", "class"] });
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("pageshow", update);
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", later);
+    window.addEventListener("orientationchange", later);
+    window.addEventListener("pageshow", later);
     document.addEventListener("focusin", update);
     document.addEventListener("focusout", onBlur);
-    document.addEventListener("visibilitychange", update);
+    document.addEventListener("visibilitychange", later);
     update();
     return () => {
       cancelAnimationFrame(raf);
+      mo.disconnect();
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.removeEventListener("pageshow", update);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", later);
+      window.removeEventListener("orientationchange", later);
+      window.removeEventListener("pageshow", later);
       document.removeEventListener("focusin", update);
       document.removeEventListener("focusout", onBlur);
-      document.removeEventListener("visibilitychange", update);
+      document.removeEventListener("visibilitychange", later);
     };
-  }, []);
+  }, [ref]);
   return state;
 }
 
-/**
- * Phone tab bar, same shape as Laundry.ph: icon only, no label.
- * Icons are River Mobile 3D icons; the active one is full colour on a soft pill, others muted.
- */
 export function ShopTabBar({ items, activeKey, label = "Main" }: { items: NavItem[]; activeKey: string; label?: string }) {
-  const { gap, hidden } = useBottomPin();
+  const navRef = useRef<HTMLElement>(null);
+  const { gap, hidden } = useBottomPin(navRef);
   const host = useSyncExternalStore(noop, () => document.body, () => null);
   const bar = (
     <nav
+      ref={navRef}
       aria-label={label}
       aria-hidden={hidden || undefined}
       style={{ transform: gap ? `translate3d(0, ${gap}px, 0)` : undefined, visibility: hidden ? "hidden" : undefined }}

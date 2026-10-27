@@ -105,13 +105,22 @@ export function profitWeek(
   branches: { id: string; name: string }[] = [],
 ): ProfitWeek {
   const bounds = weekBounds(offset, now);
+  return { ...bounds, ...profitGrid(rows, chairs, loc, bounds.from, bounds.to, 7, (ms) => Math.floor((ms - bounds.from) / DAY), branches) };
+}
+
+/** Core grid: owner share per barber per column. `colOf` maps a completion time to its column (0…cols-1). */
+function profitGrid(
+  rows: ProfitVisit[], chairs: ProfitChair[], loc: string, from: number, to: number, cols: number, colOf: (ms: number) => number,
+  branches: { id: string; name: string }[],
+): { rows: ProfitRow[]; daily: number[]; total: number } {
+  const bounds = { from, to };
   const place = (id: string) => branches.find((b) => b.id === id)?.name || "";
   const map = new Map<string, ProfitRow>();
   const ensure = (id: string, locationId: string, name: string) => {
     const key = `${id}@${locationId}`;
     let row = map.get(key);
     if (!row) {
-      row = { id, name, locationId, locationName: place(locationId), days: [0, 0, 0, 0, 0, 0, 0], total: 0 };
+      row = { id, name, locationId, locationName: place(locationId), days: Array(cols).fill(0), total: 0 };
       map.set(key, row);
     } else if (row.name === "No barber" && name && name !== "No barber") row.name = name;
     return row;
@@ -128,8 +137,8 @@ export function profitWeek(
     if (loc !== "all" && bl !== loc) continue;
     const seat = seatOf(r, chairs, bl);
     const id = r.barberId || seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
-    const day = Math.floor((r.completedAt - bounds.from) / DAY);
-    if (day < 0 || day > 6) continue;
+    const day = colOf(r.completedAt);
+    if (day < 0 || day >= cols) continue;
     const row = ensure(id, bl, rowName(id, r.barberName, seat));
     const chair = id === "owner" ? undefined : chairs.find((c) => (r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) && (c.locationId || "home") === bl)
       ?? chairs.find((c) => r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) ?? seat;
@@ -140,9 +149,9 @@ export function profitWeek(
   const off = new Set(chairs.filter((c) => c.active === false).map((c) => `${c.barberId || c.id}@${c.locationId || "home"}`));
   const list = [...map.values()].filter((row) => row.total > 0 || !off.has(`${row.id}@${row.locationId}`));
   list.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
-  const daily = [0, 0, 0, 0, 0, 0, 0];
+  const daily: number[] = Array(cols).fill(0);
   for (const row of list) row.days.forEach((n, i) => { daily[i] = (daily[i] ?? 0) + n; });
-  return { ...bounds, rows: list, daily, total: daily.reduce((s, n) => s + n, 0) };
+  return { rows: list, daily, total: daily.reduce((s, n) => s + n, 0) };
 }
 
 /** Short amount for tight grids: 980 → "980", 1,600 → "1.6k", 12,400 → "12k" (pesos, from centavos). */
@@ -170,7 +179,7 @@ export interface ProfitGroup {
  */
 export function groupProfitRows(rows: ProfitRow[], groups: { id: string; name: string; locationIds: string[]; barberIds: string[] }[]): ProfitGroup[] {
   const make = (id: string, name: string, list: ProfitRow[]): ProfitGroup => {
-    const days = [0, 0, 0, 0, 0, 0, 0];
+    const days: number[] = Array(list[0]?.days.length ?? 7).fill(0);
     for (const r of list) r.days.forEach((n, i) => { days[i] = (days[i] ?? 0) + n; });
     return { id, name, rows: list, days, total: days.reduce((s, n) => s + n, 0) };
   };
@@ -185,4 +194,34 @@ export function groupProfitRows(rows: ProfitRow[], groups: { id: string; name: s
   const rest = rows.filter((r) => !placed.has(r));
   if (rest.length) out.push(make("none", "Not in a group", rest));
   return out;
+}
+
+export interface ProfitMonthWeek { key: string; label: string; range: string; from: number; to: number }
+export interface ProfitMonth { from: number; to: number; label: string; month: string; weeks: ProfitMonthWeek[]; rows: ProfitRow[]; daily: number[]; total: number }
+
+/**
+ * Month view: one Manila calendar month (`offset` months from the month containing `now`), one column per
+ * Monday–Sunday week clipped to the month (W1…W5/W6). Same owner-share rule as the week grid.
+ */
+export function profitMonth(
+  rows: ProfitVisit[], chairs: ProfitChair[], loc: string, offset = 0, now = Date.now(), branches: { id: string; name: string }[] = [],
+): ProfitMonth {
+  const [y, m] = ymd(now).slice(0, 7).split("-").map(Number) as [number, number];
+  const idx = y * 12 + (m - 1) + offset;
+  const yy = Math.floor(idx / 12), mm = (idx % 12) + 1;
+  const key = (a: number, b: number) => `${a}-${String(b).padStart(2, "0")}`;
+  const from = at(`${key(yy, mm)}-01`);
+  const to = at(`${key(Math.floor((idx + 1) / 12), ((idx + 1) % 12) + 1)}-01`);
+  const short = (ms: number) => noon(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", day: "numeric" });
+  const weeks: ProfitMonthWeek[] = [];
+  for (let s = from; s < to;) {
+    const dow = (new Date(s + 8 * 3600_000).getUTCDay() + 6) % 7;
+    const e = Math.min(to, s + (7 - dow) * DAY);
+    weeks.push({ key: ymd(s), label: `W${weeks.length + 1}`, range: `${short(s)}–${short(e - DAY)}`, from: s, to: e });
+    s = e;
+  }
+  const colOf = (ms: number) => weeks.findIndex((w) => ms >= w.from && ms < w.to);
+  const grid = profitGrid(rows, chairs, loc, from, to, weeks.length, colOf, branches);
+  const label = noon(from).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "long", year: "numeric" });
+  return { from, to, label, month: key(yy, mm), weeks, ...grid };
 }

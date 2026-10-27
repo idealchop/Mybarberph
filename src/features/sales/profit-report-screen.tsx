@@ -8,17 +8,20 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { compactPeso, groupProfitRows, profitWeek, type ProfitRow } from "@/lib/profit-report";
+import { compactPeso, groupProfitRows, profitMonth, profitWeek, type ProfitRow } from "@/lib/profit-report";
+import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { useCloud } from "@/lib/cloud";
 import { normalizeGroups, SALES_GROUPS_KEY } from "@/lib/sales-groups";
 import { cn } from "@river-apps/ui";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { useSalesRows } from "./use-sales-rows";
 import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
 
-const FETCH_DAYS = 70;
+const FETCH_DAYS = 100;
+/** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
+const MONTHS_BACK = 2;
 const VIEW_KEY = "barbers.profit-report-view";
 /** Same names and order as the Sales tabs' grouping: plain list, or the owner's saved Sales groups. */
 const VIEWS = [{ value: "list", label: "List" }, { value: "groups", label: "Sales group" }] as const;
@@ -61,6 +64,8 @@ export function ProfitReportScreen() {
   const now = useNow();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState("");
+  const [mode, setMode] = useState<"week" | "month">("week");
+  const [monthOffset, setMonthOffset] = useState(0);
   const [view, setViewState] = useState<View>(() => { try { return typeof window !== "undefined" && localStorage.getItem(VIEW_KEY) === "groups" ? "groups" : "list"; } catch { return "list"; } });
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ } };
   const cloudValues = useCloud().values;
@@ -69,13 +74,22 @@ export function ProfitReportScreen() {
     () => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]),
     [shops.enabled, shops.branches, profile.name],
   );
-  const where = picked || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
-  const report = profitWeek(rows, chairs, where, offset, now, branches);
-  const filters = [{ id: "all", name: "All" }, ...(shops.enabled && branches.length > 1 ? branches : [])];
+  // Default: All locations (Jimboy, 2026-10-27), whatever location the rest of the app is on.
+  const multi = shops.enabled && branches.length > 1;
+  const where = multi ? picked || "all" : "all";
   const today = todayKey();
-  const canGroup = where === "all" && filters.length > 1;
+  const week = profitWeek(rows, chairs, where, offset, now, branches);
+  const month = mode === "month" ? profitMonth(rows, chairs, where, monthOffset, now, branches) : null;
+  const showYear = new Set(week.days.map((d) => d.date.slice(-4))).size > 1;
+  const todayStart = Date.parse(`${today}T00:00:00+08:00`);
+  /** One shape for both views: week = 7 tappable days, month = W1…W5 week columns. */
+  const report = month
+    ? { label: month.label, rows: month.rows, daily: month.daily, total: month.total,
+        cols: month.weeks.map((w) => ({ key: w.key, top: w.label, sub: w.range, future: w.from > todayStart, today: false, day: undefined as string | undefined })) }
+    : { label: week.label, rows: week.rows, daily: week.daily, total: week.total,
+        cols: week.days.map((d) => ({ key: d.key, top: d.dow, sub: d.key === today ? "Today" : showYear ? d.date.slice(0, 5) + "/" + d.date.slice(-2) : d.date.slice(0, 5).replace(/^0/, ""), future: d.key > today, today: d.key === today, day: d.key as string | undefined })) };
+  const canGroup = where === "all" && multi;
   const grouped = canGroup && view === "groups" ? groupProfitRows(report.rows, salesGroups) : null;
-  const showYear = new Set(report.days.map((d) => d.date.slice(-4))).size > 1;
 
   const renderRow = (row: ProfitRow) => (
                 <tr key={`${row.id}@${row.locationId}`}>
@@ -84,19 +98,17 @@ export function ProfitReportScreen() {
                     {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
                   </th>
                   {row.days.map((n, i) => {
-                    const day = report.days[i];
-                    const isToday = day?.key === today;
-                    const future = !!day && day.key > today;
+                    const c = report.cols[i];
                     return (
-                      <td key={day?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", isToday && "bg-grey-100")}>
-                        {!future && day ? (
-                          <button type="button" onClick={() => setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: day.key })}
-                            aria-label={`${row.name}, ${day.dow} ${day.date.slice(0, 5)}: ${n ? peso(n) : "no sales"}. Claim, records and add`}
+                      <td key={c?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", c?.today && "bg-grey-100")}>
+                        {c && !c.future && c.day ? (
+                          <button type="button" onClick={() => setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! })}
+                            aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
                             {n ? <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
                           </button>
                         ) : (
-                          <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={future} /></span>
+                          <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={!!c?.future} /></span>
                         )}
                       </td>
                     );
@@ -112,15 +124,15 @@ export function ProfitReportScreen() {
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-2 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-0.5">
         <PageBack fallback="/home" />
-        <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-[-0.03em]">Weekly Profit Report</h1>
+        <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-[-0.03em]">{month ? "Monthly" : "Weekly"} Profit Report</h1>
       </div>
 
       <div className="mt-1 flex items-center gap-1">
-        <button type="button" aria-label="Previous week" onClick={() => setOffset((n) => Math.max(-8, n - 1))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink">
+        <button type="button" aria-label={month ? "Previous month" : "Previous week"} disabled={!!month && monthOffset <= -MONTHS_BACK} onClick={() => (month ? setMonthOffset((n) => Math.max(-MONTHS_BACK, n - 1)) : setOffset((n) => Math.max(-8, n - 1)))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
           <ChevronLeft size={18} />
         </button>
         <p className="min-w-0 whitespace-nowrap text-[13.5px] font-semibold tabular-nums">{report.label}</p>
-        <button type="button" aria-label="Next week" disabled={offset >= 0} onClick={() => setOffset((n) => Math.min(0, n + 1))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
+        <button type="button" aria-label={month ? "Next month" : "Next week"} disabled={month ? monthOffset >= 0 : offset >= 0} onClick={() => (month ? setMonthOffset((n) => Math.min(0, n + 1)) : setOffset((n) => Math.min(0, n + 1)))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
           <ChevronRight size={18} />
         </button>
         <span className="min-w-2 flex-1" />
@@ -133,62 +145,60 @@ export function ProfitReportScreen() {
         <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
       </section>
 
-      {filters.length > 1 ? (
-        <div role="radiogroup" aria-label="Shop" className="mt-3 flex gap-1 overflow-x-auto">
-          {filters.map((b) => (
-            <button key={b.id} type="button" role="radio" aria-checked={where === b.id} onClick={() => setPicked(b.id)}
-              className={cn("h-8 max-w-[148px] flex-none truncate rounded-pill px-3 text-[12.5px] font-bold", where === b.id ? "bg-ink text-on-ink" : "bg-surface text-ink ring-1 ring-line")}>{b.name}</button>
-          ))}
-        </div>
-      ) : null}
-
-      {canGroup ? (
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-[12.5px] font-semibold text-muted">{grouped ? "Grouped like Sales → Sales group" : "Every barber"}</p>
+      <div className="mt-3 flex items-center gap-2">
+        {multi ? (
+          <div className="flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-pill bg-surface px-3 shadow-card">
+            <MapPin size={14} className="flex-none text-muted" aria-hidden />
+            <LocationSwitcher className="flex-1 text-[12.5px] font-bold" value={where} allId="all" onChange={setPicked}
+              label={where === "all" ? "All locations" : branches.find((b) => b.id === where)?.name ?? "Main"}
+              options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
+          </div>
+        ) : <span className="flex-1" />}
+        <button type="button" aria-pressed={!!month} aria-label={month ? "Show week view" : "Show month view"} title={month ? "Week view" : "Month view"}
+          onClick={() => { setMode(month ? "week" : "month"); setMonthOffset(0); }}
+          className={cn("inline-flex size-9 flex-none items-center justify-center rounded-full shadow-card", month ? "bg-ink text-on-ink" : "bg-surface text-ink")}>
+          {month ? <CalendarRange size={17} strokeWidth={2.2} /> : <CalendarDays size={17} strokeWidth={2.2} />}
+        </button>
+        {canGroup ? (
           <div role="radiogroup" aria-label="Group rows" className="flex flex-none rounded-pill bg-grey-100 p-0.5">
             {VIEWS.map((v) => (
               <button key={v.value} type="button" role="radio" aria-checked={view === v.value} onClick={() => setView(v.value)}
-                className={cn("h-8 rounded-pill px-4 text-[13px] font-bold", view === v.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{v.label}</button>
+                className={cn("h-8 whitespace-nowrap rounded-pill px-3 text-[12.5px] font-bold", view === v.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{v.label}</button>
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {report.rows.length === 0 ? null : (
         <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
           <table className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] lg:text-[12.5px]">
             <colgroup>
               <col className="w-[4.6rem] lg:w-[11rem]" />
-              {report.days.map((d) => <col key={d.key} />)}
+              {report.cols.map((c) => <col key={c.key} />)}
               <col className="w-[2.9rem] lg:w-[7rem]" />
             </colgroup>
             <thead>
               <tr className="text-[10.5px] font-bold text-on-ink lg:text-[11px]">
                 <th scope="col" className="bg-ink py-2 pl-2.5 pr-1 text-left lg:px-3">Barber</th>
-                {report.days.map((d) => {
-                  const isToday = d.key === today;
-                  return (
-                    <th key={d.key} scope="col" className={cn("bg-ink px-0 py-1.5 text-center font-bold", isToday && "bg-[#333] text-white")}>
-                      <span className="block leading-tight">{d.dow}</span>
-                      <span className={cn("block text-[9.5px] font-semibold leading-tight", isToday ? "text-white" : "text-on-ink-muted")}>
-                        {isToday ? "Today" : showYear ? d.date.slice(0, 5) + "/" + d.date.slice(-2) : d.date.slice(0, 5).replace(/^0/, "")}
-                      </span>
-                    </th>
-                  );
-                })}
+                {report.cols.map((c) => (
+                  <th key={c.key} scope="col" className={cn("bg-ink px-0 py-1.5 text-center font-bold", c.today && "bg-[#333] text-white")}>
+                    <span className="block leading-tight">{c.top}</span>
+                    <span className={cn("block text-[9.5px] font-semibold leading-tight", c.today ? "text-white" : "text-on-ink-muted")}>{c.sub}</span>
+                  </th>
+                ))}
                 <th scope="col" className="bg-ink py-2 pl-1 pr-2.5 text-right lg:px-3">Total</th>
               </tr>
             </thead>
             <tbody>
               {grouped ? grouped.map((g) => (
                 <Fragment key={g.id}>
-                  <tr><th scope="rowgroup" colSpan={report.days.length + 2} className="border-b border-line bg-grey-100 py-1.5 pl-2.5 pr-2 text-left text-[11px] font-extrabold lg:px-3">
+                  <tr><th scope="rowgroup" colSpan={report.cols.length + 2} className="border-b border-line bg-grey-100 py-1.5 pl-2.5 pr-2 text-left text-[11px] font-extrabold lg:px-3">
                     <span className="block truncate">{g.name}</span>
                   </th></tr>
                   {g.rows.map((row) => renderRow(row))}
                   <tr className="font-bold">
                     <th scope="row" className="border-b border-line py-2 pl-2.5 pr-1 text-left text-[10.5px] text-muted lg:px-3">Subtotal</th>
-                    {g.days.map((n, k) => { const day = report.days[k]; return <td key={day?.key ?? k} className="whitespace-nowrap border-b border-line px-0 py-2 text-center tabular-nums"><Amount n={n} future={!!day && day.key > today} bold /></td>; })}
+                    {g.days.map((n, k) => { const c = report.cols[k]; return <td key={c?.key ?? k} className="whitespace-nowrap border-b border-line px-0 py-2 text-center tabular-nums"><Amount n={n} future={!!c?.future} bold /></td>; })}
                     <td className="whitespace-nowrap border-b border-line py-2 pl-1 pr-2.5 text-right tabular-nums lg:px-3"><span className="lg:hidden">{compactPeso(g.total)}</span><span className="hidden lg:inline">{peso(g.total)}</span></td>
                   </tr>
                 </Fragment>
@@ -198,10 +208,10 @@ export function ProfitReportScreen() {
               <tr className="font-bold">
                 <th scope="row" className="bg-grey-100 py-3 pl-2.5 pr-1 text-left leading-tight lg:px-3">Totals</th>
                 {report.daily.map((n, i) => {
-                  const day = report.days[i];
+                  const c = report.cols[i];
                   return (
-                    <td key={day?.key ?? i} className="whitespace-nowrap bg-grey-100 px-0 py-3 text-center tabular-nums">
-                      <Amount n={n} future={!!day && day.key > today} bold />
+                    <td key={c?.key ?? i} className="whitespace-nowrap bg-grey-100 px-0 py-3 text-center tabular-nums">
+                      <Amount n={n} future={!!c?.future} bold />
                     </td>
                   );
                 })}
@@ -211,7 +221,7 @@ export function ProfitReportScreen() {
               </tr>
             </tfoot>
           </table>
-          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · tap a day to claim, edit or add</p>
+          <p className="border-t border-line px-3 py-2 text-[10.5px] font-medium text-muted lg:hidden">Your share after each barber’s split · ₱, 1.6k = ₱1,600 · {month ? "per Monday–Sunday week within the month" : "tap a day to claim, edit or add"}</p>
         </div>
       )}
       {sheet ? <ProfitDaySheet t={sheet} rows={rows} chairs={chairs} profileHref={barberHref(sheet, sheet.day)} onClose={() => setSheet(null)} /> : null}

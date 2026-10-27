@@ -74,3 +74,26 @@ describe("Weekly profit report", () => {
     expect(report.total).toBe(96_000);
   });
 });
+
+import { profitMonth } from "@/lib/profit-report";
+describe("Monthly profit report", () => {
+  const NOW2 = Date.parse("2026-10-27T10:00:00+08:00");
+  it("splits a month into Monday–Sunday weeks clipped to the month", () => {
+    const m = profitMonth([], [], "all", 0, NOW2);
+    expect(m.label).toBe("October 2026");
+    expect(m.weeks.map((w) => w.range)).toEqual(["1–4", "5–11", "12–18", "19–25", "26–31"]);
+    expect(profitMonth([], [], "all", -1, NOW2).weeks[0]?.range).toBe("1–6");
+    expect(profitMonth([], [], "all", 3, NOW2).month).toBe("2027-01");
+  });
+  it("puts each cut's owner share in its week, counted on the Manila completion day", () => {
+    const chairs = [{ id: "c1", label: "K", barberId: "k", barberName: "Keith", locationId: "sa", sharePct: 40, shareSet: true }];
+    const rows = [
+      { status: "done", completedAt: Date.parse("2026-10-04T23:30:00+08:00"), price: 10_000, locationId: "sa", barberId: "k" },
+      { status: "done", completedAt: Date.parse("2026-10-05T00:10:00+08:00"), price: 10_000, locationId: "sa", barberId: "k" },
+      { status: "done", completedAt: Date.parse("2026-09-30T23:59:00+08:00"), price: 10_000, locationId: "sa", barberId: "k" },
+    ];
+    const m = profitMonth(rows, chairs, "all", 0, NOW2);
+    expect(m.rows[0]?.days.slice(0, 2)).toEqual([6_000, 6_000]);
+    expect(m.total).toBe(12_000);
+  });
+});

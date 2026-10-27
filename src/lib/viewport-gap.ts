@@ -15,3 +15,12 @@ export function bottomGap(layoutHeight: number, vvHeight: number, vvOffsetTop: n
 export function keyboardOpen(layoutHeight: number, vvHeight: number): boolean {
   return layoutHeight - vvHeight > 120;
 }
+
+/**
+ * How far (px, + = down, - = up) to move a fixed bottom bar whose untransformed bottom edge is at `barBottom`
+ * (viewport px) so it sits on the visible bottom (visual viewport height + offsetTop). Sub-pixel noise is ignored.
+ */
+export function barOffset(barBottom: number, vvHeight: number, vvOffsetTop: number): number {
+  const d = Math.round(vvHeight + vvOffsetTop - barBottom);
+  return Math.abs(d) > 1 ? d : 0;
+}
