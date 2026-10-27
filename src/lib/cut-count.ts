@@ -69,3 +69,9 @@ export function mergeLiveRows<T extends { id: string; createdAt: number }>(deep:
   const ids = new Set(kept.map((r) => r.id));
   return [...kept, ...live.filter((r) => !ids.has(r.id))];
 }
+
+/** Finished cuts in `rows` that finished on today's Manila date (the barber link's History label and Sales > Today). */
+export function countToday(rows: Pick<ChairRequest, "status" | "completedAt">[], now = Date.now()): number {
+  const today = manilaYmd(now);
+  return rows.filter((r) => isFinishedCut(r) && manilaYmd(r.completedAt!) === today).length;
+}

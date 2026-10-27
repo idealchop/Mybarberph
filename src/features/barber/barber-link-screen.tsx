@@ -23,7 +23,7 @@ import {
   type ChairRequest,
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
-import { cutBarberId } from "@/lib/cut-count";
+import { countToday, cutBarberId } from "@/lib/cut-count";
 import { customerName } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
@@ -215,6 +215,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const done = rows
     .filter((row) => row.status === "done" && mine(row) && row.completedAt)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
+  const doneToday = countToday(done);
 
   const placeName = shopsLoc.enabled ? shopsLoc.branches.find((b) => b.id === placeId)?.name ?? "" : "";
   if (install) {
@@ -441,7 +442,9 @@ export function BarberLinkScreen({ token }: { token: string }) {
       </section>
 
       <Button className="mt-6" fullWidth variant="secondary" leadingIcon={<History size={18} strokeWidth={1.75} />} onClick={() => setHistory(true)}>
-        History{done.length ? ` · ${done.length}` : ""}
+        {/* Count = this barber's finished cuts TODAY (Manila), the same number as the owner's Sales > Today.
+            It used to be every loaded finished cut, all days (v1.0.19 fix). */}
+        History{doneToday ? ` · ${doneToday} today` : ""}
       </Button>
       <PoweredBy />
       </>
@@ -553,7 +556,7 @@ function ChairHistory({
   onBack: () => void;
 }) {
   const [openRow, setOpenRow] = useState<ChairRequest | null>(null);
-  const [range, setRange] = useState<HistoryRange>("all");
+  const [range, setRange] = useState<HistoryRange>("today");
   const [day, setDay] = useState("");
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();

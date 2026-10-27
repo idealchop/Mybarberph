@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countCuts, cutBarberId, cutBarberName, UNASSIGNED, isBarbersCut, manilaYmd, mergeLiveRows } from "@/lib/cut-count";
+import { countToday, countCuts, cutBarberId, cutBarberName, UNASSIGNED, isBarbersCut, manilaYmd, mergeLiveRows } from "@/lib/cut-count";
 import { barberStats } from "@/lib/sales-stats";
 import { profitWeek } from "@/lib/profit-report";
 import type { ChairRequest } from "@/lib/booking-types";
@@ -79,5 +79,19 @@ describe("barberAccess (link) uses the same rule", async () => {
     expect(barberAccess(row({ barberId: "b-ana" }), me)).toBe("own");
     expect(barberAccess(row({ seatLabel: "Chair 1" }), me)).toBe(null);
     expect(barberAccess(row({ barberId: "c1" }), me)).toBe(null);
+  });
+});
+
+describe("countToday (barber History label == owner Sales Today)", () => {
+  it("counts only finished cuts on today's Manila date", () => {
+    const now = Date.parse("2026-10-27T19:00:00+08:00");
+    const rows = [
+      { status: "done", completedAt: Date.parse("2026-10-27T00:10:00+08:00") },
+      { status: "done", completedAt: Date.parse("2026-10-27T18:00:00+08:00") },
+      { status: "done", completedAt: Date.parse("2026-10-26T23:59:00+08:00") }, // yesterday
+      { status: "in_chair", completedAt: undefined }, // now serving
+      { status: "cancelled", completedAt: Date.parse("2026-10-27T12:00:00+08:00") },
+    ] as never[];
+    expect(countToday(rows, now)).toBe(2);
   });
 });
