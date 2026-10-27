@@ -91,6 +91,10 @@ export function ProfitReportScreen() {
     : { label: week.label, rows: week.rows, daily: week.daily, total: week.total,
         cols: week.days.map((d) => ({ key: d.key, top: d.dow, sub: d.key === today ? "Today" : showYear ? d.date.slice(0, 5) + "/" + d.date.slice(-2) : d.date.slice(0, 5).replace(/^0/, ""), future: d.key > today, today: d.key === today, day: d.key as string | undefined })) };
   const canGroup = where === "all" && multi;
+  /** Short range for the card: "Oct 2026" (month) or "Oct 26 – Nov 1" (week; year only when it isn't this year). */
+  const shortLabel = month
+    ? new Date(month.from + 12 * 3600_000).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", year: "numeric" })
+    : week.label.endsWith(`, ${today.slice(0, 4)}`) ? week.label.slice(0, -6) : week.label;
   const grouped = canGroup && view === "groups" ? groupProfitRows(report.rows, salesGroups) : null;
 
   const renderRow = (row: ProfitRow) => (
@@ -129,22 +133,19 @@ export function ProfitReportScreen() {
         <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-[-0.03em]">{month ? "Monthly" : "Weekly"} Profit Report</h1>
       </div>
 
-      <div className="mt-1 flex items-center gap-1">
-        <button type="button" aria-label={month ? "Previous month" : "Previous week"} disabled={!!month && monthOffset <= -MONTHS_BACK} onClick={() => (month ? setMonthOffset((n) => Math.max(-MONTHS_BACK, n - 1)) : setOffset((n) => Math.max(-8, n - 1)))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
-          <ChevronLeft size={18} />
-        </button>
-        <p className="min-w-0 whitespace-nowrap text-[13.5px] font-semibold tabular-nums">{report.label}</p>
-        <button type="button" aria-label={month ? "Next month" : "Next week"} disabled={month ? monthOffset >= 0 : offset >= 0} onClick={() => (month ? setMonthOffset((n) => Math.min(0, n + 1)) : setOffset((n) => Math.min(0, n + 1)))} className="inline-flex size-9 flex-none items-center justify-center rounded-full text-ink disabled:opacity-30">
-          <ChevronRight size={18} />
-        </button>
-        <span className="min-w-2 flex-1" />
-        <Link href={`/sales?view=barbers${where !== "all" ? `&loc=${encodeURIComponent(where)}` : ""}`} className="inline-flex h-8 flex-none items-center rounded-pill bg-surface px-3 text-[12.5px] font-bold text-ink ring-1 ring-line">Claiming</Link>
-      </div>
-
-      <section aria-label="Your profit" className="mt-3 rounded-banner bg-ink px-4 py-4 text-on-ink">
-        <p className="text-[12.5px] font-semibold text-on-ink-muted">Your profit</p>
-        <b className="mt-0.5 block text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(report.total)}</b>
-        <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
+      <section aria-label="Your profit" className="mt-3 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your profit</p>
+          <div role="group" aria-label={month ? "Month" : "Week"} className="flex h-11 flex-none items-center rounded-pill bg-white/10">
+            <button type="button" aria-label={month ? "Previous month" : "Previous week"} disabled={!!month && monthOffset <= -MONTHS_BACK} onClick={() => (month ? setMonthOffset((n) => Math.max(-MONTHS_BACK, n - 1)) : setOffset((n) => Math.max(-8, n - 1)))}
+              className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronLeft size={17} strokeWidth={2.4} /></button>
+            <span aria-live="polite" className="whitespace-nowrap text-[12.5px] font-bold tabular-nums">{shortLabel}</span>
+            <button type="button" aria-label={month ? "Next month" : "Next week"} disabled={month ? monthOffset >= 0 : offset >= 0} onClick={() => (month ? setMonthOffset((n) => Math.min(0, n + 1)) : setOffset((n) => Math.min(0, n + 1)))}
+              className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronRight size={17} strokeWidth={2.4} /></button>
+          </div>
+        </div>
+        <b className="mt-1 block pr-2 text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(report.total)}</b>
+        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
       </section>
 
       <div className="mt-3 flex items-center gap-2">
@@ -156,11 +157,6 @@ export function ProfitReportScreen() {
               options={shops.branches.map((b) => ({ id: b.id, name: b.name, sub: b.area || b.address }))} />
           </div>
         ) : <span className="flex-1" />}
-        <button type="button" aria-pressed={!!month} aria-label={month ? "Show week view" : "Show month view"} title={month ? "Week view" : "Month view"}
-          onClick={() => { setMode(month ? "week" : "month"); setMonthOffset(0); }}
-          className={cn("inline-flex size-9 flex-none items-center justify-center rounded-full shadow-card", month ? "bg-ink text-on-ink" : "bg-surface text-ink")}>
-          {month ? <CalendarRange size={17} strokeWidth={2.2} /> : <CalendarDays size={17} strokeWidth={2.2} />}
-        </button>
         {canGroup ? (
           <div role="radiogroup" aria-label="Group rows" className="flex flex-none rounded-pill bg-grey-100 p-0.5">
             {VIEWS.map((v) => (
@@ -169,6 +165,11 @@ export function ProfitReportScreen() {
             ))}
           </div>
         ) : null}
+        <button type="button" aria-pressed={!!month} aria-label={month ? "Show week view" : "Show month view"} title={month ? "Week view" : "Month view"}
+          onClick={() => { setMode(month ? "week" : "month"); setMonthOffset(0); }}
+          className={cn("inline-flex size-9 flex-none items-center justify-center rounded-full shadow-card", month ? "bg-ink text-on-ink" : "bg-surface text-ink")}>
+          {month ? <CalendarRange size={17} strokeWidth={2.2} /> : <CalendarDays size={17} strokeWidth={2.2} />}
+        </button>
       </div>
 
       {month ? <ProfitMonthCalendar m={month} today={today} onPick={setDayOpen} /> : null}
