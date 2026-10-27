@@ -1,7 +1,7 @@
 import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "@/lib/server/shops";
-import { cutBarberId } from "@/lib/cut-count";
+import { cutBarberId, UNASSIGNED, UNASSIGNED_NAME } from "@/lib/cut-count";
 
 /**
  * Read-only view of one owner's shop for the Companion. Nothing here writes business data.
@@ -12,7 +12,7 @@ export interface ShopData {
   plan: string;
   bookings: ChairRequest[];
   /** The shop's barbers (stored under "barbers.shop-chairs", the app's only barber list; each record is one barber). */
-  barbers: { id: string; barberId: string; barberName: string; label?: string; locationId: string }[];
+  barbers: { id: string; barberId: string; barberName: string; locationId: string }[];
   branches: { id: string; name: string }[];
 }
 
@@ -34,12 +34,12 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
     loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations", "barbers.shop-profile"]),
   ]);
   const parse = (k: string) => { try { return JSON.parse(state[k] || "null"); } catch { return null; } };
-  // "barbers.shop-chairs" is the app's barber list (the same records Sales reads); older visits without a barberId fall back to their seat, exactly as Sales does (src/lib/cut-count.ts).
+  // "barbers.shop-chairs" is the app's barber list (the same records Sales reads); a visit belongs only to its barberId, else Unassigned, exactly as Sales does (src/lib/cut-count.ts).
   const barbersRaw = parse("barbers.shop-chairs");
   const locRaw = parse("barbers.shop-locations");
   const profile = parse("barbers.shop-profile");
   const barbers = (Array.isArray(barbersRaw) ? barbersRaw : [])
-    .map((c: Record<string, unknown>) => ({ id: String(c.id ?? ""), barberId: String(c.barberId ?? ""), barberName: String(c.barberName ?? "").trim(), label: String(c.label ?? ""), locationId: String(c.locationId ?? HOME) }))
+    .map((c: Record<string, unknown>) => ({ id: String(c.id ?? ""), barberId: String(c.barberId ?? ""), barberName: String(c.barberName ?? "").trim(), locationId: String(c.locationId ?? HOME) }))
     .filter((c: { barberName: string }) => c.barberName);
   const branchesRaw = locRaw && Array.isArray(locRaw.branches) ? locRaw.branches : [];
   const branches = branchesRaw.length
@@ -80,11 +80,12 @@ const who = (b: ChairRequest) => (b.contact || b.customerLabel || "").trim().toL
 export function barberOf(d: ShopData, b: ChairRequest) {
   const loc = b.locationId || HOME;
   if (b.barberId === "owner") return b.barberName?.trim() || "Owner";
-  const id = cutBarberId(b, d.barbers);
+  const id = cutBarberId(b);
+  if (!b.barberId) return id === UNASSIGNED ? UNASSIGNED_NAME : b.barberName!.trim();
   const match = (x: ShopData["barbers"][number]) => (x.barberId || x.id) === id || x.id === id;
-  const byId = d.barbers.find((x) => match(x) && x.locationId === loc) ?? (b.barberId ? d.barbers.find(match) : undefined);
+  const byId = d.barbers.find((x) => match(x) && x.locationId === loc) ?? d.barbers.find(match);
   if (byId?.barberName) return byId.barberName;
-  return b.barberName?.trim() || "Unassigned";
+  return b.barberName?.trim() || UNASSIGNED_NAME;
 }
 
 /** Calendar-aligned like the Sales screen: "N days" = today plus the N-1 Manila days before it. */

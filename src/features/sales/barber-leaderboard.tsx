@@ -10,6 +10,7 @@ import type { ChairRequest } from "@/lib/chair-bookings";
 import { barberKey, inRange } from "@/lib/sales-stats";
 import { chairBarberName, useShopChairs, type ShopChair } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { UNASSIGNED } from "@/lib/cut-count";
 
 type Sort = "sales" | "productivity" | "completion" | "speed" | "cuts";
 const SORTS: [Sort, string][] = [["sales", "Sales"], ["productivity", "Productivity"], ["completion", "Completion"], ["speed", "Fastest"], ["cuts", "Cuts"]];
@@ -39,7 +40,7 @@ export function BarberLeaderboard({ range, where, all }: { range: SalesRange; wh
     for (const r of inRange(all, range, where)) {
       if (r.status !== "done" && r.status !== "declined") continue;
       const id = barberKey(r, chairs);
-      if (id.startsWith("seat:")) continue;
+      if (id === UNASSIGNED) continue; // ranking only; Sales lists Unassigned so totals add up
       const l = r.locationId || HOME_LOCATION_ID, k = `${id}@${l}`;
       const chair = chairs.find((c) => (c.barberId || c.id) === id);
       if (chair?.active === false) continue;

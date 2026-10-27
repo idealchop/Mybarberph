@@ -4,7 +4,7 @@ import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } f
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
-import { cutBarberId } from "@/lib/cut-count";
+import { cutBarberId, cutBarberName } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 
@@ -23,11 +23,10 @@ export async function barberSales(shopId: string, q: { range?: string | null; fr
     if (b.status !== "done") continue;
     const bl = b.locationId || "home";
     if (loc && bl !== loc) continue;
-    const seat = chairs.find((c) => c.label === (b.seatLabel || b.chairLabel) && (c.locationId || "home") === bl);
-    // Same identity rule as the owner's client stats and barberPerformance (chair id for chair-only rows).
+    // Same identity rule as every other screen: barberId only, else Unassigned (src/lib/cut-count.ts).
     const id = cutBarberId(b, chairs);
     if (q.barberId && id !== q.barberId) continue;
-    const name = b.barberName || seat?.barberName?.trim() || (b.seatLabel ? `${b.seatLabel} (no barber)` : "No barber");
+    const name = cutBarberName(b, chairs);
     const key = `${id}@${bl}`;
     const row = rows.get(key) ?? { barberId: id, barberName: name, locationId: bl, locationName: locName(bl), cuts: 0, gross: 0, cash: 0, gcash: 0, online: 0, unpaid: 0, remit: 0 };
     row.cuts += 1;

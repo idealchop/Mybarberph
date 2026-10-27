@@ -14,6 +14,7 @@ import { SalesChartCard } from "./sales-chart";
 import { ClaimHistory } from "./sales-parts";
 import { PerformanceDashboard } from "./performance-dashboard";
 import type { Remit } from "./use-remit";
+import { UNASSIGNED } from "@/lib/cut-count";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
@@ -31,7 +32,7 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
   const ranking = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of chairs) if (c.active !== false) m.set(c.barberId || c.id, 0);
-    for (const r of inRange(all, range, "all")) if (r.status === "done") { const k = barberKey(r, chairs); if (!k.startsWith("seat:") && !chairs.some((c) => (c.barberId || c.id) === k && c.active === false)) m.set(k, (m.get(k) ?? 0) + (r.price || 0)); }
+    for (const r of inRange(all, range, "all")) if (r.status === "done") { const k = barberKey(r, chairs); if (k !== UNASSIGNED && !chairs.some((c) => (c.barberId || c.id) === k && c.active === false)) m.set(k, (m.get(k) ?? 0) + (r.price || 0)); }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   }, [all, chairs, range]);
   const rank = ranking.findIndex(([k]) => k === id);

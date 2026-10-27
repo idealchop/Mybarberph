@@ -44,7 +44,8 @@ describe("Barber link: own bookings only (server)", () => {
     const res = await GET(new Request("http://local"), ctx("keithtoken1"));
     expect(res.status).toBe(200);
     const ids = ((await res.json()).bookings as { id: string }[]).map((b) => b.id).sort();
-    expect(ids).toEqual(["legacy-seat", "mine", "waiting"]);
+    // No chair/seat fallback (Jimboy 2026-10-27): a seat-only visit is Unassigned, not this barber's.
+    expect(ids).toEqual(["mine", "waiting"]);
   });
 
   it("TC-BARBER-NEG-03 PUT on another barber's visit is 404 and nothing is written", async () => {

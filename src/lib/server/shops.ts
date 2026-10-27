@@ -36,6 +36,7 @@ export const STATE_KEYS: Record<string, string> = {
 export const BARBER_KEYS = new Set<string>();
 
 import { isRecurring, maxLocations, normalizePlan, walkInLimit, WALKIN_LIMIT_MESSAGE, type PlanId } from "@/lib/plans";
+import { cutBarberId } from "@/lib/cut-count";
 
 /** Stored plan id; older records may still hold "monthly_950" / "lifetime_10000". */
 export type Plan = PlanId | "monthly_950" | "lifetime_10000";
@@ -373,23 +374,21 @@ const OPEN_STATUSES = new Set(["requested", "accepted"]);
 
 /**
  * What a barber link may see and change (Jimboy, 2026-10-19: a link only works its own bookings).
- * - "own": the visit is this barber's (barberId), or, on older rows with no barberId, it sits on this barber's chair.
+ * - "own": the visit's barberId is this barber (shared rule, src/lib/cut-count.ts; no chair/seat fallback).
  * - "open": an unassigned visit still waiting at this barber's location. It stays visible so the barber can
  *   accept it from Waiting; the first write stamps this barber on it, and then it's theirs only.
  * Anything else (another barber's visit, another location, an unassigned visit already started or finished) is hidden.
  */
 export function barberAccess(b: ChairRequest, me: LinkBarber): "own" | "open" | null {
   if ((b.locationId || "home") !== (me.locationId || "home")) return null;
-  if (b.barberId) return b.barberId === me.barberId ? "own" : null;
-  const seat = b.chairLabel || b.seatLabel;
-  if (seat) return me.chairLabel && seat === me.chairLabel ? "own" : null;
+  if (b.barberId) return cutBarberId(b) === me.barberId ? "own" : null;
   return OPEN_STATUSES.has(b.status) ? "open" : null;
 }
 
 /** Bookings for a barber link: their own (newest 200) plus open ones waiting at their location. */
 export async function loadBarberBookings(shopId: string, me: LinkBarber): Promise<ChairRequest[]> {
   const col = shopRef(shopId).collection("bookings");
-  // Equality-only query: no composite index needed. Recent shop rows cover open visits and older chair-only rows.
+  // Equality-only query: no composite index needed. Recent shop rows cover open (unassigned, waiting) visits.
   const [recent, mine] = await Promise.all([
     col.orderBy("createdAt", "desc").limit(150).get(),
     col.where("barberId", "==", me.barberId).limit(300).get(),

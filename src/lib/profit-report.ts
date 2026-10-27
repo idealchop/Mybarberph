@@ -4,7 +4,7 @@
  * no split set = the whole price is the owner's; the owner's own cuts are all the owner's. Tips are never counted.
  */
 import { ownerShareOf, sharePct } from "@/lib/income-split";
-import { cutBarberId } from "@/lib/cut-count";
+import { cutBarberId, UNASSIGNED, UNASSIGNED_NAME } from "@/lib/cut-count";
 
 
 const DAY = 86_400_000;
@@ -83,12 +83,9 @@ export function weekBounds(offset = 0, now = Date.now()) {
   return { from, to: from + 7 * DAY, days, label: `${startLabel} – ${endLabel}, ${year}` };
 }
 
-function seatOf(r: ProfitVisit, chairs: ProfitChair[], loc: string) {
-  return chairs.find((c) => c.label === (r.seatLabel || r.chairLabel) && (c.locationId || "home") === loc);
-}
-
 function rowName(id: string, visitName: string | undefined, chair?: ProfitChair) {
   if (id === "owner") return "You";
+  if (id === UNASSIGNED) return UNASSIGNED_NAME;
   const typed = visitName?.trim() || chair?.barberName?.trim();
   return typed || chair?.label || "No barber";
 }
@@ -136,13 +133,12 @@ function profitGrid(
     if (r.status !== "done" || !r.completedAt || r.completedAt < bounds.from || r.completedAt >= bounds.to) continue;
     const bl = r.locationId || "home";
     if (loc !== "all" && bl !== loc) continue;
-    const seat = seatOf(r, chairs, bl);
     const id = cutBarberId(r, chairs);
     const day = colOf(r.completedAt);
     if (day < 0 || day >= cols) continue;
-    const row = ensure(id, bl, rowName(id, r.barberName, seat));
+    const row = ensure(id, bl, rowName(id, r.barberName, chairs.find((c) => (c.barberId || c.id) === id && (c.locationId || "home") === bl) ?? chairs.find((c) => (c.barberId || c.id) === id)));
     const chair = id === "owner" ? undefined : chairs.find((c) => (r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) && (c.locationId || "home") === bl)
-      ?? chairs.find((c) => r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) ?? seat;
+      ?? chairs.find((c) => r.barberId && (c.barberId === r.barberId || c.id === r.barberId));
     const amount = ownerShareOf(r.price || 0, id === "owner" ? null : chair ? sharePct(chair) : null);
     row.days[day] = (row.days[day] ?? 0) + amount;
     row.total += amount;

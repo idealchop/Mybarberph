@@ -5,23 +5,32 @@ const HOME_LOCATION_ID = "home";
 /**
  * ONE rule for "whose cut is this" and "is it a finished cut on day X".
  * Used by the barber link, My sales, Home, Sales, Profit report, remittance and Companion
- * so barber and owner views always agree (Jimboy, 2026-10-26).
+ * so barber and owner views always agree (Jimboy, 2026-10-26). No chair/seat fallback.
  */
 export type CutChair = { id: string; label?: string; locationId?: string; barberId?: string };
-type CutRow = Pick<ChairRequest, "barberId" | "seatLabel" | "chairLabel" | "locationId">;
+type CutRow = Pick<ChairRequest, "barberId" | "barberName">;
 
 export const cutLocation = (r: { locationId?: string }) => r.locationId || HOME_LOCATION_ID;
 
-/** Barber a visit counts toward: snapshot barberId (a stale chair id maps to that chair's barber), else the seat's barber at the same branch. */
-export function cutBarberId(r: CutRow, chairs: CutChair[]): string {
-  const bl = cutLocation(r);
-  if (r.barberId) {
-    const byChair = chairs.find((c) => c.id === r.barberId && c.barberId && c.barberId !== c.id);
-    return byChair?.barberId || r.barberId;
-  }
-  const label = r.seatLabel || r.chairLabel;
-  const seat = label ? chairs.find((c) => c.label === label && cutLocation(c) === bl) : undefined;
-  return seat?.barberId || seat?.id || `seat:${bl}:${r.seatLabel || "-"}`;
+/** Key for cuts with no barber on them. Shown as "Unassigned" on every screen so totals add up. */
+export const UNASSIGNED = "unassigned";
+export const UNASSIGNED_NAME = "Unassigned";
+
+/**
+ * Barber a visit counts toward (Jimboy 2026-10-27, no chairs/seats): its saved barberId, else its saved
+ * barber name (as Companion v1.0.12 did), else Unassigned. Chairs are never looked up.
+ */
+export function cutBarberId(r: CutRow, _chairs?: CutChair[]): string {
+  void _chairs;
+  const name = r.barberName?.trim();
+  return r.barberId || (name ? `name:${name.toLowerCase()}` : UNASSIGNED);
+}
+
+/** Display name for a cut's barber: the barber record's name, else the name saved on the visit, else Unassigned. */
+export function cutBarberName(r: Pick<ChairRequest, "barberId" | "barberName">, chairs: (CutChair & { barberName?: string })[]): string {
+  if (!r.barberId) return r.barberName?.trim() || UNASSIGNED_NAME;
+  const c = chairs.find((x) => (x.barberId || x.id) === r.barberId) ?? chairs.find((x) => x.id === r.barberId);
+  return c?.barberName?.trim() || r.barberName?.trim() || r.barberId;
 }
 
 /** Manila (UTC+8) calendar day of a timestamp. */

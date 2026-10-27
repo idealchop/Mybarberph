@@ -12,7 +12,7 @@ type Chair = { id: string; label?: string; barberId?: string; locationId?: strin
 const day = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const isCash = (r: Visit) => r.status === "done" && Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
 
-/** The remit key of a visit (same as the server's): its barberId, else the seat's barber at that branch. */
+/** The remit key of a visit (same as the server's): its barberId only, else Unassigned. */
 export function remitKey(r: Visit, chairs: Chair[]) {
   const bl = r.locationId || "home";
   return { id: cutBarberId(r, chairs), loc: bl };
