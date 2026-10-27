@@ -1,88 +1,36 @@
 "use client";
 
 import { Badge, cn, type NavItem } from "@river-apps/ui";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
-import { barOffset, bottomGap, keyboardOpen } from "@/lib/viewport-gap";
+import { useEffect, useState } from "react";
 
-const noop = () => () => {};
-const editable = (el: Element | null) => !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable);
+const editable = (el: Element | null) => !!el && ((el instanceof HTMLInputElement && !["checkbox", "radio", "range", "button", "submit"].includes(el.type)) || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable);
 
-/**
- * Keeps the bar on the visible bottom edge on iOS (installed PWA included). Root cause of the "nav floats mid-screen"
- * bug: after the keyboard, a sheet's scroll-lock or a toolbar change, iOS can keep a stale, shorter layout viewport
- * that `position: fixed; bottom: 0` anchors to, while window.innerHeight already reports the new value, so a gap
- * inferred from innerHeight is 0 and the bar stays high. Instead we MEASURE where the bar really is and move it by
- * the difference to the visual viewport's bottom; re-checked on window scroll, viewport changes and body style
- * changes (sheet open/close). The bar hides while typing.
- */
-function useBottomPin(ref: React.RefObject<HTMLElement | null>) {
-  const [state, setState] = useState({ gap: 0, hidden: false });
-  const gapRef = useRef(0);
+/** Hide the bar while a text field has focus (on phones the keyboard covers it anyway). */
+function useTyping() {
+  const [typing, setTyping] = useState(false);
   useEffect(() => {
-    const vv = window.visualViewport;
-    let raf = 0;
-    const update = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const h = window.innerHeight;
-        const vh = vv?.height ?? h, top = vv?.offsetTop ?? 0;
-        const typing = editable(document.activeElement) && keyboardOpen(h, vh);
-        const el = ref.current;
-        const bottom = el && !typing ? el.getBoundingClientRect().bottom - gapRef.current : null;
-        const gap = typing ? 0 : bottom == null ? bottomGap(h, vh, top) : barOffset(bottom, vh, top);
-        gapRef.current = gap;
-        setState((p) => (p.gap === gap && p.hidden === typing ? p : { gap, hidden: typing }));
-      });
-    };
-    // After an input loses focus iOS can keep the shrunken layout viewport until something scrolls: nudge it.
-    const onBlur = () => window.setTimeout(() => { window.scrollTo(window.scrollX, window.scrollY); update(); }, 60);
-    const later = () => { update(); window.setTimeout(update, 350); };
-    const mo = new MutationObserver(later);
-    mo.observe(document.body, { attributes: true, attributeFilter: ["style", "class"] });
-    vv?.addEventListener("resize", update);
-    vv?.addEventListener("scroll", update);
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", later);
-    window.addEventListener("orientationchange", later);
-    window.addEventListener("pageshow", later);
-    document.addEventListener("focusin", update);
-    document.addEventListener("focusout", onBlur);
-    document.addEventListener("visibilitychange", later);
-    update();
-    return () => {
-      cancelAnimationFrame(raf);
-      mo.disconnect();
-      vv?.removeEventListener("resize", update);
-      vv?.removeEventListener("scroll", update);
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", later);
-      window.removeEventListener("orientationchange", later);
-      window.removeEventListener("pageshow", later);
-      document.removeEventListener("focusin", update);
-      document.removeEventListener("focusout", onBlur);
-      document.removeEventListener("visibilitychange", later);
-    };
-  }, [ref]);
-  return state;
+    const on = () => setTyping(editable(document.activeElement));
+    const off = () => window.setTimeout(on, 0);
+    document.addEventListener("focusin", on);
+    document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
+  }, []);
+  return typing;
 }
 
+/**
+ * Bottom tab bar. NOT position:fixed (v1.0.18): it is the last flex child of the app shell, which is exactly the
+ * visible viewport, so it cannot float mid-screen when iOS keeps a stale layout viewport. See ShopShell.
+ */
 export function ShopTabBar({ items, activeKey, label = "Main" }: { items: NavItem[]; activeKey: string; label?: string }) {
-  const navRef = useRef<HTMLElement>(null);
-  const { gap, hidden } = useBottomPin(navRef);
-  const host = useSyncExternalStore(noop, () => document.body, () => null);
-  const bar = (
+  const typing = useTyping();
+  return (
     <nav
-      ref={navRef}
       aria-label={label}
-      aria-hidden={hidden || undefined}
-      style={{ transform: gap ? `translate3d(0, ${gap}px, 0)` : undefined, visibility: hidden ? "hidden" : undefined }}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 shadow-[0_-8px_24px_-16px_rgba(16,16,24,0.18)] backdrop-blur-md lg:hidden"
+      data-typing={typing || undefined}
+      className="shrink-0 border-t border-line bg-surface shadow-[0_-8px_24px_-16px_rgba(16,16,24,0.18)] data-[typing]:hidden lg:hidden"
     >
-      <div
-        className="mx-auto flex max-w-[402px] items-center justify-around px-4 pt-2"
-        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
-      >
+      <div className="mx-auto flex max-w-[402px] items-center justify-around px-4 pt-2" style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
         {items.map((it) => {
           const on = it.key === activeKey;
           return (
@@ -106,6 +54,4 @@ export function ShopTabBar({ items, activeKey, label = "Main" }: { items: NavIte
       </div>
     </nav>
   );
-  // Rendered straight into <body> so no ancestor (transform, filter, overflow, a scrolling box) can re-anchor it.
-  return host ? createPortal(bar, host) : null;
 }

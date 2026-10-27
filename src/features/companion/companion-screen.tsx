@@ -8,6 +8,7 @@ import { useAuthGate } from "@/components/auth/auth-gate-provider";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useTier } from "@/lib/tier";
 import { useCompanion, type CompanionMessage } from "./use-companion";
+import { appScrollHeight, appScrollTo, appScrollTop } from "@/lib/app-scroll";
 
 const STARTERS = [
   "Kumusta benta this week vs last week?",
@@ -79,7 +80,7 @@ export function CompanionScreen() {
     const a = anchor.current;
     if (!a) return;
     anchor.current = null;
-    window.scrollTo(0, a.y + (document.documentElement.scrollHeight - a.h));
+    appScrollTo(a.y + (appScrollHeight() - a.h));
   }, [c.messages.length]);
   // Scrolling near the top loads the previous page.
   useEffect(() => {
@@ -87,7 +88,7 @@ export function CompanionScreen() {
     if (!el || !c.hasMore) return;
     const io = new IntersectionObserver((entries) => {
       if (!entries[0]?.isIntersecting) return;
-      anchor.current = { h: document.documentElement.scrollHeight, y: window.scrollY };
+      anchor.current = { h: appScrollHeight(), y: appScrollTop() };
       void c.loadOlder().then((added) => { if (!added) anchor.current = null; });
     }, { rootMargin: "200px 0px 0px 0px" });
     io.observe(el);

@@ -127,3 +127,9 @@
 @media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
 }
+
+/* v1.0.18 shop app shell (see ShopShell): the page itself never scrolls; #app-scroll does. */
+html:has(.app-shell), html:has(.app-shell) body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.app-shell { height: 100vh; height: -webkit-fill-available; height: var(--app-h, 100vh); }
+@supports (height: 100dvh) { .app-shell { height: 100dvh; } }
+.app-scroll { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }

@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import { AppShell, Sidebar } from "@river-apps/ui";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Sidebar } from "@river-apps/ui";
+import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { Button } from "@/components/common/button";
 import { AuthGateProvider } from "@/components/auth/auth-gate-provider";
 import { BarberChair } from "@/components/art";
@@ -53,22 +54,54 @@ export function ShopShell({ children }: { children: ReactNode }) {
   return (
     <AuthGateProvider>
     <ClientNav>
-      <AppShell
-        sidebar={
-          <Sidebar
-            className="sticky top-0 h-dvh"
-            brand={<Link href="/home" aria-label="Barbers.ph home"><Brand /></Link>}
-            items={items}
-            activeKey={active}
-            footer={paid ? <ShopQrPromo /> : <PartnerPlanCard />}
-          />
-        }
-        mobileTabBar={focus ? undefined : <ShopTabBar items={tabs} activeKey={active ?? ""} />}
-        mainClassName={focus ? "pb-0" : "pb-[calc(env(safe-area-inset-bottom)+96px)] lg:pb-0"}
-      >
-        {children}
-      </AppShell>
+      {focus ? (
+        // Full-screen flows (no tab bar) keep normal page scrolling.
+        <div className="flex min-h-dvh bg-canvas text-ink">
+          <div className="hidden lg:flex"><Sidebar className="sticky top-0 h-dvh" brand={<Link href="/home" aria-label="Barbers.ph home"><Brand /></Link>} items={items} activeKey={active} footer={paid ? <ShopQrPromo /> : <PartnerPlanCard />} /></div>
+          <main className="min-w-0 flex-1">{children}</main>
+        </div>
+      ) : (
+        // v1.0.18 app shell: exactly the visible viewport. The content is the ONLY scroller; the tab bar is a plain
+        // flex child under it (no position:fixed, no JS offsets), so iOS can't leave it floating mid-screen.
+        <div className="app-shell flex bg-canvas text-ink">
+          <div className="hidden lg:flex"><Sidebar className="h-full overflow-y-auto" brand={<Link href="/home" aria-label="Barbers.ph home"><Brand /></Link>} items={items} activeKey={active} footer={paid ? <ShopQrPromo /> : <PartnerPlanCard />} /></div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <AppScroller pathname={pathname}>{children}</AppScroller>
+            <ShopTabBar items={tabs} activeKey={active ?? ""} />
+          </div>
+        </div>
+      )}
     </ClientNav>
     </AuthGateProvider>
+  );
+}
+
+/** The one scroll container. New page: top; back/forward: where you were. */
+function AppScroller({ pathname, children }: { pathname: string; children: ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  const saved = useRef(new Map<string, number>());
+  const back = useRef(false);
+  const last = useRef(pathname);
+  useEffect(() => {
+    const pop = () => { back.current = true; };
+    window.addEventListener("popstate", pop);
+    // Fallback height for browsers without dvh: the real visible height.
+    const setH = () => document.documentElement.style.setProperty("--app-h", `${window.innerHeight}px`);
+    setH();
+    window.addEventListener("resize", setH);
+    return () => { window.removeEventListener("popstate", pop); window.removeEventListener("resize", setH); };
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || last.current === pathname) return;
+    saved.current.set(last.current, el.scrollTop);
+    last.current = pathname;
+    el.scrollTop = back.current ? saved.current.get(pathname) ?? 0 : 0;
+    back.current = false;
+  }, [pathname]);
+  return (
+    <main id={APP_SCROLL_ID} ref={ref} className="app-scroll min-h-0 min-w-0 flex-1 pb-6 lg:pb-0">
+      {children}
+    </main>
   );
 }
