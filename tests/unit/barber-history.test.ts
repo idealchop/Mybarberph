@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, dayLabel, dayOf, earningsOf, groupByDay } from "@/lib/barber-history";
+import { addDays, dayLabel, dayOf, earningsOf } from "@/lib/barber-history";
 import { countToday } from "@/lib/cut-count";
 import type { ChairRequest } from "@/lib/booking-types";
 
@@ -15,9 +15,9 @@ const rows = [
 
 describe("barber History day by day", () => {
   it("each day counts done + completedAt on its Manila date (same as countToday / Sales)", () => {
-    const days = groupByDay(rows, 40);
-    expect(days.map((d) => [d.date, d.cuts])).toEqual([["2026-10-27", 2], ["2026-10-26", 2]]);
-    expect(days[0]!.cuts).toBe(countToday(rows, NOW));
+    expect(dayOf("2026-10-27", rows, 40).cuts).toBe(2);
+    expect(dayOf("2026-10-26", rows, 40).cuts).toBe(2);
+    expect(dayOf("2026-10-27", rows, 40).cuts).toBe(countToday(rows, NOW));
   });
   it("earnings = barber share + tips; full sales when no share is set", () => {
     const d = dayOf("2026-10-27", rows, 40);

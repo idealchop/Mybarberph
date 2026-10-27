@@ -111,18 +111,10 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   return out;
 }
 
-/**
- * A barber link's finished cuts between two Manila dates (inclusive, max 62 days), straight from the server so
- * past days are complete (not just the newest rows the link loads). Same rule as Sales (src/lib/cut-count.ts).
- */
-export async function barberHistory(shopId: string, q: { from: string; to: string; barberId: string; chairId: string; locationId?: string }) {
-  const okDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
-  const today = manilaYmd(Date.now());
-  const toY = okDay(q.to) ? q.to : today;
-  let fromY = okDay(q.from) ? q.from : toY;
-  const start = Date.parse(`${fromY}T00:00:00+08:00`), end = Date.parse(`${toY}T00:00:00+08:00`) + 86_400_000;
-  if (end - start > 62 * 86_400_000) fromY = manilaYmd(end - 62 * 86_400_000);
-  const from = Date.parse(`${fromY}T00:00:00+08:00`);
+/** A barber link's finished cuts on ONE Manila day, straight from the server (complete for past days). Same rule as Sales (src/lib/cut-count.ts). */
+export async function barberHistory(shopId: string, q: { date: string; barberId: string; chairId: string; locationId?: string }) {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(q.date) ? q.date : manilaYmd(Date.now());
+  const from = Date.parse(`${date}T00:00:00+08:00`), end = from + 86_400_000;
   const [snap, state] = await Promise.all([
     shopRef(shopId).collection("bookings").where("completedAt", ">=", from).where("completedAt", "<", end).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
@@ -133,5 +125,5 @@ export async function barberHistory(shopId: string, q: { from: string; to: strin
   const rows = snap.docs.map((d) => d.data() as ChairRequest)
     .filter((b) => b.status === "done" && (b.locationId || "home") === myLoc && cutBarberId(b, chairs) === q.barberId)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
-  return { from: fromY, to: toY, sharePct: sharePct(me), rows };
+  return { date, sharePct: sharePct(me), rows };
 }

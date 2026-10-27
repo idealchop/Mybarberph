@@ -14,17 +14,6 @@ export function earningsOf(sales: number, tips: number, pct: number | null) {
   return (pct == null ? sales : splitIncome(sales, pct).barber) + tips;
 }
 
-/** Finished cuts grouped by Manila day, newest day first, rows newest first. */
-export function groupByDay(rows: ChairRequest[], pct: number | null): HistoryDay[] {
-  const m = new Map<string, ChairRequest[]>();
-  for (const r of rows) {
-    if (!isFinishedCut(r)) continue;
-    const d = manilaYmd(r.completedAt!);
-    m.set(d, [...(m.get(d) ?? []), r]);
-  }
-  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([date, list]) => dayOf(date, list, pct));
-}
-
 export function dayOf(date: string, rows: ChairRequest[], pct: number | null): HistoryDay {
   const list = rows.filter((r) => isFinishedCut(r) && manilaYmd(r.completedAt!) === date).sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
   const sales = list.reduce((s, r) => s + (r.price || 0), 0);

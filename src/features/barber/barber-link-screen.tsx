@@ -24,7 +24,7 @@ import {
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
-import { addDays, dayLabel, dayOf, groupByDay, ymdStart } from "@/lib/barber-history";
+import { addDays, dayLabel, dayOf } from "@/lib/barber-history";
 import { peso } from "@/lib/format";
 import { customerName } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -528,17 +528,17 @@ function OnlineScan({
 }
 
 /** Server rows (complete for past days) plus the live link rows (just-finished cuts), by id. */
-function useHistoryRows(token: string, live: ChairRequest[], from: string, to: string) {
+function useHistoryRows(token: string, live: ChairRequest[], day: string) {
   const [server, setServer] = useState<{ key: string; rows: ChairRequest[]; pct: number | null } | null>(null);
-  const key = `${from}|${to}`;
+  const key = day;
   useEffect(() => {
     let off = false;
-    fetch(`/api/barber/${token}/history?from=${from}&to=${to}`, { cache: "no-store" })
+    fetch(`/api/barber/${token}/history?date=${day}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { rows: ChairRequest[]; sharePct: number | null } | null) => { if (!off && d) setServer({ key, rows: d.rows, pct: d.sharePct }); })
       .catch(() => {});
     return () => { off = true; };
-  }, [token, from, to, key]);
+  }, [token, day, key]);
   const byId = new Map<string, ChairRequest>();
   for (const r of server?.key === key ? server.rows : []) byId.set(r.id, r);
   for (const r of live) byId.set(r.id, r);
@@ -546,8 +546,8 @@ function useHistoryRows(token: string, live: ChairRequest[], from: string, to: s
 }
 
 /**
- * Barber link History, day by day (v1.0.19). One day at a time (prev/next + calendar), with that day's cuts and
- * earnings; "All days" lists the last 30 days under sticky date headers. Every day uses the shared rule
+ * Barber link History, one day at a time (v1.0.19): a day changer row (prev/next) + a calendar to jump, with that
+ * day's cuts and earnings. Every day uses the shared rule
  * (src/lib/cut-count.ts: Manila day, done + completedAt, own barberId, this link's location), so each day equals
  * the owner's Sales for this barber and day.
  */
@@ -566,13 +566,9 @@ function ChairHistory({
   const today = manilaYmd(now);
   const [openRow, setOpenRow] = useState<ChairRequest | null>(null);
   const [day, setDay] = useState(today);
-  const [mode, setMode] = useState<"day" | "all">("day");
-  const [span, setSpan] = useState(30);
   const [query, setQuery] = useState("");
   const dateRef = useRef<HTMLInputElement>(null);
-  const from = mode === "day" ? day : addDays(today, -(span - 1));
-  const to = mode === "day" ? day : today;
-  const { rows, pct, loading } = useHistoryRows(token, live, from, to);
+  const { rows, pct, loading } = useHistoryRows(token, live, day);
   const needle = query.trim().toLowerCase();
   const match = (row: ChairRequest) => {
     if (!needle) return true;
@@ -580,7 +576,6 @@ function ChairHistory({
     return (row.customerLabel || row.contact || "customer").toLowerCase().includes(needle) || offer.includes(needle) || row.ref.toLowerCase().includes(needle);
   };
   const picked = dayOf(day, rows, pct);
-  const days = groupByDay(rows.filter((r) => (r.completedAt ?? 0) >= ymdStart(from)), pct);
 
   const item = (row: ChairRequest) => (
     <li key={row.id} role="button" tabIndex={0} aria-label={`Order details for ${row.customerLabel || row.contact || "customer"}`} onClick={() => setOpenRow(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenRow(row); } }}
@@ -607,72 +602,39 @@ function ChairHistory({
       </div>
       <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{[who, chairLabel].filter(Boolean).join(" · ")}</p>
 
-      {mode === "day" ? (
-        <section aria-label="Day summary" className="mt-4 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
-          <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">You earned</p>
-            <div role="group" aria-label="Day" className="flex h-11 flex-none items-center rounded-pill bg-white/10">
-              <button type="button" aria-label="Previous day" onClick={() => setDay(addDays(day, -1))}
-                className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15"><ChevronLeft size={17} strokeWidth={2.4} /></button>
-              <span aria-live="polite" className="whitespace-nowrap text-[12.5px] font-bold tabular-nums">{dayLabel(day, now)}</span>
-              <button type="button" aria-label="Next day" disabled={day >= today} onClick={() => setDay(addDays(day, 1))}
-                className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronRight size={17} strokeWidth={2.4} /></button>
-            </div>
-          </div>
-          <b className="mt-1 block pr-2 text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
-          <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">
-            {loading && picked.cuts === 0 ? "Loading…" : `${picked.cuts} cut${picked.cuts === 1 ? "" : "s"} · ${peso(picked.sales)} sales${picked.tips ? ` · ${peso(picked.tips)} tips` : ""}`}
-          </p>
-        </section>
-      ) : null}
+      <section aria-label="Day summary" className="mt-4 rounded-banner bg-ink px-4 py-3 text-on-ink">
+        <p className="truncate text-[12.5px] font-semibold text-on-ink-muted">You earned</p>
+        <b className="mt-1 block text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
+        <p className="mb-1 mt-2 text-[12.5px] font-semibold text-on-ink-muted">
+          {loading && picked.cuts === 0 ? "Loading…" : `${picked.cuts} cut${picked.cuts === 1 ? "" : "s"} · ${peso(picked.sales)} sales${picked.tips ? ` · ${peso(picked.tips)} tips` : ""}`}
+        </p>
+      </section>
 
       <div className="mt-3 flex items-center gap-2">
-        <div role="tablist" aria-label="View" className="flex h-9 flex-1 rounded-pill bg-surface p-0.5 shadow-card">
-          {(["day", "all"] as const).map((m) => (
-            <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-              className={`flex-1 rounded-pill text-[12.5px] font-bold ${mode === m ? "bg-ink text-on-ink" : "text-ink"}`}>{m === "day" ? "By day" : "All days"}</button>
-          ))}
+        <div role="group" aria-label="Day" className="flex h-11 min-w-0 flex-1 items-center justify-between rounded-pill bg-surface shadow-card">
+          <button type="button" aria-label="Previous day" onClick={() => setDay(addDays(day, -1))}
+            className="inline-flex size-11 flex-none items-center justify-center rounded-full text-ink active:bg-grey-100"><ChevronLeft size={18} strokeWidth={2.4} /></button>
+          <span aria-live="polite" className="min-w-0 truncate whitespace-nowrap text-[14px] font-bold tabular-nums">{dayLabel(day, now)}</span>
+          <button type="button" aria-label="Next day" disabled={day >= today} onClick={() => setDay(addDays(day, 1))}
+            className="inline-flex size-11 flex-none items-center justify-center rounded-full text-ink active:bg-grey-100 disabled:opacity-30"><ChevronRight size={18} strokeWidth={2.4} /></button>
         </div>
-        <label className="relative inline-flex size-9 flex-none cursor-pointer items-center justify-center rounded-full bg-surface text-ink shadow-card" title="Pick a date">
-          <CalendarDays size={17} strokeWidth={2.2} aria-hidden />
+        <label className="relative inline-flex size-11 flex-none cursor-pointer items-center justify-center rounded-full bg-surface text-ink shadow-card" title="Pick a date">
+          <CalendarDays size={18} strokeWidth={2.2} aria-hidden />
           <span className="sr-only">Pick a date</span>
           <input ref={dateRef} type="date" max={today} value={day}
             onClick={() => { try { dateRef.current?.showPicker?.(); } catch { /* not supported */ } }}
-            onChange={(e) => { if (e.target.value) { setDay(e.target.value > today ? today : e.target.value); setMode("day"); } }}
+            onChange={(e) => { if (e.target.value) setDay(e.target.value > today ? today : e.target.value); }}
             className="absolute inset-0 cursor-pointer opacity-0" />
         </label>
       </div>
-      <div className="mt-3">
-        <Input label="Find a cut" placeholder="Customer, service, or ticket" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="mt-3 overflow-hidden rounded-[16px] bg-surface shadow-card">
+        <Input aria-label="Find a cut" placeholder="Find a cut: customer, service, ticket" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
       {openRow ? <TransactionSheet row={openRow} barber onClose={() => setOpenRow(null)} /> : null}
-      {mode === "day" ? (
-        shownDay.length === 0 ? (
-          <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No cuts match." : "No finished cuts this day."}</p>
-        ) : <ul className="mt-4 flex flex-col gap-2">{shownDay.map(item)}</ul>
-      ) : (
-        <div className="mt-2">
-          {days.length === 0 ? <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : "No finished cuts in the last 30 days."}</p> : null}
-          {days.map((d) => {
-            const list = d.rows.filter(match);
-            if (!list.length && needle) return null;
-            return (
-              <section key={d.date} aria-label={dayLabel(d.date, now)}>
-                <button type="button" onClick={() => { setDay(d.date); setMode("day"); }}
-                  className="sticky top-0 z-[1] -mx-4 flex w-[calc(100%+2rem)] items-baseline justify-between bg-canvas/95 px-5 pb-2 pt-3 text-left backdrop-blur">
-                  <b className="text-[14px]">{dayLabel(d.date, now)}</b>
-                  <span className="text-[12.5px] font-bold tabular-nums text-muted">{d.cuts} cut{d.cuts === 1 ? "" : "s"} · {peso(d.earnings)}</span>
-                </button>
-                <ul className="flex flex-col gap-2">{list.map(item)}</ul>
-              </section>
-            );
-          })}
-          {!loading && span < 62 ? (
-            <Button className="mt-4" fullWidth variant="secondary" onClick={() => setSpan(62)}>Show older days</Button>
-          ) : null}
-        </div>
-      )}
+      {shownDay.length === 0 ? (
+        <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No cuts match." : "No finished cuts this day."}</p>
+      ) : <ul className="mt-4 flex flex-col gap-2">{shownDay.map(item)}</ul>}
     </main>
   );
 }
