@@ -5,7 +5,7 @@ import { useRemit } from "@/features/sales";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { User } from "lucide-react";
+import { Plus, ScanLine, User } from "lucide-react";
 import { Card, CardHeader, HeroBanner, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
@@ -32,6 +32,9 @@ import { asOwnerSplit } from "@/lib/split-view";
 import { useShopChairs } from "@/lib/shop-chairs";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
+/** Icon-only Scan QR: a rounded square the height of its neighbour button. */
+const QR_SM = "relative !size-8 !min-w-0 !rounded-[10px] !p-0 after:absolute after:-inset-1.5 after:content-['']";
+const QR_MD = "!size-11 !min-w-0 !rounded-[14px] !p-0";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
 
 
@@ -171,7 +174,7 @@ export function HomeScreen() {
             </Link>
           </div>
         </header>
-        <section className={`relative isolate mx-4 mt-3 flex items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`} style={{ height: mine ? 150 : 124 }}>
+        <section className={`relative isolate mx-4 mt-3 flex items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`} style={{ height: 150 }}>
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
@@ -187,11 +190,17 @@ export function HomeScreen() {
                 {mine.startedAt ? <b className="flex-none tabular-nums">{elapsedLabel(mine.startedAt, now)}</b> : null}
               </p>
             ) : null}
-            {mine ? (
-              <div className="mt-2.5 flex flex-nowrap items-center gap-1.5">
+            <div className="mt-2.5 flex flex-nowrap items-center gap-1.5">
+              {mine ? (
                 <Button variant="white" size="sm" className={PILL} leadingIcon={<CheckCircle2 size={14} strokeWidth={2.2} />} onClick={() => completeCut(mine)}>Complete</Button>
-              </div>
-            ) : null}
+              ) : (
+                <>
+                  {/* v1.0.27: Walk-in + icon-only Scan QR back on the hero (Jimboy); same flows as before v1.0.22. */}
+                  <Button href="/queue/new?me=1" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
+                  <Button href="/scan" variant="ghost-inverse" size="sm" aria-label="Scan QR" title="Scan QR" className={QR_SM}><ScanLine size={16} strokeWidth={1.9} aria-hidden /></Button>
+                </>
+              )}
+            </div>
           </div>
           <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
             {/* eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP; next/image adds nothing here */}
@@ -223,11 +232,18 @@ export function HomeScreen() {
             titleSize="lg"
             description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
-            actions={mine ? (
+            actions={
               <div className="flex flex-nowrap items-center gap-2.5">
-                <Button variant="white" size="md" leadingIcon={<CheckCircle2 size={18} strokeWidth={2} />} onClick={() => completeCut(mine)}>Complete</Button>
+                {mine ? (
+                  <Button variant="white" size="md" leadingIcon={<CheckCircle2 size={18} strokeWidth={2} />} onClick={() => completeCut(mine)}>Complete</Button>
+                ) : (
+                  <>
+                    <Button href="/queue/new?me=1" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button>
+                    <Button href="/scan" variant="ghost-inverse" size="md" aria-label="Scan QR" title="Scan QR" className={QR_MD}><ScanLine size={19} strokeWidth={1.75} aria-hidden /></Button>
+                  </>
+                )}
               </div>
-            ) : undefined}
+            }
             // eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP
             illustration={<img src="/barber-hero.webp" alt="" width={230} height={220} className="h-auto w-[230px]" />}
             illustrationClassName="right-[30px] top-1/2 -translate-y-1/2"
