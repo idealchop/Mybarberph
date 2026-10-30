@@ -6,6 +6,7 @@ import { ratingSummary, writeReview } from "./reviews";
 import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
+import { cappedGet } from "./capped-read";
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
@@ -117,7 +118,8 @@ export async function loadState(shopId: string, wanted = Object.keys(STATE_KEYS)
 }
 
 export async function loadBookings(shopId: string, limit = 300): Promise<ChairRequest[]> {
-  const q = await shopRef(shopId).collection("bookings").orderBy("createdAt", "desc").limit(limit).get();
+  // A WINDOW (newest N for live screens), never a total: counts come from the sales-rows day query (lib/counts.ts).
+  const q = await cappedGet(shopRef(shopId).collection("bookings").orderBy("createdAt", "desc"), limit, "loadBookings(live)", "window");
   return q.docs.map((d) => d.data() as ChairRequest);
 }
 
@@ -401,8 +403,8 @@ export async function loadBarberBookings(shopId: string, me: LinkBarber): Promis
   const col = shopRef(shopId).collection("bookings");
   // Equality-only query: no composite index needed. Recent shop rows cover open (unassigned, waiting) visits.
   const [recent, mine] = await Promise.all([
-    col.orderBy("createdAt", "desc").limit(150).get(),
-    col.where("barberId", "==", me.barberId).limit(300).get(),
+    cappedGet(col.orderBy("createdAt", "desc"), 150, "loadBarberBookings(recent)", "window"),
+    ownBarberRows(col, me.barberId),
   ]);
   const byId = new Map<string, ChairRequest>();
   for (const d of [...recent.docs, ...mine.docs]) { const b = d.data() as ChairRequest; if (b?.id) byId.set(b.id, b); }
@@ -410,6 +412,21 @@ export async function loadBarberBookings(shopId: string, me: LinkBarber): Promis
   const own = rows.filter((b) => barberAccess(b, me) === "own").slice(0, 200);
   const open = rows.filter((b) => barberAccess(b, me) === "open");
   return [...own, ...open].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * A barber's own newest 300 rows (v1.0.24). Ordered newest-first needs the composite index in firestore.indexes.json
+ * (barberId asc, createdAt desc). Until that index is deployed, fall back to the old unordered read and log it loudly:
+ * unordered, ids sort oldest-first, so past 300 rows it would drop the NEWEST visits.
+ */
+async function ownBarberRows(col: FirebaseFirestore.CollectionReference, barberId: string) {
+  try {
+    return await cappedGet(col.where("barberId", "==", barberId).orderBy("createdAt", "desc"), 300, "loadBarberBookings(own)", "window");
+  } catch (e) {
+    console.error("[index-missing] bookings(barberId asc, createdAt desc): deploy firestore.indexes.json. Falling back to an unordered read.", (e as Error).message);
+    const r = await cappedGet(col.where("barberId", "==", barberId), 300, "loadBarberBookings(own,unordered)", "total");
+    return r;
+  }
 }
 
 /** A barber renames themself on their own link. Only that chair's barberName changes. */

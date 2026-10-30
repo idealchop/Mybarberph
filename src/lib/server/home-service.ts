@@ -43,7 +43,7 @@ export async function homeOffer(shopId: string, shop: ShopDoc, locationId: strin
 /** Every listed shop location offering home service (within radius of the customer when lat/lng given), nearest first. */
 export async function listHomeShops(customer?: { lat: number; lng: number }, limit = 50) {
   const { adminDb } = await import("@/lib/firebase/admin");
-  const snap = await adminDb().collection("shops").where("listed", "==", true).limit(500).get();
+  const snap = await adminDb().collection("shops").where("listed", "==", true).limit(500).get(); // cap-ok: listed shops directory, not bookings
   const offers = [];
   for (const d of snap.docs) {
     const shop = d.data() as ShopDoc;

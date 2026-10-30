@@ -1,4 +1,5 @@
 "use client";
+// counts-ok: rows arrive via props from sales-detail-screen, which merges useSalesRows (whole-day) with live rows.
 import { Button } from "@/components/common/button";
 import { cn } from "@river-apps/ui";
 import { Star } from "lucide-react";

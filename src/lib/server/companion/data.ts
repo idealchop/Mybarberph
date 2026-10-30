@@ -1,4 +1,5 @@
 import "server-only";
+import { cappedGet } from "../capped-read";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "@/lib/server/shops";
 import { cutBarberId, UNASSIGNED, UNASSIGNED_NAME } from "@/lib/cut-count";
@@ -31,8 +32,8 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
   // Same reads as Sales: recent tickets by creation, plus anything finished in the window (an old ticket finished today still counts today).
   const [snap, doneSnap, state] = await Promise.all([
     // 120 days at up to ~1,000 visits a day (v1.0.24; 5,000 covered only ~16 days of a 300/day shop).
-    col.where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(120_000).get(),
-    col.where("completedAt", ">=", since).orderBy("completedAt", "desc").limit(120_000).get(),
+    cappedGet(col.where("createdAt", ">=", since).orderBy("createdAt", "desc"), 120_000, "companion(created)"),
+    cappedGet(col.where("completedAt", ">=", since).orderBy("completedAt", "desc"), 120_000, "companion(completed)"),
     loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations", "barbers.shop-profile"]),
   ]);
   const parse = (k: string) => { try { return JSON.parse(state[k] || "null"); } catch { return null; } };

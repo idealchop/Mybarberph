@@ -1,6 +1,7 @@
 import { getCaller, json, unauthorized } from "@/lib/server/auth";
 import { manilaDayStart, shopRef } from "@/lib/server/shops";
 import type { ChairRequest } from "@/lib/booking-types";
+import { cappedGet } from "@/lib/server/capped-read";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     const q = col.where(field, ">=", start);
     // Newest first: the cap drops the OLDEST rows, never today's (ascending order used to cut off recent cuts).
     const ordered = q.orderBy(field, "desc");
-    return (full ? ordered : ordered.select(...keep)).limit(cap).get();
+    return cappedGet(full ? ordered : ordered.select(...keep), cap, `sales-rows(${field},${days}d)`);
   };
   const [doneSnap, openSnap] = await Promise.all([read("completedAt", from), read("createdAt", from - 86_400_000)]);
   const byId = new Map<string, ChairRequest>();
@@ -29,5 +30,6 @@ export async function GET(req: Request) {
     const b = d.data() as ChairRequest & Record<string, unknown>;
     byId.set(d.id, (full ? b : Object.fromEntries(keep.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]))) as ChairRequest);
   }
-  return json({ from, rows: [...byId.values()] });
+  // truncated: the cap was hit (logged as [cap-hit]); the oldest days of the window may undercount. Never silent.
+  return json({ from, rows: [...byId.values()], truncated: doneSnap.truncated || openSnap.truncated });
 }
