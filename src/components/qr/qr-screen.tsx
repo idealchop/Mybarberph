@@ -8,12 +8,13 @@ import { makeQrPoster } from "@/lib/qr-poster";
 import { QrCode } from "@/components/common/qr-code";
 import { PageBack } from "@/components/shell/page-back";
 import { useCloud } from "@/lib/cloud";
-import { HOW_IT_WORKS, bookingUrl } from "@/lib/chair-bookings";
+import { HOW_IT_WORKS } from "@/lib/chair-bookings";
+import { qrTargets, type QrTarget } from "@/lib/qr-targets";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useOwnerLogo, useShopProfile } from "@/lib/shop-profile";
 import { useTier } from "@/lib/tier";
 
-/** Paid shop page: one QR customers scan to book. */
+/** Paid shop page: one booking QR per location (v1.0.27), the active location first. */
 export function QrScreen() {
   const { tier, setTier } = useTier();
   const { profile } = useShopProfile();
@@ -22,16 +23,12 @@ export function QrScreen() {
   const ownerLogo = useOwnerLogo();
   const shopId = cloud.shopId;
   const [origin, setOrigin] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [making, setMaking] = useState(false);
   const [urlLoc, setUrlLoc] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only values (origin, ?loc) read once after hydration to avoid an SSR mismatch
   useEffect(() => { setOrigin(window.location.origin); setUrlLoc(new URLSearchParams(window.location.search).get("loc")); }, []);
-  const fromUrl = urlLoc && shops.branches.find((b) => b.id === urlLoc);
-  const locationId = shops.enabled && fromUrl ? fromUrl.id : shops.enabled && shops.scopeId ? shops.scopeId : undefined;
   const listed = Boolean(profile.name && cloud.shop?.services.length);
-  const url = origin && shopId && listed && (!shops.viewingAll || fromUrl) ? bookingUrl(origin, shopId, locationId) : "";
-  const who = fromUrl ? `${profile.name} · ${fromUrl.name}` : shops.enabled && shops.branch ? `${profile.name} · ${shops.branch.name}` : profile.name || "your shop";
+  const activeId = (urlLoc && shops.branches.some((b) => b.id === urlLoc) ? urlLoc : null) ?? shops.scopeId;
+  const targets = listed && shopId ? qrTargets({ origin, shopId, shopName: profile.name, enabled: shops.enabled, branches: shops.branches, activeId }) : [];
 
   if (tier !== "paid") {
     return (
@@ -46,51 +43,21 @@ export function QrScreen() {
     );
   }
 
-  const poster = async (mode: "download" | "print") => {
-    if (!url || making) return;
-    setMaking(true);
-    try {
-      const place = (fromUrl ? fromUrl.name : "") || (shops.enabled ? shops.branch?.name : "") || profile.area || "";
-      const blob = await makeQrPoster({ url, shopName: profile.name, place, logoUrl: ownerLogo || undefined });
-      const href = URL.createObjectURL(blob);
-      if (mode === "download") {
-        const a = document.createElement("a"); a.href = href; a.download = `${(profile.name || "shop").replace(/[^\w]+/g, "-")}${place ? `-${place.replace(/[^\w]+/g, "-")}` : ""}-QR-poster.png`; a.click();
-      } else {
-        const w = window.open("", "_blank");
-        w?.document.write(`<title>QR poster</title><style>@page{size:A5;margin:0}html,body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${href}" onload="setTimeout(()=>print(),200)">`);
-      }
-      window.setTimeout(() => URL.revokeObjectURL(href), 60_000);
-    } finally { setMaking(false); }
-  };
-  const copy = () => {
-    if (!url) return;
-    void navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
   return (
-    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[960px] lg:px-[30px] lg:pt-6">
-      <Topbar className="px-1" leading={<PageBack fallback="/home" />} title="QR code" subtitle={shops.viewingAll ? "Open one shop in Settings → Shops. Each shop has its own QR." : `Customers scan this for ${who}`} />
-      <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
-        <Card className="flex flex-col items-center px-4 py-5 text-center">
-          <b className="text-[16px]">Booking</b>
-          <p className="mt-1 max-w-[280px] text-[13px] font-medium text-muted">{shops.viewingAll ? "This code stays blank until one shop is open." : !listed ? "Add the shop name and save your haircut in Services. Then your QR appears here." : `One code for ${who}.`}</p>
-          <div className="mt-4 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
-            {url ? <QrCode value={url} size={220} label="Booking QR code" logo={ownerLogo || "/icon-192.png"} /> : <span className="block size-[220px]" />}
-          </div>
-          <p className="mt-3 max-w-[260px] truncate font-mono text-[11px] font-medium text-subtle" title={url}>{url ? url.replace(/^https?:\/\//, "") : " "}</p>
-          {shops.viewingAll ? <Button size="sm" className="mt-3" href="/settings/shops">Manage Locations</Button> : (
-            <>
-              <div className="mt-3 grid w-full grid-cols-2 gap-2">
-                <Button size="sm" variant="secondary" disabled={!url} onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}>{copied ? "Copied" : "Copy link"}</Button>
-                <Button size="sm" disabled={!url || making} onClick={() => poster("download")} leadingIcon={<Download size={15} />}>{making ? "Making…" : "Download QR"}</Button>
-              </div>
-            </>
-          )}
-        </Card>
-        <Card className="px-5 py-5">
+    <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 md:max-w-[760px] lg:max-w-[1080px] lg:px-[30px] lg:pt-6">
+      <Topbar className="px-1" leading={<PageBack fallback="/home" />} title="QR codes" subtitle={targets.length > 1 ? `One booking QR per location · ${targets.length} locations` : "Customers scan this to book"} />
+      <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {!listed ? (
+          <Card className="px-5 py-6 text-center">
+            <b className="text-[16px]">Booking</b>
+            <p className="mx-auto mt-1 max-w-[300px] text-[13px] font-medium text-muted">Add the shop name and save your haircut in Services. Then your QR codes appear here.</p>
+          </Card>
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2" aria-label="Booking QR codes">
+            {targets.map((t) => <QrCard key={t.id ?? "main"} t={t} shopName={profile.name} logo={ownerLogo} />)}
+          </ul>
+        )}
+        <Card className="px-5 py-5 lg:sticky lg:top-6">
           <h2 className="text-[16px] font-extrabold tracking-[-0.02em]">How it works</h2>
           <ol className="mt-3 flex flex-col gap-3">
             {HOW_IT_WORKS.map((step, i) => (
@@ -100,8 +67,42 @@ export function QrScreen() {
               </li>
             ))}
           </ol>
+          {shops.enabled ? <Button size="sm" variant="secondary" className="mt-4" href="/settings/shops">Manage locations</Button> : null}
         </Card>
       </div>
     </div>
+  );
+}
+
+/** One location's QR: name, code, link, Copy link and Download QR (file named after the location). */
+function QrCard({ t, shopName, logo }: { t: QrTarget; shopName: string; logo?: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [making, setMaking] = useState(false);
+  const copy = () => { void navigator.clipboard?.writeText(t.url).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }); };
+  const download = async () => {
+    if (making) return;
+    setMaking(true);
+    try {
+      const blob = await makeQrPoster({ url: t.url, shopName, place: t.id ? t.name : "", logoUrl: logo || undefined });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = href; a.download = t.file; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(href), 60_000);
+    } finally { setMaking(false); }
+  };
+  return (
+    <li className={`flex flex-col items-center rounded-card bg-surface px-4 py-5 text-center shadow-card ${t.active ? "ring-2 ring-ink" : ""}`}>
+      <span className="flex max-w-full items-center gap-2">
+        <b className="truncate text-[16px]">{t.name}</b>
+        {t.active ? <span className="flex-none rounded-pill bg-ink px-2 py-0.5 text-[11px] font-bold text-on-ink">Active</span> : null}
+      </span>
+      <div className="mt-3 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
+        <QrCode value={t.url} size={188} label={`Booking QR code for ${t.name}`} logo={logo || "/icon-192.png"} />
+      </div>
+      <p className="mt-3 w-full truncate font-mono text-[11px] font-medium text-subtle" title={t.url}>{t.url.replace(/^https?:\/\//, "")}</p>
+      <div className="mt-3 grid w-full grid-cols-2 gap-2">
+        <Button size="sm" variant="secondary" onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}>{copied ? "Copied" : "Copy link"}</Button>
+        <Button size="sm" onClick={download} loading={making} leadingIcon={<Download size={15} />}>Download QR</Button>
+      </div>
+    </li>
   );
 }
