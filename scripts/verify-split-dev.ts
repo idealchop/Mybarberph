@@ -17,6 +17,14 @@ const chairs = JSON.parse(((await shop.collection("private").doc("chairs").get()
 const claims = (await shop.collection("remitClaims").get()).docs.map((d) => d.data() as { bookingIds: string[] });
 const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
+// v1.0.25 claim rule, independently: any paid method is claimable; claims without rule 2 listed cash only, so their
+// GCash visits follow the day's claim (same barber + location, day inside the claim's range, made before the claim).
+{ const raw = (await shop.collection("remitClaims").get()).docs.map((d) => d.data() as { barberId: string; locationId?: string; from: number; to: number; claimedAt: number; rule?: number });
+  for (const r of rows) {
+    if (claimed.has(r.id) || (r.payMethod ?? "cash") === "cash" || r.status !== "done" || !r.completedAt) continue;
+    const d = ymd(r.completedAt), made = Math.max(r.completedAt, r.createdAt || 0);
+    if (raw.some((c) => c.rule !== 2 && c.barberId === r.barberId && (c.locationId || "home") === (r.locationId || "home") && Number.isFinite(c.from) && Number.isFinite(c.to) && d >= ymd(c.from) && d <= ymd(c.to) && made <= c.claimedAt)) claimed.add(r.id);
+  } }
 // Independent rule (no app code): pct = visit's stamped splitPct, else the barber chair's set %, else none.
 const chairPct = (r: { barberId?: string; locationId?: string }) => {
   if (!r.barberId) return null;
@@ -33,7 +41,7 @@ for (const r of rows) {
   const k = `${r.barberId || "unassigned"}@${r.locationId || "home"}|${ymd(r.completedAt)}`;
   const v = ind.get(k) ?? { owner: 0, barber: 0, tips: 0, cash: 0, cashClaimed: 0, n: 0 };
   v.owner += p - b; v.barber += pct == null ? p : b; v.tips += Math.max(0, Math.round(Number(r.tip) || 0)); v.n++;
-  if (r.paid && (r.payMethod ?? "cash") === "cash" && p > 0) { if (claimed.has(r.id)) v.cashClaimed += p - b; else v.cash += p - b; }
+  if (r.paid && p > 0) { if (claimed.has(r.id)) v.cashClaimed += p - b; else v.cash += p - b; }
   ind.set(k, v);
 }
 const branches = [{ id: "home", name: "Main" }];
@@ -57,7 +65,7 @@ const stats = barberStats(split, "week", "all", branches, chairs);
 const last7 = (() => { const t0 = Date.parse(`${ymd(Date.now())}T00:00:00+08:00`) - 6 * 86_400_000; return [...ind.entries()].filter(([k]) => Date.parse(`${k.split("|")[1]}T00:00:00+08:00`) >= t0); })();
 check("My Barbers ranking (7 days)", stats.map((s) => [s.id, s.sales, last7.filter(([k]) => k.startsWith(`${s.id}@`)).reduce((a, [, v]) => a + v.owner, 0)]));
 // 3) Claim sheet per barber/day
-check("Claim sheet (open + claimed owner cash)", [...ind.entries()].filter(([k]) => !k.startsWith("unassigned")).map(([k, v]) => { const [bl, day] = k.split("|"); const [bid, loc] = bl!.split("@"); const c = dayClaim(rows, chairs, bid!, loc!, day!, (id) => claimed.has(id)); return [k, c.open * 1e6 + c.claimed, v.cash * 1e6 + v.cashClaimed]; }));
+check("Claim sheet (open + claimed owner share, barbers only)", [...ind.entries()].filter(([k]) => !k.startsWith("unassigned") && !k.startsWith("owner@")).map(([k, v]) => { const [bl, day] = k.split("|"); const [bid, loc] = bl!.split("@"); const c = dayClaim(rows, chairs, bid!, loc!, day!, (v: { id: string }) => claimed.has(v.id)); return [k, c.open * 1e6 + c.claimed, v.cash * 1e6 + v.cashClaimed]; }));
 // 4) Barber side (server): My sales weekly + History per day
 const barb = asBarberSplit(rows, chairs);
 const pairsMy: [string, number, number][] = []; const pairsHist: [string, number, number][] = []; const pairsUnc: [string, number, number][] = [];
@@ -76,7 +84,7 @@ check("Barber History per day (server + dayOf)", pairsHist);
 // 5) Remit unclaimed owner share (all time) vs independent
 const rs = await remitSummary(UID, "all");
 const indUnc = new Map<string, number>();
-for (const r of rows) { if (r.status !== "done" || !r.paid || (r.payMethod ?? "cash") !== "cash" || !(r.price > 0) || claimed.has(r.id) || !r.barberId || r.barberId === "owner") continue; const pct = pctOf(r); const k = `${r.barberId}@${r.locationId || "home"}`; indUnc.set(k, (indUnc.get(k) ?? 0) + r.price - (pct == null ? 0 : Math.round(r.price * pct / 100))); }
+for (const r of rows) { if (r.status !== "done" || !r.paid || !(r.price > 0) || claimed.has(r.id) || !r.barberId || r.barberId === "owner") continue; const pct = pctOf(r); const k = `${r.barberId}@${r.locationId || "home"}`; indUnc.set(k, (indUnc.get(k) ?? 0) + r.price - (pct == null ? 0 : Math.round(r.price * pct / 100))); }
 for (const u of rs.unclaimed) pairsUnc.push([`${u.barberId}@${u.locationId}`, u.ownerShare, indUnc.get(`${u.barberId}@${u.locationId}`) ?? 0]);
 check("My Barbers unclaimed remit (server)", pairsUnc);
 // 6) AI data
