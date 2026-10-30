@@ -142,7 +142,7 @@ export function ProfitReportScreen() {
           </div>
         </div>
         <b className="mt-1 block pr-2 text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(report.total)}</b>
-        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished cuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
+        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{report.rows.length === 0 ? "No finished haircuts" : `After barber commissions · ${report.rows.length} barber${report.rows.length === 1 ? "" : "s"}`}</p>
       </section>
 
       <div className="mt-3 flex items-center gap-2">

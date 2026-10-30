@@ -159,7 +159,7 @@ function CompletedToast({ row, onClose, onDetails }: { row: ChairRequest; onClos
         <div className="flex items-center gap-3 px-4 py-3.5">
           <span className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-[#22c55e] text-white"><Check size={22} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1">
-            <b className="block text-[16px]">Cut completed</b>
+            <b className="block text-[16px]">Haircut completed</b>
             <small className="block truncate text-[12.5px] font-semibold text-on-ink-muted">{[customerName(row), row.serviceName, peso(row.price || 0), row.tip ? `${peso(row.tip)} tip` : "", pay].filter(Boolean).join(" · ")}</small>
           </span>
           <button type="button" onClick={onDetails} className="flex-none text-[13px] font-bold underline decoration-white/40 underline-offset-[3px]">View details</button>

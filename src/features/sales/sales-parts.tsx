@@ -1,10 +1,10 @@
 "use client";
 import { Card, cn } from "@river-apps/ui";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, UserRound } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { peso } from "@/lib/format";
-import { Spinner } from "@/components/common/button";
+import { Button } from "@/components/common/button";
 import { type SalesRange } from "@/lib/sales-report";
 import { RangeChips } from "./range-chips";
 import type { BarberStat, ServiceStat } from "@/lib/sales-stats";
@@ -16,7 +16,6 @@ import { splitParts, type PaySplit } from "@/lib/pay-split";
 
 export { RangeChips };
 
-const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 
 /** Collected money by payment method. "lines": one row per method (stat cards); "inline": "Cash ₱X · GCash ₱Y". */
 export function PaySplitText({ split, layout = "inline", className }: { split: PaySplit; layout?: "lines" | "inline"; className?: string }) {
@@ -41,14 +40,12 @@ function Mini({ k, v }: { k: string; v: string }) {
 /** Barbers tab: ranked by sales, badge 1/2/3…, location under the name. Tap for the barber's page. */
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
-const initial = (n: string) => (n.trim()[0] ?? "?").toUpperCase();
-function Initial({ name }: { name: string }) {
-  return <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold text-ink">{initial(name)}</span>;
+function Initial(_p: { name: string }) {
+  return <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-muted"><UserRound size={20} aria-hidden /></span>;
 }
 function ClaimBtn({ busy, onClick }: { busy?: boolean; onClick: () => void }) {
   return (
-    <button type="button" data-auth="action" disabled={busy} onClick={onClick}
-      className="inline-flex h-10 flex-none items-center justify-center rounded-pill bg-ink px-5 text-[13.5px] font-bold text-on-ink disabled:opacity-50">{busy ? <span className="inline-flex items-center gap-1.5"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
+    <Button data-auth="action" size="sm" pill className="flex-none px-5" loading={busy} onClick={onClick}>Claim</Button>
   );
 }
 
@@ -92,7 +89,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
         <div className="flex items-start justify-between gap-3">
           <span className="min-w-0">
             <span className="block text-[13px] font-bold">Unclaimed remit</span>
-            <span className="block text-[12px] font-semibold text-muted">{remit ? (rows.length ? `${cuts} cash cut${cuts === 1 ? "" : "s"} · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</span>
+            <span className="block text-[12px] font-semibold text-muted">{remit ? (rows.length ? `${cuts} cash haircut${cuts === 1 ? "" : "s"} · ${rows.length} barber${rows.length === 1 ? "" : "s"}` : "All cash received") : "Loading…"}</span>
           </span>
           {onClaim && rows.length ? <ClaimBtn busy={one ? busy(one) : false} onClick={() => (one ? onClaim(one.barberId, one.locationId) : setOpen(true))} /> : null}
         </div>
@@ -112,7 +109,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
                     <Initial name={u.barberName} />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[15px]">{u.barberName}</b>
-                      <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
+                      <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash haircut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
                     </span>
                     <span className="flex-none text-right"><b className="block text-[16px] tabular-nums">{peso(own(u))}</b></span>
                     <ClaimBtn busy={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)} />
@@ -139,7 +136,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
       <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
         {shown.map((c) => {
           const share = c.ownerShare ?? c.amount;
-          const who = barberId ? `${c.count} cash cut${c.count === 1 ? "" : "s"}` : c.barberName;
+          const who = barberId ? `${c.count} cash haircut${c.count === 1 ? "" : "s"}` : c.barberName;
           return (
             <li key={c.id} className="flex items-center gap-3 px-4 py-3">
               <Initial name={barberId ? "₱" : c.barberName} />
@@ -158,7 +155,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
 }
 
 export function BarberRanking({ rows, range, chairs = [], remit, onClaim, claiming }: { rows: BarberStat[]; range: SalesRange; chairs?: ShopChair[]; remit?: Remit | null; onClaim?: (barberId: string, locationId: string) => void; claiming?: string }) {
-  if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished cuts in this range.</p>;
+  if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No finished haircuts in this range.</p>;
   const chairOf = (b: BarberStat) => chairs.find((c) => (c.barberId || c.id) === b.id && (c.locationId || HOME_LOCATION_ID) === b.locationId) ?? chairs.find((c) => (c.barberId || c.id) === b.id);
   return (
     <ol className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2" aria-label="Barbers by sales">
@@ -167,11 +164,11 @@ export function BarberRanking({ rows, range, chairs = [], remit, onClaim, claimi
           <Link href={href("barber", b.id, range, b.locationId)} className={cn("box-border block w-full min-w-0 bg-surface px-4 py-3.5 shadow-card", onClaim ? "rounded-t-card" : "rounded-card")}>
             <div className="flex items-center gap-3">
               {/* Avatar, not a rank (Jimboy, 2026-10-20): ranking lives in My Barbers. Same portrait as there. */}
-              {chairOf(b) ? <BarberPortrait chair={chairOf(b)!} size={40} /> : <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[14px] font-bold">{initials(b.name)}</span>}
+              {chairOf(b) ? <BarberPortrait chair={chairOf(b)!} size={40} /> : <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-muted"><UserRound size={20} aria-hidden /></span>}
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15.5px] underline decoration-grey-300 underline-offset-[3px]">{b.name}</b>
                 {b.locationName ? <small className="block truncate text-[12.5px] font-semibold text-muted">{b.locationName}</small> : null}
-                <small className="block truncate text-[12px] font-semibold text-muted">{[...splitParts(b).map((x) => `${x.label} ${peso(x.value)}`), `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].join(" · ")}</small>
+                <small className="block truncate text-[12px] font-semibold text-muted">{[...splitParts(b).map((x) => `${x.label} ${peso(x.value)}`), `${b.cuts} haircut${b.cuts === 1 ? "" : "s"}`, b.rating != null ? `★ ${b.rating.toFixed(1)} (${b.ratings})` : "No ratings"].join(" · ")}</small>
               </span>
               <b className="flex-none text-[16px] tabular-nums">{peso(b.sales)}</b>
               <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />
@@ -186,7 +183,7 @@ export function BarberRanking({ rows, range, chairs = [], remit, onClaim, claimi
 
 /** Services tab: volume, revenue, avg ticket and completion per service. */
 export function ServiceTable({ rows, split }: { rows: ServiceStat[]; split?: { loc: string; rows: ServiceStat[] }[] }) {
-  if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No cuts in this range.</p>;
+  if (!rows.length) return <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No haircuts in this range.</p>;
   const total = rows.reduce((s, r) => s + r.sales, 0) || 1;
   return (
     <ul className="mt-4 grid grid-cols-1 [&>*]:min-w-0 gap-2.5 lg:grid-cols-2">
@@ -218,12 +215,11 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
   return (
     <div className="flex items-center justify-between gap-3 rounded-b-card border-t border-dashed border-line bg-surface px-4 py-2.5 shadow-card">
       <span className="min-w-0 text-[12.5px] font-semibold">
-        {open ? <><b className="text-[14px] tabular-nums">{peso(open.ownerShare ?? open.amount)}</b> <span className="text-muted">your share unclaimed · {open.count} cash cut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
+        {open ? <><b className="text-[14px] tabular-nums">{peso(open.ownerShare ?? open.amount)}</b> <span className="text-muted">your share unclaimed · {open.count} cash haircut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
         {last ? <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-bold text-muted"><Check size={12} strokeWidth={3} /> Claimed {peso(last.ownerShare ?? last.amount)} · {day(last.claimedAt)}</span> : null}
       </span>
       {open ? (
-        <button type="button" data-auth="action" disabled={busy} onClick={() => onClaim(b.id, b.locationId)}
-          className="inline-flex h-8 flex-none items-center rounded-pill bg-ink px-3.5 text-[12.5px] font-bold text-on-ink disabled:opacity-50">{busy ? <span className="inline-flex items-center gap-1"><Spinner size={13} />Claiming…</span> : "Claim"}</button>
+        <Button data-auth="action" size="sm" pill className="flex-none" loading={busy} onClick={() => onClaim(b.id, b.locationId)}>Claim</Button>
       ) : last ? <span className="flex-none rounded-pill bg-grey-100 px-2.5 py-1 text-[11.5px] font-bold">Claimed</span> : null}
     </div>
   );

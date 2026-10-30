@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/common/button";
 import { cn } from "@river-apps/ui";
 import { CalendarDays } from "lucide-react";
 import { useState } from "react";
@@ -36,7 +37,7 @@ export function RangeChips({ value, onChange, className, allowCustom = false, ra
             <label className="text-[11px] font-bold text-muted">From<input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-grey-100 px-2 text-[13px] font-semibold text-ink" /></label>
             <label className="text-[11px] font-bold text-muted">To<input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="mt-1 h-9 w-full rounded-[10px] bg-grey-100 px-2 text-[13px] font-semibold text-ink" /></label>
           </div>
-          <button type="button" onClick={() => { apply(from, to); setOpen(false); }} className="mt-2.5 h-9 w-full rounded-pill bg-ink text-[13px] font-bold text-on-ink">Apply</button>
+          <Button size="sm" pill fullWidth className="mt-2.5" onClick={() => { apply(from, to); setOpen(false); }}>Apply</Button>
           <p className="mt-1.5 text-center text-[11px] font-semibold text-muted">Up to 62 days</p>
         </div>
       ) : null}

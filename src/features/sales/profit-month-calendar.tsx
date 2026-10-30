@@ -61,7 +61,7 @@ export function ProfitDayBreakdown({ m, date, groups, showBranch, onBarber, onCl
           <b className="mt-0.5 block text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(total)}</b>
           <p className="mt-1.5 text-[12.5px] font-semibold text-on-ink-muted">{rows.length} barber{rows.length === 1 ? "" : "s"} with sales</p>
         </section>
-        {rows.length === 0 ? <p className="rounded-[18px] bg-grey-100 px-4 py-5 text-center text-[13.5px] font-semibold text-muted">No finished cuts this day.</p> : sections.map((g) => (
+        {rows.length === 0 ? <p className="rounded-[18px] bg-grey-100 px-4 py-5 text-center text-[13.5px] font-semibold text-muted">No finished haircuts this day.</p> : sections.map((g) => (
           <Fragment key={g.id}>
             <div>
               {g.name ? (

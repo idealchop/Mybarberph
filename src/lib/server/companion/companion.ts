@@ -88,10 +88,10 @@ const ranged = (desc: string, extra: Record<string, unknown> = {}) => ({
   properties: { days: { ...num, description: "Calendar window in Manila days: 1 = today only, 7 = today and the 6 days before (1-120)." }, locationId: { ...str, description: "Branch id from the shop context, or 'all' for every branch combined. Always set it when the owner names or is viewing a branch." }, ...extra },
 });
 const DECLS = [
-  { name: "getSales", description: "Sales (PHP), cuts, average ticket, unpaid amount and day-by-day totals vs the previous equal period.", parameters: ranged("Sales window") },
+  { name: "getSales", description: "Sales (PHP), haircuts, average ticket, unpaid amount and day-by-day totals vs the previous equal period.", parameters: ranged("Sales window") },
   { name: "getBookings", description: "Booking counts by status, walk-in vs online, source, hour of day and weekday.", parameters: ranged("Bookings window") },
   { name: "topServices", description: "Best-selling services by revenue and count.", parameters: ranged("Services window", { limit: num }) },
-  { name: "staffPerformance", description: "Per-barber revenue, cuts, average ticket, days worked and rebooking rate %.", parameters: ranged("Staff window") },
+  { name: "staffPerformance", description: "Per-barber revenue, haircuts, average ticket, days worked and rebooking rate %.", parameters: ranged("Staff window") },
   { name: "branchComparison", description: "Sales per branch side by side.", parameters: { type: "OBJECT", properties: { days: num } } },
   { name: "inactiveCustomers", description: "Customers who haven't come back in N days. Set includeContacts=true ONLY when the owner explicitly asks for names or numbers.", parameters: ranged("Inactive window", { includeContacts: { type: "BOOLEAN" } }) },
   { name: "goalProgress", description: "The owner's saved goals and progress this month (sales so far, projection, needed per day).", parameters: { type: "OBJECT", properties: {} } },
@@ -114,7 +114,7 @@ async function runTool(uid: string, data: T.ShopData, name: string, args: Record
     case "rememberGoal": {
       const g: T.Goal = { id: id(), kind: (["monthly_sales", "weekly_cuts", "custom"].includes(String(args.kind)) ? args.kind : "custom") as T.Goal["kind"], targetPhp: Number(args.targetPhp) || undefined, targetCount: Number(args.targetCount) || undefined, text: String(args.text ?? "").slice(0, 200), createdAt: Date.now() };
       if (g.kind === "monthly_sales" && g.targetPhp) g.text = `₱${g.targetPhp.toLocaleString("en-PH")}/month sales`;
-      if (g.kind === "weekly_cuts" && g.targetCount) g.text = `${g.targetCount} cuts/week`;
+      if (g.kind === "weekly_cuts" && g.targetCount) g.text = `${g.targetCount} haircuts/week`;
       const mem = await loadMemory(uid);
       const goals = [...mem.goals.filter((x) => x.kind !== g.kind || g.kind === "custom"), g].slice(-5);
       await memoryRef(uid).set({ goals, updatedAt: Date.now() }, { merge: true });

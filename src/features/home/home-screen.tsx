@@ -168,7 +168,7 @@ export function HomeScreen() {
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
             </h2>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{figures.cuts} cuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{figures.cuts} haircuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
             {mine ? (
               <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold" data-testid="owner-cut">
                 <span className="live-dot" aria-hidden /><span className="truncate">{mine.serviceName} · {mine.customerLabel || "Walk-in"}</span>
@@ -212,7 +212,7 @@ export function HomeScreen() {
           <HeroBanner
             size="lg"
             eyebrow={`Today · ${dayLabel}`}
-            title={`${todayTitle} · ${figures.cuts} cuts`}
+            title={`${todayTitle} · ${figures.cuts} haircuts`}
             titleSize="lg"
             description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
@@ -276,7 +276,7 @@ function ShopDays({ rows, className }: { rows: { branch: { id: string; name: str
       {rows.map((item) => (
         <li key={item.branch.id} className="rounded-card bg-surface px-3.5 py-3 shadow-card">
           <b className="block text-[15px]">{item.branch.name}</b>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Today: {peso(item.sales)} · {item.cuts} cuts · {item.inChair} busy</p>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Today: {peso(item.sales)} · {item.cuts} haircuts · {item.inChair} busy</p>
         </li>
       ))}
     </ul>

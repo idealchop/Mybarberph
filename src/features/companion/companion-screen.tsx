@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/common/button";
-import { ArrowUp } from "lucide-react";
+import { Loader2, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PageBack } from "@/components/shell/page-back";
@@ -164,8 +164,8 @@ export function CompanionScreen() {
           placeholder={c.signedIn ? "Itanong mo kahit ano…" : "Sign in to ask Companion"}
           className="max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-[15px] font-medium outline-none placeholder:text-muted"
         />
-        <button type="submit" aria-label="Send" disabled={c.busy} className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-ink text-on-ink disabled:opacity-50">
-          <ArrowUp size={18} strokeWidth={2.2} />
+        <button type="submit" aria-label="Send" disabled={c.busy} aria-busy={c.busy} className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-ink text-on-ink active:scale-95 disabled:opacity-60">
+          {c.busy ? <Loader2 size={18} strokeWidth={2.4} className="animate-spin" aria-hidden /> : <ArrowUp size={18} strokeWidth={2.2} />}
         </button>
       </form>
       </div>

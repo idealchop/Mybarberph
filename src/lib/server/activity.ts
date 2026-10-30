@@ -36,7 +36,7 @@ const pay = (b: Partial<ChairRequest>) => (!b.paid ? "not paid" : b.payMethod ==
 /** Derives entries from a booking write (prev → next). */
 export async function bookingActivity(shopId: string, prev: ChairRequest | undefined, next: ChairRequest, actor: Actor) {
   const base = { actor, locationId: next.locationId || "home", ref: next.ref };
-  const svc = next.serviceName || "a cut";
+  const svc = next.serviceName || "a haircut";
   const by = actor.role === "barber" ? actor.name : next.barberName || actor.name;
   if (!prev && next.source === "manual") {
     const day = new Date(next.completedAt ?? next.createdAt).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

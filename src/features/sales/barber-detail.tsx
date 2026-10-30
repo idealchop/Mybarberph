@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/common/button";
 import { cn } from "@river-apps/ui";
 import { Star } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -15,6 +16,7 @@ import { ClaimHistory } from "./sales-parts";
 import { PerformanceDashboard } from "./performance-dashboard";
 import type { Remit } from "./use-remit";
 import { UNASSIGNED } from "@/lib/cut-count";
+import { sharePct } from "@/lib/income-split";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
@@ -22,6 +24,7 @@ const MEDAL = ["🥇", "🥈", "🥉"];
 export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: string; all: ChairRequest[]; range: SalesRange; chairs: ShopChair[]; branches: { id: string; name: string }[]; remit: Remit | null }) {
   const mine = useMemo(() => all.filter((r) => barberKey(r, chairs) === id), [all, chairs, id]);
   const chair = chairs.find((c) => (c.barberId || c.id) === id);
+  const pct = sharePct(chair);
   const [ask, setAsk] = useState(false);
   const [err, setErr] = useState("");
   const off = chair?.active === false;
@@ -48,23 +51,11 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
   const avgRating = rated.length ? Math.round((rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length) * 10) / 10 : null;
   const comments = mine.filter((r) => r.feedback?.trim()).sort((a, b) => (b.feedbackAt ?? 0) - (a.feedbackAt ?? 0)).slice(0, 5);
 
-  const series = dailySeries(all, range, "all", (r) => barberKey(r, chairs) === id).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} cuts` }));
+  const series = dailySeries(all, range, "all", (r) => barberKey(r, chairs) === id).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} haircuts` }));
   const sales = cur.reduce((s, r) => s + (r.price || 0), 0);
 
   return (
     <>
-      {chair ? (
-        <section className="mt-4 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
-          <span className="min-w-0">
-            <b className="block text-[15px]">{off ? "Inactive" : "Active"}</b>
-            <small className="block text-[12.5px] font-semibold text-muted">{off ? "Link turned off · hidden from rankings" : "Barber link works · shows in rankings"}</small>
-          </span>
-          <button type="button" role="switch" aria-checked={!off} aria-label="Active" data-auth="action" onClick={() => (off ? setActive(true) : setAsk(true))}
-            className={cn("relative h-7 w-12 flex-none rounded-full transition", off ? "bg-grey-300" : "bg-ink")}>
-            <span className={cn("absolute top-0.5 size-6 rounded-full bg-white shadow transition-all", off ? "left-0.5" : "left-[22px]")} />
-          </button>
-        </section>
-      ) : null}
       {chair ? <LinkReviewList chairIds={[chair.id]} className="mt-2" /> : null}
       {err ? <p className="mt-2 text-[13px] font-semibold">{err}</p> : null}
       {ask && chair ? (
@@ -77,9 +68,9 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
               <li>They’re hidden from rankings and can’t take walk-ins.</li>
               <li>Past sales and remit are kept. Turn them back on anytime here.</li>
             </ul>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setAsk(false)} className="h-11 rounded-pill text-[14px] font-bold ring-1 ring-ink">Cancel</button>
-              <button type="button" data-auth="action" onClick={() => setActive(false)} className="h-11 rounded-pill bg-[#D92D20] text-[14px] font-bold text-white">Deactivate</button>
+            <div className="mt-4 flex flex-col gap-1">
+              <Button data-auth="action" variant="danger" fullWidth onClick={() => setActive(false)}>Deactivate</Button>
+              <Button variant="ghost" fullWidth onClick={() => setAsk(false)}>Cancel</Button>
             </div>
           </div>
         </div>
@@ -89,6 +80,11 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-muted">Rank among {ranking.length} barber{ranking.length === 1 ? "" : "s"}</p>
           <b className="flex items-center gap-1.5 text-[22px] tracking-[-0.02em]">{rank >= 0 && rank < 3 && sales > 0 ? <span className="text-[24px]">{MEDAL[rank]}</span> : null}#{rank >= 0 ? rank + 1 : "–"}</b>
+        </div>
+        <div className="text-right">
+          <p className="text-[12px] font-semibold text-muted">Barber share</p>
+          <b className="block text-[18px] tabular-nums">{pct == null ? "Not set" : `${pct}%`}</b>
+          <small className="block text-[11px] font-semibold text-muted">{pct == null ? "No split yet" : `You keep ${100 - pct}%`}</small>
         </div>
         {avgRating != null ? (
           <div className="text-right">
@@ -100,7 +96,7 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
       </section>
 
       <div className="mt-3 grid grid-cols-3 gap-2 [&>*]:min-w-0">
-        <Mini k="Cuts / hour" v={perHour == null ? "–" : String(perHour)} />
+        <Mini k="Haircuts/hr" v={perHour == null ? "–" : String(perHour)} />
         <Mini k="To claim" v={remit ? peso(toClaim) : "–"} tone={toClaim > 0 ? "warn" : undefined} />
         <Mini k="Claimed" v={remit ? peso(claimed) : "–"} />
       </div>
@@ -125,6 +121,18 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
       ) : null}
 
       <ClaimHistory remit={remit} barberId={id} max={10} />
+      {chair ? (
+        <section className="mt-3 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
+          <span className="min-w-0">
+            <b className="block text-[15px]">{off ? "Inactive" : "Active"}</b>
+            <small className="block text-[12.5px] font-semibold text-muted">{off ? "Link turned off · hidden from rankings" : "Barber link works · shows in rankings"}</small>
+          </span>
+          <button type="button" role="switch" aria-checked={!off} aria-label="Active" data-auth="action" onClick={() => (off ? setActive(true) : setAsk(true))}
+            className={cn("relative h-7 w-12 flex-none rounded-full transition", off ? "bg-grey-300" : "bg-ink")}>
+            <span className={cn("absolute top-0.5 size-6 rounded-full bg-white shadow transition-all", off ? "left-0.5" : "left-[22px]")} />
+          </button>
+        </section>
+      ) : null}
     </>
   );
 }

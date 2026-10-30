@@ -110,7 +110,7 @@ export function BookScreen() {
         <p className="mt-1 text-[13.5px] font-medium text-muted">Add your email or mobile so the shop can update you about your visit and follow up. Optional.</p>
         <div className="mt-4"><Input label="Email or mobile (optional)" placeholder="you@email.com or 09…" value={contact} onChange={(e) => setContact(e.target.value)} /></div>
         {error ? <p className="mt-2 text-[13px] font-semibold">{error}</p> : null}
-        <Button className="mt-4" fullWidth disabled={sending} loading={sending} onClick={() => void send(contact)}>{sending ? "Sending…" : contact.trim() ? "Send request" : "Send without contact"}</Button>
+        <Button className="mt-4" fullWidth disabled={sending} loading={sending} onClick={() => send(contact)}>{sending ? "Sending…" : contact.trim() ? "Send request" : "Send without contact"}</Button>
         <button type="button" disabled={sending} onClick={() => void send("")} className="mt-2 w-full py-2 text-[13.5px] font-bold text-muted">Skip</button>
       </div>
     </div>
@@ -170,7 +170,7 @@ export function BookScreen() {
           ))}
         </div>
         {pay === "online" && shop?.payQrUrl ? <PayQr url={shop.payQrUrl} shopName={shop.name} /> : null}
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the cut is done (GCash, Maya or bank QR).") : "You pay at the shop when the cut is done."}</p>
+        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the haircut is done (GCash, Maya or bank QR).") : "You pay at the shop when the haircut is done."}</p>
 
         <h3 className="mt-5 px-1 text-[13px] font-bold text-muted">Summary</h3>
         <div className="mt-2 rounded-card bg-surface px-4 py-3 shadow-card" aria-live="polite">

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   try {
     const day = typeof b.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.day) ? b.day : undefined;
     const claim = await claimRemit(me.uid, b.barberId, b.locationId, me.email || me.phone || me.uid, day);
-    await logActivity(me.uid, { type: "remit_claimed", actor: OWNER, locationId: claim.locationId, amount: claim.amount, text: `Owner claimed ${peso(claim.amount)} cash from ${claim.barberName}${day ? ` for ${day}` : ""} · ${claim.bookingIds.length} cut${claim.bookingIds.length === 1 ? "" : "s"}` });
+    await logActivity(me.uid, { type: "remit_claimed", actor: OWNER, locationId: claim.locationId, amount: claim.amount, text: `Owner claimed ${peso(claim.amount)} cash from ${claim.barberName}${day ? ` for ${day}` : ""} · ${claim.bookingIds.length} haircut${claim.bookingIds.length === 1 ? "" : "s"}` });
     return json({ claim: { ...claim, count: claim.bookingIds.length, bookingIds: undefined } });
   } catch (e) {
     return badRequest((e as Error).message);

@@ -57,9 +57,9 @@ describe("Companion scoreboard (today = Manila day, finished cuts only)", () => 
   it("the context text labels every figure with its date and branch", () => {
     const t = scoreboardText(shop(), NOW);
     expect(t).toContain("TODAY = 2026-10-26");
-    expect(t).toContain("WHOLE SHOP (all branches combined): today 39 cuts");
-    expect(t).toContain("BRANCH Banay-Banay I (id bb1): today 25 cuts");
-    expect(t).toContain("- Glenmar Paclibar at Banay-Banay I: today 15 cuts");
+    expect(t).toContain("WHOLE SHOP (all branches combined): today 39 haircuts");
+    expect(t).toContain("BRANCH Banay-Banay I (id bb1): today 25 haircuts");
+    expect(t).toContain("- Glenmar Paclibar at Banay-Banay I: today 15 haircuts");
   });
 
   it("staffPerformance with days=1 is today only (not the last 24 hours) and per branch", () => {

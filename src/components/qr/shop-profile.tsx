@@ -91,11 +91,11 @@ export function ShopProfileView({ shop, onBack, onRated }: { shop: PublicShop; o
             <Input label="Your name (optional)" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
             <label className="flex flex-col gap-1.5">
               <span className="text-[13px] font-bold">Comment (optional)</span>
-              <textarea value={comment} maxLength={300} rows={3} onChange={(e) => setComment(e.target.value)} placeholder="How was your cut?" className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" />
+              <textarea value={comment} maxLength={300} rows={3} onChange={(e) => setComment(e.target.value)} placeholder="How was your haircut?" className="rounded-[14px] bg-grey-100 px-3 py-2.5 text-[15px] font-medium outline-none" />
             </label>
           </div>
           {msg ? <p className="mt-2 text-[13px] font-semibold" role="status">{msg}</p> : null}
-          <Button className="mt-3" fullWidth loading={busy} disabled={!stars || busy} onClick={() => void submit()}>{busy ? "Posting…" : "Post review"}</Button>
+          <Button className="mt-3" fullWidth loading={busy} disabled={!stars || busy} onClick={() => submit()}>{busy ? "Posting…" : "Post review"}</Button>
         </section>
 
         <section aria-label="Reviews" className="mt-5">

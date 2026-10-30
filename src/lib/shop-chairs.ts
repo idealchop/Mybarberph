@@ -192,7 +192,7 @@ export function removeChair(id: string): string {
   const cur = readChairs();
   const chair = cur.find((c) => c.id === id);
   if (!chair) return "";
-  if (chair.occupiedAt) return `${chair.label} is in use. Finish that cut before removing it.`;
+  if (chair.occupiedAt) return `${chair.label} is in use. Finish that haircut before removing it.`;
   writeChairs(cur.filter((c) => c.id !== id));
   return "";
 }

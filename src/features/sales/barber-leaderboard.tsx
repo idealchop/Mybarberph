@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@river-apps/ui";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BarberPortrait } from "@/features/settings/seat-list";
@@ -13,7 +13,7 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { UNASSIGNED } from "@/lib/cut-count";
 
 type Sort = "sales" | "productivity" | "completion" | "speed" | "cuts";
-const SORTS: [Sort, string][] = [["sales", "Sales"], ["productivity", "Productivity"], ["completion", "Completion"], ["speed", "Fastest"], ["cuts", "Cuts"]];
+const SORTS: [Sort, string][] = [["sales", "Sales"], ["productivity", "Productivity"], ["completion", "Completion"], ["speed", "Fastest"], ["cuts", "Haircuts"]];
 const MEDAL = ["🥇", "🥈", "🥉"];
 
 interface Row { key: string; id: string; loc: string; locName: string; name: string; chair?: ShopChair; sales: number; cuts: number; declined: number; completion: number | null; avgMin: number | null; perHour: number | null }
@@ -67,7 +67,7 @@ export function BarberLeaderboard({ range, where, all }: { range: SalesRange; wh
   const shown = sorted.slice(p * 10, p * 10 + 10);
   const hasScore = (r: Row) => val(r) > 0 || (sort === "speed" && r.avgMin != null);
 
-  const shownVal = (r: Row) => sort === "cuts" ? `${r.cuts} cut${r.cuts === 1 ? "" : "s"}` : sort === "completion" ? (r.completion == null ? "–" : `${r.completion}%`) : sort === "productivity" ? (r.perHour == null ? "–" : `${r.perHour}/hr`) : sort === "speed" ? (r.avgMin == null ? "–" : `${r.avgMin} min/cut`) : peso(r.sales);
+  const shownVal = (r: Row) => sort === "cuts" ? `${r.cuts} haircut${r.cuts === 1 ? "" : "s"}` : sort === "completion" ? (r.completion == null ? "–" : `${r.completion}%`) : sort === "productivity" ? (r.perHour == null ? "–" : `${r.perHour}/hr`) : sort === "speed" ? (r.avgMin == null ? "–" : `${r.avgMin} min/cut`) : peso(r.sales);
 
   return (
     <div className="mt-3">
@@ -99,10 +99,10 @@ export function BarberLeaderboard({ range, where, all }: { range: SalesRange; wh
               <li key={r.key} className="border-b border-line last:border-b-0">
                 <Link href={`/sales/detail?kind=barber&id=${encodeURIComponent(r.id)}&r=${range}&loc=${encodeURIComponent(r.loc)}`} className="flex items-center gap-3 px-3.5 py-3">
                   <span className={cn("inline-flex size-7 flex-none items-center justify-center rounded-full font-extrabold", i < 3 && hasScore(r) ? "text-[19px]" : "bg-grey-100 text-[12.5px] text-muted")} aria-label={`Rank ${i + 1}`}>{i < 3 && hasScore(r) ? MEDAL[i] : i + 1}</span>
-                  {r.chair ? <BarberPortrait chair={r.chair} size={40} /> : <span className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[14px] font-bold">{r.name.slice(0, 1)}</span>}
+                  {r.chair ? <BarberPortrait chair={r.chair} size={40} /> : <span className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-muted"><UserRound size={20} aria-hidden /></span>}
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[15px]">{r.name}</b>
-                    <small className="block truncate text-[12px] font-semibold text-muted">{[r.locName, `${r.cuts} cut${r.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
+                    <small className="block truncate text-[12px] font-semibold text-muted">{[r.locName, `${r.cuts} haircut${r.cuts === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
                   </span>
                   <span className="flex-none text-right"><b className="block text-[15px] tabular-nums">{shownVal(r)}</b></span>
                   <ChevronRight size={17} className="flex-none text-subtle" aria-hidden />

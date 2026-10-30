@@ -38,7 +38,7 @@ export function SalesChartCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={kind === "hour" ? "/icons3d/barbers/128/reports.webp" : "/icons3d/barbers/128/bookings.webp"} alt="" width={44} height={44} className="size-11 object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.12)]" />
             <b className="mt-1.5 text-[14.5px]">{kind === "hour" ? "No sales yet today" : "No sales in this range"}</b>
-            <span className="text-[12px] font-semibold text-muted">Finish a cut and it shows up here by the hour.</span>
+            <span className="text-[12px] font-semibold text-muted">Finish a haircut and it shows up here by the hour.</span>
           </div>
         </div>
       )}

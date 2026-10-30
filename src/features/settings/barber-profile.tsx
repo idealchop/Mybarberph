@@ -42,7 +42,7 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
       <ChairEditor chair={chair} fresh={false} inService={Boolean(holder)} onBack={() => setEditing(false)}
         onSave={(next) => { const e = saveChair(next); if (!e) { setEditing(false); setNote("Saved."); } return e; }}
         onRemove={() => {
-          if (holder) return `${name} is with a customer. Finish that cut before removing.`;
+          if (holder) return `${name} is with a customer. Finish that haircut before removing.`;
           const e = removeChair(chair.id);
           if (!e) onClose();
           return e;
@@ -73,7 +73,7 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
       </section>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        {[["Today", String(week.today)], ["7-day cuts", String(week.cuts)], ["7-day sales", peso(week.sales)]].map(([k, v]) => (
+        {[["Today", String(week.today)], ["7-day haircuts", String(week.cuts)], ["7-day sales", peso(week.sales)]].map(([k, v]) => (
           <div key={k} className="rounded-[16px] bg-surface px-3 py-2.5 shadow-card"><p className="text-[12px] font-semibold text-muted">{k}</p><b className="text-[16px] tabular-nums">{v}</b></div>
         ))}
       </div>

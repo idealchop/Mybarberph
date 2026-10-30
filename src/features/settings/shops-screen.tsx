@@ -127,7 +127,7 @@ export function ShopsScreen() {
       )}
       {adding ? (
         <BottomSheet title="Add another shop" subtitle="Name it and drop a pin" onClose={() => { if (!busy) setAdding(false); }}
-          footer={<div className="flex gap-2"><Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setAdding(false)}>Back</Button><Button className="flex-1" loading={busy} disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => void onAdd()}>{busy ? "Saving…" : "Save"}</Button></div>}>
+          footer={<div className="flex gap-2"><Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setAdding(false)}>Back</Button><Button className="flex-1" loading={busy} disabled={busy || name.trim().length < 2} data-auth="action" onClick={() => onAdd()}>{busy ? "Saving…" : "Save"}</Button></div>}>
           <div className="flex flex-col gap-3 pt-1">
             <Input label="Shop name" placeholder="Concepcion Dos" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
             <LocationPicker value={pin} onChange={setPin} disabled={busy} />
@@ -151,13 +151,13 @@ export function ShopsScreen() {
                 <li>• Nothing is deleted: locations, barbers, visits and sales stay saved and come back if you turn it on again.</li>
               </ul>
             )}
-            <div className="mt-5 flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => setConfirmMulti(null)}>Cancel</Button>
+            <div className="mt-5 flex flex-col gap-1">
               {confirmMulti === "on" ? (
-                <Button className="flex-1" data-auth="action" disabled={!profileReady} onClick={() => { enable(profile); setConfirmMulti(null); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
+                <Button fullWidth data-auth="action" disabled={!profileReady} onClick={() => { enable(profile); setConfirmMulti(null); setNote("Multiple shops is on. This shop is the first one."); }}>Turn on</Button>
               ) : (
-                <button type="button" data-auth="action" onClick={() => { disable(); setConfirmMulti(null); setNote("Multiple shops is off. This phone is back on the first shop."); }} className="h-11 flex-1 rounded-pill bg-[#D92D20] px-4 text-[14px] font-bold text-white">Turn off</button>
+                <Button data-auth="action" variant="danger" fullWidth onClick={() => { disable(); setConfirmMulti(null); setNote("Multiple shops is off. This phone is back on the first shop."); }}>Turn off</Button>
               )}
+              <Button variant="ghost" fullWidth onClick={() => setConfirmMulti(null)}>Cancel</Button>
             </div>
           </div>
         </div>

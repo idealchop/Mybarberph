@@ -56,7 +56,7 @@ export function SalesDetailScreen() {
   const busy = busyMinutes(inRange(scoped, range, loc));
   const days = range === "today" ? 1 : range === "week" ? 7 : 28; // utilization (location view only)
   const util = kind === "barber" && busy ? Math.min(100, Math.round((busy / (days * 600)) * 100)) : null;
-  const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} cuts` }));
+  const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} haircuts` }));
   const services = serviceStats(scoped, range, loc).slice(0, 6);
   const remit = useRemit(kind === "barber" ? "all" : id || "all");
   const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + (u.ownerShare ?? u.amount), 0);
@@ -72,10 +72,10 @@ export function SalesDetailScreen() {
         </div>
       </div>
       <RangeChips className="mt-3" value={range} onChange={setRange} allowCustom />
-      {kind === "barber" ? <BarberDetail id={id} all={all} range={range} chairs={chairs} branches={branches} remit={remit.data} /> : !stats ? <p className="mt-6 text-[14px] font-semibold text-muted">No finished cuts in this range.</p> : (
+      {kind === "barber" ? <BarberDetail id={id} all={all} range={range} chairs={chairs} branches={branches} remit={remit.data} /> : !stats ? <p className="mt-6 text-[14px] font-semibold text-muted">No finished haircuts in this range.</p> : (
         <>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <StatCard className="col-span-2 pb-3" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(stats.sales)}</span>} caption={`${stats.cuts} cut${stats.cuts === 1 ? "" : "s"}`} />
+            <StatCard className="col-span-2 pb-3" label="Sales" value={<span className="text-[28px] leading-none tracking-[-0.03em]">{peso(stats.sales)}</span>} caption={`${stats.cuts} haircut${stats.cuts === 1 ? "" : "s"}`} />
             <StatCard className="pb-3" label="Avg ticket" value={peso(stats.avg)} />
             <StatCard className="pb-3" label="Completion" value={stats.completionPct == null ? "–" : `${stats.completionPct}%`} />
             <StatCard className="pb-3" label="Cash" value={peso(stats.cash)} />

@@ -21,6 +21,19 @@ export function splitIncome(sales: number, pct: number | null) {
   return { barber, shop: Math.max(0, sales) - barber };
 }
 
+/**
+ * The split % that applies to ONE visit (v1.0.22): the % stamped on it when it finished, else the barber's current %.
+ * So changing a barber's split mid-week never rewrites past days.
+ */
+export function visitPct(row: { splitPct?: unknown } | null | undefined, current: number | null): number | null {
+  if (row && "splitPct" in row) {
+    if (row.splitPct === null) return null;
+    const n = Number(row.splitPct);
+    if (Number.isFinite(n) && n >= 0 && n <= 100) return Math.round(n);
+  }
+  return current;
+}
+
 /** Tip on a visit in centavos (0 when none or bad). */
 export function tipOf(row: { tip?: unknown }): number {
   const n = Math.round(Number(row.tip));

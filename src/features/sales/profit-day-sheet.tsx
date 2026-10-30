@@ -43,11 +43,10 @@ function useBarberDay(t: DayTarget) {
 export interface DayTarget { id: string; name: string; locationId: string; locationName: string; day: string }
 
 /** Barber face (photo when the shop added one) or initials, River style. */
-function Face({ name, photo, size = 44 }: { name: string; photo?: string; size?: number }) {
-  const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+function Face({ photo, size = 44 }: { name: string; photo?: string; size?: number }) {
   // eslint-disable-next-line @next/next/no-img-element
   if (photo) return <img src={photo} alt="" className="flex-none rounded-full object-cover" style={{ width: size, height: size }} />;
-  return <span aria-hidden className="flex flex-none items-center justify-center rounded-full bg-ink text-[15px] font-extrabold text-on-ink" style={{ width: size, height: size }}>{initials || "?"}</span>;
+  return <span aria-hidden className="flex flex-none items-center justify-center rounded-full bg-ink text-on-ink" style={{ width: size, height: size }}><UserRound size={Math.round(size * 0.5)} aria-hidden /></span>;
 }
 
 /** Weekly Profit Report → tap a barber's day: claim that day's cash, see/edit its records, add a missed one. */
@@ -93,7 +92,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                 <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />To claim</span>
               ) : null}
             </div>
-            {claim.owner ? <p className="mt-1.5 text-[15px] font-bold">Your own cuts. Nothing to claim.</p>
+            {claim.owner ? <p className="mt-1.5 text-[15px] font-bold">Your own haircuts. Nothing to claim.</p>
               : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
               : (
                 <>
@@ -103,11 +102,10 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                       claim.open > 0 ? `Your share · ${claim.openCount} cash` : "",
                       claim.claimed > 0 ? `Claimed ${peso(claim.claimed)} · ${claim.claimedCount} cash` : "",
                       gcash.count ? `GCash ${peso(gcash.share)} · ${gcash.count}` : "",
-                    ].filter(Boolean).join("   ·   ") || "No cash cuts this day"}
+                    ].filter(Boolean).join("   ·   ") || "No cash haircuts this day"}
                   </p>
                   {claim.open > 0 ? (
-                    <button type="button" data-auth="action" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}
-                      className="mt-3.5 flex h-12 w-full items-center justify-center rounded-pill bg-surface text-[15px] font-extrabold text-ink active:opacity-80 disabled:opacity-60">{busy ? "Claiming…" : `Claim ${peso(claim.open)}`}</button>
+                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day)}>{`Claim ${peso(claim.open)}`}</Button>
                   ) : null}
                 </>
               )}
@@ -116,7 +114,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
 
           <section aria-label="Records">
             <div className="flex items-end justify-between px-1">
-              <span><b className="block text-[16px] tracking-[-0.01em]">Records</b><small className="block text-[12.5px] font-semibold text-muted">{records.length} cut{records.length === 1 ? "" : "s"} · {peso(dayTotal)} your share</small></span>
+              <span><b className="block text-[16px] tracking-[-0.01em]">Records</b><small className="block text-[12.5px] font-semibold text-muted">{records.length} haircut{records.length === 1 ? "" : "s"} · {peso(dayTotal)} your share</small></span>
             </div>
             {records.length === 0 ? (
               <div className="mt-2.5 flex flex-col items-center rounded-[20px] bg-grey-100 px-4 py-6 text-center">
@@ -190,7 +188,7 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
         <Face name={t.name} photo={photo} />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[16px]">{t.name}</b>
-          <small className="block truncate text-[12.5px] font-semibold text-muted">A finished cut, counted on this day</small>
+          <small className="block truncate text-[12.5px] font-semibold text-muted">A finished haircut, counted on this day</small>
         </span>
         <span className="flex-none rounded-pill bg-ink px-3 py-1.5 text-[12.5px] font-bold text-on-ink">{longDay(t.day).replace(/, \d{4}$/, "")}</span>
       </div>

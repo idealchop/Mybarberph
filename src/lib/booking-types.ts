@@ -59,6 +59,8 @@ export interface ChairRequest {
   verifiedAt?: number;
   /** Tip in centavos (100% the barber's; not part of price, not remitted). */
   tip?: number;
+  /** Barber's split % stamped when the visit finished (v1.0.22); null = no split then. Absent on older visits = use the current split. */
+  splitPct?: number | null;
   /** Server-written edit log for accountability: who changed what, when. Clients can't write it. */
   editLog?: EditEntry[];
   createdAt: number;

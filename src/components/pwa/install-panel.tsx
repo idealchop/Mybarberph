@@ -74,7 +74,7 @@ export function InstallPanel({ features, token }: { features: InstallFeature[]; 
         ) : pwa.state === "installing" ? (
           <Button fullWidth disabled><Loader2 size={18} className="animate-spin" aria-hidden /> Installing…</Button>
         ) : (
-          <Button fullWidth onClick={() => void onInstall()}>Install the app</Button>
+          <Button fullWidth onClick={() => onInstall()}>Install the app</Button>
         )}
       </div>
       <button type="button" onClick={() => setRating(true)} className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-[13.5px] font-bold text-muted hover:underline">
@@ -154,7 +154,7 @@ function RateSheet({ fb, token, onClose }: { fb: ReturnType<typeof useFeedback>;
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={3} placeholder="Tell us what to improve (optional)" aria-label="Feedback"
               className="mt-4 w-full resize-none rounded-[16px] bg-grey-100 px-3.5 py-3 text-[14px] font-semibold outline-none placeholder:text-muted" />
             {error ? <p className="mt-2 text-[13px] font-semibold" role="alert">{error}</p> : null}
-            <Button className="mt-4" fullWidth onClick={() => void send()} disabled={busy}>{busy ? "Sending…" : "Submit"}</Button>
+            <Button className="mt-4" fullWidth onClick={() => send()} disabled={busy}>{busy ? "Sending…" : "Submit"}</Button>
           </>
         )}
       </div>

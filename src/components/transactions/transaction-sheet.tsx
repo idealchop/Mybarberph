@@ -1,8 +1,9 @@
 "use client";
+import { ServicePicker } from "@/components/common/service-picker";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { Avatar, Badge, Card, CardHeader, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { ArrowLeft, Banknote, ChevronDown, CircleDashed, HandCoins, History, Lock, Pencil, Phone, Scissors, Smartphone, StickyNote, Trash2, User, X } from "lucide-react";
+import { ArrowLeft, Banknote, CircleDashed, HandCoins, History, Lock, Pencil, Phone, Scissors, Smartphone, StickyNote, Trash2, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { payMethodLabel } from "@/lib/pay-split";
@@ -159,9 +160,9 @@ export function TransactionSheet({ row: initial, onClose, barber = false, locked
                 <Card className="w-full max-w-[400px] px-5 py-5">
                   <b className="text-[17px]">Delete {row.ref}?</b>
                   <p className="mt-1.5 text-[14px] text-muted">{[row.serviceName, peso(row.price || 0), row.barberName].filter(Boolean).join(" · ")}. It will be removed from sales and collections. This can&apos;t be undone; the delete is saved in the shop activity log.</p>
-                  <div className="mt-4 flex gap-2">
-                    <Button fullWidth variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-                    <Button fullWidth className="!bg-[#DC2626]" onClick={() => { removeBooking(row.id); onClose(); }}>Delete</Button>
+                  <div className="mt-4 flex flex-col gap-1">
+                    <Button fullWidth variant="danger" onClick={() => { removeBooking(row.id); onClose(); }}>Delete</Button>
+                    <Button fullWidth variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
                   </div>
                 </Card>
               </div>
@@ -186,7 +187,6 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
   const [notes, setNotes] = useState(row.notes ?? "");
   const [tip, setTip] = useState(row.tip ? String(row.tip / 100) : "");
   const onlinePaid = isOnlinePaid(row);
-  const services = [haircut.name, ...treatments.map((t) => t.name)];
   const locked = barber ? lockedAmount(row, [haircut, ...treatments], service.trim() || row.serviceName) : null;
   const save = () => {
     const cents = locked ?? (Math.max(0, Math.round(Number(price.replace(/[^\d.]/g, "")) * 100) || 0));
@@ -218,15 +218,10 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
 
       <p className={`${label} mt-4`}>Service</p>
       <div className={group}>
-        <label className={`${row_} relative`}>
+        <div className={`${row_} relative`}>
           <Scissors size={18} className={icon} aria-hidden />
-          <span className="sr-only">Service</span>
-          <select value={services.includes(service) ? service : "__custom"} onChange={(e) => { if (e.target.value !== "__custom") setService(e.target.value); }} className={`${field} appearance-none pr-6`}>
-            {services.map((s) => <option key={s} value={s}>{s}</option>)}
-            {services.includes(service) ? null : <option value="__custom">{service}</option>}
-          </select>
-          <ChevronDown size={16} strokeWidth={2.2} aria-hidden className="pointer-events-none absolute right-3.5 text-muted" />
-        </label>
+          <ServicePicker value={service} onChange={setService} fieldClassName={field} options={[haircut, ...treatments].map((t) => ({ name: t.name, priceCentavos: t.price != null ? Math.round(t.price * 100) : null }))} />
+        </div>
         {locked != null ? (
           <p aria-label="Amount, set by the shop menu" className={`${row_} h-11 justify-between`}>
             <span className="flex items-center gap-3"><Banknote size={18} className={icon} aria-hidden /><span className="text-[13.5px] font-semibold text-muted">Menu price</span></span>
@@ -268,9 +263,9 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
       <p className="mt-2 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-muted"><History size={13} aria-hidden />Changes are saved in this visit’s activity log with your name.</p>
 
       <div className="sticky bottom-0 -mx-4 mt-4 bg-gradient-to-t from-canvas via-canvas to-transparent px-4 pb-2 pt-3">
-        <div className="flex gap-2">
-          <Button variant="secondary" className="flex-1" onClick={onDone}>Cancel</Button>
-          <Button data-auth="action" className="flex-[2]" onClick={save}>Save changes</Button>
+        <div className="flex flex-col gap-1">
+          <Button data-auth="action" fullWidth onClick={save}>Save changes</Button>
+          <Button variant="ghost" fullWidth onClick={onDone}>Cancel</Button>
         </div>
       </div>
       <EditLog row={row} />

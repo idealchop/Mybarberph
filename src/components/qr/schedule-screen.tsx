@@ -128,7 +128,7 @@ export function ScheduleScreen({ shop, locationId, onBack, onSend, sending, erro
           ))}
         </div>
         {pay === "online" && shop?.payQrUrl ? <PayQr url={shop.payQrUrl} shopName={shop.name} /> : null}
-        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the cut is done (GCash, Maya or bank QR).") : "You pay at the shop when the cut is done."}</p>
+        <p className="mt-1.5 px-1 text-[12px] font-semibold text-muted">{pay === "online" ? (shop?.payQrUrl ? "Pay with the QR, then show the receipt at the shop." : "Pay online at the shop when the haircut is done (GCash, Maya or bank QR).") : "You pay at the shop when the haircut is done."}</p>
 
         {error ? <p className="mt-3 text-[13px] font-semibold">{error}</p> : null}
         <Button className="mt-5" fullWidth disabled={!ready || sending} loading={sending}

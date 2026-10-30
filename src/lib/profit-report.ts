@@ -3,7 +3,7 @@
  * Each cut counts price minus the barber's income split (same as Sales → "Your commission" and Claim amounts);
  * no split set = the whole price is the owner's; the owner's own cuts are all the owner's. Tips are never counted.
  */
-import { ownerShareOf, sharePct } from "@/lib/income-split";
+import { ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
 import { cutBarberId, UNASSIGNED, UNASSIGNED_NAME } from "@/lib/cut-count";
 
 
@@ -52,6 +52,7 @@ export interface ProfitChair {
 }
 
 export interface ProfitVisit {
+  splitPct?: number | null;
   status?: string;
   completedAt?: number;
   price?: number;
@@ -139,7 +140,7 @@ function profitGrid(
     const row = ensure(id, bl, rowName(id, r.barberName, chairs.find((c) => (c.barberId || c.id) === id && (c.locationId || "home") === bl) ?? chairs.find((c) => (c.barberId || c.id) === id)));
     const chair = id === "owner" ? undefined : chairs.find((c) => (r.barberId && (c.barberId === r.barberId || c.id === r.barberId)) && (c.locationId || "home") === bl)
       ?? chairs.find((c) => r.barberId && (c.barberId === r.barberId || c.id === r.barberId));
-    const amount = ownerShareOf(r.price || 0, id === "owner" ? null : chair ? sharePct(chair) : null);
+    const amount = ownerShareOf(r.price || 0, id === "owner" ? null : visitPct(r, chair ? sharePct(chair) : null));
     row.days[day] = (row.days[day] ?? 0) + amount;
     row.total += amount;
   }

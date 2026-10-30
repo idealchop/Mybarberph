@@ -1,6 +1,6 @@
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
-import { claimOwnerShare, ownerShareOf, sharePct } from "@/lib/income-split";
+import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
 import { cutBarberId, cutBarberName } from "@/lib/cut-count";
@@ -38,7 +38,7 @@ async function loadFresh(shopId: string) {
   const [claimsSnap, doneSnap, state] = await Promise.all([
     shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").limit(500).get(),
     // Only the fields remit needs (not full booking docs).
-    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt").limit(8000).get(),
+    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "splitPct").limit(8000).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
@@ -63,7 +63,7 @@ export async function remitSummary(shopId: string, loc: string) {
     if (loc !== "all" && k.loc !== loc) continue;
     const id = `${k.id}@${k.loc}`;
     const u = map.get(id) ?? { barberId: k.id, barberName: k.name, locationId: k.loc, amount: 0, ownerShare: 0, count: 0, oldest: Date.now() };
-    u.amount += r.price || 0; u.ownerShare += ownerShareOf(r.price || 0, pctOf(chairs, k.id, k.loc)); u.count += 1; u.oldest = Math.min(u.oldest, r.completedAt ?? r.updatedAt ?? Date.now());
+    u.amount += r.price || 0; u.ownerShare += ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, k.id, k.loc))); u.count += 1; u.oldest = Math.min(u.oldest, r.completedAt ?? r.updatedAt ?? Date.now());
     map.set(id, u);
   }
   const unclaimed = [...map.values()].sort((a, b) => b.ownerShare - a.ownerShare);
@@ -89,7 +89,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
     const claim: RemitClaim = {
       id: ref.id, barberId, barberName: keyOf(mine[0]!, chairs).name, locationId,
       amount: mine.reduce((s, r) => s + (r.price || 0), 0), bookingIds: mine.map((r) => r.id),
-      ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, pctOf(chairs, barberId, locationId)), 0), sharePct: pctOf(chairs, barberId, locationId),
+      ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, barberId, locationId))), 0), sharePct: pctOf(chairs, barberId, locationId),
       from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy,
     };
     tx.set(ref, claim);

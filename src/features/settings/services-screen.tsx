@@ -74,7 +74,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
         }}
         onRemove={() => {
           if (holders[editing.chair.label] || editing.chair.occupiedAt) {
-            const error = `${editing.chair.label} is with a customer. Finish that cut before removing.`;
+            const error = `${editing.chair.label} is with a customer. Finish that haircut before removing.`;
             setNote(error);
             return error;
           }
@@ -133,7 +133,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
         <div className="flex items-end justify-between gap-3 px-1">
           <div>
             {embedded ? null : <h2 className="text-[13px] font-bold text-muted">My Barbers</h2>}
-            <p className="mt-1 text-[13px] font-medium text-ink-2">Each barber gets their own link to take walk-ins and finish cuts.</p>
+            <p className="mt-1 text-[13px] font-medium text-ink-2">Each barber gets their own link to take walk-ins and finish haircuts.</p>
           </div>
           <Button data-auth="action" size="sm" leadingIcon={<Plus size={15} strokeWidth={2.2} />} onClick={() => {
             const locationId = forLoc ?? shops.scopeId ?? HOME_LOCATION_ID;
@@ -380,7 +380,7 @@ export function ChairEditor({
             <select value={loc} disabled={inService} onChange={(e) => setLoc(e.target.value)} className="mt-1 h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
               {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
-            <span className="text-[12px] font-semibold text-muted">{inService ? "Finish the current cut before moving this barber." : "Moving keeps the same barber link and sales history."}</span>
+            <span className="text-[12px] font-semibold text-muted">{inService ? "Finish the current haircut before moving this barber." : "Moving keeps the same barber link and sales history."}</span>
           </label>
         </section>
       ) : null}

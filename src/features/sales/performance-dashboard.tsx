@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/common/button";
 import { payBucket, paySplit } from "@/lib/pay-split";
 import { cn } from "@river-apps/ui";
 import { ArrowDownRight, ArrowUpRight, ChevronRight, SlidersHorizontal } from "lucide-react";
@@ -49,7 +50,7 @@ export function PerfFilterButton({ value, onChange, all, chairs }: { value: Perf
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => { onChange({}); setOpen(false); }} className="h-11 rounded-pill text-[14px] font-bold ring-1 ring-ink">Clear</button>
-              <button type="button" onClick={() => { onChange(d); setOpen(false); }} className="h-11 rounded-pill bg-ink text-[14px] font-bold text-on-ink">Apply</button>
+              <Button size="md" pill onClick={() => { onChange(d); setOpen(false); }}>Apply</Button>
             </div>
           </div>
         </div>
@@ -119,7 +120,7 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
     heat[d]!.set(h, (heat[d]!.get(h) ?? 0) + 1);
     byDay[d]!.cuts += 1; byDay[d]!.sales += r.price || 0;
   }
-  const series = [...byHour.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ label: hLabel(h), orders: v.orders, salesCentavos: v.sales, detail: `${v.orders} cuts` }));
+  const series = [...byHour.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ label: hLabel(h), orders: v.orders, salesCentavos: v.sales, detail: `${v.orders} haircuts` }));
   const peak = [...byHour.entries()].sort((a, b) => b[1].orders - a[1].orders)[0];
   const heatMax = Math.max(1, ...heat.flatMap((m) => [...m.values()]));
   const HOURS = Array.from({ length: 16 }, (_, i) => i + 7);
@@ -158,7 +159,7 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons3d/barbers/128/reports.webp" alt="" width={56} height={56} className="mx-auto size-14 object-contain" />
         <b className="mt-2 block text-[16px]">No visits in this range yet</b>
-        <p className="mt-1 text-[13px] font-semibold text-muted">Finish a few cuts and your shop’s performance shows up here: peak hours, busiest days, service mix and top barbers.</p>
+        <p className="mt-1 text-[13px] font-semibold text-muted">Finish a few haircuts and your shop’s performance shows up here: peak hours, busiest days, service mix and top barbers.</p>
       </div></>
     );
   }
@@ -167,19 +168,19 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
     <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-2">
       <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0 lg:col-span-2 lg:grid-cols-4">
         <Kpi k="Your share" v={peso(now.sales)} d={delta(now.sales, was.sales)} />
-        <Kpi k="Cuts" v={String(now.cuts)} d={delta(now.cuts, was.cuts)} />
+        <Kpi k="Haircuts" v={String(now.cuts)} d={delta(now.cuts, was.cuts)} />
         <Kpi k="Avg ticket" v={now.cuts ? peso(Math.round(now.sales / now.cuts)) : "–"} d={delta(now.cuts ? now.sales / now.cuts : 0, was.cuts ? was.sales / was.cuts : 0)} />
-        <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} cut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
+        <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} haircut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
       </div>
 
-      {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rN ? `★ ${(b.rSum / b.rN).toFixed(1)} (${b.rN})` : ""].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
-      {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
+      {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} haircut${b.cuts === 1 ? "" : "s"}`, b.rN ? `★ ${(b.rSum / b.rN).toFixed(1)} (${b.rN})` : ""].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
+      {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} haircut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
       {full && !solo ? <SalesTrend rows={full.filter((r) => locOk(r) && cur.has(dayKey(at(r))) && r.status === "done")} range={range} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
 
       <Panel title="Shop vs home" sub={homeDone.length ? `${homeDone.length} home visit${homeDone.length === 1 ? "" : "s"} · ${peso(homeFees)} in home fees` : "No home visits in this range"}>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Box k="In shop" v={peso(now.sales - homeSales)} sub={`${now.cuts - homeDone.length} cut${now.cuts - homeDone.length === 1 ? "" : "s"}`} />
+          <Box k="In shop" v={peso(now.sales - homeSales)} sub={`${now.cuts - homeDone.length} haircut${now.cuts - homeDone.length === 1 ? "" : "s"}`} />
           <Box k="Home service" v={peso(homeSales)} sub={`${homeDone.length} visit${homeDone.length === 1 ? "" : "s"}`} />
         </div>
       </Panel>
@@ -214,12 +215,12 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
               ))}
             </ul>
           ) : null}
-        </>) : <p className="mt-2 text-[13px] font-semibold text-muted">Customers can rate a visit from their ticket page once the cut is done.</p>}
+        </>) : <p className="mt-2 text-[13px] font-semibold text-muted">Customers can rate a visit from their ticket page once the haircut is done.</p>}
       </Panel>
 
       <Panel title="Busiest days" sub={byDay.some((d) => d.cuts) ? `Most on ${WD[byDay.reduce((b, d, i) => (d.cuts > byDay[b]!.cuts ? i : b), 0)]}` : "By weekday and hour"}>
         <div className="mt-3 w-full max-w-full overflow-x-auto">
-          <div className="grid min-w-0 gap-[2px]" style={{ gridTemplateColumns: `26px repeat(${HOURS.length}, minmax(0,1fr))` }} role="img" aria-label="Cuts by weekday and hour">
+          <div className="grid min-w-0 gap-[2px]" style={{ gridTemplateColumns: `26px repeat(${HOURS.length}, minmax(0,1fr))` }} role="img" aria-label="Haircuts by weekday and hour">
             {WD.map((w, d) => (
               <div key={w} className="contents">
                 <span className="text-[10.5px] font-bold leading-[16px] text-muted">{w}</span>
@@ -259,13 +260,13 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
         {known.length ? <Split className="mt-3" label="Customers" parts={[{ k: "Repeat", v: repeat, c: "bg-ink" }, { k: "New", v: known.length - repeat, c: "bg-grey-300" }]} fmt={(n) => String(n)} /> : null}
       </Panel>
 
-      <Panel title="Service mix" sub={services.length ? `${services.length} service${services.length === 1 ? "" : "s"}` : "No finished cuts"}>
+      <Panel title="Service mix" sub={services.length ? `${services.length} service${services.length === 1 ? "" : "s"}` : "No finished haircuts"}>
         <ul className="mt-2 grid grid-cols-1 [&>*]:min-w-0 gap-2.5">
           {services.map((s) => (
             <li key={s.name}>
               <div className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]"><b className="min-w-0 truncate">{s.name}</b><b className="tabular-nums">{peso(s.sales)}</b></div>
               <div className="mt-1 h-1.5 rounded-full bg-grey-100"><div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(3, (s.sales / svcMax) * 100)}%` }} /></div>
-              <small className="text-[11.5px] font-semibold text-muted">{s.cuts} cut{s.cuts === 1 ? "" : "s"} · avg {peso(s.avg)}</small>
+              <small className="text-[11.5px] font-semibold text-muted">{s.cuts} haircut{s.cuts === 1 ? "" : "s"} · avg {peso(s.avg)}</small>
             </li>
           ))}
         </ul>
@@ -339,7 +340,7 @@ function Rank({ title, rows: all }: { title: string; rows: { key: string; name: 
             </li>
           ); })}
         </ol>
-      ) : <p className="px-4 pb-4 pt-2 text-[13px] font-semibold text-muted">No finished cuts in this range.</p>}
+      ) : <p className="px-4 pb-4 pt-2 text-[13px] font-semibold text-muted">No finished haircuts in this range.</p>}
       {pages > 1 ? (
         <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-[13px] font-bold">
           <button type="button" disabled={p === 0} onClick={() => setPage(p - 1)} className="disabled:opacity-30">‹ Prev</button>
@@ -373,7 +374,7 @@ function SalesTrend({ rows, range }: { rows: ChairRequest[]; range: SalesRange }
           <b className="block text-[16px]">Sales trend</b>
           <small className="block text-[12px] font-semibold text-muted">Full sales · before barber split</small>
         </div>
-        <span className="flex-none text-right"><b className="block text-[20px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{peso(total)}</b><small className="text-[11.5px] font-semibold text-muted">{rows.length} cut{rows.length === 1 ? "" : "s"}</small></span>
+        <span className="flex-none text-right"><b className="block text-[20px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{peso(total)}</b><small className="text-[11.5px] font-semibold text-muted">{rows.length} haircut{rows.length === 1 ? "" : "s"}</small></span>
       </div>
       <div className="mt-3 flex h-[96px] items-end gap-[3px]" role="img" aria-label={`Full sales ${peso(total)}`}>
         {bars.map(([k, v]) => <span key={k} title={`${label(k)} · ${peso(v)}`} className={cn("min-w-0 flex-1 rounded-t-[4px]", v ? "bg-ink" : "bg-grey-200")} style={{ height: `${Math.max(4, (v / max) * 100)}%` }} />)}

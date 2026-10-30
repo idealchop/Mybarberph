@@ -1,6 +1,6 @@
 import type { ChairRequest } from "@/lib/booking-types";
 import { isFinishedCut, manilaYmd } from "@/lib/cut-count";
-import { splitIncome, tipOf } from "@/lib/income-split";
+import { splitIncome, tipOf, visitPct } from "@/lib/income-split";
 
 /** A visit safe to render: string fields always strings (raw Firestore docs can miss them). */
 export function historyRow(docId: string, b: Partial<ChairRequest>): ChairRequest {
@@ -25,7 +25,9 @@ export function dayOf(date: string, rows: ChairRequest[], pct: number | null): H
   const list = rows.filter((r) => isFinishedCut(r) && manilaYmd(r.completedAt!) === date).sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
   const sales = list.reduce((s, r) => s + (r.price || 0), 0);
   const tips = list.reduce((s, r) => s + tipOf(r), 0);
-  return { date, rows: list, cuts: list.length, sales, tips, earnings: earningsOf(sales, tips, pct) };
+  // Per visit (its own stamped %), then summed: the same centavos as the owner's side.
+  const earnings = list.reduce((s, r) => s + earningsOf(r.price || 0, tipOf(r), visitPct(r, pct)), 0);
+  return { date, rows: list, cuts: list.length, sales, tips, earnings };
 }
 
 /** "Today, Oct 27" / "Yesterday, Oct 26" / "Mon, Oct 19". */

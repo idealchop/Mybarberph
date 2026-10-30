@@ -1,4 +1,5 @@
 "use client";
+import { UserRound } from "lucide-react";
 
 import { RiverIcon } from "@/components/common/river-icon";
 import { chairBarberName, seatTime, type ShopChair } from "@/lib/shop-chairs";
@@ -26,11 +27,11 @@ export function BarberPortrait({ chair, size = 44 }: { chair: ShopChair; size?: 
   }
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full bg-grey-100 font-bold text-ink"
-      style={{ width: size, height: size, fontSize: Math.max(13, Math.round(size * 0.38)) }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-grey-100 text-muted"
+      style={{ width: size, height: size }}
       aria-hidden
     >
-      {name.slice(0, 1).toUpperCase()}
+      <UserRound size={Math.round(size*0.5)} strokeWidth={2} aria-hidden />
     </span>
   );
 }

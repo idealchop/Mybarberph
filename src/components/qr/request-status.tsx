@@ -131,7 +131,7 @@ function Feedback({ booking, shop, branchName, shopId, onSaved }: { booking: Cha
           <textarea value={comment} maxLength={500} rows={3} onChange={(e) => setComment(e.target.value)} placeholder="Anything to tell the shop? (optional)" aria-label="Comment"
             className="mt-4 w-full rounded-[14px] bg-grey-100 px-3 py-2.5 text-left text-[14.5px] font-medium outline-none" />
           {err ? <p className="mt-2 text-[13px] font-semibold">{err}</p> : null}
-          <Button className="mt-4" fullWidth disabled={!stars || busy} onClick={() => void send()}>{busy ? "Sending…" : "Send feedback"}</Button>
+          <Button className="mt-4" fullWidth disabled={!stars || busy} onClick={() => send()}>{busy ? "Sending…" : "Send feedback"}</Button>
         </Card>
       </div>
       <PoweredBy />

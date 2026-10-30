@@ -43,6 +43,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
   const days = wk.days.map((d) => ({ ...d, amount: by.get(d.key)?.earnings ?? 0, cuts: by.get(d.key)?.cuts ?? 0, future: d.key > today, today: d.key === today }));
   const total = days.reduce((s, d) => s + d.amount, 0);
   const cuts = days.reduce((s, d) => s + d.cuts, 0);
+  const tips = (data?.byDate ?? []).filter((x) => x.date >= from && x.date <= to).reduce((s, x) => s + (x.tips ?? 0), 0);
   const loaded = data?.from === wk.from;
   const short = wk.label.replace(/, \d{4}$/, "");
   return (
@@ -54,10 +55,9 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
           <p className="truncate text-[13px] font-semibold text-muted">{[who, place].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
-      {extra}
       <section aria-label="Your earnings" className="mt-3 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
         <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your earnings</p>
+          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your earnings (your share)</p>
           <div role="group" aria-label="Week" className="flex h-11 flex-none items-center rounded-pill bg-white/10">
             <button type="button" aria-label="Previous week" disabled={offset <= -8} onClick={() => setOffset((n) => Math.max(-8, n - 1))}
               className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronLeftIcon /></button>
@@ -67,7 +67,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
           </div>
         </div>
         <b className="mt-1 block pr-2 text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{loaded ? peso(total) : "…"}</b>
-        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{!loaded ? "Loading…" : cuts ? `${cuts} cut${cuts === 1 ? "" : "s"} this week` : "No finished cuts"}</p>
+        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{!loaded ? "Loading…" : cuts ? `${cuts} haircut${cuts === 1 ? "" : "s"} · ${peso(total - tips)} share${tips ? ` + ${peso(tips)} tips` : ""}` : "No finished haircuts"}</p>
       </section>
       {err && !data ? <p className="mt-4 text-[13.5px] font-semibold">{err}</p> : null}
       <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
@@ -87,7 +87,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
               {days.map((d) => (
                 <td key={d.key} className={`border-b border-line px-0 py-3 text-center tabular-nums ${d.today ? "bg-grey-100" : ""}`}>
                   {d.future || !loaded ? <span className="text-muted opacity-40">–</span> : d.amount ? (
-                    <><b className="block text-[12px] font-bold">{compactPeso(d.amount)}</b><small className="block text-[10px] font-semibold text-muted">{d.cuts} cut{d.cuts === 1 ? "" : "s"}</small></>
+                    <><b className="block text-[12px] font-bold">{compactPeso(d.amount)}</b><small className="block text-[10px] font-semibold text-muted">{d.cuts} haircut{d.cuts === 1 ? "" : "s"}</small></>
                   ) : <span className="font-semibold text-muted">–</span>}
                 </td>
               ))}
@@ -107,6 +107,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
           <b className="text-[17px] tabular-nums">{peso(data.unclaimedOwner)}</b>
         </section>
       ) : null}
+      {extra}
     </main>
   );
 }

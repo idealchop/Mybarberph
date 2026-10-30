@@ -3,15 +3,16 @@
  * BARBER's part, using the share set on each barber's profile. Full sales are never shown on report screens.
  * Collecting from the customer (queue, complete flow, receipts) still uses the full price.
  */
-import { ownerShareOf, sharePct, splitIncome, tipOf } from "@/lib/income-split";
+import { ownerShareOf, sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
 
 export const OWNER_ID = "owner";
 type Chair = { id: string; barberId?: string; locationId?: string; sharePct?: unknown; shareSet?: unknown };
-type Row = { barberId?: string; locationId?: string; price: number; tip?: number };
+type Row = { barberId?: string; locationId?: string; price: number; tip?: number; splitPct?: number | null };
 
 /** The barber's split % for a visit (chair of that barber at that branch, else any of their chairs); null = no split. */
-export function pctForRow(r: { barberId?: string; locationId?: string }, chairs: Chair[]): number | null {
+export function pctForRow(r: { barberId?: string; locationId?: string; splitPct?: number | null }, chairs: Chair[]): number | null {
   if (!r.barberId || r.barberId === OWNER_ID) return null;
+  if ("splitPct" in r && r.splitPct !== undefined) return visitPct(r, null);
   const loc = r.locationId || "home";
   const mine = (c: Chair) => c.barberId === r.barberId || c.id === r.barberId;
   const c = chairs.find((x) => mine(x) && (x.locationId || "home") === loc) ?? chairs.find(mine);

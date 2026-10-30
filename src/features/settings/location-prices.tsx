@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/common/button";
 import { useState } from "react";
 import { setLocationPrices, useShopLocations } from "@/lib/shop-locations";
 import { draftFromBranches, planLocationSave } from "@/lib/location-prices";
@@ -59,7 +60,7 @@ export function LocationPriceInputs({ draft, setDraft, branches, initial, onAppl
             <span className="font-semibold text-muted">₱</span>
             <input autoFocus inputMode="decimal" aria-label="Price for all locations" placeholder="Price for all" value={all} onChange={(e) => setAll(clean(e.target.value))} onKeyDown={(e) => { if (e.key === "Enter") apply(); }} className="w-full bg-transparent text-[16px] font-bold outline-none" />
           </label>
-          <button type="button" disabled={!all.trim()} onClick={apply} className="h-11 flex-none rounded-pill bg-ink px-5 text-[14px] font-bold text-on-ink disabled:opacity-40">Apply</button>
+          <Button size="md" pill className="flex-none" disabled={!all.trim()} onClick={apply}>Apply</Button>
         </div>
       ) : null}
       <ul className="mt-3 divide-y divide-grey-200 overflow-hidden rounded-[18px] border border-grey-200 bg-surface">

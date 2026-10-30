@@ -68,7 +68,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
 
   function remove() {
     const busyHere = rows.some((r) => r.status === "in_chair" && (r.locationId || HOME_LOCATION_ID) === branch.id);
-    if (busyHere) { setNote(`Finish the cuts at ${branch.name} before removing it.`); setConfirm(false); return; }
+    if (busyHere) { setNote(`Finish the haircuts at ${branch.name} before removing it.`); setConfirm(false); return; }
     if (chairs.some((c) => chairLocation(c) === branch.id)) removeChairsAt(branch.id);
     const err = removeBranch(branch.id);
     if (err) { setNote(err); setConfirm(false); return; }
@@ -111,10 +111,10 @@ function Editor({ branch }: { branch: ShopBranch }) {
           {confirm ? (
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" size="sm" className="flex-1" onClick={() => setConfirm(false)}>Keep it</Button>
-              <button type="button" data-auth="action" onClick={remove} className="h-10 flex-1 rounded-pill bg-[#D92D20] px-4 text-[14px] font-bold text-white">Yes, remove {branch.name}</button>
+              <Button data-auth="action" variant="danger" size="sm" pill className="flex-1" onClick={remove}>Yes, remove {branch.name}</Button>
             </div>
           ) : (
-            <button type="button" data-auth="action" onClick={() => setConfirm(true)} className="mt-3 h-10 w-full rounded-pill border-2 border-[#D92D20] text-[14px] font-bold text-[#D92D20]">Remove shop</button>
+            <Button data-auth="action" variant="danger-outline" size="sm" pill fullWidth className="mt-3" onClick={() => setConfirm(true)}>Remove shop</Button>
           )}
         </Card>
       )}

@@ -1,3 +1,4 @@
+import { sharePct } from "@/lib/income-split";
 import { deleteSummary, editChanges } from "@/lib/edit-log";
 import { MANUAL_SOURCE, manualPayError, manualTimeError } from "@/lib/manual-record";
 import { applyOverrides, cleanOverrides, toCentavos } from "@/lib/location-prices";
@@ -322,6 +323,16 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (prev?.rating) { clean.rating = prev.rating; if (prev.feedback) clean.feedback = prev.feedback; if (prev.feedbackAt) clean.feedbackAt = prev.feedbackAt; }
   // Keep the barber recorded on the visit unless this write names one.
   if (!clean.barberId && prev?.barberId) { clean.barberId = prev.barberId; if (prev.barberName) clean.barberName = prev.barberName; }
+  // Split snapshot (v1.0.22): a finished visit keeps the barber's split % from when it finished, so a later change
+  // of the barber's share never rewrites past days. Kept from the saved row; stamped once on the first "done" write.
+  if (prev && "splitPct" in prev) clean.splitPct = prev.splitPct ?? null;
+  else if (clean.status === "done" && clean.barberId && clean.barberId !== "owner") {
+    const chairs = JSON.parse((await loadState(shopId, ["barbers.shop-chairs"]))["barbers.shop-chairs"] || "[]") as { id: string; barberId?: string; locationId?: string; sharePct?: unknown; shareSet?: unknown }[];
+    const loc = clean.locationId || "home";
+    const mine = (c: { id: string; barberId?: string }) => c.barberId === clean.barberId || c.id === clean.barberId;
+    const c = chairs.find((x) => mine(x) && (x.locationId || "home") === loc) ?? chairs.find(mine);
+    if (c) clean.splitPct = sharePct(c);
+  }
   // Writes can land out of order (e.g. "accepted" after "in chair", or a stale tab after "done").
   // A visit never moves back a step: an older write is ignored and the saved row is returned.
   const res = await db().runTransaction(async (tx) => {

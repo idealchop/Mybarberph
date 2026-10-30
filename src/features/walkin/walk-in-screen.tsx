@@ -137,7 +137,7 @@ export function WalkInScreen() {
         </label>
       ) : null}
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
-      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>{me ? "Start the cut" : "Seat them"}</Button>
+      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>{me ? "Start the haircut" : "Seat them"}</Button>
       </>
     </main>
   );

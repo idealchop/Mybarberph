@@ -1,5 +1,5 @@
 import type { ChairRequest } from "@/lib/booking-types";
-import { sharePct, splitIncome, tipOf } from "@/lib/income-split";
+import { sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
 
 /** Sales groups (Jimboy, 2026-10-21): the owner groups locations and barbers to see their combined sales. */
 export interface SalesGroup { id: string; name: string; locationIds: string[]; barberIds: string[] }
@@ -37,7 +37,7 @@ export function groupReport(rows: ChairRequest[], g: SalesGroup, chairs: ChairLi
     if (r.status !== "done" || !inGroup(r)) continue;
     const key = keyOf(r);
     const gross = r.price || 0;
-    const { barber } = splitIncome(gross, sharePct(chairFor(key)));
+    const { barber } = splitIncome(gross, visitPct(r, sharePct(chairFor(key))));
     const tip = tipOf(r);
     out.cuts += 1; out.gross += gross; out.share += barber; out.net += gross - barber; out.tips += tip;
     const l = L.get(loc(r)) ?? { id: loc(r), name: names.loc(loc(r)), cuts: 0, gross: 0, net: 0, tips: 0 };

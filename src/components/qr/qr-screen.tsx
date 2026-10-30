@@ -85,7 +85,7 @@ export function QrScreen() {
             <>
               <div className="mt-3 grid w-full grid-cols-2 gap-2">
                 <Button size="sm" variant="secondary" disabled={!url} onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}>{copied ? "Copied" : "Copy link"}</Button>
-                <Button size="sm" disabled={!url || making} onClick={() => void poster("download")} leadingIcon={<Download size={15} />}>{making ? "Making…" : "Download QR"}</Button>
+                <Button size="sm" disabled={!url || making} onClick={() => poster("download")} leadingIcon={<Download size={15} />}>{making ? "Making…" : "Download QR"}</Button>
               </div>
             </>
           )}

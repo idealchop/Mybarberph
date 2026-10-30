@@ -17,6 +17,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ token: s
   const prev = await getBooking(link.shopId, id);
   if (prev && !barberAccess(prev, me)) return notFound("This visit is with another barber.");
   // Owner-claimed cash is locked for the barber (the claim's total must not change under the owner).
-  if (prev?.status === "done" && (await claimedBookingIds(link.shopId)).has(id)) return json({ error: "The owner already claimed this cut. Ask the owner to change it.", code: "locked" }, 409);
+  if (prev?.status === "done" && (await claimedBookingIds(link.shopId)).has(id)) return json({ error: "The owner already claimed this haircut. Ask the owner to change it.", code: "locked" }, 409);
   try { return json({ booking: await putBooking(link.shopId, body.booking, me) }); } catch (e) { return e instanceof WalkInLimitError ? json({ error: e.message, code: "plan_limit", limit: "walk-ins" }, 402) : badRequest((e as Error).message); }
 }

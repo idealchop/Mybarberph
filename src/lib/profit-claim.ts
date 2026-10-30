@@ -3,10 +3,10 @@
  * "Claiming" remit (server/remit.ts): only finished, paid, cash cuts with a price; the owner's own cuts never;
  * a cut is claimed when a remit claim lists its booking id. Amounts are the owner's share (price minus the barber's split).
  */
-import { ownerShareOf, sharePct } from "@/lib/income-split";
+import { ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
 import { cutBarberId } from "@/lib/cut-count";
 
-type Visit = { id: string; status?: string; paid?: boolean; payMethod?: string; price?: number; barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string; completedAt?: number; updatedAt?: number };
+type Visit = { id: string; status?: string; paid?: boolean; payMethod?: string; price?: number; barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string; completedAt?: number; updatedAt?: number; splitPct?: number | null };
 type Chair = { id: string; label?: string; barberId?: string; locationId?: string; sharePct?: unknown; shareSet?: unknown };
 
 const day = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -27,7 +27,7 @@ export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locat
     if (!isCash(r)) continue;
     const k = remitKey(r, chairs);
     if (k.id !== barberId || k.loc !== locationId || day(r.completedAt ?? r.updatedAt ?? 0) !== ymd) continue;
-    const share = ownerShareOf(r.price || 0, pct);
+    const share = ownerShareOf(r.price || 0, visitPct(r, pct));
     if (isClaimed(r.id)) { out.claimed += share; out.claimedCount++; } else { out.open += share; out.openCash += r.price || 0; out.openCount++; }
   }
   return out;

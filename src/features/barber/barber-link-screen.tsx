@@ -28,7 +28,7 @@ import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
 import { addDays, dayLabel, dayOf, earningsOf, historyRow } from "@/lib/barber-history";
 import { ClaimTag, dayClaimState, isCashCut } from "@/components/transactions/claim-tag";
 import { peso } from "@/lib/format";
-import { customerName, tipOf } from "@/lib/income-split";
+import { customerName, tipOf, visitPct } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
@@ -37,7 +37,7 @@ import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-se
 const BARBER_FEATURES = [
   { art: <Icon3d src="/icons3d/barbers/128/customers.webp" />, text: "Take walk-ins in a tap" },
   { art: <Icon3d src="/icons3d/barbers/128/qr.webp" />, text: "Scan customer tickets" },
-  { art: <Icon3d src="/icons3d/barbers/128/reports.webp" />, text: "See my sales and cuts" },
+  { art: <Icon3d src="/icons3d/barbers/128/reports.webp" />, text: "See my sales and haircuts" },
 ];
 
 const PILL = "relative h-8 gap-1 rounded-pill px-3 text-[13px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -320,7 +320,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
           </div>
           <Button className="mt-4" fullWidth onClick={() => {
             if (current) {
-              setNote("Finish your current cut first.");
+              setNote("Finish your current haircut first.");
               return;
             }
             if (allowance.atLimit) { setNote(allowance.message); return; }
@@ -354,7 +354,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             setShowOther(false);
             setNote("");
           }}>Accept</Button>
-          <Button className="mt-2" fullWidth variant="secondary" onClick={() => { setAdding(false); setName(""); setPicked([]); setShowOther(false); }}>Cancel</Button>
+          <Button className="mt-1" fullWidth variant="ghost" onClick={() => { setAdding(false); setName(""); setPicked([]); setShowOther(false); }}>Cancel</Button>
         </section>
       ) : scanning ? (
         <OnlineScan
@@ -362,7 +362,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
           onCancel={() => setScanning(false)}
           onSeat={(row) => {
             if (current) {
-              setNote("Finish your current cut first.");
+              setNote("Finish your current haircut first.");
               setScanning(false);
               return;
             }
@@ -384,7 +384,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         treatments={treatments}
         onWalkIn={() => {
           if (current) {
-            setNote("Finish your current cut first.");
+            setNote("Finish your current haircut first.");
             return;
           }
           if (allowance.atLimit) { setNote(allowance.message); return; }
@@ -394,7 +394,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
         }}
         onScan={() => {
           if (current) {
-            setNote("Finish your current cut first.");
+            setNote("Finish your current haircut first.");
             return;
           }
           setNote("");
@@ -415,7 +415,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
 
       <section className="mt-5">
         <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Waiting</h2>
-        {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current cut before you accept the next one.</p> : null}
+        {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current haircut before you accept the next one.</p> : null}
         {waiting.length === 0 ? (
           <div className="mt-2 flex flex-col items-center rounded-card bg-surface px-4 py-6 text-center shadow-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -434,7 +434,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
                 treatments={treatments}
                 onAccept={() => {
                   if (current) {
-                    setNote("Finish your current cut first.");
+                    setNote("Finish your current haircut first.");
                     return;
                   }
                   const sat = acceptOnChair(row.id, chair.label, placeId);
@@ -524,7 +524,7 @@ function OnlineScan({
           <Button className="mt-4" fullWidth onClick={() => onSeat(match)}>Accept</Button>
         </article>
       ) : null}
-      <Button className="mt-2" fullWidth variant="secondary" onClick={onCancel}>Cancel</Button>
+      <Button className="mt-1" fullWidth variant="ghost" onClick={onCancel}>Cancel</Button>
     </section>
   );
 }
@@ -610,7 +610,7 @@ function ChairHistory({
             <small className="block truncate text-[12px] font-semibold text-muted">{offer.label}</small>
           </span>
           <ClaimTag r={row} claimed={locked.has(row.id)} />
-          <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), pct))}</b>
+          <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), visitPct(row, pct)))}</b>
           {locked.has(row.id) ? <Lock size={14} className="flex-none text-subtle" aria-label="Locked" /> : <ChevronRight size={16} className="flex-none text-subtle" aria-hidden />}
         </button>
       </li>
@@ -636,7 +636,7 @@ function ChairHistory({
         </div>
         <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
         <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", green ? "text-white/75" : "text-on-ink-muted")}>
-          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} cut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `incl. ${peso(picked.tips)} tips` : ""].filter(Boolean).join(" · ")}
+          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} haircut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `incl. ${peso(picked.tips)} tips` : ""].filter(Boolean).join(" · ")}
         </p>
       </section>
 
@@ -658,22 +658,22 @@ function ChairHistory({
         </label>
       </div>
       <div className="mt-3 overflow-hidden rounded-[16px] bg-surface shadow-card">
-        <Input aria-label="Find a cut" placeholder="Find a cut: customer, service, ticket" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input aria-label="Find a haircut" placeholder="Find a haircut: customer, service, ticket" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
       {openRow ? <TransactionSheet row={openRow} barber locked={locked.has(openRow.id)} onClose={() => { setOpenRow(null); reload(); }} /> : null}
       {error ? (
         <div role="alert" className="mt-4 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
           <p className="text-[13.5px] font-semibold text-ink-2">Couldn’t load this day.</p>
-          <button type="button" onClick={reload} className="h-9 flex-none rounded-pill bg-ink px-4 text-[13px] font-bold text-on-ink">Retry</button>
+          <Button size="sm" pill className="flex-none" onClick={reload}>Retry</Button>
         </div>
       ) : null}
       {shownDay.length === 0 ? (
-        <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No cuts match." : "No finished cuts this day."}</p>
+        <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No haircuts match." : "No finished haircuts this day."}</p>
       ) : (
         <>
           <div className="mt-5 flex items-baseline justify-between px-1">
-            <b className="text-[15px]">Cuts</b>
+            <b className="text-[15px]">Haircuts</b>
             <small className="text-[12px] font-semibold text-muted">{shownDay.length} · tap to view or edit</small>
           </div>
           <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">{shownDay.map(item)}</ul>

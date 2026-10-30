@@ -280,9 +280,9 @@ export function scoreboard(d: ShopData, now = Date.now()) {
 /** Plain-text scoreboard for the system context. */
 export function scoreboardText(d: ShopData, now = Date.now()) {
   const s = scoreboard(d, now);
-  const f = (x: { cuts: number; salesPhp: number }) => `${x.cuts} cuts, ₱${x.salesPhp.toLocaleString("en-PH")}`;
+  const f = (x: { cuts: number; salesPhp: number }) => `${x.cuts} haircuts, ₱${x.salesPhp.toLocaleString("en-PH")}`;
   const lines = [
-    `Finished cuts only, counted on the Manila day they were completed. TODAY = ${s.todayDate}. THIS WEEK = ${s.weekFrom} (Mon) to ${s.weekTo} (Sun), so far.`,
+    `Finished haircuts only, counted on the Manila day they were completed. TODAY = ${s.todayDate}. THIS WEEK = ${s.weekFrom} (Mon) to ${s.weekTo} (Sun), so far.`,
     `WHOLE SHOP (all branches combined): today ${f(s.total.today)}; this week ${f(s.total.thisWeek)}.`,
   ];
   for (const b of s.branches) {

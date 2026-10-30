@@ -24,7 +24,7 @@ const ICON: Record<string, LucideIcon> = {
   service_added: Package, service_edited: Package, service_removed: Package, shop_edited: Store, location_added: MapPin, location_edited: MapPin, location_removed: MapPin,
   qr_scanned: QrCode, feedback: Star, plan_changed: CreditCard,
 };
-const TYPES: [string, string][] = [["all", "All types"], ["cut_", "Cuts"], ["booking_", "Bookings"], ["walkin_", "Walk-ins"], ["payment_", "Payments"], ["remit_", "Remit"], ["barber_", "Barbers"], ["service_", "Services"], ["location_", "Locations"], ["shop_", "Shop profile"], ["qr_", "QR scans"], ["feedback", "Feedback"], ["plan_", "Plan"]];
+const TYPES: [string, string][] = [["all", "All types"], ["cut_", "Haircuts"], ["booking_", "Bookings"], ["walkin_", "Walk-ins"], ["payment_", "Payments"], ["remit_", "Remit"], ["barber_", "Barbers"], ["service_", "Services"], ["location_", "Locations"], ["shop_", "Shop profile"], ["qr_", "QR scans"], ["feedback", "Feedback"], ["plan_", "Plan"]];
 const ROLES: [string, string][] = [["all", "Everyone"], ["owner", "Owner"], ["barber", "Barbers"], ["customer", "Customers"], ["system", "System"]];
 const when = (ms: number) => new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", barber: "Barber", customer: "Customer", system: "System" };
@@ -94,7 +94,7 @@ function ActivityLog() {
       </div>
       {err ? <p className="mt-3 text-[13px] font-semibold">{err}</p> : null}
       {!items ? (user ? <RowsSkeleton /> : <p className="mt-4 text-[13.5px] font-semibold text-muted">Sign in to see activity.</p>) : items.length === 0 ? (
-        <Empty title="No activity yet" text="Walk-ins, bookings, finished cuts, payments, claims and changes by you and your barbers show up here." />
+        <Empty title="No activity yet" text="Walk-ins, bookings, finished haircuts, payments, claims and changes by you and your barbers show up here." />
       ) : (
         <ul className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">{items.map((e) => <Row key={e.id} e={e} place={nameOf(e.locationId)} />)}</ul>
       )}
@@ -119,7 +119,7 @@ function Notifications() {
         {data?.unread ? <button type="button" onClick={() => void markAll()} className="text-[13px] font-bold underline decoration-grey-300 underline-offset-[3px]">Mark all read</button> : null}
       </div>
       {!data ? (user ? <RowsSkeleton /> : <p className="mt-4 text-[13.5px] font-semibold text-muted">Sign in to see notifications.</p>) : data.items.length === 0 ? (
-        <Empty title="No notifications" text="New online bookings, customer feedback, finished cuts by barbers and unclaimed cash reminders land here." />
+        <Empty title="No notifications" text="New online bookings, customer feedback, finished haircuts by barbers and unclaimed cash reminders land here." />
       ) : (
         <ul className="mt-2 overflow-hidden rounded-card bg-surface shadow-card">
           {data.items.map((e) => (

@@ -99,7 +99,7 @@ function whenLabel(ms: number) {
 }
 
 function row(label: string, orders: number, salesCentavos: number): SalesRow {
-  const cuts = orders > 0 ? `${orders} ${orders === 1 ? "cut" : "cuts"}` : "Shop total";
+  const cuts = orders > 0 ? `${orders} ${orders === 1 ? "haircut" : "haircuts"}` : "Shop total";
   return { label, orders, salesCentavos, detail: cuts };
 }
 

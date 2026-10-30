@@ -74,7 +74,7 @@ function GroupCard({ g, rep, mode, chairs, locName, open, onToggle, onEdit, onRe
   const locRows = groupLocationRows(g, rep, chairs, { loc: locName }, mode);
   const barberCount = new Set(locRows.flatMap((l) => l.barbers.map((b) => b.id)).concat(g.barberIds)).size;
   const total = mode === "gross" ? rep.gross : rep.net;
-  const meta = [`${g.locationIds.length} location${g.locationIds.length === 1 ? "" : "s"}`, `${barberCount} barber${barberCount === 1 ? "" : "s"}`, `${rep.cuts} cut${rep.cuts === 1 ? "" : "s"}`].join(" · ");
+  const meta = [`${g.locationIds.length} location${g.locationIds.length === 1 ? "" : "s"}`, `${barberCount} barber${barberCount === 1 ? "" : "s"}`, `${rep.cuts} haircut${rep.cuts === 1 ? "" : "s"}`].join(" · ");
   return (
     <li className="overflow-hidden rounded-card bg-surface shadow-card">
       <button type="button" aria-expanded={open} aria-label={`${g.name}, ${peso(total)}`} onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-4 text-left">
@@ -98,7 +98,7 @@ function GroupCard({ g, rep, mode, chairs, locName, open, onToggle, onEdit, onRe
                   <Faces barbers={l.barbers} />
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[14.5px]">{l.name}</b>
-                    <small className="block truncate text-[12px] font-semibold text-muted">{[l.barbers.map((b) => b.name).join(", ") || "No barber", `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`].join(" · ")}</small>
+                    <small className="block truncate text-[12px] font-semibold text-muted">{[l.barbers.map((b) => b.name).join(", ") || "No barber", `${l.cuts} haircut${l.cuts === 1 ? "" : "s"}`].join(" · ")}</small>
                   </span>
                   <b className={`flex-none tabular-nums ${l[mode] ? "" : "text-muted"}`}>{peso(l[mode])}</b>
                 </li>
@@ -106,7 +106,7 @@ function GroupCard({ g, rep, mode, chairs, locName, open, onToggle, onEdit, onRe
               {rep.barbers.filter((b) => g.barberIds.includes(b.id) && !locRows.some((l) => l.barbers.some((x) => x.id === b.id))).map((b) => (
                 <li key={b.id} className="flex items-center gap-3 py-2.5">
                   <Faces barbers={[{ id: b.id, name: b.name }]} />
-                  <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{b.name}</b><small className="block truncate text-[12px] font-semibold text-muted">{b.sub} · {b.cuts} cut{b.cuts === 1 ? "" : "s"}</small></span>
+                  <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{b.name}</b><small className="block truncate text-[12px] font-semibold text-muted">{b.sub} · {b.cuts} haircut{b.cuts === 1 ? "" : "s"}</small></span>
                   <b className="flex-none tabular-nums">{peso(b[mode])}</b>
                 </li>
               ))}
