@@ -92,12 +92,14 @@ export function QueueBoard() {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3" role="tablist" aria-label="Queue sections">
-        {([["current", "Current", dayActive.length, "Waiting or in the chair"], ["done", "Completed", dayDone.length, "Finished haircuts"]] as const).map(([k, label, n, hint]) => (
+        {([["current", "Current", dayActive.length, "Waiting or in the chair", "chair"], ["done", "Completed", dayDone.length, "Finished haircuts", "haircut"]] as const).map(([k, label, n, hint, icon]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`min-w-0 rounded-card px-4 pb-3.5 pt-3 text-left shadow-card transition-colors active:scale-[0.99] ${tab === k ? "bg-ink text-on-ink" : "bg-surface"}`}>
+            className={`relative min-w-0 overflow-hidden rounded-card px-4 pb-3.5 pt-3 text-left shadow-card transition-colors active:scale-[0.99] ${tab === k ? "bg-ink text-on-ink" : "bg-surface"}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/icons3d/barbers/128/${icon}.webp`} alt="" width={64} height={64} aria-hidden className="pointer-events-none absolute right-2 top-1/2 size-12 -translate-y-1/2 object-contain sm:right-3 sm:size-16" />
             <span className={`block text-[12.5px] font-semibold ${tab === k ? "text-on-ink-muted" : "text-muted"}`}>{label}</span>
-            <b className="mt-0.5 block text-[28px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{n}</b>
-            <span className={`mt-1.5 hidden truncate text-[12px] font-medium sm:block ${tab === k ? "text-on-ink-muted" : "text-muted"}`}>{hint}</span>
+            <b className="relative mt-0.5 block text-[28px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{n}</b>
+            <span className={`mt-1.5 hidden truncate pr-16 text-[12px] font-medium sm:block ${tab === k ? "text-on-ink-muted" : "text-muted"}`}>{hint}</span>
           </button>
         ))}
       </div>
