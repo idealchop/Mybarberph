@@ -66,9 +66,9 @@ for (const c of chairs) {
   for (const off of [-1, 0]) {
     const w = weekBounds(off); const from = ymd(w.from), to = ymd(w.to - 1);
     const p = await barberPerformance(UID, { range: "custom", from, to, barberId: bid, chairId: c.id, locationId: loc });
-    for (const d of p.byDate ?? []) { const v = ind.get(`${bid}@${loc}|${d.date}`); pairsMy.push([`${c.label} ${d.date}`, d.earnings, v ? v.barber + v.tips : 0]); }
+    for (const d of p.byDate ?? []) { const v = ind.get(`${bid}@${loc}|${d.date}`); pairsMy.push([`${c.label} ${d.date}`, d.earnings, v ? v.barber : 0]); }
   }
-  for (const [k, v] of ind) { if (!k.startsWith(`${bid}@${loc}|`)) continue; const day = k.split("|")[1]!; const h = await barberDayCuts(UID, { date: day, barberId: bid, locationId: loc, chairId: c.id }); pairsHist.push([`${c.label} ${day}`, dayOf(day, h.rows, h.sharePct).earnings, v.barber + v.tips]); }
+  for (const [k, v] of ind) { if (!k.startsWith(`${bid}@${loc}|`)) continue; const day = k.split("|")[1]!; const h = await barberDayCuts(UID, { date: day, barberId: bid, locationId: loc, chairId: c.id }); pairsHist.push([`${c.label} ${day}`, dayOf(day, h.rows, h.sharePct).earnings, v.barber]); }
   void barb;
 }
 check("Barber My sales weekly (server)", pairsMy);

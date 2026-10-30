@@ -16,9 +16,9 @@ const DAY = 86_400_000;
 export const ymdStart = (ymd: string) => Date.parse(`${ymd}T00:00:00+08:00`);
 export const addDays = (ymd: string, n: number) => manilaYmd(ymdStart(ymd) + n * DAY);
 
-/** What the barber takes home for these sales: their share (when the shop set one, else the full sales) plus tips. */
-export function earningsOf(sales: number, tips: number, pct: number | null) {
-  return (pct == null ? sales : splitIncome(sales, pct).barber) + tips;
+/** The barber's SHARE of these sales (when the shop set one, else the full sales). Tips are shown separately, never added (Jimboy, v1.0.22). */
+export function earningsOf(sales: number, _tips: number, pct: number | null) {
+  return pct == null ? sales : splitIncome(sales, pct).barber;
 }
 
 export function dayOf(date: string, rows: ChairRequest[], pct: number | null): HistoryDay {

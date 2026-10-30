@@ -34,16 +34,16 @@ describe("Barber link profile", () => {
   it("rejects an unknown or turned-off token", async () => {
     expect((await get("nope-token")).status).toBe(404);
   });
-  it("returns the barber's own share + tips per visit (45% of ₱75 = ₱33.75), tips 100% to the barber", async () => {
+  it("returns the barber's own share per visit, tips separate (45% of ₱75 = ₱33.75), tips 100% to the barber", async () => {
     const d = await (await get()).json();
     expect(d.cuts).toBe(3);
     expect(d.sharePct).toBe(45);
     // 3375 + 9000 + 4500 share, + 2000 tip
     expect(d.share).toBe(16875);
     expect(d.tips).toBe(2000);
-    expect(d.earnings).toBe(18875);
-    expect(d.byDate.reduce((s: number, x: { earnings: number }) => s + x.earnings, 0)).toBe(18875);
-    expect(d.byHour.reduce((s: number, x: { earnings: number }) => s + x.earnings, 0)).toBe(18875);
+    expect(d.earnings).toBe(16875);
+    expect(d.byDate.reduce((s: number, x: { earnings: number }) => s + x.earnings, 0)).toBe(16875);
+    expect(d.byHour.reduce((s: number, x: { earnings: number }) => s + x.earnings, 0)).toBe(16875);
     // Unclaimed cash owner share: ₱75 cash -> 4125; ₱100 is claimed; GCash isn't handed over.
     expect(d.toClaim).toBe(4125);
     expect(d.claimed).toBe(5500);
@@ -51,7 +51,15 @@ describe("Barber link profile", () => {
   it("shows rank as a position only, never other barbers' amounts or names", async () => {
     const r = await get(); const txt = await r.clone().text(); const d = await r.json();
     expect(d.rank).toBe(2); expect(d.of).toBe(2);
-    expect(txt).not.toContain("99900"); expect(txt).not.toContain("b-jun"); expect(txt).not.toContain("Jun");
+    expect(txt).not.toContain("99900"); expect(txt).not.toContain("b-jun"); expect(txt).not.toContain("Jun"); expect(txt).not.toContain("cut-j1");
+  });
+  it("rows for the shared Performance sections: own visits only, price = share, tip separate, no contact", async () => {
+    fs.store["shops/shop-a/bookings/cut-k1"] = { ...(fs.store["shops/shop-a/bookings/cut-k1"] as object), contact: "09171234567", rating: 5 };
+    const r = await get(); const txt = await r.clone().text(); const d = await r.json();
+    expect(d.rows.map((x: { id: string }) => x.id).sort()).toEqual(["cut-k1", "cut-k2", "cut-k3"]);
+    const k1 = d.rows.find((x: { id: string }) => x.id === "cut-k1");
+    expect(k1.price).toBe(3375); expect(k1.tip).toBe(2000); expect(k1.rating).toBe(5);
+    expect(txt).not.toContain("09171234567");
   });
   it("accepts today / all time and falls back to 7d for anything else", async () => {
     expect((await (await get(TOKEN, "all")).json()).range).toBe("all");

@@ -5,7 +5,7 @@ import { useRemit } from "@/features/sales";
 import { EmptyBookings } from "@/components/common/empty-bookings";
 
 import { CoinIcon } from "@river-apps/icons";
-import { Plus, ScanLine, User } from "lucide-react";
+import { User } from "lucide-react";
 import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
@@ -159,7 +159,7 @@ export function HomeScreen() {
             </Link>
           </div>
         </header>
-        <section className={`relative isolate mx-4 mt-3 flex h-[150px] items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`}>
+        <section className={`relative isolate mx-4 mt-3 flex items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`} style={{ height: mine ? 150 : 124 }}>
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
@@ -175,16 +175,11 @@ export function HomeScreen() {
                 {mine.startedAt ? <b className="flex-none tabular-nums">{elapsedLabel(mine.startedAt, now)}</b> : null}
               </p>
             ) : null}
-            <div className="mt-2 flex flex-nowrap items-center gap-1.5">
-              {mine ? (
+            {mine ? (
+              <div className="mt-2.5 flex flex-nowrap items-center gap-1.5">
                 <Button variant="white" size="sm" className={PILL} leadingIcon={<CheckCircle2 size={14} strokeWidth={2.2} />} onClick={() => completeCut(mine)}>Complete</Button>
-              ) : (
-                <>
-                  <Button href="/queue/new?me=1" variant="white" size="sm" className={PILL} leadingIcon={<Plus size={14} strokeWidth={2} />}>Walk-in</Button>
-                  <Button href="/scan" variant="ghost-inverse" size="sm" className={PILL} leadingIcon={<ScanLine size={14} strokeWidth={1.9} />}>Scan QR</Button>
-                </>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
           <div aria-hidden className="pointer-events-none relative z-0 -mr-2 w-[116px] flex-none">
             {/* eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP; next/image adds nothing here */}
@@ -193,7 +188,7 @@ export function HomeScreen() {
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales?view=barbers" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
+          <Link href="/sales/profit" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         <ProfitReportCard className="mx-4 mt-3" />
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
@@ -216,18 +211,11 @@ export function HomeScreen() {
             titleSize="lg"
             description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
-            actions={
+            actions={mine ? (
               <div className="flex flex-nowrap items-center gap-2.5">
-                {mine ? (
-                  <Button variant="white" size="md" leadingIcon={<CheckCircle2 size={18} strokeWidth={2} />} onClick={() => completeCut(mine)}>Complete</Button>
-                ) : (
-                  <>
-                    <Button href="/queue/new?me=1" variant="white" size="md" leadingIcon={<Plus size={18} strokeWidth={1.9} />}>Walk-in</Button>
-                    <Button href="/scan" variant="ghost-inverse" size="md" leadingIcon={<ScanLine size={18} strokeWidth={1.75} />}>Scan QR</Button>
-                  </>
-                )}
+                <Button variant="white" size="md" leadingIcon={<CheckCircle2 size={18} strokeWidth={2} />} onClick={() => completeCut(mine)}>Complete</Button>
               </div>
-            }
+            ) : undefined}
             // eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP
             illustration={<img src="/barber-hero.webp" alt="" width={230} height={220} className="h-auto w-[230px]" />}
             illustrationClassName="right-[30px] top-1/2 -translate-y-1/2"

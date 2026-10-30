@@ -610,7 +610,7 @@ function ChairHistory({
           <span className="w-[3.6rem] flex-none text-[12.5px] font-semibold tabular-nums text-muted">{time(row.completedAt!)}</span>
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[14.5px]">{row.customerLabel || row.contact || "Walk-in"}</b>
-            <small className="block truncate text-[12px] font-semibold text-muted">{offer.label}</small>
+            <small className="block truncate text-[12px] font-semibold text-muted">{[offer.label, tipOf(row) ? `Tip ${peso(tipOf(row))}` : ""].filter(Boolean).join(" · ")}</small>
           </span>
           <ClaimTag r={row} claimed={locked.has(row.id)} />
           <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), visitPct(row, pct)))}</b>
@@ -633,13 +633,13 @@ function ChairHistory({
 
       <section aria-label="Day summary" className={cn("mt-4 rounded-[22px] px-4 pb-4 pt-3.5", green ? "bg-[#0F7A45] text-white" : "bg-ink text-on-ink")}>
         <div className="flex items-center justify-between gap-3">
-          <p className={cn("text-[12.5px] font-semibold", green ? "text-white/75" : "text-on-ink-muted")}>You earned</p>
+          <p className={cn("text-[12.5px] font-semibold", green ? "text-white/75" : "text-on-ink-muted")}>Your share</p>
           {green ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/20 px-2.5 text-[11.5px] font-bold text-white"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
             : claimState === "open" ? <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />{cashOpen} cash to hand over</span> : null}
         </div>
         <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
         <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", green ? "text-white/75" : "text-on-ink-muted")}>
-          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} haircut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `incl. ${peso(picked.tips)} tips` : ""].filter(Boolean).join(" · ")}
+          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} haircut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `Tips ${peso(picked.tips)}` : ""].filter(Boolean).join(" · ")}
         </p>
       </section>
 

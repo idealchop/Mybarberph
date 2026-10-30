@@ -5,11 +5,13 @@ import { cn } from "@river-apps/ui";
 import type { BarberProfile } from "@/lib/barber-sales";
 import { peso } from "@/lib/format";
 import { SalesChartCard } from "@/features/sales/sales-chart";
+import { PerformanceDashboard } from "@/features/sales/performance-dashboard";
+import type { SalesRange } from "@/lib/sales-report";
 
 type Range = "today" | "7d" | "all";
 const RANGES: [Range, string][] = [["today", "Today"], ["7d", "7d"], ["all", "All time"]];
+const RANGE_OF: Record<Range, SalesRange> = { today: "today", "7d": "week", all: "all" };
 const MEDAL = ["🥇", "🥈", "🥉"];
-const hLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
 const dLabel = (d: string) => new Date(`${d}T00:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" });
 
 /** The barber's own profile (v1.0.22): the owner's barber detail, read-only, with the barber's share + tips. */
@@ -52,7 +54,7 @@ export function BarberProfileView({ token, who, place, onBack }: { token: string
         <div className="text-right">
           <p className="text-[12px] font-semibold text-muted">Your share</p>
           <b className="block text-[18px] tabular-nums">{!d ? "…" : pct == null ? "Not set" : `${pct}%`}</b>
-          <small className="block text-[11px] font-semibold text-muted">{pct == null ? "Full price + tips" : "+ 100% of tips"}</small>
+          <small className="block text-[11px] font-semibold text-muted">{pct == null ? "Full price is yours" : "Tips are all yours"}</small>
         </div>
       </section>
       <div className="mt-3 grid grid-cols-3 gap-2 [&>*]:min-w-0">
@@ -61,21 +63,13 @@ export function BarberProfileView({ token, who, place, onBack }: { token: string
         <Mini k="Handed over" v={d ? peso(d.claimed) : "–"} />
       </div>
       {d && range !== "today" ? <SalesChartCard className="mt-3" kind="day" sales={d.earnings} series={d.byDate.map((x) => ({ label: dLabel(x.date), orders: x.cuts, salesCentavos: x.earnings, detail: `${x.cuts} haircut${x.cuts === 1 ? "" : "s"}` }))} /> : null}
-      <div className="mt-3 grid grid-cols-2 gap-2 [&>*]:min-w-0">
-        <Kpi k="Your earnings" v={d ? peso(d.earnings) : "…"} sub={d ? `${peso(d.share)} share + ${peso(d.tips)} tips` : ""} />
-        <Kpi k="Haircuts" v={d ? String(d.cuts) : "…"} />
-        <Kpi k="Avg per haircut" v={d ? (d.cuts ? peso(d.avgTicket) : "–") : "…"} sub="Your share + tips" />
-        <Kpi k="Peak hour" v={d?.peakHour ? hLabel(d.peakHour.hour) : "–"} sub={d?.peakHour ? `${d.peakHour.cuts} haircut${d.peakHour.cuts === 1 ? "" : "s"}` : ""} />
-      </div>
-      {d && d.byHour.length ? <SalesChartCard className="mt-3" kind="hour" sales={d.earnings} series={d.byHour.map((h) => ({ label: hLabel(h.hour), orders: h.cuts, salesCentavos: h.earnings, detail: `${h.cuts} haircut${h.cuts === 1 ? "" : "s"}` }))} /> : null}
-      <p className="mt-4 text-center text-[12px] font-semibold text-muted">Amounts are your share of each haircut plus your tips.</p>
+      {d ? <p className="mt-3 rounded-card bg-surface px-4 py-3 text-[13px] font-semibold shadow-card"><span className="text-muted">Tips (separate, all yours)</span> <b className="float-right tabular-nums">{peso(d.tips)}</b></p> : null}
+      {d ? <PerformanceDashboard solo all={d.rows as never} range={RANGE_OF[range]} where="all" branches={[{ id: d.rows[0]?.locationId || "home", name: place || "Shop" }]} chairs={[]} /> : null}
+      <p className="mt-4 text-center text-[12px] font-semibold text-muted">Amounts are your share of each haircut. Tips are shown separately.</p>
     </main>
   );
 }
 
 function Mini({ k, v, tone }: { k: string; v: string; tone?: "warn" }) {
   return <div className="rounded-card bg-surface px-3 py-2.5 shadow-card"><p className="truncate text-[11.5px] font-semibold text-muted">{k}</p><b className={cn("block truncate text-[16px] tabular-nums", tone === "warn" && "text-[#B54708]")}>{v}</b></div>;
-}
-function Kpi({ k, v, sub }: { k: string; v: string; sub?: string }) {
-  return <div className="rounded-card bg-surface px-4 py-3 shadow-card"><p className="truncate text-[12.5px] font-semibold text-muted">{k}</p><b className="block truncate text-[22px] tabular-nums tracking-[-0.02em]">{v}</b>{sub ? <small className="block truncate text-[11.5px] font-semibold text-muted">{sub}</small> : null}</div>;
 }

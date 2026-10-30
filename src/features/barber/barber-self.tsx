@@ -59,7 +59,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
       </div>
       <section aria-label="Your earnings" className="mt-3 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
         <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your share + tips</p>
+          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your share</p>
           <div role="group" aria-label="Week" className="flex h-11 flex-none items-center rounded-pill bg-white/10">
             <button type="button" aria-label="Previous week" disabled={offset <= -8} onClick={() => setOffset((n) => Math.max(-8, n - 1))}
               className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronLeftIcon /></button>
@@ -69,7 +69,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
           </div>
         </div>
         <b className="mt-1 block pr-2 text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{loaded ? peso(total) : "…"}</b>
-        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{!loaded ? "Loading…" : cuts ? `${cuts} haircut${cuts === 1 ? "" : "s"} · ${peso(total - tips)} share${tips ? ` + ${peso(tips)} tips` : ""}` : "No finished haircuts"}</p>
+        <p className="mb-1 mt-2 pr-2 text-[12.5px] font-semibold text-on-ink-muted">{!loaded ? "Loading…" : cuts ? `${cuts} haircut${cuts === 1 ? "" : "s"}${tips ? ` · Tips ${peso(tips)}` : ""}` : "No finished haircuts"}</p>
       </section>
       {err && !data ? <p className="mt-4 text-[13.5px] font-semibold">{err}</p> : null}
       <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">

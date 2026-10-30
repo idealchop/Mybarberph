@@ -106,4 +106,10 @@ export interface BarberProfile {
   toClaim: number; claimed: number;
   byDate: { date: string; cuts: number; earnings: number; tips: number }[];
   byHour: { hour: number; earnings: number; cuts: number }[];
+  /** The barber's own visits (last 366 days); price = their share of the visit, tip separate. */
+  rows: BarberProfileRow[];
+}
+export interface BarberProfileRow {
+  id: string; status: string; price: number; tip: number; completedAt?: number; createdAt: number; updatedAt?: number; startedAt?: number;
+  channel?: string; locationId: string; barberId: string; serviceName?: string; rating?: number; feedback?: string; customerLabel?: string; home?: boolean; paid?: boolean; payMethod?: string;
 }

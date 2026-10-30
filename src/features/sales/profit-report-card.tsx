@@ -37,48 +37,50 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
   const remit = useRemit("all");
   // Same claim colors as the profit grid: red = cash still to claim that day, green = all claimed, neutral otherwise.
   const claimMap = useMemo(() => (remit.data ? claimStates(rows, chairs, (id) => Boolean(remit.claimOf(id))) : null), [rows, chairs, remit]);
-  const dayState = (day: string) => {
-    if (!claimMap) return null;
-    let open = 0, claimed = 0;
-    for (const [k, v] of claimMap) {
+  const dayAgg = (day: string) => {
+    let open = 0, claimed = 0, owed = 0;
+    if (claimMap) for (const [k, v] of claimMap) {
       if (!k.endsWith(`|${day}`)) continue;
       const loc = k.slice(k.indexOf("@") + 1, k.indexOf("|"));
       if (where !== "all" && loc !== where) continue;
-      open += v.open; claimed += v.claimed;
+      open += v.open; claimed += v.claimed; owed += v.openOwner;
     }
-    return cellClaimState({ open, claimed });
+    return { open, claimed, owed };
   };
   const tk = todayKey(now);
+  const cells = report.days.map((d, i) => {
+    const n = report.daily[i] ?? 0, future = d.key > tk, a = dayAgg(d.key);
+    return { ...d, n, future, today: d.key === tk, st: future || !n || !claimMap ? null : cellClaimState(a), open: future ? 0 : a.owed };
+  });
+  const toClaim = cells.reduce((s, c) => s + c.open, 0);
   return (
-    <Link href="/sales/profit" aria-label="Open the weekly profit report" className={`block rounded-card bg-surface px-4 pb-4 pt-3.5 shadow-card active:scale-[0.99] ${className}`}>
-      <span className="flex items-center gap-2">
-        <span className="min-w-0 flex-1">
-          <b className="block text-[16px] tracking-[-0.01em]">Your weekly profit</b>
-          <span className="mt-0.5 block truncate text-[12.5px] font-semibold text-muted">{report.label}</span>
+    <Link href="/sales/profit" aria-label="Open the weekly profit report" className={`block rounded-card bg-surface px-4 pb-3.5 pt-4 shadow-card active:scale-[0.99] ${className}`}>
+      <span className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="flex items-center gap-1 text-[13px] font-bold text-muted">Your weekly profit<ChevronRight size={15} strokeWidth={2.4} aria-hidden className="text-subtle" /></span>
+          <b className="mt-1 block text-[28px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(report.total)}</b>
         </span>
-        <span className="flex-none text-right">
-          <b className="block text-[22px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{peso(report.total)}</b>
-          <small className="text-[11px] font-semibold text-muted">your share</small>
+        <span className="mt-0.5 flex-none text-right">
+          <span className="block text-[12px] font-semibold text-muted">{report.label.replace(/, \d{4}$/, "")}</span>
+          <span className="mt-1 block text-[11.5px] font-semibold text-muted">your share</span>
         </span>
-        <span aria-hidden className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-grey-100 text-ink"><ChevronRight size={16} strokeWidth={2.4} /></span>
       </span>
-      <span className="mt-3 grid grid-cols-7 gap-1" aria-hidden>
-        {report.days.map((d, i) => {
-          const today = d.key === tk;
-          const future = d.key > tk;
-          const n = report.daily[i] ?? 0;
-          const st = future || !n ? null : dayState(d.key);
-          return (
-            <span key={d.key} className={cn("flex min-w-0 flex-col items-center rounded-[12px] py-2", today ? "bg-ink text-on-ink" : "bg-grey-50")}>
-              <span className={cn("text-[11.5px] font-bold", today ? "text-on-ink-muted" : "text-muted")}>{d.dow}</span>
-              <span className={cn("mt-1 whitespace-nowrap text-[13px] font-extrabold leading-none tabular-nums",
-                future && "opacity-35",
-                st === "open" && (today ? "text-[#FF8A80]" : "text-[#C62828]"),
-                st === "claimed" && (today ? "text-[#7BE0A6]" : "text-[#0B7A3E]"))}>{future ? "–" : cell(n)}</span>
-              <i className={cn("mt-1.5 block size-1.5 rounded-full", st === "open" ? "bg-[#C62828]" : st === "claimed" ? "bg-[#0B7A3E]" : "bg-transparent")} />
-            </span>
-          );
-        })}
+      <span className="mt-3.5 grid grid-cols-7 gap-1" aria-hidden>
+        {cells.map((c) => (
+          <span key={c.key} className={cn("flex h-[58px] min-w-0 flex-col items-center justify-center rounded-[12px]",
+            c.st === "open" ? "bg-[#FDECEC]" : c.st === "claimed" ? "bg-[#E7F5EC]" : "bg-grey-50",
+            c.today && "ring-[1.5px] ring-inset ring-ink")}>
+            <span className={cn("text-[11px] font-bold", c.today ? "text-ink" : "text-muted")}>{c.today ? "Today" : c.dow}</span>
+            <span className={cn("mt-1 whitespace-nowrap text-[13.5px] font-extrabold leading-none tabular-nums",
+              c.future || !c.n ? "text-muted opacity-50" : c.st === "open" ? "text-[#C62828]" : c.st === "claimed" ? "text-[#0B7A3E]" : "text-ink")}>{c.future ? "–" : cell(c.n)}</span>
+          </span>
+        ))}
+      </span>
+      <span className="mt-3 flex items-center justify-between border-t border-line pt-2.5 text-[12.5px] font-semibold">
+        {!claimMap ? <span className="text-muted">Checking claims…</span> : toClaim > 0
+          ? <span className="flex items-center gap-1.5 text-[#C62828]"><i className="size-1.5 rounded-full bg-[#C62828]" />{peso(toClaim)} cash to claim</span>
+          : <span className="flex items-center gap-1.5 text-[#0B7A3E]"><i className="size-1.5 rounded-full bg-[#0B7A3E]" />All cash claimed</span>}
+        <span className="flex items-center gap-2.5 text-[11px] text-muted"><span className="flex items-center gap-1"><i className="size-2 rounded-[3px] bg-[#E7F5EC] ring-1 ring-[#0B7A3E]/30" />Claimed</span><span className="flex items-center gap-1"><i className="size-2 rounded-[3px] bg-[#FDECEC] ring-1 ring-[#C62828]/30" />To claim</span></span>
       </span>
     </Link>
   );

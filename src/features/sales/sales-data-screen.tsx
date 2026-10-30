@@ -12,14 +12,13 @@ import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { DAY_RANGES, rangeFetchDays, type SalesRange } from "@/lib/sales-report";
-import { barberStats, inRange, rankedBarbers } from "@/lib/sales-stats";
+import { inRange } from "@/lib/sales-stats";
 import { SalesGroups } from "./sales-groups";
 import { showsLocationFilter } from "@/lib/sales-filters";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
 import { asOwnerSplit } from "@/lib/split-view";
-import { BarberRanking, ClaimHistory, RangeChips, UnclaimedCard } from "./sales-parts";
-import { useRemit } from "./use-remit";
+import { RangeChips } from "./sales-parts";
 import { useSalesRows } from "./use-sales-rows";
 import { BarberLeaderboard } from "./barber-leaderboard";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
@@ -65,10 +64,6 @@ export function SalesDataScreen() {
   }, [search]);
 
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
-  const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
-  const remit = useRemit(where);
-  const claim = (id: string, l: string) => void remit.claim(id, l);
-  const locName = (id: string) => (shops.enabled ? branches.find((b) => b.id === id)?.name ?? "" : "");
 
   if (!deep && !cloud.ready) return <AppLoader />;
   return (
@@ -113,11 +108,6 @@ export function SalesDataScreen() {
       ) : null}
       {view === "barbers" ? (
         <>
-          <UnclaimedCard className="mt-4" remit={remit.data} onClaim={claim} claiming={remit.busy} locName={locName} />
-          {remit.error ? <p className="mt-2 text-[13px] font-semibold">{remit.error}</p> : null}
-          <BarberRanking rows={barbers} range={range} chairs={chairs} remit={remit.data}
-            onClaim={where !== "all" || !shops.enabled ? (id, l) => void remit.claim(id, l) : undefined} claiming={remit.busy} />
-          <ClaimHistory remit={remit.data} locName={locName} />
           <BarberLeaderboard range={range} where={where} all={all} />
         </>
       ) : null}

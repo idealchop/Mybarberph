@@ -19,9 +19,9 @@ describe("barber History day by day", () => {
     expect(dayOf("2026-10-26", rows, 40).cuts).toBe(2);
     expect(dayOf("2026-10-27", rows, 40).cuts).toBe(countToday(rows, NOW));
   });
-  it("earnings = barber share + tips; full sales when no share is set", () => {
+  it("earnings = barber share only (tips separate); full sales when no share is set", () => {
     const d = dayOf("2026-10-27", rows, 40);
-    expect(d.sales).toBe(40000); expect(d.tips).toBe(5000); expect(d.earnings).toBe(16000 + 5000);
+    expect(d.sales).toBe(40000); expect(d.tips).toBe(5000); expect(d.earnings).toBe(16000);
     expect(earningsOf(40000, 0, null)).toBe(40000);
   });
   it("labels and day math in Manila time", () => {

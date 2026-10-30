@@ -35,14 +35,20 @@ export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locat
 
 /** Claim state of every barber×day cell in one pass: key `${barberId}@${locationId}|${ymd}` → open/claimed cash cut counts. */
 export function claimStates(rows: Visit[], chairs: Chair[], isClaimed: (bookingId: string) => boolean) {
-  const m = new Map<string, { open: number; claimed: number }>();
+  const m = new Map<string, { open: number; claimed: number; openOwner: number }>();
   for (const r of rows) {
     if (!isCash(r)) continue;
     const k = remitKey(r, chairs);
     if (k.id === "owner") continue;
     const key = `${k.id}@${k.loc}|${day(r.completedAt ?? r.updatedAt ?? 0)}`;
-    const v = m.get(key) ?? { open: 0, claimed: 0 };
-    if (isClaimed(r.id)) v.claimed++; else v.open++;
+    const v = m.get(key) ?? { open: 0, claimed: 0, openOwner: 0 };
+    if (isClaimed(r.id)) v.claimed++;
+    else {
+      v.open++;
+      // Owner share still to claim (same rule as dayClaim: the visit's stamped %, else the barber's current %).
+      const c = chairs.find((x) => (x.barberId === k.id || x.id === k.id) && (x.locationId || "home") === k.loc) ?? chairs.find((x) => x.barberId === k.id || x.id === k.id);
+      v.openOwner += ownerShareOf(r.price || 0, visitPct(r, c ? sharePct(c) : null));
+    }
     m.set(key, v);
   }
   return m;
