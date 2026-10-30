@@ -19,7 +19,7 @@ import { salesReport } from "@/lib/sales-report";
 import { ProfitReportCard, SalesChartCard } from "@/features/sales";
 import { dayBoard, todayKey } from "@/lib/queue-day";
 import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useChairRequests, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
-import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, inLocation, useShopLocations } from "@/lib/shop-locations";
+import { ALL_LOCATIONS, branchName, inLocation, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { CompanionCard } from "@/features/companion";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
@@ -101,11 +101,6 @@ export function HomeScreen() {
   const figures = todayFigures(split);
   const todayTitle = shops.viewingAll ? `All shops: ${peso(figures.sales)}` : `Today: ${peso(figures.sales)}`;
   const placeFor = shops.viewingAll ? (row: ChairRequest) => branchName(shops.branches, row.locationId) : undefined;
-  const byShop = shops.branches.map((branch) => {
-    const mine = split.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id);
-    const fig = todayFigures(mine);
-    return { branch, sales: fig.sales, cuts: fig.cuts, inChair: mine.filter((row) => row.status === "in_chair").length };
-  });
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
   // v1.0.26: one board for every Home count (queue-day.ts dayBoard), same as the Queue's Current / Completed cards.
   // "waiting" used to come from the live list for ANY day, so a visit left open yesterday showed as waiting today.
@@ -216,7 +211,6 @@ export function HomeScreen() {
         <CompanionCard className="mx-4 mt-3" />
         <HomeShortcuts className="mx-4 mt-3" />
         <SalesChartCard className="mx-4 mt-3" series={todaySales.series} kind="hour" sales={todaySales.sales} />
-        {shops.viewingAll ? <ShopDays rows={byShop} /> : null}
         <SectionHeader className="px-5 pb-1 pt-4" title="Bookings to accept" aside={aside} />
         <div className="mx-4"><Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} locationId={shops.viewingAll ? undefined : shops.scopeId ?? undefined} /></div>
       </div>
@@ -258,26 +252,12 @@ export function HomeScreen() {
         <CompanionCard className="mt-5" />
         <HomeShortcuts className="mt-5" />
         <SalesChartCard className="mt-5" series={todaySales.series} kind="hour" sales={todaySales.sales} />
-        {shops.viewingAll ? <ShopDays rows={byShop} className="mt-5" /> : null}
         <Card padding="none" className="mt-5 px-[18px] pb-4 pt-4">
           <CardHeader className="mb-3" title="Bookings to accept" subtitle={aside} action={<Link href="/queue?channel=online" className={linkCls}>All bookings</Link>} />
           <Bookings rows={fresh} loading={!ready} max={4} placeFor={placeFor} locationId={shops.viewingAll ? undefined : shops.scopeId ?? undefined} />
         </Card>
       </div>
     </>
-  );
-}
-
-function ShopDays({ rows, className }: { rows: { branch: { id: string; name: string }; sales: number; cuts: number; inChair: number }[]; className?: string }) {
-  return (
-    <ul className={`mx-4 flex flex-col gap-3 ${className ?? "mt-3"}`}>
-      {rows.map((item) => (
-        <li key={item.branch.id} className="rounded-card bg-surface px-3.5 py-3 shadow-card">
-          <b className="block text-[15px]">{item.branch.name}</b>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Today: {peso(item.sales)} · {item.cuts} haircuts · {item.inChair} busy</p>
-        </li>
-      ))}
-    </ul>
   );
 }
 

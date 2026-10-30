@@ -22,6 +22,7 @@ import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar
 import { mergeLiveRows } from "@/lib/cut-count";
 import { cellClaimState, claimStates } from "@/lib/profit-claim";
 import { useRemit } from "./use-remit";
+import { ProfitChart } from "./profit-chart";
 
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
@@ -227,6 +228,7 @@ export function ProfitReportScreen() {
           <span className="inline-flex items-center gap-1"><i aria-hidden className="size-2 rounded-full bg-[#0B7A3E]" />Claimed</span>
         </p>
       ) : null}
+      {!month && report.rows.length ? <ProfitChart rows={report.rows} showBranch={where === "all"} label={shortLabel} /> : null}
       {month && dayOpen && !sheet ? (
         <ProfitDayBreakdown m={month} date={dayOpen} groups={grouped ? salesGroups : null} showBranch={where === "all"} onClose={() => setDayOpen(null)}
           onBarber={(r) => setSheet({ id: r.id, name: r.name, locationId: r.locationId, locationName: r.locationName, day: dayOpen })} />

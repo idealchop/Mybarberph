@@ -241,3 +241,12 @@ export function dayBreakdown(m: Pick<ProfitMonth, "dates" | "byDay">, date: stri
   return m.byDay.map((r) => ({ ...r, days: [r.days[i] ?? 0], total: r.days[i] ?? 0 })).filter((r) => r.total > 0)
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 }
+
+/** v1.0.29 owner chart order: the table's rows, highest first; zero-sales barbers last (muted). Never recomputes amounts. */
+export interface ProfitRanking { ranked: ProfitRow[]; zero: ProfitRow[]; top: ProfitRow | null; lowest: ProfitRow | null; max: number }
+export function rankProfitRows(rows: ProfitRow[]): ProfitRanking {
+  const byTotal = (a: ProfitRow, b: ProfitRow) => b.total - a.total || a.name.localeCompare(b.name);
+  const ranked = rows.filter((r) => r.total > 0).sort(byTotal);
+  const zero = rows.filter((r) => r.total <= 0).sort((a, b) => a.name.localeCompare(b.name));
+  return { ranked, zero, top: ranked[0] ?? null, lowest: ranked.length > 1 ? ranked[ranked.length - 1]! : null, max: ranked[0]?.total ?? 0 };
+}
