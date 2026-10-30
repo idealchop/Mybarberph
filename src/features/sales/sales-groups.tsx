@@ -29,23 +29,17 @@ function useGroups() {
 /** Sales group tab v2 (Jimboy, 2026-10-21): one card per group, a single Gross / Net toggle, tap a card for its locations. */
 export function SalesGroups({ rows, chairs, branches }: { rows: ChairRequest[]; chairs: ShopChair[]; branches: { id: string; name: string }[] }) {
   const { groups, save } = useGroups();
-  const [mode, setMode] = useState<"gross" | "net">("gross");
+  // Rows here are already the owner's split (asOwnerSplit), so "gross" of them IS the owner's share; no Net toggle (it split twice).
+  const mode = "gross" as const;
   const [open, setOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const locName = (id: string) => branches.find((b) => b.id === id)?.name || "Main";
   const reports = useMemo(() => groups.map((g) => ({ g, rep: groupReport(rows, g, chairs, { loc: locName }) })), [rows, groups, chairs]); // eslint-disable-line react-hooks/exhaustive-deps
-  const noSplit = chairs.some((c) => sharePct(c) == null);
   const eg = groups.find((x) => x.id === editing) ?? null;
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 text-[12.5px] font-semibold text-muted">{mode === "gross" ? "Total sales" : `After barbers’ share${noSplit ? " · no split: nothing taken off" : ""}`}</p>
-        <div role="radiogroup" aria-label="Total shown" className="flex flex-none rounded-pill bg-grey-100 p-0.5">
-          {([["gross", "Gross"], ["net", "Net"]] as const).map(([v, l]) => (
-            <button key={v} type="button" role="radio" aria-checked={mode === v} onClick={() => setMode(v)}
-              className={`h-8 rounded-pill px-4 text-[13px] font-bold ${mode === v ? "bg-surface text-ink shadow-card" : "text-muted"}`}>{l}</button>
-          ))}
-        </div>
+        <p className="min-w-0 text-[12.5px] font-semibold text-muted">Your share</p>
       </div>
       <ul className="mt-3 flex flex-col gap-3">
         {reports.map(({ g, rep }) => (

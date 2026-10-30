@@ -45,9 +45,6 @@ const initial = (n: string) => (n.trim()[0] ?? "?").toUpperCase();
 function Initial({ name }: { name: string }) {
   return <span aria-hidden className="inline-flex size-10 flex-none items-center justify-center rounded-full bg-grey-100 text-[15px] font-bold text-ink">{initial(name)}</span>;
 }
-function Chip({ label, value }: { label: string; value: string }) {
-  return <span className="inline-flex items-baseline gap-1 rounded-pill bg-grey-100 px-2.5 py-1 text-[12px] font-semibold text-muted">{label}<b className="font-bold tabular-nums text-ink">{value}</b></span>;
-}
 function ClaimBtn({ busy, onClick }: { busy?: boolean; onClick: () => void }) {
   return (
     <button type="button" data-auth="action" disabled={busy} onClick={onClick}
@@ -101,12 +98,6 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
         </div>
         <span className="mt-3 block text-[12.5px] font-semibold text-muted">Your share</span>
         <b className={cn("block text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums", remit && !ownerTotal && "text-muted")}>{remit ? peso(ownerTotal) : "–"}</b>
-        {remit && rows.length ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <Chip label="Total sales" value={peso(remit.total)} />
-            {remit.total !== ownerTotal ? <Chip label="Barbers" value={peso(remit.total - ownerTotal)} /> : null}
-          </div>
-        ) : null}
       </section>
       {open && onClaim ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setOpen(false)}>
@@ -227,7 +218,7 @@ function ClaimRow({ b, remit, onClaim, busy }: { b: BarberStat; remit: Remit | n
   return (
     <div className="flex items-center justify-between gap-3 rounded-b-card border-t border-dashed border-line bg-surface px-4 py-2.5 shadow-card">
       <span className="min-w-0 text-[12.5px] font-semibold">
-        {open ? <><b className="text-[14px] tabular-nums">{peso(open.amount)}</b> <span className="text-muted">unclaimed · {open.count} cash cut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
+        {open ? <><b className="text-[14px] tabular-nums">{peso(open.ownerShare ?? open.amount)}</b> <span className="text-muted">your share unclaimed · {open.count} cash cut{open.count === 1 ? "" : "s"}</span></> : <span className="text-muted">No unclaimed cash</span>}
         {last ? <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-bold text-muted"><Check size={12} strokeWidth={3} /> Claimed {peso(last.ownerShare ?? last.amount)} · {day(last.claimedAt)}</span> : null}
       </span>
       {open ? (
