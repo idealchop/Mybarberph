@@ -36,9 +36,10 @@ function load(shopId: string, fresh = false) {
 
 async function loadFresh(shopId: string) {
   const [claimsSnap, doneSnap, state] = await Promise.all([
-    shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").limit(500).get(),
+    // Every claim (v1.0.24): with a 500 cap, older claims fell off and their visits looked unclaimed again.
+    shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").get(),
     // Only the fields remit needs (not full booking docs).
-    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "splitPct").limit(8000).get(),
+    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "splitPct").get(), // no cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
@@ -69,7 +70,8 @@ export async function remitSummary(shopId: string, loc: string) {
   const unclaimed = [...map.values()].sort((a, b) => b.ownerShare - a.ownerShare);
   return {
     unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), ownerTotal: unclaimed.reduce((s, u) => s + u.ownerShare, 0),
-    claims: claims.filter((c) => loc === "all" || c.locationId === loc).slice(0, 100).map((c) => ({ ...c, count: c.bookingIds.length, ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
+    // v1.0.24: no 100-claim cap. The client marks claimed visits from this list, so a cap turned old claimed days red again.
+    claims: claims.filter((c) => (loc === "all" || c.locationId === loc) && c.claimedAt >= Date.now() - 400 * 86_400_000).map((c) => ({ ...c, count: c.bookingIds.length, ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
   };
 }
 

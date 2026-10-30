@@ -11,7 +11,10 @@ import { useMemo, useState } from "react";
 import { PageBack } from "@/components/shell/page-back";
 import { peso } from "@/lib/format";
 import { ALL_LOCATIONS, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
-import { useQueueRequests, type ChairRequest } from "@/lib/chair-bookings";
+import { useChairRequests, useQueueRequests, type ChairRequest } from "@/lib/chair-bookings";
+import { mergeLiveRows } from "@/lib/cut-count";
+import { rowsForLocation } from "@/lib/queue-location";
+import { useSalesRows } from "@/features/sales/use-sales-rows";
 import { visitMinutes } from "@/lib/visit-minutes";
 
 function matches(row: ChairRequest, q: string) {
@@ -36,7 +39,13 @@ export function QueueBoard() {
   const shops = useShopLocations();
   const { rows, ready, locationId: queueLoc, all: allLocs } = useQueueRequests();
   const placeOf = (r: ChairRequest) => (allLocs ? shops.branches.find((b) => b.id === (r.locationId || HOME_LOCATION_ID))?.name ?? "" : "");
-  const dayDone = useMemo(() => doneOnDay(rows, day), [rows, day]);
+  // v1.0.24: the live list is only the newest 300 bookings; count the day from the server window (sales-rows, same
+  // whole-Manila-day source as the barber History), merged with live copies (newer wins), scoped like the live rows.
+  const back = Math.min(3650, Math.max(2, Math.round((Date.parse(`${todayKey()}T00:00:00+08:00`) - Date.parse(`${day}T00:00:00+08:00`)) / 86_400_000) + 2));
+  const deep = useSalesRows(back);
+  const live = useChairRequests().rows;
+  const scoped = useMemo(() => (deep ? rowsForLocation(mergeLiveRows(deep, live), queueLoc, allLocs, HOME_LOCATION_ID) : rows), [deep, live, rows, queueLoc, allLocs]);
+  const dayDone = useMemo(() => doneOnDay(scoped, day), [scoped, day]);
   const done = useMemo(() => dayDone.filter((r) => matches(r, search)), [dayDone, search]);
   const when = isToday ? "today" : dayText;
 

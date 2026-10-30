@@ -33,7 +33,7 @@ export function asOwnerSplit<T extends Row>(rows: T[], chairs: Chair[]): T[] {
   return rows.map((r) => ({ ...r, price: ownerPart(r, chairs), tip: undefined }));
 }
 
-/** Rows for BARBER screens: price = barber's part (incl. tip), tip folded in. */
+/** Rows for BARBER screens: price = barber's part INCLUDING the tip (tip folded in). Not used by screens since v1.0.22 (barber views show share only, tips separate). */
 export function asBarberSplit<T extends Row>(rows: T[], chairs: Chair[]): T[] {
   return rows.map((r) => ({ ...r, price: barberPart(r, chairs), tip: undefined }));
 }

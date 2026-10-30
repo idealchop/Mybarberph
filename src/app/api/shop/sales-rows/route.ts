@@ -13,7 +13,9 @@ export async function GET(req: Request) {
   const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "tip", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating", "feedback", "feedbackAt", "home", "homeFee", "homeStatus", "scheduledAt", "splitPct"] as const;
   const full = new URL(req.url).searchParams.get("full") === "1";
   const col = shopRef(me.uid).collection("bookings");
-  const cap = days > 124 ? 20000 : 12000;
+  // Scale the cap with the window (v1.0.24): a busy multi-branch shop does 300–700 visits a day, so a flat 12k
+  // silently dropped weeks older than ~40 days from the profit grid.
+  const cap = Math.min(150_000, Math.max(12_000, days * 1_000));
   // Finished cuts by completion day, plus anything opened in the window (so a cut booked earlier still counts on the day it finished).
   const read = (field: "completedAt" | "createdAt", start: number) => {
     const q = col.where(field, ">=", start);

@@ -9,14 +9,16 @@ import { User } from "lucide-react";
 import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { mergeLiveRows } from "@/lib/cut-count";
+import { useSalesRows } from "@/features/sales/use-sales-rows";
 import { useAuthGate } from "@/components/auth/auth-gate-provider";
 import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { ProfitReportCard, SalesChartCard } from "@/features/sales";
-import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
-import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useChairRequests, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
+import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, inLocation, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { CompanionCard } from "@/features/companion";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
@@ -81,9 +83,17 @@ export function HomeScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
   const { rows, ready } = useScopedRequests();
+  const live = useChairRequests().rows;
   const { chairs } = useShopChairs({ all: true });
+  // v1.0.24: today's counts come from the server's whole-Manila-day query (sales-rows, every branch), merged with the
+  // live copies (newer wins). The live list is only the newest 300 bookings, so on a busy day it dropped the morning.
+  const deepToday = useSalesRows(2);
+  const counted = useMemo(
+    () => mergeLiveRows(deepToday, live).filter((row) => inLocation(row.locationId, shops.enabled, shops.viewingAll, shops.scopeId)),
+    [deepToday, live, shops.enabled, shops.viewingAll, shops.scopeId],
+  );
   // Owner sees only their split of each cut (split-view.ts); counts are unchanged.
-  const split = asOwnerSplit(rows, chairs);
+  const split = asOwnerSplit(counted, chairs);
   const figures = todayFigures(split);
   const todayTitle = shops.viewingAll ? `All shops: ${peso(figures.sales)}` : `Today: ${peso(figures.sales)}`;
   const placeFor = shops.viewingAll ? (row: ChairRequest) => branchName(shops.branches, row.locationId) : undefined;
@@ -100,7 +110,7 @@ export function HomeScreen() {
   // The owner's own walk-in in progress: the hero shows it live with Complete (Jimboy, 2026-10-21).
   const mine = ownerCut(rows);
   const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
-  const todays = rows.filter((row) => row.createdAt >= today0 && row.status !== "declined");
+  const todays = counted.filter((row) => row.createdAt >= today0 && row.status !== "declined");
   const customers = todays.length;
   const online = onlineOpenToday(rows).length;
   const remit = useRemit(shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");

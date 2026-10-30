@@ -30,8 +30,9 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
   const col = shopRef(shopId).collection("bookings");
   // Same reads as Sales: recent tickets by creation, plus anything finished in the window (an old ticket finished today still counts today).
   const [snap, doneSnap, state] = await Promise.all([
-    col.where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(5000).get(),
-    col.where("completedAt", ">=", since).orderBy("completedAt", "desc").limit(5000).get(),
+    // 120 days at up to ~1,000 visits a day (v1.0.24; 5,000 covered only ~16 days of a 300/day shop).
+    col.where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(120_000).get(),
+    col.where("completedAt", ">=", since).orderBy("completedAt", "desc").limit(120_000).get(),
     loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations", "barbers.shop-profile"]),
   ]);
   const parse = (k: string) => { try { return JSON.parse(state[k] || "null"); } catch { return null; } };

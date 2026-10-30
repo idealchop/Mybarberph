@@ -5,7 +5,9 @@ import { FullScreen } from "@/components/shell/full-screen";
 import { BarberPortrait } from "@/features/settings/seat-list";
 import { manilaDay, useChairRequests } from "@/lib/chair-bookings";
 import { peso } from "@/lib/format";
-import { sharePct, splitIncome, tipOf } from "@/lib/income-split";
+import { sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
+import { cutBarberId, isFinishedCut, mergeLiveRows } from "@/lib/cut-count";
+import { useSalesRows } from "@/features/sales/use-sales-rows";
 import { chairBarberName, removeChair, saveChair, useShopChairs } from "@/lib/shop-chairs";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { Back, ChairEditor, ShareBarberLink } from "./services-screen";
@@ -18,6 +20,9 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
   const { chairs } = useShopChairs({ all: true });
   const shops = useShopLocations();
   const { rows } = useChairRequests();
+  // v1.0.24: 7-day numbers from the server window (sales-rows) merged with live copies, not the newest-300 live list.
+  const deep = useSalesRows(8);
+  const counted = useMemo(() => mergeLiveRows(deep, rows), [deep, rows]);
   const chair = chairs.find((c) => c.id === chairId);
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState("");
@@ -25,16 +30,21 @@ export function BarberProfile({ chairId, onClose }: { chairId: string; onClose: 
   const myId = chair ? chair.barberId || chair.id : "";
   const holder = chair ? rows.find((r) => r.status === "in_chair" && r.chairLabel === chair.label && (r.locationId || HOME_LOCATION_ID) === (chair.locationId || HOME_LOCATION_ID)) : undefined;
   const week = useMemo(() => {
-    if (!chair) return { cuts: 0, sales: 0, tips: 0, today: 0 };
+    if (!chair) return { cuts: 0, sales: 0, tips: 0, today: 0, barber: 0, shop: 0 };
     const since = now - 7 * 86_400_000;
     const today = manilaDay(now);
-    const mine = rows.filter((r) => r.status === "done" && (r.completedAt ?? 0) >= since && (r.barberId ? r.barberId === myId : r.seatLabel === chair.label));
-    return { cuts: mine.length, sales: mine.reduce((s, r) => s + (r.price || 0), 0), tips: mine.reduce((s, r) => s + tipOf(r), 0), today: mine.filter((r) => manilaDay(r.completedAt ?? 0) === today).length };
-  }, [rows, chair, myId, now]);
+    // Shared rule (cut-count.ts): finished, by barberId at this chair's location; split per visit (stamped %, else current).
+    const loc = chair.locationId || HOME_LOCATION_ID;
+    const mine = counted.filter((r) => isFinishedCut(r) && (r.completedAt ?? 0) >= since && (r.locationId || HOME_LOCATION_ID) === loc && cutBarberId(r, chairs) === myId);
+    const pctNow = sharePct(chair);
+    const barber = mine.reduce((s, r) => { const v = visitPct(r, pctNow); return s + (v == null ? 0 : splitIncome(r.price || 0, v).barber); }, 0);
+    const sales = mine.reduce((s, r) => s + (r.price || 0), 0);
+    return { cuts: mine.length, sales, tips: mine.reduce((s, r) => s + tipOf(r), 0), today: mine.filter((r) => manilaDay(r.completedAt ?? 0) === today).length, barber, shop: sales - barber };
+  }, [counted, chair, chairs, myId, now]);
   if (!chair) return <FullScreen><Back title="Barber profile" onBack={onClose} /><p className="mt-4 text-[14px] font-semibold text-muted">This barber was removed.</p></FullScreen>;
   const name = chairBarberName(chair);
   const pct = sharePct(chair);
-  const split = splitIncome(week.sales, pct);
+  const split = { barber: week.barber, shop: week.shop };
   const place = shops.branches.find((b) => b.id === (chair.locationId || HOME_LOCATION_ID))?.name;
 
   if (editing) {
