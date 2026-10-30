@@ -4,7 +4,7 @@ import { AppLoader } from "@/components/common/app-loader";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { payLabel, TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { BottomSheet } from "@/components/common/bottom-sheet";
-import { doneOnDay, monthGrid, queueDayLabel, todayKey } from "@/lib/queue-day";
+import { activeOnDay, doneOnDay, monthGrid, queueDayLabel, todayKey } from "@/lib/queue-day";
 import { EmptyState, SearchInput } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useMemo, useState } from "react";
@@ -47,6 +47,10 @@ export function QueueBoard() {
   const scoped = useMemo(() => (deep ? rowsForLocation(mergeLiveRows(deep, live), queueLoc, allLocs, HOME_LOCATION_ID) : rows), [deep, live, rows, queueLoc, allLocs]);
   const dayDone = useMemo(() => doneOnDay(scoped, day), [scoped, day]);
   const done = useMemo(() => dayDone.filter((r) => matches(r, search)), [dayDone, search]);
+  // v1.0.25: Current / Completed cards. Same scoped whole-day source as the list, so the counts always match it.
+  const dayActive = useMemo(() => activeOnDay(scoped, day), [scoped, day]);
+  const current = useMemo(() => dayActive.filter((r) => matches(r, search)), [dayActive, search]);
+  const [tab, setTab] = useState<"current" | "done">("done");
   const when = isToday ? "today" : dayText;
 
   if (!ready) return <AppLoader />;
@@ -84,10 +88,35 @@ export function QueueBoard() {
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <SearchInput className="min-w-0 flex-1" label="Search completed orders" placeholder="Ticket, customer or haircut" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <SearchInput className="min-w-0 flex-1" label="Search orders" placeholder="Ticket, customer or haircut" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      {done.length === 0 ? (
+      <div className="mt-3 grid grid-cols-2 gap-3" role="tablist" aria-label="Queue sections">
+        {([["current", "Current", dayActive.length, "Waiting or in the chair"], ["done", "Completed", dayDone.length, "Finished haircuts"]] as const).map(([k, label, n, hint]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className={`min-w-0 rounded-card px-4 pb-3.5 pt-3 text-left shadow-card transition-colors active:scale-[0.99] ${tab === k ? "bg-ink text-on-ink" : "bg-surface"}`}>
+            <span className={`block text-[12.5px] font-semibold ${tab === k ? "text-on-ink-muted" : "text-muted"}`}>{label}</span>
+            <b className="mt-0.5 block text-[28px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{n}</b>
+            <span className={`mt-1.5 hidden truncate text-[12px] font-medium sm:block ${tab === k ? "text-on-ink-muted" : "text-muted"}`}>{hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab === "current" ? (current.length === 0 ? (
+        search && dayActive.length ? <EmptyState className="mt-4" title="No matches" /> : (
+          <div className="mt-4 rounded-card bg-grey-50 px-5 py-6 text-center ring-1 ring-line">
+            <b className="block text-[16px] tracking-[-0.01em]">No one waiting or in the chair</b>
+            <p className="mt-1 text-[13px] font-medium text-muted">{isToday ? "Walk-ins and online orders in progress show up here." : `No open visits from ${dayText}.`}</p>
+          </div>
+        )
+      ) : (
+        <div className="mt-5">
+          <p className="px-1 text-[13px] font-bold text-muted">Current {when} · {current.length}</p>
+          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card" aria-label={`Current ${when}`}>
+            {current.map((row) => <CurrentRow key={row.id} row={row} place={placeOf(row)} />)}
+          </ul>
+        </div>
+      )) : done.length === 0 ? (
         search && dayDone.length ? <EmptyState className="mt-4" title="No matches" /> : (
           <div className="mt-4 rounded-card bg-grey-50 px-5 py-6 text-center ring-1 ring-line">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -147,6 +176,29 @@ function DayPicker({ value, onPick, onClose }: { value: string; onPick: (key: st
 }
 
 const timeOf = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
+
+/** One open visit: status, since when, customer, service · barber. Tap for details. */
+function CurrentRow({ row, place }: { row: ChairRequest; place?: string }) {
+  const [open, setOpen] = useState(false);
+  const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || "Walk-in";
+  const st = row.status === "in_chair" ? "In the chair" : row.status === "accepted" ? "Waiting" : "Requested";
+  return (
+    <li>
+      <button type="button" onClick={() => setOpen(true)} aria-label={`Open ${row.ref}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="min-w-0 flex-1 leading-[1.3]">
+          <span className="flex min-w-0 items-center gap-2">
+            <b className="min-w-0 truncate text-[14.5px]">{who}</b>
+            <span className="inline-flex flex-none items-center gap-1 text-[12px] font-semibold text-muted tabular-nums"><Clock size={12} strokeWidth={2.2} aria-hidden />{timeOf(row.startedAt ?? row.createdAt)}</span>
+          </span>
+          <span className="block truncate text-[12.5px] font-semibold text-muted">{[row.serviceName, row.barberName, place].filter(Boolean).join(" · ")}</span>
+        </span>
+        <span className={`inline-flex h-6 flex-none items-center rounded-pill px-2.5 text-[11.5px] font-bold ${row.status === "in_chair" ? "bg-[#E7F6EC] text-[#0B7A3E]" : "bg-[#FFF1D6] text-[#8A5A00]"}`}>{st}</span>
+        <ChevronRight size={16} strokeWidth={2} className="flex-none text-subtle" aria-hidden />
+      </button>
+      {open ? <TransactionSheet row={row} onClose={() => setOpen(false)} /> : null}
+    </li>
+  );
+}
 
 /** One finished visit: completion time, customer/ticket, service · barber, amount. Tap for details. */
 export function DoneRow({ row, place }: { row: ChairRequest; place?: string }) {

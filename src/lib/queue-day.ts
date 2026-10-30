@@ -22,3 +22,8 @@ export function monthGrid(year: number, month: number): (string | null)[] {
   const pad = (n: number) => String(n).padStart(2, "0");
   return [...Array<null>(first).fill(null), ...Array.from({ length: days }, (_, i) => `${year}-${pad(month + 1)}-${pad(i + 1)}`)];
 }
+
+/** Current visits (waiting or in the chair) opened on the given Manila day, oldest first (v1.0.25 Queue cards). */
+export function activeOnDay<T extends { status: string; createdAt: number }>(rows: T[], key: string): T[] {
+  return rows.filter((r) => (r.status === "requested" || r.status === "accepted" || r.status === "in_chair") && dayKey(r.createdAt) === key).sort((a, b) => a.createdAt - b.createdAt);
+}

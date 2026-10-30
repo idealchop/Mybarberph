@@ -69,7 +69,6 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   // Owner sees only their split (split-view.ts), never the full sales.
   const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
   const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
-  const sales = records.reduce((s, r) => s + Math.max(0, r.price || 0), 0); // full price of the day's records
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -96,7 +95,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
               : (
                 <>
                   <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
-                  <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>Total sales {peso(sales)}</p>
+                  <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>Total {peso(dayTotal)}</p>
                   {claim.open > 0 ? (
                     <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day)}>{`Claim ${peso(claim.open)}`}</Button>
                   ) : null}
