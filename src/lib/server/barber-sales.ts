@@ -2,9 +2,9 @@ import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
 import { payBucket } from "@/lib/pay-split";
-import { cutMinutes, sharePct, splitIncome, tipOf } from "@/lib/income-split";
+import { cutMinutes, ownerShareOf, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
-import { cutBarberId, cutBarberName } from "@/lib/cut-count";
+import { cutBarberId, cutBarberName, isFinishedCut } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 
@@ -71,6 +71,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     walkIns: 0, onlineBookings: 0, claimedCash: 0, unclaimedCash: 0, hours: [], days: [], services: [],
     claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
+  const myPct = sharePct(me);
   const byDate = new Map<string, { cuts: number; sales: number; tips: number }>();
   const hours = new Map<number, number>(); const days = new Map<string, { cuts: number; sales: number }>(); const svc = new Map<string, { cuts: number; sales: number }>();
   let tips = 0, tipCount = 0, mins = 0, timed = 0, fastest = Infinity;
@@ -90,7 +91,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
       const k = payBucket(b);
       out[k] += p;
       // Cash to hand over: cash (a paid visit with no method is cash, lib/server/remit.ts).
-      if (k === "cash" || k === "other") { out.remit += p; if (claimed.has(b.id)) out.claimedCash += p; else out.unclaimedCash += p; }
+      if (k === "cash" || k === "other") { out.remit += p; if (claimed.has(b.id)) out.claimedCash += p; else { out.unclaimedCash += p; out.unclaimedOwner = (out.unclaimedOwner ?? 0) + ownerShareOf(p, myPct); } }
     }
     if (b.channel === "online") out.onlineBookings += 1; else out.walkIns += 1;
     const local = new Date(b.completedAt + 8 * 3600_000);
@@ -111,8 +112,11 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   return out;
 }
 
-/** A barber link's finished cuts on ONE Manila day, straight from the server (complete for past days). Same rule as Sales (src/lib/cut-count.ts). */
-export async function barberHistory(shopId: string, q: { date: string; barberId: string; chairId: string; locationId?: string }) {
+/**
+ * ONE barber's finished cuts on ONE Manila day at ONE branch: the single source both the barber link History and
+ * the owner's Weekly Profit day sheet read (v1.0.21), with the shared rule (src/lib/cut-count.ts).
+ */
+export async function barberDayCuts(shopId: string, q: { date: string; barberId: string; locationId: string; chairId?: string }) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(q.date) ? q.date : manilaYmd(Date.now());
   const from = Date.parse(`${date}T00:00:00+08:00`), end = from + 86_400_000;
   const [snap, state] = await Promise.all([
@@ -120,10 +124,17 @@ export async function barberHistory(shopId: string, q: { date: string; barberId:
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
-  const me = chairs.find((c) => c.id === q.chairId);
-  const myLoc = q.locationId || me?.locationId || "home";
+  const me = chairs.find((c) => c.id === q.chairId) ?? chairs.find((c) => (c.barberId || c.id) === q.barberId && (c.locationId || "home") === q.locationId);
   const rows = snap.docs.map((d) => d.data() as ChairRequest)
-    .filter((b) => b.status === "done" && (b.locationId || "home") === myLoc && cutBarberId(b, chairs) === q.barberId)
+    .filter((b) => isFinishedCut(b) && (b.locationId || "home") === q.locationId && cutBarberId(b, chairs) === q.barberId)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
   return { date, sharePct: sharePct(me), rows };
+}
+
+/** Barber link History for one day (the link's own barber and branch). */
+export async function barberHistory(shopId: string, q: { date: string; barberId: string; chairId: string; locationId?: string }) {
+  const state = q.locationId ? null : await loadState(shopId, ["barbers.shop-chairs"]);
+  const chairs = state ? (JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[]) : [];
+  const loc = q.locationId || chairs.find((c) => c.id === q.chairId)?.locationId || "home";
+  return barberDayCuts(shopId, { date: q.date, barberId: q.barberId, locationId: loc, chairId: q.chairId });
 }

@@ -60,14 +60,30 @@ export function countCuts(rows: ChairRequest[], chairs: CutChair[], from: number
   return m;
 }
 
-/** Deep (history) rows plus the live snapshot: live edits win, deletions in the live window drop, new live rows join. */
-export function mergeLiveRows<T extends { id: string; createdAt: number }>(deep: T[] | null | undefined, live: T[]): T[] {
+/**
+ * Deep (server history) rows plus the owner's live snapshot (newest 300, polled; may be a cached or stale copy).
+ * v1.0.21 mismatch fix: the live copy used to WIN blindly, so a stale live row ("in_chair") hid a cut the server
+ * already had as done, and deep rows created after the live copy were dropped as "deleted". Now the newer version
+ * of each row wins (updatedAt/completedAt), and only rows the live copy should have seen (created before its newest
+ * row) are treated as deleted when missing from it.
+ */
+type Versioned = { id: string; createdAt: number; updatedAt?: number; completedAt?: number };
+const version = (r: Versioned) => Math.max(r.updatedAt ?? 0, r.completedAt ?? 0, r.createdAt ?? 0);
+export function mergeLiveRows<T extends Versioned>(deep: T[] | null | undefined, live: T[]): T[] {
   if (!deep) return live;
   const byId = new Map(live.map((r) => [r.id, r]));
-  const liveFrom = live.reduce((m, r) => Math.min(m, r.createdAt), Infinity);
-  const kept = deep.filter((r) => byId.has(r.id) || r.createdAt < liveFrom).map((r) => byId.get(r.id) ?? r);
-  const ids = new Set(kept.map((r) => r.id));
-  return [...kept, ...live.filter((r) => !ids.has(r.id))];
+  let liveFrom = Infinity, liveTo = -Infinity;
+  for (const r of live) { liveFrom = Math.min(liveFrom, r.createdAt); liveTo = Math.max(liveTo, r.createdAt); }
+  const out = new Map<string, T>();
+  for (const r of deep) {
+    const l = byId.get(r.id);
+    if (l) { out.set(r.id, version(l) >= version(r) ? l : r); continue; }
+    // Missing from live: deleted only if live covers its creation time; otherwise live just hasn't caught up.
+    if (r.createdAt >= liveFrom && r.createdAt <= liveTo) continue;
+    out.set(r.id, r);
+  }
+  for (const r of live) if (!out.has(r.id)) out.set(r.id, r);
+  return [...out.values()];
 }
 
 /** Finished cuts in `rows` that finished on today's Manila date (the barber link's History label and Sales > Today). */

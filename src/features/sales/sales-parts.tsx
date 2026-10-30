@@ -48,11 +48,6 @@ function Initial({ name }: { name: string }) {
 function Chip({ label, value }: { label: string; value: string }) {
   return <span className="inline-flex items-baseline gap-1 rounded-pill bg-grey-100 px-2.5 py-1 text-[12px] font-semibold text-muted">{label}<b className="font-bold tabular-nums text-ink">{value}</b></span>;
 }
-/** "of ₱2,750 total" under an owner-share amount (only when a barber split applies). */
-function OfTotal({ share, total }: { share: number; total: number }) {
-  return share !== total ? <small className="block text-[11.5px] font-semibold text-muted">of {peso(total)} total</small> : null;
-}
-
 function ClaimBtn({ busy, onClick }: { busy?: boolean; onClick: () => void }) {
   return (
     <button type="button" data-auth="action" disabled={busy} onClick={onClick}
@@ -128,7 +123,7 @@ export function UnclaimedCard({ remit, className, onClaim, claiming, locName }: 
                       <b className="block truncate text-[15px]">{u.barberName}</b>
                       <small className="block truncate text-[12px] font-semibold text-muted">{[locName?.(u.locationId), `${u.count} cash cut${u.count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</small>
                     </span>
-                    <span className="flex-none text-right"><b className="block text-[16px] tabular-nums">{peso(own(u))}</b><OfTotal share={own(u)} total={u.amount} /></span>
+                    <span className="flex-none text-right"><b className="block text-[16px] tabular-nums">{peso(own(u))}</b></span>
                     <ClaimBtn busy={busy(u)} onClick={() => onClaim(u.barberId, u.locationId)} />
                   </li>
                 ))}
@@ -161,7 +156,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
                 <b className="block truncate text-[14.5px]">{who}</b>
                 <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none text-[#0B7A3E]" /><span className="min-w-0 truncate">{[!barberId ? locName?.(c.locationId) : "", day(c.claimedAt)].filter(Boolean).join(" · ")}</span></small>
               </span>
-              <span className="flex-none text-right"><b className="block text-[15.5px] tabular-nums">{peso(share)}</b><OfTotal share={share} total={c.amount} /></span>
+              <span className="flex-none text-right"><b className="block text-[15.5px] tabular-nums">{peso(share)}</b></span>
             </li>
           );
         })}

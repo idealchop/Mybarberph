@@ -1,17 +1,20 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Clock, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
 import { RiverIcon } from "@/components/common/river-icon";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
-import { refCode } from "@/lib/chair-bookings";
+import { refCode, useChairRequests } from "@/lib/chair-bookings";
+import { mergeLiveRows } from "@/lib/cut-count";
+import { api } from "@/lib/cloud";
 import { cloudSnapshot, saveBooking } from "@/lib/cloud";
 import type { ChairRequest } from "@/lib/booking-types";
 import { peso } from "@/lib/format";
 import { defaultManualTime, manualRecord } from "@/lib/manual-record";
 import { dayClaim, remitKey } from "@/lib/profit-claim";
+import { ownerPart } from "@/lib/split-view";
 import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
 import { cn } from "@river-apps/ui";
@@ -20,7 +23,22 @@ import { useRemit } from "./use-remit";
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const longDay = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", year: "numeric" });
+const isCashCut = (r: ChairRequest) => Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
 const payText = (r: ChairRequest) => (!r.paid ? "Unpaid" : r.payMethod === "gcash" ? "GCash" : r.payMethod === "online" ? "Online" : "Cash");
+
+/** One barber's day from the server (same function as the barber link's History). */
+function useBarberDay(t: DayTarget) {
+  const [rows, setRows] = useState<ChairRequest[] | null>(null);
+  useEffect(() => {
+    let off = false;
+    const pull = () => void (api(`/api/shop/barber-day?barberId=${encodeURIComponent(t.id)}&loc=${encodeURIComponent(t.locationId)}&date=${t.day}`) as Promise<{ rows: ChairRequest[] }>)
+      .then((d) => { if (!off) setRows(d.rows); }).catch(() => {});
+    pull();
+    const iv = window.setInterval(() => { if (document.visibilityState === "visible") pull(); }, 20_000);
+    return () => { off = true; window.clearInterval(iv); };
+  }, [t.id, t.locationId, t.day]);
+  return rows;
+}
 
 export interface DayTarget { id: string; name: string; locationId: string; locationName: string; day: string }
 
@@ -39,13 +57,19 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   const [adding, setAdding] = useState(false);
   const add = useAddRecord(t, () => setAdding(false));
   const photo = chairs.find((c) => (c.barberId === t.id || c.id === t.id) && (c.locationId || "home") === t.locationId)?.photoUrl;
-  const records = useMemo(() => rows
+  // Same server source as the barber link History (barberDayCuts), merged with live edits; then the shared rule.
+  const server = useBarberDay(t);
+  const live = useChairRequests().rows;
+  const source = useMemo(() => (server ? mergeLiveRows(server, live) : rows), [server, live, rows]);
+  const records = useMemo(() => source
     .filter((r) => r.status === "done" && r.completedAt && ymd(r.completedAt) === t.day)
     .filter((r) => { const k = remitKey(r, chairs); return k.id === t.id && k.loc === t.locationId; })
-    .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0)), [rows, chairs, t]);
+    .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0)), [source, chairs, t]);
   const claim = dayClaim(records, chairs, t.id, t.locationId, t.day, (id) => Boolean(remit.claimOf(id)));
   const busy = remit.busy === `${t.id}@${t.locationId}`;
-  const dayTotal = records.reduce((s, r) => s + (r.price || 0), 0);
+  // Owner sees only their split (split-view.ts), never the full sales.
+  const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
+  const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -58,24 +82,28 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
       ) : undefined}>
       {adding ? <AddRecordForm t={t} photo={photo} f={add} /> : (
         <div className="flex flex-col gap-5 pb-2 pt-1">
-          <section aria-label="Claim" className="rounded-[22px] bg-ink px-4 pb-4 pt-3.5 text-on-ink">
+          <section aria-label="Claim" className={cn("rounded-[22px] px-4 pb-4 pt-3.5 text-white transition-colors", allClaimed ? "bg-[#0B7A3E]" : "bg-ink")}>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[12.5px] font-semibold text-on-ink-muted">Cash to claim · this day</p>
-              {claim.claimed > 0 ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/15 px-2.5 text-[11.5px] font-bold"><Check size={12} strokeWidth={3} aria-hidden />{peso(claim.claimed)} claimed</span> : null}
+              <p className="text-[12.5px] font-semibold text-white/70">{allClaimed ? "Claimed · this day" : "Cash to claim · this day"}</p>
+              {claim.claimed > 0 && !allClaimed ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-[#0B7A3E] px-2.5 text-[11.5px] font-bold"><Check size={12} strokeWidth={3} aria-hidden />{peso(claim.claimed)} claimed</span> : null}
             </div>
             {claim.owner ? <p className="mt-1.5 text-[15px] font-bold">Your own cuts. Nothing to claim.</p>
-              : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
+              : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-white/70">Loading…</p>
               : claim.open > 0 ? (
                 <>
                   <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open)}</b>
-                  <p className="mt-1.5 text-[12.5px] font-semibold text-on-ink-muted">Your share of {peso(claim.openCash)} cash · {claim.openCount} cut{claim.openCount === 1 ? "" : "s"}</p>
+                  <p className="mt-1.5 text-[12.5px] font-semibold text-white/70">Your share · {claim.openCount} cash cut{claim.openCount === 1 ? "" : "s"} to claim</p>
                   <button type="button" data-auth="action" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}
                     className="mt-3.5 flex h-12 w-full items-center justify-center rounded-pill bg-surface text-[15px] font-extrabold text-ink active:opacity-80 disabled:opacity-60">{busy ? "Claiming…" : `Claim ${peso(claim.open)}`}</button>
                 </>
-              ) : claim.claimed > 0 ? (
-                <p className="mt-1.5 flex items-center gap-2 text-[17px] font-extrabold"><Check size={18} strokeWidth={3} aria-hidden />All claimed <span className="text-[12.5px] font-semibold text-on-ink-muted">· {claim.claimedCount} cut{claim.claimedCount === 1 ? "" : "s"}</span></p>
-              ) : <p className="mt-1.5 text-[15px] font-bold">No unclaimed cash this day.</p>}
-            {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{remit.error}</p> : null}
+              ) : allClaimed ? (
+                <>
+                  <span className="mt-2 inline-flex size-10 items-center justify-center rounded-full bg-white text-[#0B7A3E]"><Check size={22} strokeWidth={3.2} aria-hidden /></span>
+                  <b className="mt-2 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.claimed)}</b>
+                  <p className="mt-1.5 text-[12.5px] font-semibold text-white/80">All claimed · {claim.claimedCount} cash cut{claim.claimedCount === 1 ? "" : "s"}</p>
+                </>
+              ) : <p className="mt-1.5 text-[15px] font-bold">No cash to claim this day.</p>}
+            {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-white/70">{remit.error}</p> : null}
           </section>
 
           <section aria-label="Records">
@@ -96,9 +124,14 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                       <span className="w-[3.9rem] flex-none text-[12.5px] font-bold tabular-nums text-muted">{time(r.completedAt)}</span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[14.5px]">{r.serviceName || "Service"}</b>
-                        <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", payText(r), remit.claimOf(r.id) ? "Claimed" : "", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
+                        <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", payText(r), r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
                       </span>
-                      <b className="flex-none text-[15px] tabular-nums">{peso(r.price || 0)}</b>
+                      <span className="flex-none text-right">
+                        <b className="block text-[15px] tabular-nums">{peso(ownerPart(r, chairs))}</b>
+                        {isCashCut(r) ? (remit.claimOf(r.id)
+                          ? <small className="block text-[11px] font-bold text-[#0B7A3E]">Claimed</small>
+                          : <small className="block text-[11px] font-bold text-[#C62828]">To claim</small>) : null}
+                      </span>
                       <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
                     </button>
                   </li>

@@ -20,6 +20,8 @@ import { useSalesRows } from "./use-sales-rows";
 import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
 import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar";
 import { mergeLiveRows } from "@/lib/cut-count";
+import { cellClaimState, claimStates } from "@/lib/profit-claim";
+import { useRemit } from "./use-remit";
 
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
@@ -53,6 +55,9 @@ export function ProfitReportScreen() {
   const cloud = useChairRequests();
   // Deep rows (70 days) plus live edits: a record added, edited or deleted from the day sheet shows at once.
   const rows = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
+  const remitAll = useRemit("all");
+  // Red = cash still to claim that day, green = all claimed (Jimboy, 2026-10-30).
+  const claimMap = useMemo(() => (remitAll.data ? claimStates(rows, chairs, (id) => Boolean(remitAll.claimOf(id))) : null), [rows, chairs, remitAll]);
   const [sheet, setSheet] = useState<DayTarget | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const now = useNow();
@@ -96,13 +101,14 @@ export function ProfitReportScreen() {
                   </th>
                   {row.days.map((n, i) => {
                     const c = report.cols[i];
+                    const st = c?.day ? cellClaimState(claimMap?.get(`${row.id}@${row.locationId}|${c.day}`)) : null;
                     return (
                       <td key={c?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", c?.today && "bg-grey-100")}>
                         {c && !c.future && c.day ? (
                           <button type="button" onClick={() => setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! })}
-                            aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}. Claim, records and add`}
+                            aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}${st === "open" ? ", unclaimed" : st === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
-                            {n ? <span className="border-b border-dotted border-muted/70 leading-tight"><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
+                            {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
                           </button>
                         ) : (
                           <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={!!c?.future} /></span>
@@ -215,6 +221,12 @@ export function ProfitReportScreen() {
           </table>
         </div>
       )}
+      {report.rows.length && !month ? (
+        <p className="mt-2 flex items-center gap-3 px-1 text-[11.5px] font-semibold text-muted">
+          <span className="inline-flex items-center gap-1"><i aria-hidden className="size-2 rounded-full bg-[#C62828]" />To claim</span>
+          <span className="inline-flex items-center gap-1"><i aria-hidden className="size-2 rounded-full bg-[#0B7A3E]" />Claimed</span>
+        </p>
+      ) : null}
       {month && dayOpen && !sheet ? (
         <ProfitDayBreakdown m={month} date={dayOpen} groups={grouped ? salesGroups : null} showBranch={where === "all"} onClose={() => setDayOpen(null)}
           onBarber={(r) => setSheet({ id: r.id, name: r.name, locationId: r.locationId, locationName: r.locationName, day: dayOpen })} />

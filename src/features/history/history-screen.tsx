@@ -17,6 +17,8 @@ import { useRemit } from "@/features/sales";
 
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
+import { ownerPart } from "@/lib/split-view";
+import { useShopChairs } from "@/lib/shop-chairs";
 
 /** Past visits, filterable by location and date (Today | 7d | 28d | custom). */
 export function HistoryScreen() {
@@ -32,7 +34,9 @@ export function HistoryScreen() {
     .sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt));
   const nameOf = (id?: string) => shops.branches.find((b) => b.id === (id || HOME_LOCATION_ID))?.name;
   const remit = useRemit("all");
-  const total = done.reduce((s2, r) => s2 + (r.price || 0), 0);
+  const { chairs } = useShopChairs({ all: true });
+  // Owner sees only their split (split-view.ts); the record itself (for editing) keeps the full price.
+  const total = done.reduce((s2, r) => s2 + ownerPart(r, chairs), 0);
   if (!deep && !cloud.ready) return <AppLoader />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[880px] lg:px-[30px] lg:pt-6">
@@ -58,6 +62,7 @@ export function HistoryScreen() {
 
 function VisitList({ rows, placeOf, claimOf }: { rows: ChairRequest[]; placeOf?: (r: ChairRequest) => string | undefined; claimOf?: (id: string) => { claimedAt: number } | undefined }) {
   const [open, setOpen] = useState<ChairRequest | null>(null);
+  const { chairs } = useShopChairs({ all: true });
   return (
     <ul className="mt-2 flex flex-col gap-2">
       {open ? <TransactionSheet row={rows.find((r) => r.id === open.id) ?? open} onClose={() => setOpen(null)} /> : null}
@@ -73,7 +78,7 @@ function VisitList({ rows, placeOf, claimOf }: { rows: ChairRequest[]; placeOf?:
               return <small className="block text-[11.5px] font-bold text-muted">{[`Paid · ${payMethodLabel(row)}`, remitCash ? (c ? `Claimed by owner · ${when(c.claimedAt)}` : "to claim") : ""].filter(Boolean).join(" · ")}</small>;
             })() : null}
           </span>
-          <span className="flex items-center gap-1.5"><b>{peso(row.price)}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
+          <span className="flex items-center gap-1.5"><b>{peso(ownerPart(row, chairs))}</b><ChevronRight size={18} strokeWidth={2} className="flex-none text-subtle" aria-hidden /></span>
         </li>
       ))}
     </ul>

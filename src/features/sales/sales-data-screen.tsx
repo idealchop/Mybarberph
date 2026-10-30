@@ -20,8 +20,7 @@ import { SalesGroups } from "./sales-groups";
 import { showsLocationFilter } from "@/lib/sales-filters";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { BarberIcon } from "@/components/art";
-import { ownerShareOf, sharePct } from "@/lib/income-split";
-import { OWNER_BARBER_ID } from "@/lib/owner-cut";
+import { asOwnerSplit } from "@/lib/split-view";
 import { BarberRanking, ClaimHistory, RangeChips, UnclaimedCard } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
@@ -47,7 +46,8 @@ export function SalesDataScreen() {
   const [range, setRange] = useState<SalesRange>("today");
   const deep = useSalesRows(rangeFetchDays(range));
   // History plus live rows, so a cut the barber just finished shows here at once (as on their link).
-  const all = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
+  // Owner screens show only the owner's split of each cut (split-view.ts); counts are unchanged.
+  const all = useMemo(() => asOwnerSplit(mergeLiveRows(deep, cloud.rows), chairs), [deep, cloud.rows, chairs]);
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
@@ -68,13 +68,6 @@ export function SalesDataScreen() {
     return () => window.clearTimeout(t);
   }, [search]);
 
-  // Each visit's barber split % (owner's own cuts are all the shop's).
-  const pctOf = (r: { barberId?: string; seatLabel?: string; chairLabel?: string; locationId?: string }) => {
-    if (r.barberId === OWNER_BARBER_ID) return 0;
-    const bl = r.locationId || HOME_LOCATION_ID;
-    const c = chairs.find((x) => (r.barberId && (x.barberId === r.barberId || x.id === r.barberId)) || (!r.barberId && x.label === (r.seatLabel || r.chairLabel) && (x.locationId || HOME_LOCATION_ID) === bl));
-    return c ? sharePct(c) : null;
-  };
   const now = useNow();
   const bounds = periodBounds(range, now, range === "custom" ? getCustomRange() : null);
   const todayKey = periodDays("today")[0] ?? "";
@@ -85,7 +78,7 @@ export function SalesDataScreen() {
     const day = byDay.get(periodDays("today", r.completedAt)[0] ?? "");
     if (!day) continue;
     day.cuts += 1;
-    day.amount += ownerShareOf(r.price || 0, pctOf(r));
+    day.amount += r.price || 0; // already the owner's split
   }
   const commission = commissionDays.reduce((s, d) => s + d.amount, 0);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);

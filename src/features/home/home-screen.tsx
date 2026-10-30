@@ -25,6 +25,8 @@ import { ChevronRight } from "lucide-react";
 import { isOwnerCut, ownerCut } from "@/lib/owner-cut";
 import { completeCut } from "@/components/transactions/complete-flow";
 import { CheckCircle2 } from "lucide-react";
+import { asOwnerSplit } from "@/lib/split-view";
+import { useShopChairs } from "@/lib/shop-chairs";
 
 const linkCls = "text-[14px] font-bold underline decoration-grey-300 underline-offset-[3px]";
 const PILL = "relative h-8 gap-1 rounded-pill px-2.5 text-[12px] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']";
@@ -79,11 +81,14 @@ export function HomeScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
   const { rows, ready } = useScopedRequests();
-  const figures = todayFigures(rows);
+  const { chairs } = useShopChairs({ all: true });
+  // Owner sees only their split of each cut (split-view.ts); counts are unchanged.
+  const split = asOwnerSplit(rows, chairs);
+  const figures = todayFigures(split);
   const todayTitle = shops.viewingAll ? `All shops: ${peso(figures.sales)}` : `Today: ${peso(figures.sales)}`;
   const placeFor = shops.viewingAll ? (row: ChairRequest) => branchName(shops.branches, row.locationId) : undefined;
   const byShop = shops.branches.map((branch) => {
-    const mine = rows.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id);
+    const mine = split.filter((row) => (row.locationId || HOME_LOCATION_ID) === branch.id);
     const fig = todayFigures(mine);
     return { branch, sales: fig.sales, cuts: fig.cuts, inChair: mine.filter((row) => row.status === "in_chair").length };
   });
@@ -101,7 +106,7 @@ export function HomeScreen() {
   const remit = useRemit(shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const toClaim = remit.data?.total ?? 0;
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
-  const todaySales = salesReport(rows, unpaid, "today");
+  const todaySales = salesReport(split, unpaid, "today");
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
   const { user } = useSession();
   const { requireAuth } = useAuthGate();

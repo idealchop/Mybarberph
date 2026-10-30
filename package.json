@@ -1,6 +1,6 @@
 {
   "name": "mybarberph",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "private": true,
   "description": "Barbers.ph by River Apps: barbershop queue, sales record, kiosk and River Mobile partner app (front-end, sample data, Firebase-ready data layer).",
   "license": "UNLICENSED",

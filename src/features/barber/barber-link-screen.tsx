@@ -24,9 +24,9 @@ import {
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
-import { addDays, dayLabel, dayOf } from "@/lib/barber-history";
+import { addDays, dayLabel, dayOf, earningsOf } from "@/lib/barber-history";
 import { peso } from "@/lib/format";
-import { customerName } from "@/lib/income-split";
+import { customerName, tipOf } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
@@ -586,7 +586,7 @@ function ChairHistory({
         <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{visitOffer(row, haircut, treatments).label}</p>
         <p className="mt-1 text-[12.5px] font-semibold text-muted">{new Date(row.completedAt!).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" })}</p>
       </span>
-      <b className="flex-none text-[14px] tabular-nums">{peso(row.price || 0)}</b>
+      <b className="flex-none text-[14px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), pct))}</b>
       <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
     </li>
   );
@@ -606,7 +606,7 @@ function ChairHistory({
         <p className="truncate text-[12.5px] font-semibold text-on-ink-muted">You earned</p>
         <b className="mt-1 block text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
         <p className="mb-1 mt-2 text-[12.5px] font-semibold text-on-ink-muted">
-          {loading && picked.cuts === 0 ? "Loading…" : `${picked.cuts} cut${picked.cuts === 1 ? "" : "s"} · ${peso(picked.sales)} sales${picked.tips ? ` · ${peso(picked.tips)} tips` : ""}`}
+          {loading && picked.cuts === 0 ? "Loading…" : `${picked.cuts} cut${picked.cuts === 1 ? "" : "s"}${picked.tips ? ` · incl. ${peso(picked.tips)} tips` : ""}`}
         </p>
       </section>
 

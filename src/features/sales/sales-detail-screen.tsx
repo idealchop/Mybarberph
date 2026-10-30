@@ -17,6 +17,7 @@ import { ClaimHistory, RangeChips } from "./sales-parts";
 import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { mergeLiveRows } from "@/lib/cut-count";
+import { asOwnerSplit } from "@/lib/split-view";
 
 /** Personal detail page for one location or one barber: sales, cuts, cash/GCash, remit, completion, trends. */
 export function SalesDetailScreen() {
@@ -36,7 +37,7 @@ export function SalesDetailScreen() {
   const deep = useSalesRows(rangeFetchDays(range));
   const cloud = useChairRequests();
   // History plus live rows, so a cut the barber just finished shows here at once (as on their link).
-  const all = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
+  const all = useMemo(() => asOwnerSplit(mergeLiveRows(deep, cloud.rows), chairs), [deep, cloud.rows, chairs]);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
 
   const title = useMemo(() => {

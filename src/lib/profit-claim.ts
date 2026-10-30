@@ -32,3 +32,24 @@ export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locat
   }
   return out;
 }
+
+/** Claim state of every barber×day cell in one pass: key `${barberId}@${locationId}|${ymd}` → open/claimed cash cut counts. */
+export function claimStates(rows: Visit[], chairs: Chair[], isClaimed: (bookingId: string) => boolean) {
+  const m = new Map<string, { open: number; claimed: number }>();
+  for (const r of rows) {
+    if (!isCash(r)) continue;
+    const k = remitKey(r, chairs);
+    if (k.id === "owner") continue;
+    const key = `${k.id}@${k.loc}|${day(r.completedAt ?? r.updatedAt ?? 0)}`;
+    const v = m.get(key) ?? { open: 0, claimed: 0 };
+    if (isClaimed(r.id)) v.claimed++; else v.open++;
+    m.set(key, v);
+  }
+  return m;
+}
+
+/** "open" (red: cash still to claim), "claimed" (green: all cash claimed), or null (nothing to claim). */
+export function cellClaimState(s?: { open: number; claimed: number }): "open" | "claimed" | null {
+  if (!s) return null;
+  return s.open > 0 ? "open" : s.claimed > 0 ? "claimed" : null;
+}

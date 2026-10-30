@@ -2,6 +2,7 @@ import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "@/lib/server/shops";
 import { cutBarberId, UNASSIGNED, UNASSIGNED_NAME } from "@/lib/cut-count";
+import { asOwnerSplit } from "@/lib/split-view";
 
 /**
  * Read-only view of one owner's shop for the Companion. Nothing here writes business data.
@@ -45,7 +46,8 @@ export async function loadShopData(shopId: string, shopName: string, plan: strin
   const branches = branchesRaw.length
     ? branchesRaw.map((b: Record<string, unknown>) => ({ id: String(b.id ?? HOME), name: String(b.name ?? "Shop") }))
     : [{ id: HOME, name: shopName || profile?.name || "Main shop" }];
-  return { shopName: shopName || profile?.name || "your shop", plan, bookings: mergeBookings([...snap.docs, ...doneSnap.docs].map((d) => ({ ...(d.data() as ChairRequest), id: d.id }))), barbers, branches };
+  return { shopName: shopName || profile?.name || "your shop", plan, // v1.0.21: money is the OWNER's split of each cut (same as every owner screen; split-view.ts), tips excluded.
+    bookings: asOwnerSplit(mergeBookings([...snap.docs, ...doneSnap.docs].map((d) => ({ ...(d.data() as ChairRequest), id: d.id }))), (Array.isArray(barbersRaw) ? barbersRaw : []) as never[]), barbers, branches };
 }
 
 /** One row per ticket (the two reads overlap). */
@@ -71,8 +73,8 @@ function scope(d: ShopData, locationId?: string) {
 }
 /** Finished cuts in [from, to), by completion time (same rule as Sales: only status "done", counted on completedAt). */
 const doneIn = (rows: ChairRequest[], from: number, to = Date.now() + 1) =>
-  rows.filter((b) => b.status === "done" && (b.completedAt ?? b.updatedAt) >= from && (b.completedAt ?? b.updatedAt) < to);
-const doneAt = (b: ChairRequest) => b.completedAt ?? b.updatedAt;
+  rows.filter((b) => b.status === "done" && (b.completedAt ?? 0) >= from && (b.completedAt ?? 0) < to);
+const doneAt = (b: ChairRequest) => b.completedAt ?? 0;
 const total = (rows: ChairRequest[]) => pesos(rows.reduce((s, b) => s + (b.price || 0), 0));
 const clampDays = (n: unknown, def = 7) => Math.max(1, Math.min(120, Math.round(Number(n) || def)));
 const who = (b: ChairRequest) => (b.contact || b.customerLabel || "").trim().toLowerCase();
@@ -102,8 +104,8 @@ export function getSales(d: ShopData, a: { days?: number; locationId?: string })
   const cur = doneIn(rows, start, now + 1);
   const prev = doneIn(rows, start - days * DAY, start);
   const byDay: Record<string, { sales: number; cuts: number }> = {};
-  for (const b of cur) { const k = manilaDay(b.completedAt ?? b.updatedAt); byDay[k] ??= { sales: 0, cuts: 0 }; byDay[k].sales += pesos(b.price); byDay[k].cuts++; }
-  const unpaid = rows.filter((b) => b.status === "done" && !b.paid && (b.completedAt ?? b.updatedAt) >= start);
+  for (const b of cur) { const k = manilaDay(b.completedAt ?? 0); byDay[k] ??= { sales: 0, cuts: 0 }; byDay[k].sales += pesos(b.price); byDay[k].cuts++; }
+  const unpaid = rows.filter((b) => b.status === "done" && !b.paid && (b.completedAt ?? 0) >= start);
   const s = total(cur);
   return { days, period: `${manilaDay(start)} to ${manilaDay(now)} (Manila)`, branch: unknownBranch ? `unknown branch "${a.locationId}"; these are ALL branches` : resolveLocation(d, a.locationId) ? d.branches.find((b) => b.id === resolveLocation(d, a.locationId))?.name : "all branches", salesPhp: s, cuts: cur.length, avgTicketPhp: cur.length ? Math.round(s / cur.length) : 0, previousPeriodSalesPhp: total(prev), previousPeriodCuts: prev.length, unpaidPhp: total(unpaid), byDay };
 }
@@ -142,7 +144,7 @@ export function staffPerformance(d: ShopData, a: { days?: number; locationId?: s
     const k = `${name}@${loc}`;
     const r = m.get(k) ?? { barber: name, branch: branchName(loc), cuts: 0, salesPhp: 0, customers: new Set(), returned: new Set(), days: new Set() };
     r.cuts++; r.salesPhp += pesos(b.price);
-    r.days.add(manilaDay(b.completedAt ?? b.updatedAt));
+    r.days.add(manilaDay(b.completedAt ?? 0));
     const c = who(b);
     if (c) {
       if (all.some((o) => o !== b && who(o) === c && o.createdAt > b.createdAt && o.status !== "declined")) r.returned.add(c);
@@ -174,7 +176,7 @@ export function inactiveCustomers(d: ShopData, a: { days?: number; locationId?: 
   for (const b of scope(d, a.locationId)) {
     if (b.status !== "done") continue;
     const k = who(b); if (!k) continue;
-    const t = b.completedAt ?? b.updatedAt;
+    const t = b.completedAt ?? 0;
     const r = last.get(k) ?? { last: 0, visits: 0, label: b.customerLabel, contact: b.contact };
     r.visits++; if (t > r.last) r.last = t; last.set(k, r);
   }
@@ -193,7 +195,7 @@ export interface Goal { id: string; kind: "monthly_sales" | "weekly_cuts" | "cus
 export function goalProgress(d: ShopData, goals: Goal[]) {
   const now = new Date();
   const ym = manilaDay(now.getTime()).slice(0, 7);
-  const monthRows = d.bookings.filter((b) => b.status === "done" && manilaDay(b.completedAt ?? b.updatedAt).startsWith(ym));
+  const monthRows = d.bookings.filter((b) => b.status === "done" && manilaDay(b.completedAt ?? 0).startsWith(ym));
   const monthSales = total(monthRows);
   const dayOfMonth = Number(manilaDay(now.getTime()).slice(8, 10));
   const [y, mo] = ym.split("-").map(Number) as [number, number];
