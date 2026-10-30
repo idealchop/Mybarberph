@@ -122,7 +122,8 @@ export function CompanionScreen() {
         <CompanionAvatar size={36} state={c.busy ? "thinking" : "idle"} />
         <span className="flex min-w-0 flex-1 flex-col leading-[1.2]">
           <h1 className="text-[16px] font-bold">Companion</h1>
-          <small className="truncate text-[12px] font-semibold text-muted">{left || (tier === "paid" ? "Unlimited · tips, alerts and goals" : "Your shop’s business buddy")}</small>
+          {/* v1.0.27: no "Unlimited · tips, alerts and goals" subtext on paid plans (Jimboy). */}
+          {left || tier !== "paid" ? <small className="truncate text-[12px] font-semibold text-muted">{left || "Your shop’s business buddy"}</small> : null}
         </span>
       </header>
       {c.goals.length ? (

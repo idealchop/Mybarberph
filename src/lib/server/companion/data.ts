@@ -282,9 +282,9 @@ export function scoreboard(d: ShopData, now = Date.now()) {
 /** Plain-text scoreboard for the system context. */
 export function scoreboardText(d: ShopData, now = Date.now()) {
   const s = scoreboard(d, now);
-  const f = (x: { cuts: number; salesPhp: number }) => `${x.cuts} haircuts, ₱${x.salesPhp.toLocaleString("en-PH")}`;
+  const f = (x: { cuts: number; salesPhp: number }) => `${x.cuts} haircuts, your share ₱${x.salesPhp.toLocaleString("en-PH")}`;
   const lines = [
-    `Finished haircuts only, counted on the Manila day they were completed. TODAY = ${s.todayDate}. THIS WEEK = ${s.weekFrom} (Mon) to ${s.weekTo} (Sun), so far.`,
+    `${MONEY_NOTE} Counted on the Manila day they were completed. TODAY = ${s.todayDate}. THIS WEEK = ${s.weekFrom} (Mon) to ${s.weekTo} (Sun), so far.`,
     `WHOLE SHOP (all branches combined): today ${f(s.total.today)}; this week ${f(s.total.thisWeek)}.`,
   ];
   for (const b of s.branches) {
@@ -292,4 +292,21 @@ export function scoreboardText(d: ShopData, now = Date.now()) {
     for (const r of b.barbers) lines.push(`  - ${r.barber} at ${b.branch}: today ${f(r.today)}; this week ${f(r.thisWeek)}.`);
   }
   return lines.join("\n");
+}
+
+/**
+ * What the model sees (v1.0.27): plain labels so it never says "cuts" or calls the owner's share "sales".
+ * Keys are renamed at the boundary only; the functions above keep their internal names (and tests).
+ */
+const MODEL_KEYS: Record<string, string> = {
+  cuts: "haircuts", previousPeriodCuts: "previousPeriodHaircuts", cutsThisWeek: "haircutsThisWeek",
+  salesPhp: "ownerSharePhp", previousPeriodSalesPhp: "previousPeriodOwnerSharePhp", avgTicketPhp: "avgOwnerSharePerHaircutPhp",
+  monthSalesPhp: "monthOwnerSharePhp", projectedMonthPhp: "projectedMonthOwnerSharePhp", unpaidPhp: "unpaidOwnerSharePhp",
+  sales: "ownerSharePhp",
+};
+export const MONEY_NOTE = "All peso amounts are the OWNER's share after each barber's split (tips excluded), not full sales. Counts are finished haircuts.";
+export function forModel(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(forModel);
+  if (!v || typeof v !== "object") return v;
+  return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [MODEL_KEYS[k] ?? k, forModel(x)]));
 }

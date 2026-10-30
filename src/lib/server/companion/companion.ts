@@ -171,7 +171,7 @@ export async function chat(uid: string, text: string, locationId?: string) {
       const fc = c.functionCall as NonNullable<Part["functionCall"]>;
       let out: unknown;
       try { out = await runTool(uid, data, fc.name, fc.args ?? {}, paid, text); } catch (e) { out = { error: (e as Error).message }; }
-      responses.push({ functionResponse: { name: fc.name, response: { result: out } } });
+      responses.push({ functionResponse: { name: fc.name, response: { result: T.forModel(out), note: T.MONEY_NOTE } } });
     }
     contents.push({ role: "user", parts: responses });
   }
@@ -196,7 +196,7 @@ export async function weeklyTips(uid: string, opts: { force?: boolean } = {}) {
     branches: data.branches.length > 1 ? T.branchComparison(data, { days: 7 }) : undefined,
     inactive: T.inactiveCustomers(data, { days: 30 }, false), goals: paid ? T.goalProgress(data, mem.goals) : undefined,
   };
-  const r = await generate({ system: SYSTEM_PROMPT + context(shop, data, plan, paid ? mem.goals : []) + "\n\n" + TIPS_PROMPT, contents: [{ role: "user", parts: [{ text: `Shop numbers (JSON):\n${JSON.stringify(facts)}` }] }], json: true });
+  const r = await generate({ system: SYSTEM_PROMPT + context(shop, data, plan, paid ? mem.goals : []) + "\n\n" + TIPS_PROMPT, contents: [{ role: "user", parts: [{ text: `Shop numbers (JSON). ${T.MONEY_NOTE}\n${JSON.stringify(T.forModel(facts))}` }] }], json: true });
   await logUsage(uid, r.usage, "tips");
   let parsed: { tips?: string[]; alerts?: string[] } = {};
   try { parsed = JSON.parse(r.parts.map((p) => p.text ?? "").join("")); } catch { parsed = { tips: [] }; }

@@ -6,7 +6,7 @@ import { EmptyBookings } from "@/components/common/empty-bookings";
 
 import { CoinIcon } from "@river-apps/icons";
 import { User } from "lucide-react";
-import { Badge, Card, CardHeader, HeroBanner, ProgressRing, SectionHeader, StatCard } from "@river-apps/ui";
+import { Card, CardHeader, HeroBanner, SectionHeader, StatCard } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -107,7 +107,6 @@ export function HomeScreen() {
   // v1.0.26: one board for every Home count (queue-day.ts dayBoard), same as the Queue's Current / Completed cards.
   // "waiting" used to come from the live list for ANY day, so a visit left open yesterday showed as waiting today.
   const board = dayBoard(counted, todayKey());
-  const toAccept = board.waiting;
   const busy = rows.filter((row) => row.status === "in_chair" && !isOwnerCut(row)).length;
   const oldest = rows.filter((row) => row.status === "in_chair" && row.startedAt).reduce((m, row) => Math.min(m, row.startedAt!), Infinity);
   const now = useTick(busy > 0);
@@ -128,8 +127,6 @@ export function HomeScreen() {
   const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
   const needsSetup = Boolean(user) && ready && !profile.name;
   const dayLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" });
-  const dayTotal = figures.cuts + board.current;
-  const pct = dayTotal ? Math.round((figures.cuts / dayTotal) * 100) : 0;
 
   const brand = (
                 <div className="flex min-h-11 min-w-0 items-center gap-2 py-1 pl-1 pr-1.5">
@@ -218,7 +215,7 @@ export function HomeScreen() {
       <div className="mx-auto hidden w-full max-w-[1120px] px-4 pb-6 pt-4 lg:block lg:px-[30px] lg:pt-6">
         <DesktopBar brand={user ? brand : null} onSignIn={user ? undefined : () => requireAuth()} />
         {needsSetup ? <SetupCard className="mt-5" /> : null}
-        <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_286px]">
+        <div className="mt-5">{/* v1.0.27: hero full width (Today’s barbers card removed) */}
           <HeroBanner
             size="lg"
             eyebrow={`Today · ${dayLabel}`}
@@ -235,24 +232,6 @@ export function HomeScreen() {
             illustration={<img src="/barber-hero.webp" alt="" width={230} height={220} className="h-auto w-[230px]" />}
             illustrationClassName="right-[30px] top-1/2 -translate-y-1/2"
           />
-          <StatCard
-            className="px-5 pb-4 pt-[18px]"
-            layout="title"
-            label="Today’s barbers"
-            footer={
-              <>
-                <span className="flex flex-col leading-[1.2]">
-                  <b className="text-[17px] font-extrabold">{figures.cuts} done</b>
-                  <small className="text-[12px] font-semibold text-muted">{peso(figures.sales)} in sales</small>
-                </span>
-                <Badge variant="soft">{toAccept} waiting</Badge>
-              </>
-            }
-          >
-            <div className="my-1.5 flex justify-center">
-              <ProgressRing value={pct} size={124} thickness={11.5} label={`${pct}%`} labelSize={23} ariaLabel={`${pct}% of today’s customers served`} />
-            </div>
-          </StatCard>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-5">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
