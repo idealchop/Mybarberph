@@ -4,10 +4,12 @@ import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-
 import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
 import { cutBarberId, cutBarberName } from "@/lib/cut-count";
+import { CLAIM_RULE, claimIndex, isClaimable } from "@/lib/claim-rule";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
-  /** Owner/shop share claimed (amount minus the barber's split; None = all). Older claims lack it and are computed on read. */ ownerShare?: number; sharePct?: number | null }
+  /** Owner/shop share claimed (amount minus the barber's split; None = all). Older claims lack it and are computed on read. */ ownerShare?: number; sharePct?: number | null;
+  /** 2 = lists GCash visits too (v1.0.25). Older claims listed cash only (lib/claim-rule.ts). */ rule?: number }
 export interface Unclaimed { barberId: string; barberName: string; locationId: string; amount: number; ownerShare: number; count: number; oldest: number }
 
 const HOME = "home";
@@ -20,8 +22,8 @@ const pctOf = (chairs: Chair[], id: string, loc: string) => {
   const c = chairs.find((x) => (x.barberId === id || x.id === id) && (x.locationId || HOME) === loc) ?? chairs.find((x) => x.barberId === id || x.id === id);
   return c ? sharePct(c) : null;
 };
-/** Cash the barber collected = done, paid, cash. */
-const isCash = (r: ChairRequest) => r.status === "done" && Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
+/** Claimable = done, paid, with a price; cash AND GCash (v1.0.25, lib/claim-rule.ts). */
+const isCash = (r: ChairRequest) => isClaimable(r);
 
 // Per-instance cache: Home, Sales and History all ask for the same summary; a claim clears it.
 const cache = new Map<string, { at: number; data: Promise<Awaited<ReturnType<typeof loadFresh>>> }>();
@@ -39,25 +41,30 @@ async function loadFresh(shopId: string) {
     // Every claim (v1.0.24): with a 500 cap, older claims fell off and their visits looked unclaimed again.
     shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").get(),
     // Only the fields remit needs (not full booking docs).
-    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "splitPct").get(), // no cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim
+    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "createdAt", "splitPct").get(), // no cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
   const claims = claimsSnap.docs.map((d) => d.data() as RemitClaim);
+  const covers = claimIndex(claims, chairs);
+  const done = doneSnap.docs.map((d) => ({ ...(d.data() as ChairRequest), id: (d.data() as ChairRequest).id || d.id }));
+  // Every claimed visit id: listed in a claim, or a GCash visit an older (cash-only) claim covers by day.
   const claimed = new Set(claims.flatMap((c) => c.bookingIds));
-  const open = doneSnap.docs.map((d) => d.data() as ChairRequest).filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: cash is already his
-  return { chairs, claims, open };
+  const covered = new Map<string, string[]>(); // claim id → GCash visit ids it covers by day (older claims only)
+  for (const r of done) { if (!isCash(r) || claimed.has(r.id)) continue; const c = covers(r); if (c) { claimed.add(r.id); covered.set(c.id, [...(covered.get(c.id) ?? []), r.id]); } }
+  const open = done.filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: the money is already his
+  return { chairs, claims, open, claimed, covered };
 }
 
 /** Ids of every visit the owner already claimed (locked for barber edits). */
 export async function claimedBookingIds(shopId: string): Promise<Set<string>> {
-  const { claims } = await load(shopId);
-  return new Set(claims.flatMap((c) => c.bookingIds));
+  const { claimed } = await load(shopId);
+  return claimed;
 }
 
 /** Unclaimed remit per barber (all time, up to now) and recent claims. `loc` = location id or "all". */
 export async function remitSummary(shopId: string, loc: string) {
-  const { chairs, claims, open } = await load(shopId);
+  const { chairs, claims, open, covered } = await load(shopId);
   const map = new Map<string, Unclaimed>();
   for (const r of open) {
     const k = keyOf(r, chairs);
@@ -71,11 +78,11 @@ export async function remitSummary(shopId: string, loc: string) {
   return {
     unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), ownerTotal: unclaimed.reduce((s, u) => s + u.ownerShare, 0),
     // v1.0.24: no 100-claim cap. The client marks claimed visits from this list, so a cap turned old claimed days red again.
-    claims: claims.filter((c) => (loc === "all" || c.locationId === loc) && c.claimedAt >= Date.now() - 400 * 86_400_000).map((c) => ({ ...c, count: c.bookingIds.length, ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
+    claims: claims.filter((c) => (loc === "all" || c.locationId === loc) && c.claimedAt >= Date.now() - 400 * 86_400_000).map((c) => ({ ...c, coveredIds: covered.get(c.id) ?? [], count: c.bookingIds.length + (covered.get(c.id)?.length ?? 0), ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
   };
 }
 
-/** Owner marks a barber's cash as received: every unclaimed paid-cash visit for that barber at that location, up to now (or on one Manila `day`). A lock doc serialises claims so a double tap can't claim twice. */
+/** Owner marks a barber's takings as received: every unclaimed paid visit (cash and GCash) for that barber at that location, up to now (or on one Manila `day`). A lock doc serialises claims so a double tap can't claim twice. */
 export async function claimRemit(shopId: string, barberId: string, locationId: string, claimedBy: string, day?: string): Promise<RemitClaim> {
   const shop = shopRef(shopId);
   const lock = shop.collection("private").doc("remitLock");
@@ -92,7 +99,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
       id: ref.id, barberId, barberName: keyOf(mine[0]!, chairs).name, locationId,
       amount: mine.reduce((s, r) => s + (r.price || 0), 0), bookingIds: mine.map((r) => r.id),
       ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, barberId, locationId))), 0), sharePct: pctOf(chairs, barberId, locationId),
-      from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy,
+      from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy, rule: CLAIM_RULE,
     };
     tx.set(ref, claim);
     tx.set(lock, { at: claim.claimedAt, last: ref.id });

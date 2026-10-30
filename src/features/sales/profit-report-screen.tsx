@@ -57,7 +57,7 @@ export function ProfitReportScreen() {
   const rows = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
   const remitAll = useRemit("all");
   // Red = cash still to claim that day, green = all claimed (Jimboy, 2026-10-30).
-  const claimMap = useMemo(() => (remitAll.data ? claimStates(rows, chairs, (id) => Boolean(remitAll.claimOf(id))) : null), [rows, chairs, remitAll]);
+  const claimMap = useMemo(() => (remitAll.data ? claimStates(rows, chairs, (r) => Boolean(remitAll.claimOf(r.id))) : null), [rows, chairs, remitAll]);
   const [sheet, setSheet] = useState<DayTarget | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const now = useNow();

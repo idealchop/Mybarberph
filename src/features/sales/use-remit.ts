@@ -5,7 +5,7 @@ import { useSession } from "@/lib/session";
 import { cached, fetchShared, invalidate } from "@/lib/swr";
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; ownerShare?: number; count: number; oldest: number }
-export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; ownerShare?: number; sharePct?: number | null }
+export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; ownerShare?: number; sharePct?: number | null }
 export interface Remit { unclaimed: UnclaimedRow[]; total: number; ownerTotal?: number; claims: ClaimRow[] }
 
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
@@ -39,7 +39,7 @@ export function useRemit(loc: string) {
   /** bookingId → the claim that covered it (claimed cash stays in every total; only the outstanding figure drops). */
   const claimOf = useMemo(() => {
     const m = new Map<string, ClaimRow>();
-    for (const c of data?.claims ?? []) for (const id of c.bookingIds ?? []) m.set(id, c);
+    for (const c of data?.claims ?? []) for (const id of [...(c.bookingIds ?? []), ...(c.coveredIds ?? [])]) m.set(id, c);
     return (bookingId: string) => m.get(bookingId);
   }, [data]);
   return { data, loading: Boolean(user) && !data, claim, busy, error, claimOf };

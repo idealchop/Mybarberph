@@ -5,6 +5,7 @@ import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, ownerShareOf, sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
 import { claimedBookingIds } from "./remit";
+import { claimIndex, type ClaimDoc } from "@/lib/claim-rule";
 import { historyRow } from "@/lib/barber-history";
 import { cutBarberId, cutBarberName, isFinishedCut } from "@/lib/cut-count";
 
@@ -68,6 +69,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   };
   const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; ownerShare?: number; bookingIds: string[]; claimedAt: number; locationId?: string }).sort((a, b) => b.claimedAt - a.claimedAt);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));
+  const covers = claimIndex(claims as never as ClaimDoc[], chairs); // older cash-only claims cover that day's GCash
   const out: BarberPerformance = {
     label: r.label, from: r.from, to: r.to, cuts: 0, sales: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, avg: 0, completionPct: null, declined: 0,
     walkIns: 0, onlineBookings: 0, claimedCash: 0, unclaimedCash: 0, hours: [], days: [], services: [],
@@ -90,7 +92,8 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     const tp = tipOf(b); if (tp) { tips += tp; tipCount += 1; }
     const vp = visitPct(b, myPct); const bs = vp == null ? 0 : splitIncome(p, vp).barber; barberSum += bs;
     const dk = manilaYmd(b.completedAt); const dv = byDate.get(dk) ?? { cuts: 0, sales: 0, tips: 0, barber: 0, open: 0, claimed: 0 };
-    if (b.paid && (payBucket(b) === "cash" || payBucket(b) === "other") && p > 0) { if (claimed.has(b.id)) dv.claimed += 1; else dv.open += 1; } dv.cuts += 1; dv.sales += p; dv.tips += tp; dv.barber += vp == null ? p : bs; byDate.set(dk, dv);
+    // v1.0.25: cash and GCash follow the claim (lib/claim-rule.ts).
+    if (b.paid && p > 0) { if (claimed.has(b.id) || covers(b)) dv.claimed += 1; else dv.open += 1; } dv.cuts += 1; dv.sales += p; dv.tips += tp; dv.barber += vp == null ? p : bs; byDate.set(dk, dv);
     { const h = new Date(b.completedAt + 8 * 3600_000).getUTCHours(); hourEarn.set(h, (hourEarn.get(h) ?? 0) + (vp == null ? p : bs)); }
     const cm = cutMinutes(b); if (cm != null) { mins += cm; timed += 1; fastest = Math.min(fastest, cm); }
     if (!b.paid) out.unpaid += p;

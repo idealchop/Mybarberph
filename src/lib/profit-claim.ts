@@ -1,6 +1,6 @@
 /**
  * The Claim figure for one barber on one Manila day (Weekly Profit Report sheet). Same rules as the Sales
- * "Claiming" remit (server/remit.ts): only finished, paid, cash cuts with a price; the owner's own cuts never;
+ * "Claiming" remit (server/remit.ts): only finished, paid cuts with a price (cash and GCash, lib/claim-rule.ts); the owner's own cuts never;
  * a cut is claimed when a remit claim lists its booking id. Amounts are the owner's share (price minus the barber's split).
  */
 import { ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
@@ -10,7 +10,8 @@ type Visit = { id: string; status?: string; paid?: boolean; payMethod?: string; 
 type Chair = { id: string; label?: string; barberId?: string; locationId?: string; sharePct?: unknown; shareSet?: unknown };
 
 const day = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
-const isCash = (r: Visit) => r.status === "done" && Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
+import { isClaimable } from "@/lib/claim-rule";
+const isCash = isClaimable; // v1.0.25: cash AND GCash (lib/claim-rule.ts)
 
 /** The remit key of a visit (same as the server's): its barberId only, else Unassigned. */
 export function remitKey(r: Visit, chairs: Chair[]) {
@@ -18,7 +19,7 @@ export function remitKey(r: Visit, chairs: Chair[]) {
   return { id: cutBarberId(r, chairs), loc: bl };
 }
 
-export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locationId: string, ymd: string, isClaimed: (bookingId: string) => boolean) {
+export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locationId: string, ymd: string, isClaimed: (visit: Visit) => boolean) {
   const c = chairs.find((x) => (x.barberId === barberId || x.id === barberId) && (x.locationId || "home") === locationId) ?? chairs.find((x) => x.barberId === barberId || x.id === barberId);
   const pct = barberId === "owner" ? null : c ? sharePct(c) : null;
   const out = { open: 0, openCash: 0, openCount: 0, claimed: 0, claimedCount: 0, owner: barberId === "owner" };
@@ -28,13 +29,13 @@ export function dayClaim(rows: Visit[], chairs: Chair[], barberId: string, locat
     const k = remitKey(r, chairs);
     if (k.id !== barberId || k.loc !== locationId || day(r.completedAt ?? r.updatedAt ?? 0) !== ymd) continue;
     const share = ownerShareOf(r.price || 0, visitPct(r, pct));
-    if (isClaimed(r.id)) { out.claimed += share; out.claimedCount++; } else { out.open += share; out.openCash += r.price || 0; out.openCount++; }
+    if (isClaimed(r)) { out.claimed += share; out.claimedCount++; } else { out.open += share; out.openCash += r.price || 0; out.openCount++; }
   }
   return out;
 }
 
 /** Claim state of every barber×day cell in one pass: key `${barberId}@${locationId}|${ymd}` → open/claimed cash cut counts. */
-export function claimStates(rows: Visit[], chairs: Chair[], isClaimed: (bookingId: string) => boolean) {
+export function claimStates(rows: Visit[], chairs: Chair[], isClaimed: (visit: Visit) => boolean) {
   const m = new Map<string, { open: number; claimed: number; openOwner: number }>();
   for (const r of rows) {
     if (!isCash(r)) continue;
@@ -42,7 +43,7 @@ export function claimStates(rows: Visit[], chairs: Chair[], isClaimed: (bookingI
     if (k.id === "owner") continue;
     const key = `${k.id}@${k.loc}|${day(r.completedAt ?? r.updatedAt ?? 0)}`;
     const v = m.get(key) ?? { open: 0, claimed: 0, openOwner: 0 };
-    if (isClaimed(r.id)) v.claimed++;
+    if (isClaimed(r)) v.claimed++;
     else {
       v.open++;
       // Owner share still to claim (same rule as dayClaim: the visit's stamped %, else the barber's current %).

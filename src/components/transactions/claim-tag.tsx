@@ -6,9 +6,9 @@ import type { ChairRequest } from "@/lib/booking-types";
 export const isCashCut = (r: ChairRequest) => Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
 export const payText = (r: ChairRequest) => (!r.paid ? "Unpaid" : r.payMethod === "gcash" ? "GCash" : r.payMethod === "online" ? "Online" : "Cash");
 
-/** Claim state of a day's cash: "claimed" when every cash cut is claimed, "open" when some is not, null when no cash. */
+/** Claim state of a day: "claimed" when every paid cut (cash and GCash, v1.0.25) is claimed, "open" when some is not, null when none. */
 export function dayClaimState(rows: ChairRequest[], claimed: (id: string) => boolean): "claimed" | "open" | null {
-  const cash = rows.filter(isCashCut);
+  const cash = rows.filter((r) => Boolean(r.paid) && (r.price || 0) > 0);
   if (!cash.length) return null;
   return cash.every((r) => claimed(r.id)) ? "claimed" : "open";
 }

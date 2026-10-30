@@ -64,13 +64,12 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
     .filter((r) => r.status === "done" && r.completedAt && ymd(r.completedAt) === t.day)
     .filter((r) => { const k = remitKey(r, chairs); return k.id === t.id && k.loc === t.locationId; })
     .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0)), [source, chairs, t]);
-  const claim = dayClaim(records, chairs, t.id, t.locationId, t.day, (id) => Boolean(remit.claimOf(id)));
+  const claim = dayClaim(records, chairs, t.id, t.locationId, t.day, (r) => Boolean(remit.claimOf(r.id)));
   const busy = remit.busy === `${t.id}@${t.locationId}`;
   // Owner sees only their split (split-view.ts), never the full sales.
   const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
   const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
-  const gcashRows = records.filter((r) => r.paid && r.payMethod === "gcash");
-  const gcash = { count: gcashRows.length, share: gcashRows.reduce((s, r) => s + ownerPart(r, chairs), 0) };
+  const sales = records.reduce((s, r) => s + Math.max(0, r.price || 0), 0); // full price of the day's records
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -85,7 +84,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
         <div className="flex flex-col gap-5 pb-2 pt-1">
           <section aria-label="Claim" className={cn("rounded-[22px] px-4 pb-4 pt-3.5", allClaimed ? "bg-[#0F7A45] text-white" : "bg-ink text-on-ink")}>
             <div className="flex items-center justify-between gap-3">
-              <p className={cn("text-[12.5px] font-semibold", allClaimed ? "text-white/75" : "text-on-ink-muted")}>{allClaimed ? "Claimed this day" : "Cash to claim"}</p>
+              <p className={cn("text-[12.5px] font-semibold", allClaimed ? "text-white/75" : "text-on-ink-muted")}>{allClaimed ? "Claimed this day" : "To claim"}</p>
               {claim.owner || !remit.data ? null : allClaimed ? (
                 <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/20 px-2.5 text-[11.5px] font-bold text-white"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
               ) : claim.open > 0 ? (
@@ -97,13 +96,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
               : (
                 <>
                   <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
-                  <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", allClaimed ? "text-white/75" : "text-on-ink-muted")}>
-                    {[
-                      claim.open > 0 ? `Your share · ${claim.openCount} cash` : "",
-                      claim.claimed > 0 ? `Claimed ${peso(claim.claimed)} · ${claim.claimedCount} cash` : "",
-                      gcash.count ? `GCash ${peso(gcash.share)} · ${gcash.count}` : "",
-                    ].filter(Boolean).join("   ·   ") || "No cash haircuts this day"}
-                  </p>
+                  <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>Total sales {peso(sales)}</p>
                   {claim.open > 0 ? (
                     <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day)}>{`Claim ${peso(claim.open)}`}</Button>
                   ) : null}

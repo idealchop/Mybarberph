@@ -88,7 +88,9 @@ describe("A day with more than 300 bookings", () => {
     claimed.forEach((r, i) => { fs.store[`shops/shop-b/remitClaims/k${i}`] = { id: `k${i}`, barberId: r.barberId, locationId: r.locationId, bookingIds: [r.id], amount: r.price, claimedAt: Date.now() - (claimed.length - i) * 1000 }; });
     expect(claimed.length).toBeGreaterThan(300);
     const sum = await remitSummary("shop-b", "all");
-    const open = cash.slice(0, 5);
+    // v1.0.25: GCash visits are claimable too, so everything not listed in a claim is still to claim.
+    const listed = new Set(claimed.map((r) => r.id));
+    const open = rows.filter((r) => r.paid && r.price > 0 && !listed.has(r.id));
     const owed = open.reduce((s, r) => s + (r.price - splitIncome(r.price, chairs.find((c) => c.barberId === r.barberId)!.sharePct).barber), 0);
     expect(sum.unclaimed.reduce((s: number, u: { ownerShare?: number }) => s + (u.ownerShare ?? 0), 0)).toBe(owed);
     expect(sum.claims.length).toBe(claimed.length);

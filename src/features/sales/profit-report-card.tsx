@@ -36,7 +36,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
   const report = profitWeek(rows, chairs, where, 0, now, branches);
   const remit = useRemit("all");
   // Same claim colors as the profit grid: red = cash still to claim that day, green = all claimed, neutral otherwise.
-  const claimMap = useMemo(() => (remit.data ? claimStates(rows, chairs, (id) => Boolean(remit.claimOf(id))) : null), [rows, chairs, remit]);
+  const claimMap = useMemo(() => (remit.data ? claimStates(rows, chairs, (r) => Boolean(remit.claimOf(r.id))) : null), [rows, chairs, remit]);
   const dayAgg = (day: string) => {
     let open = 0, claimed = 0, owed = 0;
     if (claimMap) for (const [k, v] of claimMap) {

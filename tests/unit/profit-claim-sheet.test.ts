@@ -55,16 +55,16 @@ describe("Day claim amounts (same rules as Sales Claiming)", () => {
     v("a", {}), v("b", {}), v("c", { payMethod: "gcash" }), v("d", { paid: false }), v("e", { completedAt: at("2026-10-23T00:10:00") }),
     v("f", { locationId: "bb2" }), v("g", {}),
   ];
-  it("counts only that day's paid cash for that barber and branch, as the owner's share", () => {
-    const c = dayClaim(rows, chairs, "glen", "bb1", "2026-10-22", (id) => id === "g");
-    expect(c.openCount).toBe(2);
-    expect(c.openCash).toBe(40_000);
-    expect(c.open).toBe(24_000); // 60% owner share
+  it("counts that day's paid visits (cash and GCash, v1.0.25) for that barber and branch, as the owner's share", () => {
+    const c = dayClaim(rows, chairs, "glen", "bb1", "2026-10-22", (r) => r.id === "g");
+    expect(c.openCount).toBe(3);
+    expect(c.openCash).toBe(60_000);
+    expect(c.open).toBe(36_000); // 60% owner share
     expect(c.claimed).toBe(12_000);
     expect(c.claimedCount).toBe(1);
   });
   it("no split = all the owner's; the owner's own cuts are never claimed", () => {
-    expect(dayClaim(rows, [], "glen", "bb1", "2026-10-22", () => false).open).toBe(60_000);
+    expect(dayClaim(rows, [], "glen", "bb1", "2026-10-22", () => false).open).toBe(80_000); // a, b, c (GCash), g
     expect(dayClaim([v("o", { barberId: "owner" })], chairs, "owner", "bb1", "2026-10-22", () => false)).toMatchObject({ owner: true, open: 0 });
   });
 });

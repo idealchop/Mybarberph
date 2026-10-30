@@ -41,16 +41,17 @@ describe("split-only amounts", () => {
 });
 
 describe("profit grid claim colors", () => {
-  it("open → red, all claimed → green, gcash only → none", () => {
+  it("open → red, all claimed → green, GCash counts like cash (v1.0.25)", () => {
     const at = Date.parse("2026-10-30T10:00:00+08:00");
     const rows = [
       { id: "1", status: "done", paid: true, payMethod: "cash", price: 100, barberId: "ray", locationId: "bayan", completedAt: at },
       { id: "2", status: "done", paid: true, payMethod: "cash", price: 100, barberId: "ray", locationId: "bayan", completedAt: at + 86_400_000 },
       { id: "3", status: "done", paid: true, payMethod: "gcash", price: 100, barberId: "jun", locationId: "bayan", completedAt: at },
     ];
-    const m = claimStates(rows, chairs, (id) => id === "2");
+    const m = claimStates(rows, chairs, (r) => r.id === "2");
     expect(cellClaimState(m.get("ray@bayan|2026-10-30"))).toBe("open");
     expect(cellClaimState(m.get("ray@bayan|2026-10-31"))).toBe("claimed");
-    expect(cellClaimState(m.get("jun@bayan|2026-10-30"))).toBe(null);
+    expect(cellClaimState(m.get("jun@bayan|2026-10-30"))).toBe("open");
+    expect(cellClaimState(claimStates(rows, chairs, () => true).get("jun@bayan|2026-10-30"))).toBe("claimed");
   });
 });

@@ -27,7 +27,7 @@ import {
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
 import { addDays, dayLabel, dayOf, earningsOf, historyRow } from "@/lib/barber-history";
-import { ClaimTag, dayClaimState, isCashCut } from "@/components/transactions/claim-tag";
+import { ClaimTag, dayClaimState } from "@/components/transactions/claim-tag";
 import { peso } from "@/lib/format";
 import { customerName, tipOf, visitPct } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -599,7 +599,7 @@ function ChairHistory({
 
   const claimState = dayClaimState(picked.rows, (id) => locked.has(id));
   const green = claimState === "claimed";
-  const cashOpen = picked.rows.filter((r) => isCashCut(r) && !locked.has(r.id)).length;
+  const cashOpen = picked.rows.filter((r) => Boolean(r.paid) && (r.price || 0) > 0 && !locked.has(r.id)).length; // cash and GCash (v1.0.25)
   const time = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
   const item = (row: ChairRequest) => {
     const offer = visitOffer(row, haircut, treatments);
@@ -635,7 +635,7 @@ function ChairHistory({
         <div className="flex items-center justify-between gap-3">
           <p className={cn("text-[12.5px] font-semibold", green ? "text-white/75" : "text-on-ink-muted")}>Your share</p>
           {green ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/20 px-2.5 text-[11.5px] font-bold text-white"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
-            : claimState === "open" ? <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />{cashOpen} cash to hand over</span> : null}
+            : claimState === "open" ? <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />{cashOpen} to claim</span> : null}
         </div>
         <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
         <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", green ? "text-white/75" : "text-on-ink-muted")}>
