@@ -4,6 +4,8 @@ import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } f
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, ownerShareOf, sharePct, splitIncome, tipOf } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
+import { claimedBookingIds } from "./remit";
+import { historyRow } from "@/lib/barber-history";
 import { cutBarberId, cutBarberName, isFinishedCut } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
@@ -119,16 +121,18 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
 export async function barberDayCuts(shopId: string, q: { date: string; barberId: string; locationId: string; chairId?: string }) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(q.date) ? q.date : manilaYmd(Date.now());
   const from = Date.parse(`${date}T00:00:00+08:00`), end = from + 86_400_000;
-  const [snap, state] = await Promise.all([
+  const [snap, state, claimed] = await Promise.all([
     shopRef(shopId).collection("bookings").where("completedAt", ">=", from).where("completedAt", "<", end).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
+    claimedBookingIds(shopId).catch(() => new Set<string>()),
   ]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
   const me = chairs.find((c) => c.id === q.chairId) ?? chairs.find((c) => (c.barberId || c.id) === q.barberId && (c.locationId || "home") === q.locationId);
-  const rows = snap.docs.map((d) => d.data() as ChairRequest)
+  // Raw docs: older or partner-made visits can miss id/ref/serviceName; normalise so the History screen never crashes on one.
+  const rows = snap.docs.map((d) => historyRow(d.id, d.data() as Partial<ChairRequest>))
     .filter((b) => isFinishedCut(b) && (b.locationId || "home") === q.locationId && cutBarberId(b, chairs) === q.barberId)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
-  return { date, sharePct: sharePct(me), rows };
+  return { date, sharePct: sharePct(me), rows, locked: rows.filter((r) => claimed.has(r.id)).map((r) => r.id) };
 }
 
 /** Barber link History for one day (the link's own barber and branch). */

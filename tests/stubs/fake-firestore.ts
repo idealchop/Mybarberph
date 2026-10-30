@@ -16,6 +16,7 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     }], order, lim),
     orderBy: (f: string, dir: "asc" | "desc" = "asc") => coll(path, filters, [f, dir], lim),
     limit: (n: number) => coll(path, filters, order, n),
+    select: () => coll(path, filters, order, lim),
     get: async () => {
       let docs = Object.entries(store)
         .filter(([k]) => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes("/"))

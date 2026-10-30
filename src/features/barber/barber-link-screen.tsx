@@ -10,7 +10,7 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, History, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { useInstallHidden } from "@/lib/pwa";
 
@@ -24,7 +24,7 @@ import {
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
-import { addDays, dayLabel, dayOf, earningsOf } from "@/lib/barber-history";
+import { addDays, dayLabel, dayOf, earningsOf, historyRow } from "@/lib/barber-history";
 import { peso } from "@/lib/format";
 import { customerName, tipOf } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -51,7 +51,7 @@ function useNow() {
 
 /** Online booking is one haircut plus any treatments. Older cut names show as that haircut. */
 function visitOffer(row: ChairRequest, haircut: ShopHaircut, treatments: ShopTreatment[]) {
-  const chunks = row.serviceName.split("·").map((part) => part.trim()).filter(Boolean);
+  const chunks = (row.serviceName || "").split("·").map((part) => part.trim()).filter(Boolean);
   const extras = treatments.filter((treatment) => chunks.some((part) => part.toLowerCase() === treatment.name.toLowerCase()));
   return {
     label: extras.length ? `${haircut.name} · ${extras.map((treatment) => treatment.name).join(" · ")}` : haircut.name,
@@ -495,7 +495,7 @@ function OnlineScan({
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const match = needle
-    ? rows.find((row) => row.ref.toLowerCase() === needle || row.ref.toLowerCase().includes(needle))
+    ? rows.find((row) => row.ref.toLowerCase() === needle || (row.ref || "").toLowerCase().includes(needle))
     : undefined;
   const seatable = Boolean(match && (match.status === "requested" || match.status === "accepted") && !match.chairLabel);
 
@@ -528,21 +528,36 @@ function OnlineScan({
 }
 
 /** Server rows (complete for past days) plus the live link rows (just-finished cuts), by id. */
+/**
+ * Server rows (complete for past days) plus the live link rows (just-finished cuts), by id; the newer copy wins.
+ * v1.0.21 fix: a failed fetch used to leave History on "Loading…" forever, and one raw row missing serviceName/ref
+ * crashed the whole screen. Rows are normalised, errors show with a retry, and `reload` refreshes after an edit.
+ */
 function useHistoryRows(token: string, live: ChairRequest[], day: string) {
-  const [server, setServer] = useState<{ key: string; rows: ChairRequest[]; pct: number | null } | null>(null);
-  const key = day;
+  const [server, setServer] = useState<{ key: string; rows: ChairRequest[]; pct: number | null; locked: string[] } | null>(null);
+  const [failed, setFailed] = useState("");
+  const [tick, setTick] = useState(0);
+  const key = `${day}#${tick}`;
   useEffect(() => {
     let off = false;
     fetch(`/api/barber/${token}/history?date=${day}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { rows: ChairRequest[]; sharePct: number | null } | null) => { if (!off && d) setServer({ key, rows: d.rows, pct: d.sharePct }); })
-      .catch(() => {});
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { rows?: Partial<ChairRequest>[]; sharePct?: number | null; locked?: string[] }) => {
+        if (off) return;
+        setFailed("");
+        setServer({ key, rows: (d.rows ?? []).map((r, i) => historyRow(`row-${i}`, r)), pct: d.sharePct ?? null, locked: d.locked ?? [] });
+      })
+      .catch(() => { if (!off) setFailed(key); });
     return () => { off = true; };
   }, [token, day, key]);
+  const fresh = server?.key === key ? server : null;
   const byId = new Map<string, ChairRequest>();
-  for (const r of server?.key === key ? server.rows : []) byId.set(r.id, r);
-  for (const r of live) byId.set(r.id, r);
-  return { rows: [...byId.values()], pct: server?.pct ?? null, loading: server?.key !== key };
+  for (const r of fresh?.rows ?? []) byId.set(r.id, r);
+  for (const r of live) { const s = byId.get(r.id); if (!s || (r.updatedAt || 0) >= (s.updatedAt || 0)) byId.set(r.id, historyRow(r.id, r)); }
+  return {
+    rows: [...byId.values()], pct: fresh?.pct ?? server?.pct ?? null, locked: new Set(fresh?.locked ?? []),
+    loading: !fresh && failed !== key, error: failed === key, reload: () => setTick((t) => t + 1),
+  };
 }
 
 /**
@@ -568,7 +583,7 @@ function ChairHistory({
   const [day, setDay] = useState(today);
   const [query, setQuery] = useState("");
   const dateRef = useRef<HTMLInputElement>(null);
-  const { rows, pct, loading } = useHistoryRows(token, live, day);
+  const { rows, pct, loading, error, locked, reload } = useHistoryRows(token, live, day);
   const needle = query.trim().toLowerCase();
   const match = (row: ChairRequest) => {
     if (!needle) return true;
@@ -584,7 +599,7 @@ function ChairHistory({
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[15px]">{row.customerLabel || row.contact || "Customer"}</b>
         <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{visitOffer(row, haircut, treatments).label}</p>
-        <p className="mt-1 text-[12.5px] font-semibold text-muted">{new Date(row.completedAt!).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" })}</p>
+        <p className="mt-1 text-[12.5px] font-semibold text-muted">{locked.has(row.id) ? <Lock size={11} strokeWidth={2.6} className="mr-1 inline -mt-px" aria-label="Claimed by owner" /> : null}{new Date(row.completedAt!).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" })}</p>
       </span>
       <b className="flex-none text-[14px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), pct))}</b>
       <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
@@ -631,7 +646,13 @@ function ChairHistory({
         <Input aria-label="Find a cut" placeholder="Find a cut: customer, service, ticket" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
-      {openRow ? <TransactionSheet row={openRow} barber onClose={() => setOpenRow(null)} /> : null}
+      {openRow ? <TransactionSheet row={openRow} barber locked={locked.has(openRow.id)} onClose={() => { setOpenRow(null); reload(); }} /> : null}
+      {error ? (
+        <div role="alert" className="mt-4 flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
+          <p className="text-[13.5px] font-semibold text-ink-2">Couldn’t load this day.</p>
+          <button type="button" onClick={reload} className="h-9 flex-none rounded-pill bg-ink px-4 text-[13px] font-bold text-on-ink">Retry</button>
+        </div>
+      ) : null}
       {shownDay.length === 0 ? (
         <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No cuts match." : "No finished cuts this day."}</p>
       ) : <ul className="mt-4 flex flex-col gap-2">{shownDay.map(item)}</ul>}

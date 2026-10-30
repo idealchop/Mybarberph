@@ -2,6 +2,13 @@ import type { ChairRequest } from "@/lib/booking-types";
 import { isFinishedCut, manilaYmd } from "@/lib/cut-count";
 import { splitIncome, tipOf } from "@/lib/income-split";
 
+/** A visit safe to render: string fields always strings (raw Firestore docs can miss them). */
+export function historyRow(docId: string, b: Partial<ChairRequest>): ChairRequest {
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  return { ...b, id: s(b.id) || docId, ref: s(b.ref), serviceName: s(b.serviceName) || "Haircut", customerLabel: s(b.customerLabel), contact: s(b.contact),
+    price: Number(b.price) || 0, createdAt: Number(b.createdAt) || 0, updatedAt: Number(b.updatedAt) || 0 } as ChairRequest;
+}
+
 /** One Manila day of a barber's finished cuts (barber link History, v1.0.19). Same rule as Sales: done + completedAt. */
 export type HistoryDay = { date: string; rows: ChairRequest[]; cuts: number; sales: number; tips: number; earnings: number };
 

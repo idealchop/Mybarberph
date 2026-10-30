@@ -84,8 +84,9 @@ function usedChairs(loc: string) {
   return used;
 }
 
-export function patchRequest(id: string, patch: Partial<ChairRequest>) {
-  const row = mergeRequests().find((b) => b.id === id);
+/** `base`: the visit as last fetched, for a row not in the live list (e.g. a past day opened from barber History). */
+export function patchRequest(id: string, patch: Partial<ChairRequest>, base?: ChairRequest) {
+  const row = mergeRequests().find((b) => b.id === id) ?? (base?.id === id ? base : undefined);
   if (!row) return;
   const next = { ...row, ...patch, id, updatedAt: Date.now() } as ChairRequest;
   for (const k of Object.keys(patch) as (keyof ChairRequest)[]) if (patch[k] === undefined) delete next[k];

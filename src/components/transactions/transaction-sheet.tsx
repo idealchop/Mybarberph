@@ -23,7 +23,8 @@ const isOnlinePaid = (row: ChairRequest) => Boolean(row.paid) && (row.payMethod 
 
 /** Order details (Laundry.ph layout): header with status, customer, service lines + total, payment, timeline, edit. */
 /** `barber`: barber-link view; payment can be recorded, but price/service edits are owner-only. */
-export function TransactionSheet({ row: initial, onClose, barber = false }: { row: ChairRequest; onClose: () => void; barber?: boolean }) {
+/** `locked`: the owner already claimed this cut, so the barber can only view it. */
+export function TransactionSheet({ row: initial, onClose, barber = false, locked = false }: { row: ChairRequest; onClose: () => void; barber?: boolean; locked?: boolean }) {
   const { rows } = useChairRequests();
   const row = rows.find((r) => r.id === initial.id) ?? initial;
   const [editing, setEditing] = useState(false);
@@ -40,7 +41,8 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
   const tone = row.status === "done" ? "idle" : row.status === "in_chair" ? "active" : "waiting";
   const lines = (row.serviceName || "Service").split(" · ");
   const timeline: [string, number | undefined][] = [["Booked", row.createdAt], ["In service", row.startedAt], ["Done", row.completedAt]];
-  const setPay = (patch: Partial<ChairRequest>) => patchRequest(row.id, patch);
+  const setPay = (patch: Partial<ChairRequest>) => patchRequest(row.id, patch, row);
+  const readOnly = barber && locked;
 
   return (
     <div className="fixed inset-0 z-[80] overflow-y-auto bg-canvas" role="dialog" aria-modal="true" aria-labelledby="txn-title">
@@ -57,7 +59,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
           </div>
         </header>
 
-        {editing ? <EditForm row={row} onDone={() => setEditing(false)} /> : (
+        {editing && !readOnly ? <EditForm row={row} onDone={() => setEditing(false)} /> : (
           <>
             <Card className="mt-4 px-4 py-3.5">
               <h2 className="mb-2.5 text-[13px] font-bold text-muted">Customer</h2>
@@ -96,12 +98,12 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
               {row.paid ? (
                 <>
                   <p className="mt-2 text-[14px] font-medium text-muted">Paid {peso(row.price ?? 0)}{onlinePaid ? " online" : ""}{row.tip ? ` + ${peso(row.tip)} tip for the barber` : ""}. Thank you!</p>
-                  {onlinePaid ? null : <Button data-auth="action" variant="secondary" size="md" fullWidth className="mt-3" onClick={() => setPay({ paid: false, payMethod: undefined })}>Mark unpaid</Button>}
+                  {onlinePaid || readOnly ? null : <Button data-auth="action" variant="secondary" size="md" fullWidth className="mt-3" onClick={() => setPay({ paid: false, payMethod: undefined })}>Mark unpaid</Button>}
                 </>
               ) : (
                 <>
                   <p className="mt-2 text-[14px] font-medium text-muted">Amount due <b className="text-ink">{peso(row.price ?? 0)}</b></p>
-                  {row.payWhere === "online" && row.status !== "done" ? null : (
+                  {readOnly || (row.payWhere === "online" && row.status !== "done") ? null : (
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <Button data-auth="action" variant="secondary" size="md" onClick={() => setPay({ paid: true, payMethod: "cash", payWhere: "shop" })}>Paid cash</Button>
                       <Button data-auth="action" variant="secondary" size="md" onClick={() => setPay({ paid: true, payMethod: "gcash", payWhere: "shop" })}>Paid GCash</Button>
@@ -146,8 +148,10 @@ export function TransactionSheet({ row: initial, onClose, barber = false }: { ro
 
             <p className="mt-4 px-1 text-[12.5px] font-semibold text-muted">Ticket {row.id}</p>
             <EditLog row={row} />
-            <Button data-auth="action" className="mt-3" fullWidth variant="secondary" leadingIcon={<Pencil size={16} strokeWidth={2} />} onClick={() => setEditing(true)}>Edit information</Button>
-            {barber ? <p className="mt-2 px-1 text-[12px] font-semibold text-muted">The amount follows the shop menu. Ask the owner to change it.</p> : (
+            {readOnly ? (
+              <p role="status" className="mt-3 flex items-center gap-2 rounded-[14px] bg-[#E7F6EC] px-3.5 py-3 text-[13px] font-bold text-[#0B7A3E]"><Lock size={14} strokeWidth={2.4} aria-hidden />Claimed by the owner. Ask the owner to change it.</p>
+            ) : <Button data-auth="action" className="mt-3" fullWidth variant="secondary" leadingIcon={<Pencil size={16} strokeWidth={2} />} onClick={() => setEditing(true)}>Edit information</Button>}
+            {barber ? (readOnly ? null : <p className="mt-2 px-1 text-[12px] font-semibold text-muted">The amount follows the shop menu for the service you pick.</p>) : (
               <Button data-auth="action" className="mt-2 !text-[#DC2626]" fullWidth variant="ghost" leadingIcon={<Trash2 size={16} strokeWidth={2} />} onClick={() => setConfirmDelete(true)}>Delete walk-in</Button>
             )}
             {!barber && confirmDelete ? (
@@ -189,7 +193,7 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
     patchRequest(row.id, {
       customerLabel: name.trim(), contact: phone.trim(), serviceName: service.trim() || row.serviceName, price: cents, notes: notes.trim() || undefined, tip: Math.max(0, Math.round(Number(tip) * 100) || 0),
       ...(onlinePaid ? {} : paid ? { paid: true, payMethod: method, payWhere: "shop" as const } : { paid: false, payMethod: undefined }),
-    });
+    }, row);
     onDone();
   };
   const [showTip, setShowTip] = useState(Boolean(row.tip));

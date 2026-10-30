@@ -48,6 +48,12 @@ async function loadFresh(shopId: string) {
   return { chairs, claims, open };
 }
 
+/** Ids of every visit the owner already claimed (locked for barber edits). */
+export async function claimedBookingIds(shopId: string): Promise<Set<string>> {
+  const { claims } = await load(shopId);
+  return new Set(claims.flatMap((c) => c.bookingIds));
+}
+
 /** Unclaimed remit per barber (all time, up to now) and recent claims. `loc` = location id or "all". */
 export async function remitSummary(shopId: string, loc: string) {
   const { chairs, claims, open } = await load(shopId);
