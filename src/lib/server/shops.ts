@@ -444,6 +444,47 @@ export async function setBarberName(shopId: string, chairId: string, name: strin
   return clean;
 }
 
+/** The ONLY fields a barber may change on their own link (v1.0.27). Share %, Active, location, services stay owner-only. */
+export const BARBER_SELF_FIELDS = ["barberName", "photoUrl", "phone", "email"] as const;
+export type BarberSelfPatch = Partial<Record<(typeof BARBER_SELF_FIELDS)[number], string>>;
+
+/** Validates a barber's self-edit. Unknown or owner-only keys are an error (never silently dropped). */
+export function cleanBarberSelf(body: unknown): BarberSelfPatch {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Nothing to save");
+  const extra = Object.keys(body).filter((k) => !(BARBER_SELF_FIELDS as readonly string[]).includes(k));
+  if (extra.length) throw new Error(`Only the shop can change: ${extra.join(", ")}`);
+  const b = body as Record<string, unknown>, out: BarberSelfPatch = {};
+  if ("barberName" in b) { const v = str(b.barberName, 60).trim(); if (!v || v.length > 40) throw new Error("Enter a name (up to 40 letters)"); out.barberName = v; }
+  if ("phone" in b) { const v = str(b.phone, 40).trim(); if (v && !/^\+?[0-9 ()-]{7,20}$/.test(v)) throw new Error("Enter a valid mobile number"); out.phone = v; }
+  if ("email" in b) { const v = str(b.email, 120).trim(); if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new Error("Enter a valid email"); out.email = v; }
+  if ("photoUrl" in b) {
+    const v = typeof b.photoUrl === "string" ? b.photoUrl : "";
+    if (v && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) || v.length > 400_000)) throw new Error("Use a JPG, PNG or WebP photo under 300 KB");
+    out.photoUrl = v;
+  }
+  if (!Object.keys(out).length) throw new Error("Nothing to save");
+  return out;
+}
+
+/** A barber updates their own details on their link: every chair of that barber (same barberId) gets the change, nothing else. */
+export async function updateBarberSelf(shopId: string, chairId: string, patch: BarberSelfPatch) {
+  const ref = shopRef(shopId).collection("private").doc(STATE_KEYS["barbers.shop-chairs"] as string);
+  let who = "", before = "";
+  await db().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const chairs = JSON.parse(((snap.data()?.json as string | undefined) ?? "[]")) as ({ id: string; barberId?: string; barberName?: string } & Record<string, unknown>)[];
+    const me = chairs.find((c) => c.id === chairId);
+    if (!me) throw new Error("Chair not found");
+    const bid = me.barberId || me.id; before = me.barberName || "";
+    const next = chairs.map((c) => ((c.barberId || c.id) === bid ? { ...c, ...patch } : c));
+    who = patch.barberName || before || "A barber";
+    tx.set(ref, { json: JSON.stringify(next), updatedAt: Date.now() });
+  });
+  const changed = Object.keys(patch).map((k) => ({ barberName: "name", photoUrl: "photo", phone: "mobile", email: "email" })[k as keyof BarberSelfPatch]).join(", ");
+  await (await import("./activity")).logActivity(shopId, { type: "barber_profile", actor: { name: who, role: "barber" }, text: `${who} updated their ${changed}${patch.barberName && before && before !== patch.barberName ? ` (was ${before})` : ""}` }).catch(() => undefined);
+  return patch;
+}
+
 export async function chairLink(token: string) {
   if (!/^[a-z0-9]{8,40}$/.test(token)) return null;
   const s = await db().collection("chairLinks").doc(token).get();

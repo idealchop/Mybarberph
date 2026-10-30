@@ -1,5 +1,7 @@
 "use client";
 import { ChevronLeft, UserRound } from "lucide-react";
+import { Button } from "@/components/common/button";
+import { BarberSelfEdit } from "./barber-self-edit";
 import { useEffect, useState } from "react";
 import { cn } from "@river-apps/ui";
 import type { BarberProfile } from "@/lib/barber-sales";
@@ -19,6 +21,7 @@ export function BarberProfileView({ token, who, place, onBack }: { token: string
   const [range, setRange] = useState<Range>("7d");
   const [data, setData] = useState<BarberProfile | null>(null);
   const [err, setErr] = useState("");
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     let live = true;
     fetch(`/api/barber/${token}/profile?range=${range}`, { cache: "no-store" })
@@ -28,15 +31,17 @@ export function BarberProfileView({ token, who, place, onBack }: { token: string
     return () => { live = false; };
   }, [token, range]);
   const d = data?.range === range ? data : null;
+  if (editing) return <BarberSelfEdit place={place} onBack={() => setEditing(false)} />;
   const pct = d?.sharePct ?? null;
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
+    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6 lg:max-w-[1040px] lg:px-[30px]">
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink"><ChevronLeft size={26} strokeWidth={1.75} /></button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="truncate text-[26px] font-extrabold leading-[1.15] tracking-[-0.03em]">{who}</h1>
           <p className="truncate text-[13px] font-semibold text-muted">{place || "My performance"}</p>
         </div>
+        <Button size="sm" variant="secondary" className="shrink-0" leadingIcon={<UserRound size={14} strokeWidth={2.2} />} onClick={() => setEditing(true)}>Profile</Button>
       </div>
       <div role="radiogroup" aria-label="Range" className="mt-3 flex gap-1.5">
         {RANGES.map(([k, l]) => (

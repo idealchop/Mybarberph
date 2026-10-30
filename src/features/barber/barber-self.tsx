@@ -49,7 +49,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
   const loaded = data?.from === wk.from;
   const short = wk.label.replace(/, \d{4}$/, "");
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
+    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6 lg:max-w-[880px] lg:px-[30px]">
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink"><ChevronLeft size={26} strokeWidth={1.75} /></button>
         <div className="min-w-0 flex-1">

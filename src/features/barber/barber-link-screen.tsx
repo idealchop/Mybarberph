@@ -622,7 +622,7 @@ function ChairHistory({
   const shownDay = picked.rows.filter(match);
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-4">
+    <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-4 lg:max-w-[880px] lg:px-[30px]">
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink">
           <ChevronLeft size={26} strokeWidth={1.75} />

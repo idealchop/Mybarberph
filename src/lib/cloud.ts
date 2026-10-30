@@ -238,6 +238,13 @@ export async function saveBarberName(name: string) {
   await load(true);
 }
 
+/** Barber link (v1.0.27): the barber saves their own name, photo, mobile and email. */
+export async function saveBarberSelf(patch: { barberName?: string; photoUrl?: string; phone?: string; email?: string }) {
+  if (mode?.kind !== "barber") return;
+  await track(api(`${base()}/profile`, { method: "PATCH", body: JSON.stringify(patch) }));
+  await load(true);
+}
+
 export function removeBooking(id: string) {
   if (!mode) return;
   set({ bookings: snap.bookings.filter((b) => b.id !== id) });
