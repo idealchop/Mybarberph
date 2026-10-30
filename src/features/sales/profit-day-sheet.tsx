@@ -93,11 +93,11 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
       ) : undefined}>
       {adding ? <AddRecordForm t={t} photo={photo} f={add} /> : (
         <div className="flex flex-col gap-5 pb-2 pt-1">
-          <section aria-label="Claim" className="rounded-[22px] bg-ink px-4 pb-4 pt-3.5 text-on-ink">
+          <section aria-label="Claim" className={cn("rounded-[22px] px-4 pb-4 pt-3.5", allClaimed ? "bg-[#0F7A45] text-white" : "bg-ink text-on-ink")}>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[12.5px] font-semibold text-on-ink-muted">{allClaimed ? "Claimed this day" : "Cash to claim"}</p>
+              <p className={cn("text-[12.5px] font-semibold", allClaimed ? "text-white/75" : "text-on-ink-muted")}>{allClaimed ? "Claimed this day" : "Cash to claim"}</p>
               {claim.owner || !remit.data ? null : allClaimed ? (
-                <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-[#E7F6EC] px-2.5 text-[11.5px] font-bold text-[#0B7A3E]"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
+                <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/20 px-2.5 text-[11.5px] font-bold text-white"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
               ) : claim.open > 0 ? (
                 <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />To claim</span>
               ) : null}
@@ -107,7 +107,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
               : (
                 <>
                   <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
-                  <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted tabular-nums">
+                  <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", allClaimed ? "text-white/75" : "text-on-ink-muted")}>
                     {[
                       claim.open > 0 ? `Your share · ${claim.openCount} cash` : "",
                       claim.claimed > 0 ? `Claimed ${peso(claim.claimed)} · ${claim.claimedCount} cash` : "",
