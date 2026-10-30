@@ -18,6 +18,9 @@ import { useRemit } from "./use-remit";
 import { useSalesRows } from "./use-sales-rows";
 import { mergeLiveRows } from "@/lib/cut-count";
 import { asOwnerSplit } from "@/lib/split-view";
+import { Button } from "@/components/common/button";
+import { UserRound } from "lucide-react";
+import { BarberProfile } from "@/features/settings/barber-profile";
 
 /** Personal detail page for one location or one barber: sales, cuts, cash/GCash, remit, completion, trends. */
 export function SalesDetailScreen() {
@@ -61,15 +64,21 @@ export function SalesDetailScreen() {
   const remit = useRemit(kind === "barber" ? "all" : id || "all");
   const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + (u.ownerShare ?? u.amount), 0);
 
+  // v1.0.25: "Profile" (top right) opens this barber's profile/edit screen (same one as Settings > Barbers).
+  const [profileOpen, setProfileOpen] = useState(false);
+  const chair = kind === "barber" ? (chairs.find((c) => (c.barberId || c.id) === id && (!locHint || (c.locationId || HOME_LOCATION_ID) === locHint)) ?? chairs.find((c) => (c.barberId || c.id) === id)) : undefined;
+
   if (!deep && !cloud.ready) return <AppLoader />;
+  if (profileOpen && chair) return <BarberProfile chairId={chair.id} onClose={() => setProfileOpen(false)} />;
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-1 px-1">
         <PageBack fallback={`/sales?view=services&loc=${encodeURIComponent(locHint || (kind === "location" ? "all" : loc))}&r=${range}`} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{title}</h1>
           {sub ? <p className="text-[13px] font-semibold text-muted">{sub}</p> : null}
         </div>
+        {chair ? <Button size="sm" variant="secondary" className="shrink-0" leadingIcon={<UserRound size={14} strokeWidth={2.2} />} onClick={() => setProfileOpen(true)}>Profile</Button> : null}
       </div>
       <RangeChips className="mt-3" value={range} onChange={setRange} allowCustom />
       {kind === "barber" ? <BarberDetail id={id} all={all} range={range} chairs={chairs} branches={branches} remit={remit.data} /> : !stats ? <p className="mt-6 text-[14px] font-semibold text-muted">No finished haircuts in this range.</p> : (
