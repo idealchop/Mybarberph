@@ -2,7 +2,7 @@
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
 import { Avatar, Badge, Card, CardHeader, StatusDot } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { ArrowLeft, ChevronDown, History, Lock, Pencil, Phone, Plus, Trash2, User, X } from "lucide-react";
+import { ArrowLeft, Banknote, ChevronDown, CircleDashed, HandCoins, History, Lock, Pencil, Phone, Scissors, Smartphone, StickyNote, Trash2, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { patchRequest, statusLabel, useChairRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { payMethodLabel } from "@/lib/pay-split";
@@ -196,79 +196,85 @@ function EditForm({ row, onDone }: { row: ChairRequest; onDone: () => void }) {
     }, row);
     onDone();
   };
-  const [showTip, setShowTip] = useState(Boolean(row.tip));
-  const [showNotes, setShowNotes] = useState(Boolean(row.notes));
-  const field = "h-10 w-full min-w-0 bg-transparent px-3 text-[14.5px] font-semibold outline-none placeholder:font-medium placeholder:text-muted";
-  const box = "rounded-[12px] bg-grey-100";
-  const seg = (on: boolean) => `h-8 flex-1 rounded-[9px] px-2.5 text-[13px] font-bold transition-colors ${on ? "bg-surface text-ink shadow-card" : "text-muted"}`;
-  const more = "inline-flex h-8 items-center gap-1 text-[13px] font-bold text-ink-2";
+  const pay: "unpaid" | "cash" | "gcash" = !paid ? "unpaid" : method;
+  const setPayChoice = (v: "unpaid" | "cash" | "gcash") => { if (v === "unpaid") setPaid(false); else { setPaid(true); setMethod(v); } };
+  const field = "h-11 w-full min-w-0 bg-transparent text-[15px] font-semibold outline-none placeholder:font-medium placeholder:text-muted";
+  const row_ = "flex items-center gap-3 px-3.5";
+  const icon = "flex-none text-muted";
+  const label = "mb-1.5 px-1 text-[12px] font-bold text-muted";
+  const group = "divide-y divide-line overflow-hidden rounded-[16px] bg-surface shadow-card";
   return (
-    <Card className="mt-4 px-4 pb-4 pt-3">
-      <div className="flex items-center justify-between">
-        <b className="text-[15.5px] tracking-[-0.01em]">Edit information</b>
-        <button type="button" aria-label="Close edit" onClick={onDone} className="-mr-1.5 inline-flex size-9 items-center justify-center rounded-full text-muted active:bg-grey-100"><X size={18} strokeWidth={2.2} /></button>
+    <div className="mt-4">
+      <div className="flex items-center justify-between px-1">
+        <b className="text-[17px] tracking-[-0.01em]">Edit visit</b>
+        <button type="button" aria-label="Close edit" onClick={onDone} className="-mr-1.5 inline-flex size-10 items-center justify-center rounded-full text-muted active:bg-grey-100"><X size={18} strokeWidth={2.2} /></button>
       </div>
 
-      <div className={`mt-2 divide-y divide-line ${box}`}>
-        <input aria-label="Customer name" value={name} placeholder="Customer name" onChange={(e) => setName(e.target.value)} className={field} />
-        <input aria-label="Phone" inputMode="tel" value={phone} placeholder="Phone (optional)" onChange={(e) => setPhone(e.target.value)} className={field} />
+      <p className={`${label} mt-3`}>Customer</p>
+      <div className={group}>
+        <label className={row_}><User size={18} className={icon} aria-hidden /><input aria-label="Customer name" value={name} placeholder="Customer name" onChange={(e) => setName(e.target.value)} className={field} /></label>
+        <label className={row_}><Phone size={18} className={icon} aria-hidden /><input aria-label="Phone" inputMode="tel" value={phone} placeholder="Phone (optional)" onChange={(e) => setPhone(e.target.value)} className={field} /></label>
       </div>
 
-      <div className="mt-2.5 flex gap-2">
-        <label className={`relative min-w-0 flex-[1.4] ${box}`}>
+      <p className={`${label} mt-4`}>Service</p>
+      <div className={group}>
+        <label className={`${row_} relative`}>
+          <Scissors size={18} className={icon} aria-hidden />
           <span className="sr-only">Service</span>
-          <select value={services.includes(service) ? service : "__custom"} onChange={(e) => { if (e.target.value !== "__custom") setService(e.target.value); }} className={`${field} appearance-none pr-8`}>
+          <select value={services.includes(service) ? service : "__custom"} onChange={(e) => { if (e.target.value !== "__custom") setService(e.target.value); }} className={`${field} appearance-none pr-6`}>
             {services.map((s) => <option key={s} value={s}>{s}</option>)}
             {services.includes(service) ? null : <option value="__custom">{service}</option>}
           </select>
-          <ChevronDown size={15} strokeWidth={2.2} aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" />
+          <ChevronDown size={16} strokeWidth={2.2} aria-hidden className="pointer-events-none absolute right-3.5 text-muted" />
         </label>
         {locked != null ? (
-          <p aria-label="Amount, set by the shop menu" title="Menu price" className={`flex h-10 flex-1 items-center justify-between gap-1 px-3 ${box}`}>
-            <b className="text-[14.5px] tabular-nums">{peso(locked)}</b><Lock size={13} strokeWidth={2.2} className="text-muted" aria-hidden />
+          <p aria-label="Amount, set by the shop menu" className={`${row_} h-11 justify-between`}>
+            <span className="flex items-center gap-3"><Banknote size={18} className={icon} aria-hidden /><span className="text-[13.5px] font-semibold text-muted">Menu price</span></span>
+            <span className="flex items-center gap-1.5"><b className="text-[15px] tabular-nums">{peso(locked)}</b><Lock size={13} strokeWidth={2.2} className="text-muted" aria-hidden /></span>
           </p>
         ) : (
-          <label className={`flex flex-1 items-center pl-3 ${box}`}>
-            <span aria-hidden className="text-[14.5px] font-bold text-muted">₱</span>
-            <input aria-label="Amount (₱)" inputMode="decimal" value={price} placeholder="150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} className={`${field} pl-1 tabular-nums`} />
+          <label className={row_}>
+            <Banknote size={18} className={icon} aria-hidden />
+            <span aria-hidden className="text-[15px] font-bold text-muted">₱</span>
+            <input aria-label="Amount (₱)" inputMode="decimal" value={price} placeholder="150" onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} className={`${field} tabular-nums`} />
           </label>
         )}
       </div>
-      {locked != null ? <p className="mt-1 px-1 text-[11.5px] font-semibold text-muted">Amount follows the shop menu.</p> : null}
 
-      {onlinePaid ? <p className="mt-2.5 px-1 text-[13px] font-semibold text-muted">Paid online. Payment can’t be changed here.</p> : (
-        <div className="mt-2.5 flex gap-2">
-          <div role="radiogroup" aria-label="Payment" className={`flex flex-1 gap-1 p-1 ${box}`}>
-            <button type="button" role="radio" aria-checked={paid} onClick={() => setPaid(true)} className={seg(paid)}>Paid</button>
-            <button type="button" role="radio" aria-checked={!paid} onClick={() => setPaid(false)} className={seg(!paid)}>Unpaid</button>
-          </div>
-          {paid ? (
-            <div role="radiogroup" aria-label="Method" className={`flex flex-1 gap-1 p-1 ${box}`}>
-              <button type="button" role="radio" aria-checked={method === "cash"} onClick={() => setMethod("cash")} className={seg(method === "cash")}>Cash</button>
-              <button type="button" role="radio" aria-checked={method === "gcash"} onClick={() => setMethod("gcash")} className={seg(method === "gcash")}>GCash</button>
-            </div>
-          ) : null}
+      <p className={`${label} mt-4`}>Payment</p>
+      {onlinePaid ? <p className="rounded-[16px] bg-surface px-3.5 py-3 text-[13.5px] font-semibold text-muted shadow-card">Paid online. Payment can’t be changed here.</p> : (
+        <div role="radiogroup" aria-label="Payment" className="grid grid-cols-3 gap-2">
+          {([["cash", "Cash", Banknote], ["gcash", "GCash", Smartphone], ["unpaid", "Unpaid", CircleDashed]] as const).map(([v, t, I]) => (
+            <button key={v} type="button" role="radio" aria-checked={pay === v} onClick={() => setPayChoice(v)}
+              className={`flex h-[60px] flex-col items-center justify-center gap-1 rounded-[16px] text-[13px] font-bold transition ${pay === v ? "bg-ink text-on-ink" : "bg-surface text-ink-2 shadow-card"}`}>
+              <I size={18} strokeWidth={2} aria-hidden />{t}
+            </button>
+          ))}
         </div>
       )}
 
-      {showTip ? (
-        <label className={`mt-2.5 flex items-center pl-3 ${box}`}>
-          <span className="flex-none text-[13px] font-bold text-muted">Tip ₱</span>
-          <input aria-label="Tip for the barber (₱)" autoFocus={!row.tip} inputMode="decimal" value={tip} placeholder="0" onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} className={`${field} pl-1.5 tabular-nums`} />
+      <p className={`${label} mt-4`}>Extras</p>
+      <div className={group}>
+        <label className={row_}>
+          <HandCoins size={18} className={icon} aria-hidden />
+          <span className="flex-none text-[13.5px] font-semibold text-muted">Tip ₱</span>
+          <input aria-label="Tip for the barber (₱)" inputMode="decimal" value={tip} placeholder="0" onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, "").slice(0, 7))} className={`${field} tabular-nums`} />
         </label>
-      ) : null}
-      {showNotes ? (
-        <textarea aria-label="Notes" autoFocus={!row.notes} value={notes} maxLength={500} rows={2} onChange={(e) => setNotes(e.target.value)} placeholder="Note" className={`mt-2.5 block w-full resize-none px-3 py-2.5 text-[14.5px] font-medium outline-none placeholder:text-muted ${box}`} />
-      ) : null}
-      {!showTip || !showNotes ? (
-        <div className="mt-1.5 flex gap-4 px-1">
-          {!showTip ? <button type="button" className={more} onClick={() => setShowTip(true)}><Plus size={14} strokeWidth={2.4} aria-hidden />Add tip</button> : null}
-          {!showNotes ? <button type="button" className={more} onClick={() => setShowNotes(true)}><Plus size={14} strokeWidth={2.4} aria-hidden />Add note</button> : null}
-        </div>
-      ) : null}
+        <label className="flex items-start gap-3 px-3.5 py-2.5">
+          <StickyNote size={18} className={`${icon} mt-0.5`} aria-hidden />
+          <textarea aria-label="Notes" value={notes} maxLength={500} rows={2} onChange={(e) => setNotes(e.target.value)} placeholder="Note (optional)" className="block w-full resize-none bg-transparent text-[15px] font-medium outline-none placeholder:text-muted" />
+        </label>
+      </div>
+      <p className="mt-2 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-muted"><History size={13} aria-hidden />Changes are saved in this visit’s activity log with your name.</p>
 
-      <Button data-auth="action" fullWidth className="mt-3" onClick={save}>Save</Button>
-    </Card>
+      <div className="sticky bottom-0 -mx-4 mt-4 bg-gradient-to-t from-canvas via-canvas to-transparent px-4 pb-2 pt-3">
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={onDone}>Cancel</Button>
+          <Button data-auth="action" className="flex-[2]" onClick={save}>Save changes</Button>
+        </div>
+      </div>
+      <EditLog row={row} />
+    </div>
   );
 }
 

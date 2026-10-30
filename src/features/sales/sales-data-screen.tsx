@@ -43,7 +43,8 @@ export function SalesDataScreen() {
   const deep = useSalesRows(rangeFetchDays(range));
   // History plus live rows, so a cut the barber just finished shows here at once (as on their link).
   // Owner screens show only the owner's split of each cut (split-view.ts); counts are unchanged.
-  const all = useMemo(() => asOwnerSplit(mergeLiveRows(deep, cloud.rows), chairs), [deep, cloud.rows, chairs]);
+  const full = useMemo(() => mergeLiveRows(deep, cloud.rows), [deep, cloud.rows]);
+  const all = useMemo(() => asOwnerSplit(full, chairs), [full, chairs]);
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
   const [view, setView] = useState<View>("services");
@@ -107,7 +108,7 @@ export function SalesDataScreen() {
 
       {view === "services" ? (
         <>
-          <PerformanceDashboard f={pf} all={all} range={range} where={where} branches={branches} chairs={chairs} />
+          <PerformanceDashboard f={pf} all={all} full={full} range={range} where={where} branches={branches} chairs={chairs} />
         </>
       ) : null}
       {view === "barbers" ? (

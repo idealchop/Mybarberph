@@ -80,7 +80,7 @@ function stats(rows: ChairRequest[]) {
 }
 
 /** Shop performance for the chosen location + dates: trends, timing, mix, rankings. */
-export function PerformanceDashboard({ all, range, where, branches, chairs, solo = false, f }: { all: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean; f?: PerfFilters }) {
+export function PerformanceDashboard({ all, full, range, where, branches, chairs, solo = false, f }: { all: ChairRequest[]; full?: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean; f?: PerfFilters }) {
   const { fb = "", fc = "", fp = "", fs = "" } = f ?? {};
   const extraOk = (r: ChairRequest) =>
     (!fb || barberKey(r, chairs) === fb) &&
@@ -166,7 +166,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
   return (<>
     <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-2">
       <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0 lg:col-span-2 lg:grid-cols-4">
-        <Kpi k="Sales" v={peso(now.sales)} d={delta(now.sales, was.sales)} />
+        <Kpi k="Your share" v={peso(now.sales)} d={delta(now.sales, was.sales)} />
         <Kpi k="Cuts" v={String(now.cuts)} d={delta(now.cuts, was.cuts)} />
         <Kpi k="Avg ticket" v={now.cuts ? peso(Math.round(now.sales / now.cuts)) : "–"} d={delta(now.cuts ? now.sales / now.cuts : 0, was.cuts ? was.sales / was.cuts : 0)} />
         <Kpi k="Peak hour" v={peak ? hLabel(peak[0]) : "–"} sub={peak ? `${peak[1].orders} cut${peak[1].orders === 1 ? "" : "s"}` : undefined} />
@@ -174,6 +174,7 @@ export function PerformanceDashboard({ all, range, where, branches, chairs, solo
 
       {solo ? null : <Rank title="Top barbers" rows={barberRank.map((b) => ({ key: `${b.id}@${b.loc}`, name: b.name, sub: [multiLoc ? nameOfLoc(b.loc) : "", `${b.cuts} cut${b.cuts === 1 ? "" : "s"}`, b.rN ? `★ ${(b.rSum / b.rN).toFixed(1)} (${b.rN})` : ""].filter(Boolean).join(" · "), v: b.sales, href: `/sales/detail?kind=barber&id=${encodeURIComponent(b.id)}&r=${range}&loc=${encodeURIComponent(b.loc)}` }))} />}
       {multiLoc && !solo ? <Rank title="Top locations" rows={locRank.map((l) => ({ key: l.id, name: l.name, sub: `${l.cuts} cut${l.cuts === 1 ? "" : "s"}`, v: l.sales, href: `/sales/detail?kind=location&id=${encodeURIComponent(l.id)}&r=${range}` }))} /> : null}
+      {full && !solo ? <SalesTrend rows={full.filter((r) => locOk(r) && cur.has(dayKey(at(r))) && r.status === "done")} range={range} /> : null}
       <SalesChartCard series={series} kind="hour" sales={now.sales} />
 
       <Panel title="Shop vs home" sub={homeDone.length ? `${homeDone.length} home visit${homeDone.length === 1 ? "" : "s"} · ${peso(homeFees)} in home fees` : "No home visits in this range"}>
@@ -346,6 +347,40 @@ function Rank({ title, rows: all }: { title: string; rows: { key: string; name: 
           <button type="button" disabled={p >= pages - 1} onClick={() => setPage(p + 1)} className="disabled:opacity-30">Next ›</button>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Owner Performance (Jimboy, 2026-10-30): everything above is the owner's split; this one card is the FULL shop sales
+ * (before the barbers' split), per day (per hour for Today), same range/location/filters.
+ */
+function SalesTrend({ rows, range }: { rows: ChairRequest[]; range: SalesRange }) {
+  const hourly = range === "today";
+  const buckets = new Map<string, number>();
+  if (hourly) for (let h = 7; h <= 22; h++) buckets.set(String(h), 0);
+  else for (const k of [...windowKeys(range)].sort()) buckets.set(k, 0);
+  for (const r of rows) { const k = hourly ? String(hourOf(at(r))) : dayKey(at(r)); buckets.set(k, (buckets.get(k) ?? 0) + (r.price || 0)); }
+  const bars = [...buckets.entries()].sort((a, b) => (hourly ? Number(a[0]) - Number(b[0]) : a[0] < b[0] ? -1 : 1));
+  const total = bars.reduce((s, [, v]) => s + v, 0);
+  const max = Math.max(1, ...bars.map(([, v]) => v));
+  const label = (k: string) => (hourly ? hLabel(Number(k)) : new Date(`${k}T00:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" }));
+  const step = Math.max(1, Math.ceil(bars.length / 6));
+  return (
+    <section aria-label="Sales trend, full sales" className="rounded-card bg-surface px-4 py-3.5 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <b className="block text-[16px]">Sales trend</b>
+          <small className="block text-[12px] font-semibold text-muted">Full sales · before barber split</small>
+        </div>
+        <span className="flex-none text-right"><b className="block text-[20px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{peso(total)}</b><small className="text-[11.5px] font-semibold text-muted">{rows.length} cut{rows.length === 1 ? "" : "s"}</small></span>
+      </div>
+      <div className="mt-3 flex h-[96px] items-end gap-[3px]" role="img" aria-label={`Full sales ${peso(total)}`}>
+        {bars.map(([k, v]) => <span key={k} title={`${label(k)} · ${peso(v)}`} className={cn("min-w-0 flex-1 rounded-t-[4px]", v ? "bg-ink" : "bg-grey-200")} style={{ height: `${Math.max(4, (v / max) * 100)}%` }} />)}
+      </div>
+      <div className="mt-1.5 flex gap-[3px] text-[10.5px] font-semibold text-muted">
+        {bars.map(([k], i) => <span key={k} className="min-w-0 flex-1 overflow-visible whitespace-nowrap">{i % step === 0 ? label(k) : ""}</span>)}
+      </div>
     </section>
   );
 }

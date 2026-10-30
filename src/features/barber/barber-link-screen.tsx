@@ -10,7 +10,8 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { BarChart3, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { cn } from "@river-apps/ui";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { useInstallHidden } from "@/lib/pwa";
 
@@ -25,6 +26,7 @@ import {
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
 import { addDays, dayLabel, dayOf, earningsOf, historyRow } from "@/lib/barber-history";
+import { ClaimTag, dayClaimState, isCashCut } from "@/components/transactions/claim-tag";
 import { peso } from "@/lib/format";
 import { customerName, tipOf } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
@@ -592,19 +594,28 @@ function ChairHistory({
   };
   const picked = dayOf(day, rows, pct);
 
-  const item = (row: ChairRequest) => (
-    <li key={row.id} role="button" tabIndex={0} aria-label={`Order details for ${row.customerLabel || row.contact || "customer"}`} onClick={() => setOpenRow(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenRow(row); } }}
-      className="flex cursor-pointer items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card active:scale-[0.99]">
-      <OfferIcons haircut={haircut} extras={visitOffer(row, haircut, treatments).extras} />
-      <span className="min-w-0 flex-1">
-        <b className="block truncate text-[15px]">{row.customerLabel || row.contact || "Customer"}</b>
-        <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{visitOffer(row, haircut, treatments).label}</p>
-        <p className="mt-1 text-[12.5px] font-semibold text-muted">{locked.has(row.id) ? <Lock size={11} strokeWidth={2.6} className="mr-1 inline -mt-px" aria-label="Claimed by owner" /> : null}{new Date(row.completedAt!).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" })}</p>
-      </span>
-      <b className="flex-none text-[14px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), pct))}</b>
-      <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
-    </li>
-  );
+  const claimState = dayClaimState(picked.rows, (id) => locked.has(id));
+  const green = claimState === "claimed";
+  const cashOpen = picked.rows.filter((r) => isCashCut(r) && !locked.has(r.id)).length;
+  const time = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
+  const item = (row: ChairRequest) => {
+    const offer = visitOffer(row, haircut, treatments);
+    return (
+      <li key={row.id}>
+        <button type="button" aria-label={`Order details for ${row.customerLabel || row.contact || "customer"}`} onClick={() => setOpenRow(row)}
+          className="flex w-full items-center gap-3 px-3.5 py-3 text-left active:bg-grey-100">
+          <span className="w-[3.6rem] flex-none text-[12.5px] font-semibold tabular-nums text-muted">{time(row.completedAt!)}</span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[14.5px]">{row.customerLabel || row.contact || "Walk-in"}</b>
+            <small className="block truncate text-[12px] font-semibold text-muted">{offer.label}</small>
+          </span>
+          <ClaimTag r={row} claimed={locked.has(row.id)} />
+          <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), pct))}</b>
+          {locked.has(row.id) ? <Lock size={14} className="flex-none text-subtle" aria-label="Locked" /> : <ChevronRight size={16} className="flex-none text-subtle" aria-hidden />}
+        </button>
+      </li>
+    );
+  };
   const shownDay = picked.rows.filter(match);
 
   return (
@@ -617,11 +628,15 @@ function ChairHistory({
       </div>
       <p className="mt-0.5 pl-11 text-[14px] font-semibold text-muted">{[who, chairLabel].filter(Boolean).join(" · ")}</p>
 
-      <section aria-label="Day summary" className="mt-4 rounded-banner bg-ink px-4 py-3 text-on-ink">
-        <p className="truncate text-[12.5px] font-semibold text-on-ink-muted">You earned</p>
-        <b className="mt-1 block text-[36px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
-        <p className="mb-1 mt-2 text-[12.5px] font-semibold text-on-ink-muted">
-          {loading && picked.cuts === 0 ? "Loading…" : `${picked.cuts} cut${picked.cuts === 1 ? "" : "s"}${picked.tips ? ` · incl. ${peso(picked.tips)} tips` : ""}`}
+      <section aria-label="Day summary" className={cn("mt-4 rounded-[22px] px-4 pb-4 pt-3.5", green ? "bg-[#0F7A45] text-white" : "bg-ink text-on-ink")}>
+        <div className="flex items-center justify-between gap-3">
+          <p className={cn("text-[12.5px] font-semibold", green ? "text-white/75" : "text-on-ink-muted")}>You earned</p>
+          {green ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-white/20 px-2.5 text-[11.5px] font-bold text-white"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
+            : claimState === "open" ? <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />{cashOpen} cash to hand over</span> : null}
+        </div>
+        <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
+        <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", green ? "text-white/75" : "text-on-ink-muted")}>
+          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} cut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `incl. ${peso(picked.tips)} tips` : ""].filter(Boolean).join(" · ")}
         </p>
       </section>
 
@@ -655,7 +670,15 @@ function ChairHistory({
       ) : null}
       {shownDay.length === 0 ? (
         <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">{loading ? "Loading…" : needle ? "No cuts match." : "No finished cuts this day."}</p>
-      ) : <ul className="mt-4 flex flex-col gap-2">{shownDay.map(item)}</ul>}
+      ) : (
+        <>
+          <div className="mt-5 flex items-baseline justify-between px-1">
+            <b className="text-[15px]">Cuts</b>
+            <small className="text-[12px] font-semibold text-muted">{shownDay.length} · tap to view or edit</small>
+          </div>
+          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">{shownDay.map(item)}</ul>
+        </>
+      )}
     </main>
   );
 }

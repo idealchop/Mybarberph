@@ -19,12 +19,11 @@ import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
 import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
+import { ClaimTag } from "@/components/transactions/claim-tag";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 const longDay = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", year: "numeric" });
-const isCashCut = (r: ChairRequest) => Boolean(r.paid) && (r.payMethod ?? "cash") === "cash" && (r.price || 0) > 0;
-const payText = (r: ChairRequest) => (!r.paid ? "Unpaid" : r.payMethod === "gcash" ? "GCash" : r.payMethod === "online" ? "Online" : "Cash");
 
 /** One barber's day from the server (same function as the barber link's History). */
 function useBarberDay(t: DayTarget) {
@@ -40,14 +39,6 @@ function useBarberDay(t: DayTarget) {
   return rows;
 }
 
-/** One small tag per record: cash claimed (green) / to claim (amber), or the payment method (neutral). */
-function StatusTag({ r, claimed }: { r: ChairRequest; claimed: boolean }) {
-  const base = "inline-flex h-6 flex-none items-center gap-1 rounded-pill px-2 text-[11px] font-bold";
-  if (isCashCut(r)) return claimed
-    ? <span className={cn(base, "bg-[#E7F6EC] text-[#0B7A3E]")}><Check size={11} strokeWidth={3} aria-hidden />Cash<span className="sr-only"> claimed</span></span>
-    : <span className={cn(base, "bg-[#FFF1D6] text-[#8A5A00]")}><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />Cash<span className="sr-only"> to claim</span></span>;
-  return <span className={cn(base, "bg-grey-200 text-ink-2")}>{payText(r)}</span>;
-}
 
 export interface DayTarget { id: string; name: string; locationId: string; locationName: string; day: string }
 
@@ -143,7 +134,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                         <b className="block truncate text-[14.5px]">{r.serviceName || "Service"}</b>
                         <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
                       </span>
-                      <StatusTag r={r} claimed={Boolean(remit.claimOf(r.id))} />
+                      <ClaimTag r={r} claimed={Boolean(remit.claimOf(r.id))} />
                       <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(ownerPart(r, chairs))}</b>
                       <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
                     </button>
