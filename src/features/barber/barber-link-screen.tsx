@@ -1,4 +1,5 @@
 "use client";
+import { showWaitingAndHistory } from "@/lib/barber-home";
 import { AppLoader } from "@/components/common/app-loader";
 import { PoweredBy } from "@/components/qr/shop-brand";
 import { completeCut } from "@/components/transactions/complete-flow";
@@ -416,9 +417,10 @@ export function BarberLinkScreen({ token }: { token: string }) {
         </section>
       ) : null}
 
+      {/* v1.0.28: hidden while a haircut is active; `current` is live (realtime rows), so this toggles without a reload. */}
+      {showWaitingAndHistory(current) ? (<>
       <section className="mt-5">
         <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Waiting</h2>
-        {current ? <p className="mt-1 px-1 text-[13px] font-semibold text-muted">Finish your current haircut before you accept the next one.</p> : null}
         {waiting.length === 0 ? (
           <div className="mt-2 flex flex-col items-center rounded-card bg-surface px-4 py-6 text-center shadow-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -454,6 +456,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             It used to be every loaded finished cut, all days (v1.0.19 fix). */}
         History{doneToday ? ` · ${doneToday} today` : ""}
       </Button>
+      </>) : null}
       <PoweredBy />
       </>
       )}

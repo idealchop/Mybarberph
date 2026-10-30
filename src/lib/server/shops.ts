@@ -317,6 +317,10 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (clean.paid && !clean.payMethod) clean.payMethod = prev?.payMethod ?? (clean.payWhere === "online" ? "online" : "cash");
   if (!clean.paid) delete clean.payMethod;
   if (prev?.source) clean.source = prev.source;
+  // v1.0.28 audit marker only (never used for counts or splits): who added this walk-in. Server-set; kept on later saves.
+  delete clean.createdBy; delete clean.addedBy;
+  if (prev?.createdBy) { clean.createdBy = prev.createdBy; if (prev.addedBy) clean.addedBy = prev.addedBy; }
+  else if (!prev && clean.channel === "walk-in" && !manual) { clean.createdBy = barber ? `barber:${barber.barberId}` : shopId; clean.addedBy = barber ? "barber" : "owner"; }
   else if (!manual && clean.source === MANUAL_SOURCE) delete clean.source;
   // A booking keeps its original time (and so its day for the walk-in limit).
   if (prev?.createdAt) clean.createdAt = prev.createdAt;

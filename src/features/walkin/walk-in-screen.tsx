@@ -13,18 +13,22 @@ import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { HOME_LOCATION_ID } from "@/lib/shop-locations";
+import { walkInLocation } from "@/lib/walkin-location";
 
 const ME = "__me";
 
 /** Walk-in counter: they sit down immediately. Partner: 10 a day per shop; Pro and Lifetime: unlimited. */
 export function WalkInScreen() {
   const shops = useShopLocations();
-  const allowance = useWalkInAllowance(queueLocation(shops));
+  // v1.0.28: saved under the active location; on "All locations" the owner picks one first.
+  const [pickedLoc, setPickedLoc] = useState("");
+  const where = walkInLocation(shops, pickedLoc);
+  const allowance = useWalkInAllowance(where.locationId ?? queueLocation(shops));
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const loc = queueLocation(shops);
+  const loc = where.locationId ?? queueLocation(shops);
   // This location's prices (not the default, and not whichever location the owner happens to be viewing).
   const { haircut, treatments } = useShopMenu(loc);
   const { chairs } = useShopChairs({ locationId: loc });
@@ -44,6 +48,7 @@ export function WalkInScreen() {
     shopId: cloudSnapshot().shopId ?? "",
     ref: refCode(),
     channel: "walk-in" as const,
+    locationId: loc,
     status: "accepted" as const,
     contact: "",
     customerLabel: name.trim() || "Walk-in",
@@ -58,6 +63,7 @@ export function WalkInScreen() {
   });
 
   const save = () => {
+    if (where.needsPick) { setNote("Pick a location first."); return; }
     if (allowance.atLimit) { setNote(allowance.message); return; }
     const now = Date.now();
     if (me) {
@@ -83,7 +89,7 @@ export function WalkInScreen() {
         <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-0.03em]">Walk-in</h1>
       </div>
       <>
-      <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">{shops.enabled ? `They sit down now at ${shops.branches.find((b) => b.id === loc)?.name ?? "the main shop"} and pay at the shop.` : "They sit down now and pay at the shop."}</p>
+      <p className="mt-2 pl-11 text-[15px] font-medium text-ink-2">{where.needsPick ? "Pick the location they’re at, then seat them." : shops.enabled ? `They sit down now at ${shops.branches.find((b) => b.id === loc)?.name ?? "the main shop"} and pay at the shop.` : "They sit down now and pay at the shop."}</p>
       {allowance.unlimited ? null : allowance.atLimit ? (
         <div className="mt-4 rounded-card bg-surface px-4 py-3.5 shadow-card">
           <b className="block text-[14px]">That’s 10 walk-ins today</b>
@@ -93,6 +99,15 @@ export function WalkInScreen() {
       ) : (
         <p className="mt-3 pl-11 text-[13px] font-bold">{allowance.label}</p>
       )}
+      {where.needsPick || pickedLoc ? (
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="text-[13px] font-bold">Location</span>
+          <select aria-label="Location" value={pickedLoc} onChange={(e) => { setPickedLoc(e.target.value); setBarberChair(fromHome ? ME : ""); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+            <option value="" disabled>Pick a location</option>
+            {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+      ) : null}
       <div className="mt-5 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
         <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
         <span className="min-w-0 flex-1">
@@ -137,7 +152,7 @@ export function WalkInScreen() {
         </label>
       ) : null}
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
-      <Button data-auth="action" className="mt-5" fullWidth onClick={save}>{me ? "Start the haircut" : "Seat them"}</Button>
+      <Button data-auth="action" className="mt-5" fullWidth onClick={save} disabled={where.needsPick}>{me ? "Start the haircut" : "Seat them"}</Button>
       </>
     </main>
   );

@@ -31,6 +31,9 @@ export interface ChairRequest {
   paid?: boolean;
   /** Where an online booking came from: the shop QR page or River Mobile. */
   source?: string;
+  /** Audit only (v1.0.28): who added this walk-in. Owner uid + addedBy "owner", or "barber:<id>" + "barber". Server-set; never affects counts or splits. */
+  createdBy?: string;
+  addedBy?: "owner" | "barber";
   /** River Mobile's own id for this booking. */
   externalId?: string;
   /** How it was paid (cash, GCash at the shop, or online). */
