@@ -40,6 +40,15 @@ function useBarberDay(t: DayTarget) {
   return rows;
 }
 
+/** One small tag per record: cash claimed (green) / to claim (amber), or the payment method (neutral). */
+function StatusTag({ r, claimed }: { r: ChairRequest; claimed: boolean }) {
+  const base = "inline-flex h-6 flex-none items-center gap-1 rounded-pill px-2 text-[11px] font-bold";
+  if (isCashCut(r)) return claimed
+    ? <span className={cn(base, "bg-[#E7F6EC] text-[#0B7A3E]")}><Check size={11} strokeWidth={3} aria-hidden />Cash<span className="sr-only"> claimed</span></span>
+    : <span className={cn(base, "bg-[#FFF1D6] text-[#8A5A00]")}><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />Cash<span className="sr-only"> to claim</span></span>;
+  return <span className={cn(base, "bg-grey-200 text-ink-2")}>{payText(r)}</span>;
+}
+
 export interface DayTarget { id: string; name: string; locationId: string; locationName: string; day: string }
 
 /** Barber face (photo when the shop added one) or initials, River style. */
@@ -70,6 +79,8 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   // Owner sees only their split (split-view.ts), never the full sales.
   const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
   const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
+  const gcashRows = records.filter((r) => r.paid && r.payMethod === "gcash");
+  const gcash = { count: gcashRows.length, share: gcashRows.reduce((s, r) => s + ownerPart(r, chairs), 0) };
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -82,33 +93,39 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
       ) : undefined}>
       {adding ? <AddRecordForm t={t} photo={photo} f={add} /> : (
         <div className="flex flex-col gap-5 pb-2 pt-1">
-          <section aria-label="Claim" className={cn("rounded-[22px] px-4 pb-4 pt-3.5 text-white transition-colors", allClaimed ? "bg-[#0B7A3E]" : "bg-ink")}>
+          <section aria-label="Claim" className="rounded-[22px] bg-ink px-4 pb-4 pt-3.5 text-on-ink">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[12.5px] font-semibold text-white/70">{allClaimed ? "Claimed · this day" : "Cash to claim · this day"}</p>
-              {claim.claimed > 0 && !allClaimed ? <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-[#0B7A3E] px-2.5 text-[11.5px] font-bold"><Check size={12} strokeWidth={3} aria-hidden />{peso(claim.claimed)} claimed</span> : null}
+              <p className="text-[12.5px] font-semibold text-on-ink-muted">{allClaimed ? "Claimed this day" : "Cash to claim"}</p>
+              {claim.owner || !remit.data ? null : allClaimed ? (
+                <span className="inline-flex h-6 items-center gap-1 rounded-pill bg-[#E7F6EC] px-2.5 text-[11.5px] font-bold text-[#0B7A3E]"><Check size={12} strokeWidth={3} aria-hidden />All claimed</span>
+              ) : claim.open > 0 ? (
+                <span className="inline-flex h-6 items-center gap-1.5 rounded-pill bg-[#FFF1D6] px-2.5 text-[11.5px] font-bold text-[#8A5A00]"><i aria-hidden className="size-1.5 rounded-full bg-[#D97706]" />To claim</span>
+              ) : null}
             </div>
             {claim.owner ? <p className="mt-1.5 text-[15px] font-bold">Your own cuts. Nothing to claim.</p>
-              : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-white/70">Loading…</p>
-              : claim.open > 0 ? (
+              : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
+              : (
                 <>
-                  <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open)}</b>
-                  <p className="mt-1.5 text-[12.5px] font-semibold text-white/70">Your share · {claim.openCount} cash cut{claim.openCount === 1 ? "" : "s"} to claim</p>
-                  <button type="button" data-auth="action" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}
-                    className="mt-3.5 flex h-12 w-full items-center justify-center rounded-pill bg-surface text-[15px] font-extrabold text-ink active:opacity-80 disabled:opacity-60">{busy ? "Claiming…" : `Claim ${peso(claim.open)}`}</button>
+                  <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
+                  <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted tabular-nums">
+                    {[
+                      claim.open > 0 ? `Your share · ${claim.openCount} cash` : "",
+                      claim.claimed > 0 ? `Claimed ${peso(claim.claimed)} · ${claim.claimedCount} cash` : "",
+                      gcash.count ? `GCash ${peso(gcash.share)} · ${gcash.count}` : "",
+                    ].filter(Boolean).join("   ·   ") || "No cash cuts this day"}
+                  </p>
+                  {claim.open > 0 ? (
+                    <button type="button" data-auth="action" disabled={busy} onClick={() => void remit.claim(t.id, t.locationId, t.day)}
+                      className="mt-3.5 flex h-12 w-full items-center justify-center rounded-pill bg-surface text-[15px] font-extrabold text-ink active:opacity-80 disabled:opacity-60">{busy ? "Claiming…" : `Claim ${peso(claim.open)}`}</button>
+                  ) : null}
                 </>
-              ) : allClaimed ? (
-                <>
-                  <span className="mt-2 inline-flex size-10 items-center justify-center rounded-full bg-white text-[#0B7A3E]"><Check size={22} strokeWidth={3.2} aria-hidden /></span>
-                  <b className="mt-2 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.claimed)}</b>
-                  <p className="mt-1.5 text-[12.5px] font-semibold text-white/80">All claimed · {claim.claimedCount} cash cut{claim.claimedCount === 1 ? "" : "s"}</p>
-                </>
-              ) : <p className="mt-1.5 text-[15px] font-bold">No cash to claim this day.</p>}
-            {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-white/70">{remit.error}</p> : null}
+              )}
+            {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{remit.error}</p> : null}
           </section>
 
           <section aria-label="Records">
             <div className="flex items-end justify-between px-1">
-              <span><b className="block text-[16px] tracking-[-0.01em]">Records</b><small className="block text-[12.5px] font-semibold text-muted">{records.length} cut{records.length === 1 ? "" : "s"} · {peso(dayTotal)}</small></span>
+              <span><b className="block text-[16px] tracking-[-0.01em]">Records</b><small className="block text-[12.5px] font-semibold text-muted">{records.length} cut{records.length === 1 ? "" : "s"} · {peso(dayTotal)} your share</small></span>
             </div>
             {records.length === 0 ? (
               <div className="mt-2.5 flex flex-col items-center rounded-[20px] bg-grey-100 px-4 py-6 text-center">
@@ -124,14 +141,10 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                       <span className="w-[3.9rem] flex-none text-[12.5px] font-bold tabular-nums text-muted">{time(r.completedAt)}</span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[14.5px]">{r.serviceName || "Service"}</b>
-                        <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", payText(r), r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
+                        <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
                       </span>
-                      <span className="flex-none text-right">
-                        <b className="block text-[15px] tabular-nums">{peso(ownerPart(r, chairs))}</b>
-                        {isCashCut(r) ? (remit.claimOf(r.id)
-                          ? <small className="block text-[11px] font-bold text-[#0B7A3E]">Claimed</small>
-                          : <small className="block text-[11px] font-bold text-[#C62828]">To claim</small>) : null}
-                      </span>
+                      <StatusTag r={r} claimed={Boolean(remit.claimOf(r.id))} />
+                      <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(ownerPart(r, chairs))}</b>
                       <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
                     </button>
                   </li>
