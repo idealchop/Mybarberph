@@ -17,6 +17,7 @@ import { useSession } from "@/lib/session";
 import { peso } from "@/lib/format";
 import { salesReport } from "@/lib/sales-report";
 import { ProfitReportCard, SalesChartCard } from "@/features/sales";
+import { dayBoard, todayKey } from "@/lib/queue-day";
 import { elapsedLabel, markInChair, onlineOpenToday, setRequestStatus, todayFigures, useChairRequests, useScopedRequests, type ChairRequest } from "@/lib/chair-bookings";
 import { ALL_LOCATIONS, branchName, HOME_LOCATION_ID, inLocation, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
@@ -103,18 +104,22 @@ export function HomeScreen() {
     return { branch, sales: fig.sales, cuts: fig.cuts, inChair: mine.filter((row) => row.status === "in_chair").length };
   });
   const fresh = rows.filter((row) => row.channel === "online" && row.status === "requested");
-  const toAccept = rows.filter((row) => row.status === "requested" || row.status === "accepted").length;
+  // v1.0.26: one board for every Home count (queue-day.ts dayBoard), same as the Queue's Current / Completed cards.
+  // "waiting" used to come from the live list for ANY day, so a visit left open yesterday showed as waiting today.
+  const board = dayBoard(counted, todayKey());
+  const toAccept = board.waiting;
   const busy = rows.filter((row) => row.status === "in_chair" && !isOwnerCut(row)).length;
   const oldest = rows.filter((row) => row.status === "in_chair" && row.startedAt).reduce((m, row) => Math.min(m, row.startedAt!), Infinity);
   const now = useTick(busy > 0);
   // The owner's own walk-in in progress: the hero shows it live with Complete (Jimboy, 2026-10-21).
   const mine = ownerCut(rows);
-  const today0 = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) + "T00:00:00+08:00").getTime();
-  const todays = counted.filter((row) => row.createdAt >= today0 && row.status !== "declined");
-  const customers = todays.length;
+  // v1.0.26: Customers = served today at the selected location (= the haircut count); it used to count every visit
+  // opened today, waiting ones included, so it read 12 next to "11 haircuts".
+  const customers = board.done;
   const online = onlineOpenToday(rows).length;
   const remit = useRemit(shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
-  const toClaim = remit.data?.total ?? 0;
+  // Owner screens show the owner's share only (v1.0.26): `total` is the full price incl. the barbers' part.
+  const toClaim = remit.data ? (remit.data.ownerTotal ?? remit.data.total) : 0;
   const unpaid = rows.filter((row) => !row.paid && row.status !== "declined").reduce((sum, row) => sum + row.price, 0);
   const todaySales = salesReport(split, unpaid, "today");
   const aside = !ready ? "" : fresh.length ? `${fresh.length} new` : "Live";
@@ -123,7 +128,7 @@ export function HomeScreen() {
   const shopName = profile.name || (user ? "your shop" : "Barbers.ph");
   const needsSetup = Boolean(user) && ready && !profile.name;
   const dayLabel = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "long", month: "short", day: "numeric" });
-  const dayTotal = figures.cuts + toAccept;
+  const dayTotal = figures.cuts + board.current;
   const pct = dayTotal ? Math.round((figures.cuts / dayTotal) * 100) : 0;
 
   const brand = (

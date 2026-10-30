@@ -13,7 +13,7 @@ const rows = [
 
 describe("Queue date filter (Manila day)", () => {
   it("keeps only done rows completed that Manila day, newest first", () => {
-    expect(doneOnDay(rows, "2026-10-21").map((r) => r.id)).toEqual(["a", "e", "c"]);
+    expect(doneOnDay(rows, "2026-10-21").map((r) => r.id)).toEqual(["a", "c"]); // v1.0.26: "e" (done, no completedAt) is not a finished cut anywhere (Home, barber link), so not here either
     expect(doneOnDay(rows, "2026-10-22").map((r) => r.id)).toEqual(["b"]);
   });
   it("uses Manila time, not UTC (00:10 +08 is Oct 22)", () => expect(doneOnDay(rows, "2026-10-21").some((r) => r.id === "b")).toBe(false));
