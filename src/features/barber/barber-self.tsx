@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { BarberPerformance } from "@/lib/barber-sales";
 import { compactPeso, weekBounds } from "@/lib/profit-report";
 import { peso } from "@/lib/format";
+import { cellClaimState } from "@/lib/profit-claim";
 
 const ymd = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
 
@@ -41,7 +42,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
   const today = ymd(now);
   const { data, err } = usePerformance(token, `range=custom&from=${from}&to=${to}&d=${today}`);
   const by = new Map((data?.byDate ?? []).map((x) => [x.date, x]));
-  const days = wk.days.map((d) => ({ ...d, amount: by.get(d.key)?.earnings ?? 0, cuts: by.get(d.key)?.cuts ?? 0, future: d.key > today, today: d.key === today }));
+  const days = wk.days.map((d) => ({ ...d, amount: by.get(d.key)?.earnings ?? 0, cuts: by.get(d.key)?.cuts ?? 0, st: cellClaimState({ open: by.get(d.key)?.cashOpen ?? 0, claimed: by.get(d.key)?.cashClaimed ?? 0 }), future: d.key > today, today: d.key === today }));
   const total = days.reduce((s, d) => s + d.amount, 0);
   const cuts = days.reduce((s, d) => s + d.cuts, 0);
   const tips = (data?.byDate ?? []).filter((x) => x.date >= from && x.date <= to).reduce((s, x) => s + (x.tips ?? 0), 0);
@@ -87,9 +88,9 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
           <tbody>
             <tr>
               {days.map((d) => (
-                <td key={d.key} className={`border-b border-line px-0 py-3 text-center tabular-nums ${d.today ? "bg-grey-100" : ""}`}>
+                <td key={d.key} className={`border-b border-line px-0 py-3 text-center tabular-nums ${d.today ? "bg-grey-100" : ""} ${d.today ? "shadow-[inset_0_0_0_1.5px_#111]" : ""}`}>
                   {d.future || !loaded ? <span className="text-muted opacity-40">–</span> : d.amount ? (
-                    <><b className="block text-[12px] font-bold">{compactPeso(d.amount)}</b><small className="block text-[10px] font-semibold text-muted">{d.cuts} haircut{d.cuts === 1 ? "" : "s"}</small></>
+                    <><b className={`block text-[12px] font-bold ${d.st === "open" ? "text-[#C62828]" : d.st === "claimed" ? "text-[#0B7A3E]" : ""}`}>{compactPeso(d.amount)}</b><small className="block text-[10px] font-semibold text-muted">{d.cuts} haircut{d.cuts === 1 ? "" : "s"}</small></>
                   ) : <span className="font-semibold text-muted">–</span>}
                 </td>
               ))}
@@ -103,6 +104,10 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
           </tfoot>
         </table>
       </div>
+      <p className="mt-2 flex items-center justify-end gap-3 px-1 text-[11px] font-semibold text-muted" aria-label="Colour key">
+        <span className="flex items-center gap-1"><i aria-hidden className="size-1.5 rounded-full bg-[#0B7A3E]" /><span className="text-[#0B7A3E]">Claimed</span></span>
+        <span className="flex items-center gap-1"><i aria-hidden className="size-1.5 rounded-full bg-[#C62828]" /><span className="text-[#C62828]">To hand over</span></span>
+      </p>
       {loaded && data?.unclaimedOwner ? (
         <section className="mt-3 flex items-center justify-between rounded-card bg-surface px-4 py-3.5 shadow-card" aria-label="Cash to hand to the owner">
           <span className="text-[13.5px] font-semibold">Hand over to owner</span>

@@ -68,7 +68,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
       <span className="mt-3.5 grid grid-cols-7 gap-1" aria-hidden>
         {cells.map((c) => (
           <span key={c.key} className={cn("flex h-[58px] min-w-0 flex-col items-center justify-center rounded-[12px]",
-            c.st === "open" ? "bg-[#FDECEC]" : c.st === "claimed" ? "bg-[#E7F5EC]" : "bg-grey-50",
+            "bg-grey-50",
             c.today && "ring-[1.5px] ring-inset ring-ink")}>
             <span className={cn("text-[11px] font-bold", c.today ? "text-ink" : "text-muted")}>{c.today ? "Today" : c.dow}</span>
             <span className={cn("mt-1 whitespace-nowrap text-[13.5px] font-extrabold leading-none tabular-nums",
@@ -80,7 +80,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
         {!claimMap ? <span className="text-muted">Checking claims…</span> : toClaim > 0
           ? <span className="flex items-center gap-1.5 text-[#C62828]"><i className="size-1.5 rounded-full bg-[#C62828]" />{peso(toClaim)} cash to claim</span>
           : <span className="flex items-center gap-1.5 text-[#0B7A3E]"><i className="size-1.5 rounded-full bg-[#0B7A3E]" />All cash claimed</span>}
-        <span className="flex items-center gap-2.5 text-[11px] text-muted"><span className="flex items-center gap-1"><i className="size-2 rounded-[3px] bg-[#E7F5EC] ring-1 ring-[#0B7A3E]/30" />Claimed</span><span className="flex items-center gap-1"><i className="size-2 rounded-[3px] bg-[#FDECEC] ring-1 ring-[#C62828]/30" />To claim</span></span>
+        <span className="flex items-center gap-2.5 text-[11px] text-muted"><span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-[#0B7A3E]" /><span className="text-[#0B7A3E]">Claimed</span></span><span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-[#C62828]" /><span className="text-[#C62828]">To claim</span></span></span>
       </span>
     </Link>
   );

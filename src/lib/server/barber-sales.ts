@@ -74,7 +74,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, ownerShare: c.ownerShare, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
   const myPct = sharePct(me);
-  const byDate = new Map<string, { cuts: number; sales: number; tips: number; barber: number }>();
+  const byDate = new Map<string, { cuts: number; sales: number; tips: number; barber: number; open: number; claimed: number }>();
   let barberSum = 0;
   const hourEarn = new Map<number, number>();
   const hours = new Map<number, number>(); const days = new Map<string, { cuts: number; sales: number }>(); const svc = new Map<string, { cuts: number; sales: number }>();
@@ -89,7 +89,8 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     out.cuts += 1; out.sales += p;
     const tp = tipOf(b); if (tp) { tips += tp; tipCount += 1; }
     const vp = visitPct(b, myPct); const bs = vp == null ? 0 : splitIncome(p, vp).barber; barberSum += bs;
-    const dk = manilaYmd(b.completedAt); const dv = byDate.get(dk) ?? { cuts: 0, sales: 0, tips: 0, barber: 0 }; dv.cuts += 1; dv.sales += p; dv.tips += tp; dv.barber += vp == null ? p : bs; byDate.set(dk, dv);
+    const dk = manilaYmd(b.completedAt); const dv = byDate.get(dk) ?? { cuts: 0, sales: 0, tips: 0, barber: 0, open: 0, claimed: 0 };
+    if (b.paid && (payBucket(b) === "cash" || payBucket(b) === "other") && p > 0) { if (claimed.has(b.id)) dv.claimed += 1; else dv.open += 1; } dv.cuts += 1; dv.sales += p; dv.tips += tp; dv.barber += vp == null ? p : bs; byDate.set(dk, dv);
     { const h = new Date(b.completedAt + 8 * 3600_000).getUTCHours(); hourEarn.set(h, (hourEarn.get(h) ?? 0) + (vp == null ? p : bs)); }
     const cm = cutMinutes(b); if (cm != null) { mins += cm; timed += 1; fastest = Math.min(fastest, cm); }
     if (!b.paid) out.unpaid += p;
@@ -108,7 +109,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   out.avg = out.cuts ? Math.round(out.sales / out.cuts) : 0;
   out.sharePct = sharePct(me);
   // Per-visit split (each visit's own %; centavo rounding per visit, owner gets the remainder), summed. Never re-split a total.
-  out.byDate = [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([date, v]) => ({ date, cuts: v.cuts, sales: v.sales, tips: v.tips, earnings: v.barber }));
+  out.byDate = [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([date, v]) => ({ date, cuts: v.cuts, sales: v.sales, tips: v.tips, earnings: v.barber, cashOpen: v.open, cashClaimed: v.claimed }));
   out.barberShare = barberSum; out.shopShare = out.sales - barberSum; out.tips = tips; out.tipCount = tipCount;
   out.timedCuts = timed; out.avgMins = timed ? Math.round(mins / timed) : null; out.fastestMins = timed ? Math.round(fastest) : null;
   out.completionPct = out.cuts + out.declined ? Math.round((out.cuts / (out.cuts + out.declined)) * 100) : null;

@@ -77,7 +77,7 @@ export interface BarberPerformance {
   /** Speed: average and fastest minutes from start to done, over cuts with a timer. */
   avgMins?: number | null; fastestMins?: number | null; timedCuts?: number;
   /** Per Manila day, newest first (days with finished cuts only). earnings = your share (or sales when no split) + tips. */
-  byDate?: { date: string; cuts: number; sales: number; tips: number; earnings: number }[];
+  byDate?: { date: string; cuts: number; sales: number; tips: number; earnings: number; cashOpen?: number; cashClaimed?: number }[];
 }
 
 export type HistoryPreset = "7" | "30" | "month" | "lastMonth" | "custom";

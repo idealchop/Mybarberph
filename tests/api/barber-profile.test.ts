@@ -5,6 +5,7 @@ import { fakeFirestore } from "../stubs/fake-firestore";
 const fs = fakeFirestore();
 vi.mock("@/lib/firebase/admin", () => ({ adminDb: () => fs, adminAuth: () => ({}) }));
 const { GET } = await import("@/app/api/barber/[token]/profile/route");
+const { GET: PERF } = await import("@/app/api/barber/[token]/performance/route");
 
 const TOKEN = "profiletok1";
 const chairs = [
@@ -65,5 +66,12 @@ describe("Barber link profile", () => {
     expect((await (await get(TOKEN, "all")).json()).range).toBe("all");
     expect((await (await get(TOKEN, "today")).json()).range).toBe("today");
     expect((await (await get(TOKEN, "bogus")).json()).range).toBe("7d");
+  });
+  it("My sales days carry the claim state: cash open vs claimed (GCash not counted)", async () => {
+    const r = await PERF(new Request(`http://local/api/barber/${TOKEN}/performance?range=week`), { params: Promise.resolve({ token: TOKEN }) } as never);
+    const d = await r.json();
+    const open = d.byDate.reduce((s: number, x: { cashOpen: number }) => s + x.cashOpen, 0);
+    const claimed = d.byDate.reduce((s: number, x: { cashClaimed: number }) => s + x.cashClaimed, 0);
+    expect([open, claimed]).toEqual([1, 1]);
   });
 });
