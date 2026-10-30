@@ -65,7 +65,7 @@ export function SalesDetailScreen() {
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 lg:max-w-[720px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-1 px-1">
-        <PageBack fallback={`/sales?view=performance&loc=${encodeURIComponent(locHint || (kind === "location" ? "all" : loc))}&r=${range}`} />
+        <PageBack fallback={`/sales?view=services&loc=${encodeURIComponent(locHint || (kind === "location" ? "all" : loc))}&r=${range}`} />
         <div className="min-w-0">
           <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{title}</h1>
           {sub ? <p className="text-[13px] font-semibold text-muted">{sub}</p> : null}

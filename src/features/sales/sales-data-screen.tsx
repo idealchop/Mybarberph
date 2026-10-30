@@ -1,6 +1,5 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { useNow } from "@/lib/use-now";
 import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
 import { CoinIcon } from "@river-apps/icons";
@@ -12,9 +11,7 @@ import { useChairRequests } from "@/lib/chair-bookings";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopProfile } from "@/lib/shop-profile";
 import { useShopChairs } from "@/lib/shop-chairs";
-import { DAY_RANGES, getCustomRange, rangeFetchDays, type SalesRange } from "@/lib/sales-report";
-import { periodBounds, periodDays } from "@/lib/barber-sales";
-import { DaySales } from "./day-sales";
+import { DAY_RANGES, rangeFetchDays, type SalesRange } from "@/lib/sales-report";
 import { barberStats, inRange, rankedBarbers } from "@/lib/sales-stats";
 import { SalesGroups } from "./sales-groups";
 import { showsLocationFilter } from "@/lib/sales-filters";
@@ -28,16 +25,15 @@ import { BarberLeaderboard } from "./barber-leaderboard";
 import { PerfFilterButton, PerformanceDashboard, type PerfFilters } from "./performance-dashboard";
 import { mergeLiveRows } from "@/lib/cut-count";
 
-// Three tabs (Jimboy, 2026-10-20): Collection (default), Performance, My Barbers. Old ?view=overview links land on Collection.
-// Batch 17 (Jimboy, 2026-10-21): My Barbers moves back to the top-right; the third tab is Sales group.
-type View = "performance" | "services" | "groups" | "barbers";
+// v1.0.21 (Jimboy, 2026-10-30): Collection tab removed (the Weekly Profit Report covers it). Tabs: Performance (default)
+// and Sales group; My Barbers is the top-right toggle. Old ?view=performance/overview links land on Performance.
+type View = "services" | "groups" | "barbers";
 const VIEWS: { value: View; label: string }[] = [
-  { value: "performance", label: "Collection" },
   { value: "services", label: "Performance" },
   { value: "groups", label: "Sales group" },
 ];
 
-/** Sales: Collection / Performance, filtered by location and a compact date chip. */
+/** Sales: Performance / Sales group, filtered by location and a compact date chip. */
 export function SalesDataScreen() {
   const { profile } = useShopProfile();
   const shops = useShopLocations();
@@ -50,17 +46,16 @@ export function SalesDataScreen() {
   const all = useMemo(() => asOwnerSplit(mergeLiveRows(deep, cloud.rows), chairs), [deep, cloud.rows, chairs]);
   const [loc, setLoc] = useState("");
   const where = loc || (shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all");
-  const rows = all.filter((r) => where === "all" || (r.locationId || HOME_LOCATION_ID) === where);
-  const [view, setView] = useState<View>("performance");
+  const [view, setView] = useState<View>("services");
   const [pf, setPf] = useState<PerfFilters>({});
   // Re-read on every URL change too (e.g. Weekly Profit Report → Claiming while Sales is already mounted).
   const search = useSearchParams().toString();
   useEffect(() => {
     const q = new URLSearchParams(search);
     const t = window.setTimeout(() => {
-      // Anything but "services" (incl. the old overview tab) opens Collection.
+      // Anything else (incl. the old Collection/overview tabs) opens Performance.
       const v = q.get("view") ?? q.get("tab");
-      setView(v === "services" ? "services" : v === "barbers" ? "barbers" : v === "groups" ? "groups" : "performance");
+      setView(v === "barbers" ? "barbers" : v === "groups" ? "groups" : "services");
       if (q.get("loc")) setLoc(q.get("loc")!);
       const r = q.get("r");
       if (r === "week" || r === "month" || r === "today" || r === "d30" || r === "all" || r === "custom") setRange(r);
@@ -68,19 +63,6 @@ export function SalesDataScreen() {
     return () => window.clearTimeout(t);
   }, [search]);
 
-  const now = useNow();
-  const bounds = periodBounds(range, now, range === "custom" ? getCustomRange() : null);
-  const todayKey = periodDays("today")[0] ?? "";
-  const commissionDays = periodDays(range, now, range === "custom" ? getCustomRange() : null).map((date) => ({ date, amount: 0, cuts: 0 }));
-  const byDay = new Map(commissionDays.map((d) => [d.date, d]));
-  for (const r of rows) {
-    if (r.status !== "done" || !r.completedAt || r.completedAt < bounds.from || r.completedAt >= bounds.to) continue;
-    const day = byDay.get(periodDays("today", r.completedAt)[0] ?? "");
-    if (!day) continue;
-    day.cuts += 1;
-    day.amount += r.price || 0; // already the owner's split
-  }
-  const commission = commissionDays.reduce((s, d) => s + d.amount, 0);
   const branches = useMemo(() => (shops.enabled ? shops.branches : [{ id: HOME_LOCATION_ID, name: profile.name || "Main" }]), [shops.enabled, shops.branches, profile.name]);
   const barbers = useMemo(() => rankedBarbers(barberStats(all, range, where, branches, chairs), chairs), [all, range, where, branches, chairs]);
   const remit = useRemit(where);
@@ -96,7 +78,7 @@ export function SalesDataScreen() {
           <h1 className="flex items-center gap-1.5 text-[28px] font-extrabold leading-none tracking-[-0.03em]">
             <CoinIcon size={28} /> Sales
           </h1>
-          <button type="button" aria-pressed={view === "barbers"} onClick={() => setView(view === "barbers" ? "performance" : "barbers")}
+          <button type="button" aria-pressed={view === "barbers"} onClick={() => setView(view === "barbers" ? "services" : "barbers")}
             className={`ml-auto inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-3 ${view === "barbers" ? "border-ink bg-ink text-on-ink" : "border-line"}`}>
             <BarberIcon name="trophy" size={28} />
             <span className="text-[13px] font-bold leading-none">My Barbers</span>
@@ -104,7 +86,7 @@ export function SalesDataScreen() {
         </div>
       </header>
 
-      <div role="tablist" aria-label="Sales view" className="mt-3 grid grid-cols-3 rounded-pill bg-grey-100 p-1">
+      <div role="tablist" aria-label="Sales view" className="mt-3 grid grid-cols-2 rounded-pill bg-grey-100 p-1">
         {VIEWS.map((item) => (
           <button key={item.value} type="button" role="tab" aria-selected={view === item.value} onClick={() => setView(item.value)}
             className={cn("h-9 rounded-pill text-[13.5px] font-bold transition", view === item.value ? "bg-surface text-ink shadow-card" : "text-muted")}>{item.label}</button>
@@ -123,9 +105,6 @@ export function SalesDataScreen() {
         <span className="inline-flex items-center gap-1"><RangeChips value={range} onChange={setRange} ranges={DAY_RANGES} allowCustom />{view === "services" ? <PerfFilterButton value={pf} onChange={setPf} all={all} chairs={chairs} /> : null}</span>
       </div>
 
-      {view === "performance" ? (
-        <DaySales eyebrow="Your commission" total={commission} days={commissionDays} today={todayKey} empty="No finished cuts in this range." />
-      ) : null}
       {view === "services" ? (
         <>
           <PerformanceDashboard f={pf} all={all} range={range} where={where} branches={branches} chairs={chairs} />

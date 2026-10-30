@@ -193,7 +193,7 @@ export function HomeScreen() {
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
+          <Link href="/sales?view=barbers" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         <ProfitReportCard className="mx-4 mt-3" />
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
@@ -254,7 +254,7 @@ export function HomeScreen() {
         <div className="mt-5 grid grid-cols-3 gap-5">
           <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
           <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales?view=performance" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
+          <Link href="/sales?view=barbers" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
         </div>
         <ProfitReportCard className="mt-5" />
         <CompanionCard className="mt-5" />
