@@ -1,6 +1,7 @@
 "use client";
 import { useNow } from "@/lib/use-now";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
+import { Button } from "@/components/common/button";
 import { useEffect, useState } from "react";
 import type { BarberPerformance } from "@/lib/barber-sales";
 import { compactPeso, weekBounds } from "@/lib/profit-report";
@@ -32,7 +33,7 @@ function usePerformance(token: string, qs: string) {
  * My sales (v1.0.21): the owner's Weekly Profit Report view for one barber. Mon–Sun, week arrows, the barber's
  * split only (their share + tips; full price when the shop set no split). No groups, no location switch.
  */
-export function BarberPerformanceView({ token, who, place, onBack, extra }: { token: string; who: string; place?: string; onBack: () => void; extra?: React.ReactNode }) {
+export function BarberPerformanceView({ token, who, place, onBack, extra, onProfile }: { token: string; who: string; place?: string; onBack: () => void; extra?: React.ReactNode; onProfile?: () => void }) {
   const now = useNow();
   const [offset, setOffset] = useState(0);
   const wk = weekBounds(offset, now);
@@ -50,14 +51,15 @@ export function BarberPerformanceView({ token, who, place, onBack, extra }: { to
     <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink"><ChevronLeft size={26} strokeWidth={1.75} /></button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-[26px] font-extrabold leading-[1.15] tracking-[-0.03em]">My sales</h1>
           <p className="truncate text-[13px] font-semibold text-muted">{[who, place].filter(Boolean).join(" · ")}</p>
         </div>
+        {onProfile ? <Button className="ml-auto flex-none" variant="secondary" size="sm" pill leadingIcon={<UserRound size={15} strokeWidth={2.2} aria-hidden />} onClick={onProfile}>Performance</Button> : null}
       </div>
       <section aria-label="Your earnings" className="mt-3 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
         <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your earnings (your share)</p>
+          <p className="min-w-0 truncate text-[12.5px] font-semibold text-on-ink-muted">Your share + tips</p>
           <div role="group" aria-label="Week" className="flex h-11 flex-none items-center rounded-pill bg-white/10">
             <button type="button" aria-label="Previous week" disabled={offset <= -8} onClick={() => setOffset((n) => Math.max(-8, n - 1))}
               className="inline-flex size-11 items-center justify-center rounded-full text-on-ink active:bg-white/15 disabled:opacity-30"><ChevronLeftIcon /></button>

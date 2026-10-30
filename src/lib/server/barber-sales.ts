@@ -1,6 +1,6 @@
 import "server-only";
 import type { ChairRequest } from "@/lib/booking-types";
-import { barberRange, manilaYmd, type BarberPerformance, type BarberSalesRow } from "@/lib/barber-sales";
+import { barberRange, manilaYmd, type BarberPerformance, type BarberProfile, type BarberSalesRow } from "@/lib/barber-sales";
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, ownerShareOf, sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
 import { loadState, shopRef } from "./shops";
@@ -66,16 +66,17 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     if (bl !== myLoc) return false;
     return cutBarberId(b, chairs) === q.barberId;
   };
-  const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; bookingIds: string[]; claimedAt: number }).sort((a, b) => b.claimedAt - a.claimedAt);
+  const claims = claimSnap.docs.map((d) => d.data() as { id: string; amount: number; ownerShare?: number; bookingIds: string[]; claimedAt: number; locationId?: string }).sort((a, b) => b.claimedAt - a.claimedAt);
   const claimed = new Set(claims.flatMap((c) => c.bookingIds || []));
   const out: BarberPerformance = {
     label: r.label, from: r.from, to: r.to, cuts: 0, sales: 0, cash: 0, gcash: 0, online: 0, other: 0, unpaid: 0, remit: 0, avg: 0, completionPct: null, declined: 0,
     walkIns: 0, onlineBookings: 0, claimedCash: 0, unclaimedCash: 0, hours: [], days: [], services: [],
-    claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
+    claims: claims.slice(0, 50).map((c) => ({ id: c.id, amount: c.amount, ownerShare: c.ownerShare, count: (c.bookingIds || []).length, claimedAt: c.claimedAt })),
   };
   const myPct = sharePct(me);
   const byDate = new Map<string, { cuts: number; sales: number; tips: number; barber: number }>();
   let barberSum = 0;
+  const hourEarn = new Map<number, number>();
   const hours = new Map<number, number>(); const days = new Map<string, { cuts: number; sales: number }>(); const svc = new Map<string, { cuts: number; sales: number }>();
   let tips = 0, tipCount = 0, mins = 0, timed = 0, fastest = Infinity;
   const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -89,6 +90,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
     const tp = tipOf(b); if (tp) { tips += tp; tipCount += 1; }
     const vp = visitPct(b, myPct); const bs = vp == null ? 0 : splitIncome(p, vp).barber; barberSum += bs;
     const dk = manilaYmd(b.completedAt); const dv = byDate.get(dk) ?? { cuts: 0, sales: 0, tips: 0, barber: 0 }; dv.cuts += 1; dv.sales += p; dv.tips += tp; dv.barber += vp == null ? p : bs; byDate.set(dk, dv);
+    { const h = new Date(b.completedAt + 8 * 3600_000).getUTCHours(); hourEarn.set(h, (hourEarn.get(h) ?? 0) + (vp == null ? p : bs) + tp); }
     const cm = cutMinutes(b); if (cm != null) { mins += cm; timed += 1; fastest = Math.min(fastest, cm); }
     if (!b.paid) out.unpaid += p;
     else {
@@ -110,6 +112,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   out.barberShare = barberSum; out.shopShare = out.sales - barberSum; out.tips = tips; out.tipCount = tipCount;
   out.timedCuts = timed; out.avgMins = timed ? Math.round(mins / timed) : null; out.fastestMins = timed ? Math.round(fastest) : null;
   out.completionPct = out.cuts + out.declined ? Math.round((out.cuts / (out.cuts + out.declined)) * 100) : null;
+  out.hourEarnings = [...hourEarn.entries()].map(([hour, earnings]) => ({ hour, earnings })).sort((a, b) => a.hour - b.hour);
   out.hours = [...hours.entries()].map(([hour, cuts]) => ({ hour, cuts })).sort((a, b) => a.hour - b.hour);
   out.days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ day, ...(days.get(day) ?? { cuts: 0, sales: 0 }) }));
   out.services = [...svc.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.sales - a.sales);
@@ -143,4 +146,46 @@ export async function barberHistory(shopId: string, q: { date: string; barberId:
   const chairs = state ? (JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[]) : [];
   const loc = q.locationId || chairs.find((c) => c.id === q.chairId)?.locationId || "home";
   return barberDayCuts(shopId, { date: q.date, barberId: q.barberId, locationId: loc, chairId: q.chairId });
+}
+
+/**
+ * The barber's own profile on their link (v1.0.22): read-only, the barber's share + tips only. Rank is a position
+ * among the shop's barbers; no other barber's amounts leave the server.
+ */
+export async function barberProfile(shopId: string, q: { range?: string | null; barberId: string; chairId: string; locationId?: string }, now = Date.now()): Promise<BarberProfile> {
+  const range: BarberProfile["range"] = q.range === "today" || q.range === "all" ? q.range : "7d";
+  const ymd = (ms: number) => manilaYmd(ms);
+  const from = range === "today" ? ymd(now) : range === "7d" ? ymd(now - 6 * 86_400_000) : ymd(now - 365 * 86_400_000);
+  const to = ymd(now);
+  const [perf, all, everyone] = await Promise.all([
+    barberPerformance(shopId, { ...q, range: "custom", from, to }),
+    range === "all" ? null : barberPerformance(shopId, { ...q, range: "custom", from: ymd(now - 365 * 86_400_000), to }),
+    barberSales(shopId, { range: "custom", from, to }),
+  ]);
+  const state = await loadState(shopId, ["barbers.shop-chairs"]);
+  const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as (Chair & { active?: boolean })[];
+  const gross = new Map<string, number>();
+  for (const c of chairs) if (c.active !== false) gross.set(c.barberId || c.id, 0);
+  for (const b of everyone.barbers) if (b.barberId !== "unassigned" && !b.barberId.startsWith("name:") && b.barberId !== "owner") gross.set(b.barberId, (gross.get(b.barberId) ?? 0) + b.gross);
+  const order = [...gross.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  const pos = order.indexOf(q.barberId);
+  const byDate = (perf.byDate ?? []).map((d) => ({ date: d.date, cuts: d.cuts, earnings: d.earnings, tips: d.tips })).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const earnings = byDate.reduce((s, d) => s + d.earnings, 0);
+  const tips = byDate.reduce((s, d) => s + d.tips, 0);
+  const hourEarnings = perf.hourEarnings ?? [];
+  const counts = new Map(perf.hours.map((h) => [h.hour, h.cuts]));
+  const peak = [...hourEarnings].sort((a, b) => b.earnings - a.earnings)[0];
+  const allTime = all ?? perf;
+  return {
+    range, from, to, label: perf.label,
+    sharePct: perf.sharePct ?? null,
+    rank: pos >= 0 && (gross.get(q.barberId) ?? 0) > 0 ? pos + 1 : null, of: order.length,
+    cuts: perf.cuts, earnings, share: earnings - tips, tips,
+    avgTicket: perf.cuts ? Math.round(earnings / perf.cuts) : 0,
+    perHour: perf.timedCuts && perf.avgMins ? Math.round((60 / perf.avgMins) * 10) / 10 : null,
+    peakHour: peak ? { hour: peak.hour, earnings: peak.earnings, cuts: counts.get(peak.hour) ?? 0 } : null,
+    toClaim: allTime.unclaimedOwner ?? 0,
+    claimed: allTime.claims.reduce((s, c) => s + (c.ownerShare ?? 0), 0),
+    byDate, byHour: hourEarnings.map((h) => ({ hour: h.hour, earnings: h.earnings, cuts: counts.get(h.hour) ?? 0 })),
+  };
 }

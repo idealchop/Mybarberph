@@ -68,7 +68,9 @@ export interface BarberPerformance {
   claimedCash: number; unclaimedCash: number;
   hours: { hour: number; cuts: number }[]; days: { day: string; cuts: number; sales: number }[];
   services: { name: string; cuts: number; sales: number }[];
-  claims: { id: string; amount: number; count: number; claimedAt: number }[];
+  claims: { id: string; amount: number; ownerShare?: number; count: number; claimedAt: number }[];
+  /** Barber share + tips per Manila hour (v1.0.22). */
+  hourEarnings?: { hour: number; earnings: number }[];
   /** Income split (owner sets the barber's %). Tips are separate and 100% the barber's. */
   /** Owner's share of the unclaimed cash: what the barber hands over. */ unclaimedOwner?: number;
   /** null = no split set. */ sharePct?: number | null; barberShare?: number; shopShare?: number; tips?: number; tipCount?: number;
@@ -94,3 +96,14 @@ export function historyRange(p: HistoryPreset, now = Date.now(), custom?: { from
   return custom ?? { from: back(6), to: today };
 }
 
+
+/** The barber's own read-only profile on their link (v1.0.22). Own share + tips only; rank is a position. */
+export interface BarberProfile {
+  range: "today" | "7d" | "all"; from: string; to: string; label: string;
+  sharePct: number | null; rank: number | null; of: number;
+  cuts: number; earnings: number; share: number; tips: number; avgTicket: number; perHour: number | null;
+  peakHour: { hour: number; earnings: number; cuts: number } | null;
+  toClaim: number; claimed: number;
+  byDate: { date: string; cuts: number; earnings: number; tips: number }[];
+  byHour: { hour: number; earnings: number; cuts: number }[];
+}

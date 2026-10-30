@@ -6,6 +6,7 @@ import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
 import { BarberPerformanceView } from "./barber-self";
+import { BarberProfileView } from "./barber-profile-view";
 import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
@@ -169,6 +170,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [scanning, setScanning] = useState(false);
   const [history, setHistory] = useState(false);
   const [perf, setPerf] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [install, setInstall] = useState(false);
   const installHidden = useInstallHidden(token);
   const shopsLoc = useShopLocations();
@@ -238,7 +240,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
       <ChevronRight size={18} className="flex-none text-subtle" aria-hidden />
     </button>
   );
-  if (perf) return <BarberPerformanceView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} extra={installCard} />;
+  if (perf && showProfile) return <BarberProfileView token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setShowProfile(false)} />;
+  if (perf) return <BarberPerformanceView onProfile={() => setShowProfile(true)} token={token} who={chairBarberName(chair)} place={placeName} onBack={() => setPerf(false)} extra={installCard} />;
   if (history) {
     return (
       <ChairHistory
