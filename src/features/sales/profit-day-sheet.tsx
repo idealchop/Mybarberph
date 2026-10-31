@@ -17,6 +17,7 @@ import { dayClaim, remitKey } from "@/lib/profit-claim";
 import { ownerPart } from "@/lib/split-view";
 import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
+import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, PICK_BARBER_MESSAGE, resolveOwnerBarber } from "@/lib/owner-barber-pick";
 import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
@@ -56,7 +57,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   const remit = useRemit(t.locationId);
   const [open, setOpen] = useState<ChairRequest | null>(null);
   const [adding, setAdding] = useState(false);
-  const add = useAddRecord(t, () => setAdding(false));
+  const add = useAddRecord(t, chairs, () => setAdding(false));
   const photo = chairs.find((c) => (c.barberId === t.id || c.id === t.id) && (c.locationId || "home") === t.locationId)?.photoUrl;
   // Same server source as the barber link History (barberDayCuts), merged with live edits; then the shared rule.
   const server = useBarberDay(t);
@@ -87,11 +88,11 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
-    <BottomSheet title={adding ? "Add record" : t.name} subtitle={adding ? `${t.name}${t.locationName ? ` · ${t.locationName}` : ""}` : `${longDay(t.day)}${t.locationName ? ` · ${t.locationName}` : ""}`}
+    <BottomSheet title={adding ? "Add record" : t.name} subtitle={adding ? `${add.barber?.name ?? "Pick a barber"}${t.locationName ? ` · ${t.locationName}` : ""}` : `${longDay(t.day)}${t.locationName ? ` · ${t.locationName}` : ""}`}
       onClose={adding ? () => setAdding(false) : onClose} tall
       footer={adding ? (
         <div className="flex flex-col items-stretch gap-1">
-          <Button data-auth="action" fullWidth loading={add.saving} onClick={add.save} className="!h-14 !text-[16px]">
+          <Button data-auth="action" fullWidth loading={add.saving} disabled={add.choice.kind === "none"} onClick={add.save} className="!h-14 !text-[16px]">
             Save record{add.amount > 0 ? ` · ${peso(add.amount)}` : ""}
           </Button>
           <button type="button" onClick={() => setAdding(false)} className="h-11 text-[14px] font-bold text-ink-2">Cancel</button>
@@ -190,7 +191,12 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
 }
 
 /** Add-record state and save (logic unchanged from v1.0.15: Cash or GCash, finished walk-in on that day). */
-function useAddRecord(t: DayTarget, onDone: () => void) {
+function useAddRecord(t: DayTarget, chairs: ShopChair[], onDone: () => void) {
+  // v1.0.35: the record goes to an active barber at this location: one = automatic, several = owner picks (starts on
+  // the barber whose row was tapped when they work here), none = a message and no save.
+  const choice = ownerBarberChoice(activeBarbersAt(chairs, t.locationId));
+  const [barberPick, setBarberPick] = useState(() => (choice.kind === "pick" && choice.barbers.some((b) => b.barberId === t.id) ? t.id : ""));
+  const barber = resolveOwnerBarber(choice, barberPick);
   const { haircut, treatments } = useShopMenu(t.locationId);
   const menu = [haircut, ...treatments].filter((m) => m?.name);
   const [picked, setService] = useState("");
@@ -205,13 +211,15 @@ function useAddRecord(t: DayTarget, onDone: () => void) {
   const [err, setErr] = useState("");
   const save = () => {
     if (saving) return;
-    const r = manualRecord({ day: t.day, time: defaultManualTime(t.day), barberId: t.id, barberName: t.name, locationId: t.locationId, serviceName: service, price: Math.round((Number(price) || 0) * 100), payMethod: pay, customerLabel: name, ref: refCode(), shopId: cloudSnapshot().shopId ?? "" });
+    if (choice.kind === "none") { setErr(NO_BARBER_MESSAGE); return; }
+    if (!barber) { setErr(PICK_BARBER_MESSAGE); return; }
+    const r = manualRecord({ day: t.day, time: defaultManualTime(t.day), barberId: barber.barberId, barberName: barber.name, locationId: t.locationId, serviceName: service, price: Math.round((Number(price) || 0) * 100), payMethod: pay, customerLabel: name, ref: refCode(), shopId: cloudSnapshot().shopId ?? "" });
     if (!(Number(price) > 0)) { setErr("Enter the amount."); return; }
     if ("error" in r) { setErr(r.error ?? ""); return; }
     setSaving(true);
     try { saveBooking(r.row as ChairRequest); onDone(); } finally { setSaving(false); }
   };
-  return { menu, service, pick: (s: string) => { setService(s); setPrice(null); }, price, setPrice, saving, pay, setPay, name, setName, err, save, amount: Math.round((Number(price) || 0) * 100) };
+  return { choice, barber, barberPick, setBarberPick: (id: string) => { setBarberPick(id); setErr(""); }, menu, service, pick: (s: string) => { setService(s); setPrice(null); }, price, setPrice, saving, pay, setPay, name, setName, err, save, amount: Math.round((Number(price) || 0) * 100) };
 }
 
 function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: ReturnType<typeof useAddRecord> }) {
@@ -226,13 +234,34 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
   return (
     <div className="flex flex-col gap-5 pb-2 pt-1">
       <div className="flex items-center gap-3 rounded-[22px] bg-grey-100 px-3.5 py-3">
-        <Face name={t.name} photo={photo} />
+        <Face name={f.barber?.name ?? t.name} photo={!f.barber || f.barber.barberId === t.id ? photo : undefined} />
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[16px]">{t.name}</b>
+          <b className="block truncate text-[16px]">{f.barber?.name ?? (f.choice.kind === "pick" ? "Pick a barber" : t.name)}</b>
           <small className="block truncate text-[12.5px] font-semibold text-muted">{[t.locationName, "A finished haircut, counted on this day"].filter(Boolean).join(" · ")}</small>
         </span>
         <span className="flex-none rounded-pill bg-ink px-3 py-1.5 text-[12.5px] font-bold text-on-ink">{longDay(t.day).replace(/, \d{4}$/, "")}</span>
       </div>
+
+      {f.choice.kind === "none" ? (
+        <p role="note" className="rounded-[18px] bg-grey-100 px-4 py-3.5 text-[13.5px] font-semibold">{NO_BARBER_MESSAGE}</p>
+      ) : f.choice.kind === "auto" ? (
+        <p className="px-1 text-[13.5px] font-semibold"><span className="text-muted">Barber: </span>{f.choice.barber.name}</p>
+      ) : (
+        <div>
+          <p className={label}>Barber</p>
+          <div role="radiogroup" aria-label="Barber" className="mt-1.5 grid grid-cols-2 gap-2">
+            {f.choice.barbers.map((b) => {
+              const on = b.barberId === f.barberPick;
+              return (
+                <button key={b.barberId} type="button" role="radio" aria-checked={on} onClick={() => f.setBarberPick(b.barberId)}
+                  className={cn("flex min-h-12 items-center rounded-[18px] px-3 py-2.5 text-left text-[14px] font-bold transition-colors", on ? "bg-ink text-on-ink" : "bg-grey-100 text-ink active:bg-grey-200")}>
+                  <span className="block truncate">{b.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <p className={label}>Service</p>

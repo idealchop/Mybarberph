@@ -8,7 +8,7 @@ import { useTier, type Feature } from "@/lib/tier";
 
 const NAMES: Record<Feature, string> = {
   dashboard: "The growth dashboard", queue: "The walk-in queue", sales: "The sales record", customers: "The customers CRM",
-  barbers: "Barbers & chairs setup", vouchers: "Vouchers & referrals", messages: "Message automations", kiosk: "The kiosk (POS 2)",
+  barbers: "Barbers setup", vouchers: "Vouchers & referrals", messages: "Message automations", kiosk: "The kiosk (POS 2)",
   settings: "Settings", partner_app: "The partner app",
 };
 

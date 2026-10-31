@@ -39,14 +39,14 @@ export function SeatsScreen() {
           <section key={branch.id} className="mt-5">
             <p className="px-1 text-[13.5px] font-extrabold text-muted">{branch.name}</p>
             {mine.length === 0 ? (
-              <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No chairs yet. Add them in Services.</p>
+              <p className="mt-2 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add them in Services.</p>
             ) : (
               <SeatList chairs={mine} holders={seatHolders(mine, rows)} />
             )}
           </section>
         );
       }) : chairs.length === 0 ? (
-        <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No chairs yet. Add them in Services.</p>
+        <p className="mt-4 rounded-card bg-surface px-4 py-6 text-center text-[13.5px] font-semibold text-muted shadow-card">No barbers yet. Add them in Services.</p>
       ) : (
         <SeatList chairs={chairs} holders={seatHolders(chairs, rows)} />
       )}

@@ -50,12 +50,12 @@ export function FindTicket() {
         <article className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
           <b className="block text-[18px]">{match.customerLabel || match.contact}</b>
           <p className="mt-1 text-[14px] font-medium text-muted">{match.serviceName} · {match.ref}</p>
-          <p className="mt-1 text-[14px] font-semibold">{peso(match.price)} · {statusLabel(match.status)}{match.chairLabel ? ` · ${match.chairLabel}` : ""}{match.verifiedAt ? " · Verified" : ""}</p>
+          <p className="mt-1 text-[14px] font-semibold">{peso(match.price)} · {statusLabel(match.status)}{match.barberName ? ` · ${match.barberName}` : ""}{match.verifiedAt ? " · Verified" : ""}</p>
           <div className="mt-4 flex gap-2">
             {match.status === "requested" || match.status === "accepted" ? (
               <>
                 <Button size="sm" variant="secondary" className="flex-1" data-auth="action" onClick={() => setRequestStatus(match.id, "declined")}>Decline</Button>
-                <Button size="sm" className="flex-1" data-auth="action" onClick={() => setNote(markInChair(match.id) ? "" : "Every chair is taken, or none have been added in Services yet.")}>Accept</Button>
+                <Button size="sm" className="flex-1" data-auth="action" onClick={() => setNote(markInChair(match.id) ? "" : "Every barber is busy, or none have been added in Services yet.")}>Accept</Button>
               </>
             ) : null}
             {match.status === "in_chair" ? <Button size="sm" fullWidth data-auth="action" onClick={() => completeCut(match)}>Done</Button> : null}

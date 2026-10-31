@@ -242,7 +242,7 @@ export function refCode() {
 export function statusLabel(status: ChairStatus) {
   if (status === "requested") return "Sent";
   if (status === "accepted") return "Accepted";
-  if (status === "in_chair") return "In chair";
+  if (status === "in_chair") return "Haircut started";
   if (status === "done") return "Done";
   return "Declined";
 }

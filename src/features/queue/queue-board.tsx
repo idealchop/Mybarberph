@@ -92,7 +92,7 @@ export function QueueBoard() {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3" role="tablist" aria-label="Queue sections">
-        {([["current", "Current", dayActive.length, "Waiting or in the chair", "chair"], ["done", "Completed", dayDone.length, "Finished haircuts", "haircut"]] as const).map(([k, label, n, hint, icon]) => (
+        {([["current", "Current", dayActive.length, "Waiting or with a barber", "staff"], ["done", "Completed", dayDone.length, "Finished haircuts", "haircut"]] as const).map(([k, label, n, hint, icon]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={`relative min-w-0 overflow-hidden rounded-card px-4 pb-3.5 pt-3 text-left shadow-card transition-colors active:scale-[0.99] ${tab === k ? "bg-ink text-on-ink" : "bg-surface"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -107,7 +107,7 @@ export function QueueBoard() {
       {tab === "current" ? (current.length === 0 ? (
         search && dayActive.length ? <EmptyState className="mt-4" title="No matches" /> : (
           <div className="mt-4 rounded-card bg-grey-50 px-5 py-6 text-center ring-1 ring-line">
-            <b className="block text-[16px] tracking-[-0.01em]">No one waiting or in the chair</b>
+            <b className="block text-[16px] tracking-[-0.01em]">No one waiting or with a barber</b>
             <p className="mt-1 text-[13px] font-medium text-muted">{isToday ? "Walk-ins and online orders in progress show up here." : `No open visits from ${dayText}.`}</p>
           </div>
         )
@@ -183,7 +183,7 @@ const timeOf = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", {
 function CurrentRow({ row, place }: { row: ChairRequest; place?: string }) {
   const [open, setOpen] = useState(false);
   const who = row.customerLabel && row.customerLabel !== "Walk-in" ? row.customerLabel : row.contact || "Walk-in";
-  const st = row.status === "in_chair" ? "In the chair" : row.status === "accepted" ? "Waiting" : "Requested";
+  const st = row.status === "in_chair" ? "With barber" : row.status === "accepted" ? "Waiting" : "Requested";
   return (
     <li>
       <button type="button" onClick={() => setOpen(true)} aria-label={`Open ${row.ref}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">

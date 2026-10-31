@@ -13,7 +13,7 @@ import { PoweredBy, ShopHeader } from "./shop-brand";
 import { QrCode } from "@/components/common/qr-code";
 import type { PublicShop } from "./use-public-shop";
 
-const STEPS = ["Sent", "In chair", "Done"] as const;
+const STEPS = ["Sent", "Haircut started", "Done"] as const;
 const stepIndex = (b: ChairRequest) => (b.status === "done" ? 2 : b.status === "in_chair" ? 1 : 0);
 
 /** Customer ticket after a QR booking. Updates live (every 3s) as the shop or the barber moves it along. */

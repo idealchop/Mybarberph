@@ -107,7 +107,7 @@ function Editor({ branch }: { branch: ShopBranch }) {
       {branch.id === HOME_LOCATION_ID ? null : (
         <Card className="mt-6 px-4 py-4">
           <b className="block text-[15px]">Remove this shop</b>
-          <p className="mt-1 text-[13px] font-medium text-muted">Its chairs and barber links are removed. Past visits stay in History and Sales.</p>
+          <p className="mt-1 text-[13px] font-medium text-muted">Its barbers and their links are removed. Past visits stay in History and Sales.</p>
           {confirm ? (
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" size="sm" className="flex-1" onClick={() => setConfirm(false)}>Keep it</Button>

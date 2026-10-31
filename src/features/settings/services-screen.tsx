@@ -74,7 +74,7 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
         }}
         onRemove={() => {
           if (holders[editing.chair.label] || editing.chair.occupiedAt) {
-            const error = `${editing.chair.label} is with a customer. Finish that haircut before removing.`;
+            const error = `${chairBarberName(editing.chair)} is with a customer. Finish that haircut before removing.`;
             setNote(error);
             return error;
           }

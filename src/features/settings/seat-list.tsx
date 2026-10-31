@@ -6,7 +6,7 @@ import { chairBarberName, seatTime, type ShopChair } from "@/lib/shop-chairs";
 
 /** The chair’s own mark. A barber photo never replaces this. */
 export function ChairMark({ label, size = 44 }: { label: string; size?: number }) {
-  return <RiverIcon name="chair" size={size} title={label} />;
+  return <RiverIcon name="haircut" size={size} title={label} />;
 }
 
 /** Portrait of the barber on this seat. Shown online when customers book. */
@@ -38,10 +38,10 @@ export function BarberPortrait({ chair, size = 44 }: { chair: ShopChair; size?: 
 
 function detail(chair: ShopChair, holder?: string) {
   if (holder || chair.occupiedAt) {
-    const since = chair.occupiedAt ? `In use since ${seatTime(chair.occupiedAt)}` : "In use";
+    const since = chair.occupiedAt ? `With a customer since ${seatTime(chair.occupiedAt)}` : "With a customer";
     return holder ? `${holder} · ${since}` : since;
   }
-  const vacant = chair.vacantAt ? `Vacant since ${seatTime(chair.vacantAt)}` : "Vacant";
+  const vacant = chair.vacantAt ? `Free since ${seatTime(chair.vacantAt)}` : "Free";
   return chair.lastUsedAt ? `${vacant} · Last used ${seatTime(chair.lastUsedAt)}` : vacant;
 }
 
@@ -54,9 +54,9 @@ export function SeatList({ chairs, holders }: { chairs: ShopChair[]; holders: Re
         const used = Boolean(holder || chair.occupiedAt);
         return (
           <li key={chair.id} className="flex items-center gap-3 rounded-card bg-surface px-3 py-3 shadow-card">
-            <ChairMark label={chair.label} />
+            <ChairMark label={chairBarberName(chair)} />
             <span className="min-w-0">
-              <b className="block text-[15.5px]">{chair.label}</b>
+              <b className="block text-[15.5px]">{chairBarberName(chair)}</b>
               <small className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
                 <BarberPortrait chair={chair} size={18} />
                 {chairBarberName(chair)}

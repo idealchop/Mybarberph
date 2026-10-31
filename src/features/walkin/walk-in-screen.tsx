@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/page-back";
-import { queueLocation, refCode, seatOwnerWalkIn, seatWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
-import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
+import { queueLocation, refCode, seatOwnerWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
+import { useShopChairs } from "@/lib/shop-chairs";
+import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, resolveOwnerBarber } from "@/lib/owner-barber-pick";
 import { cloudSnapshot } from "@/lib/cloud";
 import { useShopLocations } from "@/lib/shop-locations";
 import { useShopMenu } from "@/lib/shop-services";
@@ -36,8 +37,11 @@ export function WalkInScreen() {
   const busyLabels = new Set(rows.filter((r) => r.status === "in_chair" && r.chairLabel && (r.locationId || HOME_LOCATION_ID) === loc).map((r) => r.chairLabel!));
   // From the Home hero (?me=1) the owner takes the customer himself; with no barbers that's the only choice.
   const fromHome = useSearchParams().get("me") === "1";
-  const [barberChair, setBarberChair] = useState(fromHome ? ME : "");
-  const me = barberChair === ME || !chairs.length;
+  // v1.0.35: the walk-in goes to a barber at this location: one active barber = assigned automatically; several = the
+  // owner picks (required); none = a clear message. "Me" only when the owner started it from Home to cut himself.
+  const [barberPick, setBarberPick] = useState(fromHome ? ME : "");
+  const choice = ownerBarberChoice(activeBarbersAt(chairs, loc));
+  const me = barberPick === ME;
 
   const chosen = treatments.filter((t) => picked.includes(t.id));
   const menuTotal = (haircut.price ?? 0) + chosen.reduce((sum, t) => sum + (t.price ?? 0), 0);
@@ -65,20 +69,18 @@ export function WalkInScreen() {
   const save = () => {
     if (where.needsPick) { setNote("Pick a location first."); return; }
     if (allowance.atLimit) { setNote(allowance.message); return; }
+    // eslint-disable-next-line react-hooks/purity -- runs in the Save click handler, not during render
     const now = Date.now();
     if (me) {
       seatOwnerWalkIn({ ...newRow(now) }, "Owner");
-      router.push(fromHome || !chairs.length ? "/" : "/queue");
+      router.push(fromHome ? "/" : "/queue");
       return;
     }
-    const pick = chairs.find((c) => c.id === barberChair);
-    if (pick && busyLabels.has(pick.label)) { setNote(`${chairBarberName(pick)} is busy. Pick another barber or any free barber.`); return; }
-    const row = newRow(now);
-    const chair = pick ? seatWalkInOnChair({ ...row }, pick.label, loc) : seatWalkIn({ ...row });
-    if (!chair) {
-      setNote("Every barber is busy, or none have been added in Services yet.");
-      return;
-    }
+    if (choice.kind === "none") { setNote(NO_BARBER_MESSAGE); return; }
+    const pick = resolveOwnerBarber(choice, barberPick);
+    if (!pick) { setNote("Pick the barber for this walk-in."); return; }
+    if (busyLabels.has(pick.label)) { setNote(`${pick.name} is busy with a customer.${choice.kind === "pick" ? " Pick another barber." : ""}`); return; }
+    if (!seatWalkInOnChair({ ...newRow(now) }, pick.label, loc)) { setNote(`${pick.name} is busy with a customer.`); return; }
     router.push("/queue");
   };
 
@@ -102,7 +104,7 @@ export function WalkInScreen() {
       {where.needsPick || pickedLoc ? (
         <label className="mt-4 flex flex-col gap-1.5">
           <span className="text-[13px] font-bold">Location</span>
-          <select aria-label="Location" value={pickedLoc} onChange={(e) => { setPickedLoc(e.target.value); setBarberChair(fromHome ? ME : ""); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+          <select aria-label="Location" value={pickedLoc} onChange={(e) => { setPickedLoc(e.target.value); setBarberPick(fromHome ? ME : ""); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
             <option value="" disabled>Pick a location</option>
             {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -141,18 +143,22 @@ export function WalkInScreen() {
       <div className="mt-4">
         <Input label="Name" placeholder="Optional" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
-      {chairs.length ? (
+      {choice.kind === "none" && !me ? (
+        <p role="note" className="mt-3 rounded-card bg-surface px-4 py-3.5 text-[13.5px] font-semibold shadow-card">{NO_BARBER_MESSAGE}</p>
+      ) : choice.kind === "auto" && !fromHome ? (
+        <p className="mt-3 text-[13.5px] font-semibold"><span className="text-muted">Barber: </span>{choice.barber.name}{busyLabels.has(choice.barber.label) ? " (busy)" : ""}</p>
+      ) : choice.kind !== "none" || fromHome ? (
         <label className="mt-3 flex flex-col gap-1.5">
-          <span className="text-[13px] font-bold">Barber <span className="font-semibold text-muted">(optional)</span></span>
-          <select value={barberChair} onChange={(e) => setBarberChair(e.target.value)} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
-            <option value="">Any free barber</option>
-            <option value={ME}>Me, I’ll cut</option>
-            {chairs.filter((c) => c.active !== false).map((c) => <option key={c.id} value={c.id} disabled={busyLabels.has(c.label)}>{chairBarberName(c)}{busyLabels.has(c.label) ? " (busy)" : ""}</option>)}
+          <span className="text-[13px] font-bold">Barber</span>
+          <select aria-label="Barber" value={barberPick} onChange={(e) => { setBarberPick(e.target.value); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+            <option value="" disabled>Pick a barber</option>
+            {fromHome ? <option value={ME}>Me, I’ll cut</option> : null}
+            {(choice.kind === "pick" ? choice.barbers : choice.kind === "auto" ? [choice.barber] : []).map((b) => <option key={b.barberId} value={b.barberId} disabled={busyLabels.has(b.label)}>{b.name}{busyLabels.has(b.label) ? " (busy)" : ""}</option>)}
           </select>
         </label>
       ) : null}
       {note ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
-      <Button data-auth="action" className="mt-5" fullWidth onClick={save} disabled={where.needsPick}>{me ? "Start the haircut" : "Seat them"}</Button>
+      <Button data-auth="action" className="mt-5" fullWidth onClick={save} disabled={where.needsPick || (!me && choice.kind === "none")}>{me ? "Start the haircut" : "Seat them"}</Button>
       </>
     </main>
   );

@@ -268,7 +268,7 @@ function SetupCard({ className }: { className?: string }) {
     <Card padding="none" className={`flex items-center justify-between gap-3 px-4 py-3.5 ${className ?? ""}`}>
       <span className="min-w-0">
         <b className="block text-[14.5px]">Set up your shop</b>
-        <small className="text-[12.5px] font-semibold text-muted">Add the name, map pin, chairs and prices so customers can book.</small>
+        <small className="text-[12.5px] font-semibold text-muted">Add the name, map pin, barbers and prices so customers can book.</small>
       </span>
       <Button href="/settings/edit" size="sm" className="flex-none">Set up</Button>
     </Card>

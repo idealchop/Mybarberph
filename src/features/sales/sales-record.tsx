@@ -30,19 +30,17 @@ export function SalesRecord({ data }: { data: SalesData }) {
   const s = data.summary;
   const [range, setRange] = useState<Range>("day");
   const [barberId, setBarberId] = useState("all");
-  const [chairId, setChairId] = useState("all");
   const [method, setMethod] = useState<"all" | PaymentMethod>("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<Transaction | null>(null);
   const barber = (id: string) => data.barbers.find((b) => b.id === id);
-  const chair = (id: string) => data.chairs.find((c) => c.id === id);
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return data.transactions.filter((x) => (barberId === "all" || x.barberId === barberId) && (chairId === "all" || x.chairId === chairId) &&
+    return data.transactions.filter((x) => (barberId === "all" || x.barberId === barberId) &&
       (method === "all" || x.paymentMethod === method) && (!t || x.customerName.toLowerCase().includes(t) || x.referenceId.toLowerCase().includes(t)));
-  }, [data.transactions, barberId, chairId, method, q]);
+  }, [data.transactions, barberId, method, q]);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const cur = Math.min(page, pages);
   const rows = filtered.slice((cur - 1) * PAGE, cur * PAGE);
@@ -52,7 +50,7 @@ export function SalesRecord({ data }: { data: SalesData }) {
   const factor = range === "day" ? 1 : (range === "week" ? data.week : data.month).reduce((a, d) => a + d.sales, 0) / s.sales;
   const k = (n: number) => Math.round(n * factor);
   const mixTotal = s.paymentMix.reduce((a, m) => a + m.amount, 0);
-  const isFiltered = barberId !== "all" || chairId !== "all" || method !== "all" || !!q.trim();
+  const isFiltered = barberId !== "all" || method !== "all" || !!q.trim();
   const tot = isFiltered
     ? { n: filtered.length, sales: filtered.reduce((a, x) => a + x.total, 0), tips: filtered.reduce((a, x) => a + (x.tip ?? 0), 0) }
     : { n: s.transactions, sales: s.sales, tips: s.tips };
@@ -61,10 +59,10 @@ export function SalesRecord({ data }: { data: SalesData }) {
   const rangeLabel = range === "day" ? "today" : range === "week" ? "this week" : "this month";
 
   function exportCsv() {
-    const head = ["Time", "Ticket", "Customer", "River Mobile", "Service", "Barber", "Chair", "Payment", "Subtotal", "Discount", "Amount", "Tip", "Rating"];
+    const head = ["Time", "Ticket", "Customer", "River Mobile", "Service", "Barber", "Payment", "Subtotal", "Discount", "Amount", "Tip", "Rating"];
     const esc = (v: string | number | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = filtered.map((x) => [clock(x.completedAt), x.referenceId, x.customerName, x.fromRiverMobile ? "yes" : "no", x.serviceLabel, barber(x.barberId)?.nickname,
-      chair(x.chairId)?.label, PAYMENT_LABEL[x.paymentMethod], x.subtotal / 100, (x.discount?.amount ?? 0) / 100, x.total / 100, (x.tip ?? 0) / 100, x.rating ?? ""].map(esc).join(","));
+      PAYMENT_LABEL[x.paymentMethod], x.subtotal / 100, (x.discount?.amount ?? 0) / 100, x.total / 100, (x.tip ?? 0) / 100, x.rating ?? ""].map(esc).join(","));
     const blob = new Blob([[head.map(esc).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -107,7 +105,6 @@ export function SalesRecord({ data }: { data: SalesData }) {
           <div className="flex flex-col leading-tight"><span className="text-[16px] font-bold">Transactions</span><span className="mt-0.5 text-[12.5px] font-semibold text-muted">Newest first · tips shown apart from sales{range !== "day" ? " · showing today" : ""}</span></div>
           <div className="flex flex-wrap items-center gap-2">
             <FilterSelect label="Barber" value={barberId} onChange={set(setBarberId)} options={[{ value: "all", label: "All barbers" }, ...data.barbers.map((b) => ({ value: b.id, label: b.nickname }))]} />
-            <FilterSelect label="Chair" value={chairId} onChange={set(setChairId)} options={[{ value: "all", label: "All chairs" }, ...data.chairs.map((c) => ({ value: c.id, label: c.label }))]} />
             <FilterSelect<"all" | PaymentMethod> label="Payment" value={method} onChange={set(setMethod)} options={[{ value: "all", label: "All payments" }, ...(["cash", "gcash", "maya", "card"] as const).map((m) => ({ value: m, label: PAYMENT_LABEL[m] }))]} />
             <label className="flex h-[34px] w-[220px] items-center gap-2 rounded-[12px] bg-canvas px-3 text-subtle focus-within:ring-2 focus-within:ring-ink">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -120,7 +117,7 @@ export function SalesRecord({ data }: { data: SalesData }) {
           <table className="w-full min-w-[900px] border-collapse text-left">
             <thead><tr className="text-[12px] text-muted">
               <th className="whitespace-nowrap pb-2 pl-1 pr-3 font-semibold">Time</th>
-              {["Ticket", "Customer", "Service", "Barber", "Chair", "Payment"].map((h) => <th key={h} className="whitespace-nowrap pb-2 pr-3 font-semibold">{h}</th>)}
+              {["Ticket", "Customer", "Service", "Barber", "Payment"].map((h) => <th key={h} className="whitespace-nowrap pb-2 pr-3 font-semibold">{h}</th>)}
               <th className="whitespace-nowrap pb-2 pr-3 text-right font-semibold">Amount</th><th className="whitespace-nowrap pb-2 pr-4 text-right font-semibold">Tip</th><th className="whitespace-nowrap pb-2 pr-1 font-semibold">Feedback</th>
             </tr></thead>
             <tbody>
@@ -132,7 +129,6 @@ export function SalesRecord({ data }: { data: SalesData }) {
                     {x.fromRiverMobile ? <span className="ml-1 inline-flex items-center rounded-pill bg-grey-100 px-2 py-[3px] align-middle text-[10.5px] font-bold leading-none">River Mobile</span> : null}</span></td>
                   <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-semibold">{x.serviceLabel}</td>
                   <td className="whitespace-nowrap py-[8px] pr-3 text-[13.5px] font-bold">{barber(x.barberId)?.nickname}</td>
-                  <td className="whitespace-nowrap py-[8px] pr-3 text-[13px] font-semibold text-muted">{chair(x.chairId)?.label}</td>
                   <td className="whitespace-nowrap py-[8px] pr-3"><PaymentPill method={x.paymentMethod} /></td>
                   <td className="whitespace-nowrap py-[8px] pr-3 text-right text-[14px] font-extrabold">{peso(x.total)}</td>
                   <td className="whitespace-nowrap py-[8px] pr-4 text-right">{x.tip ? <span className="text-[13.5px] font-bold text-ink-2">+{peso(x.tip)}</span> : <span className="text-[13.5px] font-semibold text-subtle">—</span>}</td>
@@ -160,7 +156,7 @@ export function SalesRecord({ data }: { data: SalesData }) {
         </div>
       </section>
 
-      <Dialog open={!!open} onClose={() => setOpen(null)} title={open ? `${open.referenceId} · ${open.customerName}` : ""} subtitle={open ? `${clock(open.completedAt)} · ${barber(open.barberId)?.nickname} · ${chair(open.chairId)?.label}` : undefined}>
+      <Dialog open={!!open} onClose={() => setOpen(null)} title={open ? `${open.referenceId} · ${open.customerName}` : ""} subtitle={open ? `${clock(open.completedAt)} · ${barber(open.barberId)?.nickname}` : undefined}>
         {open ? (
           <div className="flex flex-col gap-3">
             <dl className="flex flex-col gap-2 rounded-[18px] bg-grey-100 p-4 text-[14px] font-semibold">
