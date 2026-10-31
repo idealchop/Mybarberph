@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/cloud";
 import { useSession } from "@/lib/session";
 import { cached, fetchShared, invalidate } from "@/lib/swr";
@@ -10,6 +10,10 @@ type RemitEvent = { kind: "apply"; p: PendingClaim } | { kind: "rollback"; id: s
 const listeners = new Set<(e: RemitEvent) => void>();
 const emit = (e: RemitEvent) => { for (const l of [...listeners]) l(e); };
 let seq = 0;
+export const CLAIM_OFFLINE = "You're offline. Claim when you're back online.";
+function subscribeNet(cb: () => void) { window.addEventListener("online", cb); window.addEventListener("offline", cb); return () => { window.removeEventListener("online", cb); window.removeEventListener("offline", cb); }; }
+/** True while the phone is offline. */
+export function useOffline() { return useSyncExternalStore(subscribeNet, () => navigator.onLine === false, () => false); }
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; ownerShare?: number; count: number; oldest: number }
 export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; /** Optimistic claim not yet confirmed by the server (v1.0.30). */ pending?: boolean; ownerShare?: number; sharePct?: number | null; /** Adjusted claim (v1.0.34). */ expected?: number; received?: number; adjusted?: boolean; difference?: number }
@@ -53,6 +57,8 @@ export function useRemit(loc: string) {
   const claim = async (barberId: string, locationId: string, day?: string, bookingIds: string[] = [], adjust?: { expected: number; received: number }) => {
     const key = `${barberId}@${locationId}`;
     if (busy) return;
+    // v1.0.39: claims need the server (they lock the barber's cash); never queued offline.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setError(CLAIM_OFFLINE); return; }
     setBusy(key); setError("");
     const id = `${PENDING_PREFIX}${Date.now()}-${++seq}`;
     emit({ kind: "apply", p: { id, barberId, locationId, bookingIds, day, at: Date.now(), ...(adjust ?? {}) } });
@@ -72,5 +78,6 @@ export function useRemit(loc: string) {
     for (const c of data?.claims ?? []) for (const id of [...(c.bookingIds ?? []), ...(c.coveredIds ?? [])]) m.set(id, c);
     return (bookingId: string) => m.get(bookingId);
   }, [data]);
-  return { data, loading: Boolean(user) && !data, claim, busy, error, clearError, claimOf };
+  const offline = useOffline();
+  return { data, loading: Boolean(user) && !data && !offline, unavailable: !data && offline, claim, busy, error, clearError, claimOf };
 }

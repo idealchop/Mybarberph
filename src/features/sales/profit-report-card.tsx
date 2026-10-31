@@ -77,7 +77,7 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
         ))}
       </span>
       <span className="mt-3 flex items-center justify-between border-t border-line pt-2.5 text-[12.5px] font-semibold">
-        {!claimMap ? <span className="text-muted">Checking claims…</span> : toClaim > 0
+        {!claimMap ? <span className="text-muted">{remit.unavailable ? "Claims show when you're online" : "Checking claims…"}</span> : toClaim > 0
           ? <span className="flex items-center gap-1.5 text-[#C62828]"><i className="size-1.5 rounded-full bg-[#C62828]" />{peso(toClaim)} to claim this week</span>
           : <span className="flex items-center gap-1.5 text-[#0B7A3E]"><i className="size-1.5 rounded-full bg-[#0B7A3E]" />All cash claimed</span>}
         <span className="flex items-center gap-2.5 text-[11px] text-muted"><span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-[#0B7A3E]" /><span className="text-[#0B7A3E]">Claimed</span></span><span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-[#C62828]" /><span className="text-[#C62828]">To claim</span></span></span>

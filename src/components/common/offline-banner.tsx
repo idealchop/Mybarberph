@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CloudOff, Check, X } from "lucide-react";
 import { Button, Spinner } from "@/components/common/button";
 import { useCloud } from "@/lib/cloud";
+import { newestAt } from "@/lib/swr";
+import { asOfTime } from "@/lib/offline-queue";
 import { BANNER_SHOWN, closeBanner, nextBannerHide, offlineLabel } from "@/lib/offline-queue";
 
 function subscribeOnline(cb: () => void) {
@@ -70,5 +72,18 @@ export function SavedOfflineTag({ id, onDark }: { id: string; onDark?: boolean }
     <span className={`inline-flex h-5 flex-none items-center gap-1 rounded-pill px-1.5 text-[10.5px] font-extrabold ${onDark ? "bg-white/15 text-on-ink" : "bg-grey-100 text-ink-2"}`}>
       <CloudOff size={11} strokeWidth={2.6} aria-hidden />Saved offline, will sync
     </span>
+  );
+}
+
+/** Offline only: "Offline · as of 9:41 PM" under a screen showing the last numbers saved on this phone. */
+export function OfflineAsOf({ className = "" }: { className?: string }) {
+  const online = useOnline();
+  if (online) return null;
+  const at = newestAt();
+  return (
+    <p className={`flex items-center gap-1.5 text-[12px] font-semibold text-muted ${className}`} role="note">
+      <CloudOff size={13} strokeWidth={2.4} aria-hidden />
+      {at ? `Offline · as of ${asOfTime(at)}` : "Offline · showing what was saved on this phone"}
+    </p>
   );
 }

@@ -8,6 +8,7 @@
 import { useSyncExternalStore } from "react";
 import type { ChairRequest } from "@/lib/booking-types";
 import { hydrateSession, idToken, sessionSnapshot, subscribeSession } from "@/lib/session";
+import { setSwrScope } from "@/lib/swr";
 import { createQueue, drainQueue, isNetworkError, type OfflineQueue } from "@/lib/offline-queue";
 
 export interface CloudShop {
@@ -197,6 +198,7 @@ export function startCloud() {
     const next = s.user?.uid ?? null;
     if (next === uid && snap.ready) return;
     uid = next;
+    setSwrScope(next);
     if (!next) { mode = null; window.clearInterval(pollTimer); dropCaches(); set({ ...EMPTY, ready: true }); return; }
     mode = { kind: "owner" };
     openQueue();

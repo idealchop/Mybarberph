@@ -1,6 +1,6 @@
 {
   "name": "mybarberph",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "description": "Barbers.ph by River Apps: barbershop queue, sales record, kiosk and River Mobile partner app (front-end, sample data, Firebase-ready data layer).",
   "license": "UNLICENSED",
@@ -16,8 +16,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "screenshots": "python3 scripts/screenshots.py",
-    "prebuild": "node scripts/copy-maplibre-worker.mjs",
-    "predev": "node scripts/copy-maplibre-worker.mjs",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs && node scripts/sw-precache.mjs",
+    "predev": "node scripts/copy-maplibre-worker.mjs && node scripts/sw-precache.mjs",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",

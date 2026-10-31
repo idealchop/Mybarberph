@@ -113,3 +113,8 @@ export function nextBannerHide(s: BannerHide, n: number, online: boolean): Banne
   const atN = Math.min(s.atN, n), sawOnline = s.sawOnline || online;
   return atN === s.atN && sawOnline === s.sawOnline ? s : { hidden: true, atN, sawOnline };
 }
+
+/** "9:41 PM" in Manila time, for the offline "as of" note. */
+export function asOfTime(at: number) {
+  return new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
+}

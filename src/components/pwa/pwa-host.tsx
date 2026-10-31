@@ -9,6 +9,8 @@ import { BUILD_ID } from "@/lib/app-version";
 import { CheckCircle2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { isStandalone, listenForInstall } from "@/lib/pwa";
+import { usePathname } from "next/navigation";
+import { warmCache } from "@/lib/sw-warm";
 
 const BUILD = BUILD_ID;
 const EVERY = 30 * 60_000;
@@ -20,6 +22,15 @@ export function PwaHost() {
   const [busy, setBusy] = useState(false);
   const reg = useRef<ServiceWorkerRegistration | null>(null);
   const wanted = useRef(false);
+  const pathname = usePathname();
+  // v1.0.39: keep this page (and the main pages + loaded files) on the phone for offline use, a moment after it renders.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") return;
+    const t = window.setTimeout(() => warmCache(pathname || "/home"), 2500);
+    const onCtl = () => warmCache(pathname || "/home");
+    navigator.serviceWorker?.addEventListener("controllerchange", onCtl);
+    return () => { window.clearTimeout(t); navigator.serviceWorker?.removeEventListener("controllerchange", onCtl); };
+  }, [pathname]);
 
   useEffect(() => {
     listenForInstall();

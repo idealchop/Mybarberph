@@ -20,7 +20,8 @@ import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
 import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, PICK_BARBER_MESSAGE, resolveOwnerBarber } from "@/lib/owner-barber-pick";
 import { cn } from "@river-apps/ui";
-import { useRemit } from "./use-remit";
+import { cached, fetchShared } from "@/lib/swr";
+import { CLAIM_OFFLINE, useOffline, useRemit } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
 import { claimAdjust, claimInputText, dayAdjustment, parseClaimCentavos } from "@/lib/claim-adjust";
 import { ClaimTag } from "@/components/transactions/claim-tag";
@@ -31,15 +32,18 @@ const longDay = (d: string) => new Date(`${d}T12:00:00+08:00`).toLocaleDateStrin
 
 /** One barber's day from the server (same function as the barber link's History). */
 function useBarberDay(t: DayTarget) {
-  const [rows, setRows] = useState<ChairRequest[] | null>(null);
+  // v1.0.39: kept on the phone (swr) so a day opened before still shows its records offline.
+  const key = `barber-day:${t.id}@${t.locationId}|${t.day}`;
+  const [got, setGot] = useState<{ key: string; rows: ChairRequest[] } | null>(null);
+  const rows = got?.key === key ? got.rows : cached<ChairRequest[]>(key) ?? null;
   useEffect(() => {
     let off = false;
-    const pull = () => void (api(`/api/shop/barber-day?barberId=${encodeURIComponent(t.id)}&loc=${encodeURIComponent(t.locationId)}&date=${t.day}`) as Promise<{ rows: ChairRequest[] }>)
-      .then((d) => { if (!off) setRows(d.rows); }).catch(() => {});
+    const pull = () => void fetchShared(key, () => (api(`/api/shop/barber-day?barberId=${encodeURIComponent(t.id)}&loc=${encodeURIComponent(t.locationId)}&date=${t.day}`) as Promise<{ rows: ChairRequest[] }>).then((d) => d.rows))
+      .then((r) => { if (!off) setGot({ key, rows: r }); }).catch(() => {});
     pull();
     const iv = window.setInterval(() => { if (document.visibilityState === "visible") pull(); }, 20_000);
     return () => { off = true; window.clearInterval(iv); };
-  }, [t.id, t.locationId, t.day]);
+  }, [key, t.id, t.locationId, t.day]);
   return rows;
 }
 
@@ -70,6 +74,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
     .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0)), [source, chairs, t]);
   const claim = dayClaim(records, chairs, t.id, t.locationId, t.day, (r) => Boolean(remit.claimOf(r.id)));
   const busy = remit.busy === `${t.id}@${t.locationId}`;
+  const offline = useOffline();
   // Owner sees only their split (split-view.ts), never the full sales.
   const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
   const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
@@ -142,7 +147,8 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                     {claim.open > 0 && adj.adjusted ? ` · Adjusted from ${peso(adj.expected)}` : allClaimed && claimedAdj ? ` · Adjusted from ${peso(claimedAdj.expected)}` : ""}
                   </p> : null}
                   {claim.open > 0 && !editing ? (
-                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={doClaim}>{`Claim ${peso(adj.received)}`}</Button>
+                    <><Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} disabled={offline} onClick={doClaim}>{`Claim ${peso(adj.received)}`}</Button>
+                    {offline ? <p className="mt-1.5 text-center text-[12px] font-semibold text-on-ink-muted">{CLAIM_OFFLINE}</p> : null}</>
                   ) : null}
                 </>
               )}

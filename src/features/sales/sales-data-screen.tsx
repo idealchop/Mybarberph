@@ -1,4 +1,5 @@
 "use client";
+import { OfflineAsOf } from "@/components/common/offline-banner";
 import { useSearchParams } from "next/navigation";
 import { AppLoader } from "@/components/common/app-loader";
 import { MapPin } from "lucide-react";
@@ -81,6 +82,7 @@ export function SalesDataScreen() {
           </button>
         </div>
       </header>
+      <OfflineAsOf className="mt-2 px-1" />
 
       <div role="tablist" aria-label="Sales view" className="mt-3 grid grid-cols-2 rounded-pill bg-grey-100 p-1">
         {VIEWS.map((item) => (

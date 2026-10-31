@@ -1,4 +1,5 @@
 "use client";
+import { OfflineAsOf } from "@/components/common/offline-banner";
 
 import { totalLabel } from "@/lib/total-labels";
 import { useNow } from "@/lib/use-now";
@@ -146,6 +147,7 @@ export function ProfitReportScreen() {
         <PageBack fallback="/home" />
         <h1 className="min-w-0 text-[22px] font-extrabold leading-tight tracking-[-0.03em]">{month ? "Monthly" : "Weekly"} Profit Report</h1>
       </div>
+      <OfflineAsOf className="mt-1 px-1" />
 
       <section aria-label="Your profit" className="mt-3 rounded-banner bg-ink py-3 pl-4 pr-2 text-on-ink">
         <div className="flex items-center justify-between gap-2">

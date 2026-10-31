@@ -20,3 +20,4 @@ public/maplibre/
 /playwright-report/
 /coverage/
 firebase-debug.log
+public/sw-precache.json
