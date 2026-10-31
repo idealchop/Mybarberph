@@ -23,6 +23,7 @@ import { mergeLiveRows } from "@/lib/cut-count";
 import { cellClaimState, claimStates } from "@/lib/profit-claim";
 import { useRemit } from "./use-remit";
 import { ProfitChart } from "./profit-chart";
+import { ProfitBarberWeek } from "./profit-barber-week";
 
 const FETCH_DAYS = 100;
 /** Month view reaches back this many months (rows are fetched for FETCH_DAYS). */
@@ -67,6 +68,8 @@ export function ProfitReportScreen() {
   const [mode, setMode] = useState<"week" | "month">("week");
   const [monthOffset, setMonthOffset] = useState(0);
   const [view, setView] = useState<View>("list");
+  /** v1.0.32: barber row tapped → that barber's week (key `${id}@${locationId}`); the row is re-read from the grid each render. */
+  const [focus, setFocus] = useState<string | null>(null);
   const cloudValues = useCloud().values;
   const salesGroups = useMemo(() => { try { return normalizeGroups(JSON.parse(cloudValues[SALES_GROUPS_KEY] || "null")); } catch { return normalizeGroups(null); } }, [cloudValues]);
   const branches = useMemo(
@@ -95,9 +98,10 @@ export function ProfitReportScreen() {
   const grouped = canGroup && view === "groups" ? groupProfitRows(report.rows, salesGroups) : null;
 
   const renderRow = (row: ProfitRow) => (
-                <tr key={`${row.id}@${row.locationId}`}>
+                <tr key={`${row.id}@${row.locationId}`} onClick={month ? undefined : () => setFocus(`${row.id}@${row.locationId}`)} className={month ? undefined : "cursor-pointer"}>
                   <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
-                    <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
+                    {month ? <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
+                      : <button type="button" onClick={(e) => { e.stopPropagation(); setFocus(`${row.id}@${row.locationId}`); }} aria-label={`${row.name}: show this week`} className="block w-full truncate text-left font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</button>}
                     {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
                   </th>
                   {row.days.map((n, i) => {
@@ -106,7 +110,7 @@ export function ProfitReportScreen() {
                     return (
                       <td key={c?.key ?? i} className={cn("whitespace-nowrap border-b border-line p-0 text-center tabular-nums", c?.today && "bg-grey-100")}>
                         {c && !c.future && c.day ? (
-                          <button type="button" onClick={() => setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! })}
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! }); }}
                             aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}${st === "open" ? ", unclaimed" : st === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
                             {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
@@ -124,6 +128,17 @@ export function ProfitReportScreen() {
   );
 
   if (!deep && !cloud.ready) return <AppLoader />;
+  const focused = !month && focus ? week.rows.find((r) => `${r.id}@${r.locationId}` === focus) : undefined;
+  if (focused) {
+    return (
+      <>
+        <ProfitBarberWeek row={focused} days={week.days} claimMap={claimMap} today={today} range={shortLabel}
+          onDay={(day) => setSheet({ id: focused.id, name: focused.name, locationId: focused.locationId, locationName: focused.locationName, day })}
+          onBack={() => setFocus(null)} />
+        {sheet ? <ProfitDaySheet t={sheet} rows={rows} chairs={chairs} profileHref={barberHref(sheet, sheet.day)} onClose={() => setSheet(null)} /> : null}
+      </>
+    );
+  }
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-2 lg:max-w-[980px] lg:px-[30px] lg:pt-6">
       <div className="flex items-center gap-0.5">
