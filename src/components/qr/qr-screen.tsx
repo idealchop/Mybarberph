@@ -46,14 +46,14 @@ export function QrScreen() {
   return (
     <div className="mx-auto w-full max-w-[402px] px-4 pb-8 pt-4 md:max-w-[760px] lg:max-w-[1080px] lg:px-[30px] lg:pt-6">
       <Topbar className="px-1" leading={<PageBack fallback="/home" />} title="QR codes" subtitle={targets.length > 1 ? `One booking QR per location · ${targets.length} locations` : "Customers scan this to book"} />
-      <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-5 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 lg:grid-cols-[minmax(0,1fr)_320px]">
         {!listed ? (
           <Card className="px-5 py-6 text-center">
             <b className="text-[16px]">Booking</b>
             <p className="mx-auto mt-1 max-w-[300px] text-[13px] font-medium text-muted">Add the shop name and save your haircut in Services. Then your QR codes appear here.</p>
           </Card>
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2" aria-label="Booking QR codes">
+          <ul className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0" aria-label="Booking QR codes">
             {targets.map((t) => <QrCard key={t.id ?? "main"} t={t} shopName={profile.name} logo={ownerLogo} />)}
           </ul>
         )}
@@ -90,18 +90,19 @@ function QrCard({ t, shopName, logo }: { t: QrTarget; shopName: string; logo?: s
     } finally { setMaking(false); }
   };
   return (
-    <li className={`flex flex-col items-center rounded-card bg-surface px-4 py-5 text-center shadow-card ${t.active ? "ring-2 ring-ink" : ""}`}>
+    <li className={`flex w-full min-w-0 flex-col items-center overflow-hidden rounded-card bg-surface px-4 py-5 text-center shadow-card ${t.active ? "ring-2 ring-ink" : ""}`}>
       <span className="flex max-w-full items-center gap-2">
         <b className="truncate text-[16px]">{t.name}</b>
         {t.active ? <span className="flex-none rounded-pill bg-ink px-2 py-0.5 text-[11px] font-bold text-on-ink">Active</span> : null}
       </span>
-      <div className="mt-3 rounded-tile bg-surface p-3 ring-1 ring-grey-200">
+      {/* v1.0.36: centered, shrinks on narrow phones (max 188px code), never wider than the card. */}
+      <div className="mx-auto mt-3 w-full max-w-[212px] rounded-tile bg-surface p-3 ring-1 ring-grey-200 [&_svg]:h-auto [&_svg]:w-full">
         <QrCode value={t.url} size={188} label={`Booking QR code for ${t.name}`} logo={logo || "/icon-192.png"} />
       </div>
-      <p className="mt-3 w-full truncate font-mono text-[11px] font-medium text-subtle" title={t.url}>{t.url.replace(/^https?:\/\//, "")}</p>
-      <div className="mt-3 grid w-full grid-cols-2 gap-2">
-        <Button size="sm" variant="secondary" onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}>{copied ? "Copied" : "Copy link"}</Button>
-        <Button size="sm" onClick={download} loading={making} leadingIcon={<Download size={15} />}>Download QR</Button>
+      <p className="mt-3 w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] font-medium text-subtle" title={t.url}>{t.url.replace(/^https?:\/\//, "")}</p>
+      <div className="mt-3 grid w-full min-w-0 grid-cols-2 gap-2 [&>*]:min-w-0 [&>*]:w-full">
+        <Button size="sm" variant="secondary" onClick={copy} leadingIcon={copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}><span className="truncate">{copied ? "Copied" : "Copy link"}</span></Button>
+        <Button size="sm" onClick={download} loading={making} leadingIcon={<Download size={15} />}><span className="truncate">Download</span></Button>
       </div>
     </li>
   );

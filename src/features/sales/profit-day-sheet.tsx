@@ -13,6 +13,7 @@ import { cloudSnapshot, saveBooking } from "@/lib/cloud";
 import type { ChairRequest } from "@/lib/booking-types";
 import { peso } from "@/lib/format";
 import { defaultManualTime, manualRecord } from "@/lib/manual-record";
+import { haircutMinutesLabel } from "@/lib/visit-minutes";
 import { dayClaim, remitKey } from "@/lib/profit-claim";
 import { ownerPart } from "@/lib/split-view";
 import { useShopMenu } from "@/lib/shop-services";
@@ -162,7 +163,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                 {records.map((r) => (
                   <li key={r.id} className="border-b border-line last:border-b-0">
                     <button type="button" onClick={() => setOpen(r)} className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-3 text-left active:bg-grey-200">
-                      <span className="w-[3.9rem] flex-none text-[12.5px] font-bold tabular-nums text-muted">{time(r.completedAt)}</span>
+                      <span className="w-[3.9rem] flex-none tabular-nums"><span className="block text-[12.5px] font-bold text-muted">{time(r.completedAt)}</span>{haircutMinutesLabel(r) ? <small className="block text-[11px] font-medium text-subtle">{haircutMinutesLabel(r)}</small> : null}</span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[14.5px]">{r.serviceName || "Service"}</b>
                         <small className="block truncate text-[12px] font-semibold text-muted">{[r.customerLabel || "Walk-in", r.source === "manual" ? "Added by hand" : ""].filter(Boolean).join(" · ")}</small>
