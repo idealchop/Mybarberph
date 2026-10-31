@@ -12,7 +12,7 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
-import { BarChart3, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
+import { BarChart3, CalendarDays, Check, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { cn } from "@river-apps/ui";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
 import { useInstallHidden } from "@/lib/pwa";
@@ -33,6 +33,8 @@ import { peso } from "@/lib/format";
 import { customerName, tipOf, visitPct } from "@/lib/income-split";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useGreeting, useShopProfile } from "@/lib/shop-profile";
+import { BottomSheet } from "@/components/common/bottom-sheet";
+import { addServicePatch, addedServices, newWalkIn, removeServicePatch, serviceLine } from "@/lib/walkin-visit";
 import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-services";
 
 /** Install view (Jimboy, 2026-10-20): barber-focused lines. */
@@ -112,6 +114,7 @@ function ActiveCard({
   onScan: () => void;
 }) {
   const offer = row ? visitOffer(row, haircut, treatments) : null;
+  const [picking, setPicking] = useState(false);
   const elapsed = row?.startedAt ? elapsedLabel(row.startedAt, now) : "";
   // No "Walk-in" label (Jimboy, 2026-10-21): show the name when there is one.
   const who = row ? (customerName(row) || row.contact || "Now serving") : "Ready for next customer";
@@ -120,7 +123,13 @@ function ActiveCard({
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
         <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold">Live</span></> : "Available"}</h2>
-        <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${offer.label} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
+        <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${serviceLine(row, offer.label)} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
+        {row && !row.home && treatments.length ? (
+          <button type="button" onClick={() => setPicking(true)} className="relative -ml-1 mt-0.5 px-1 py-1 text-[12.5px] font-bold text-on-ink underline-offset-2 hover:underline after:absolute after:inset-x-0 after:-inset-y-2 after:content-['']">
+            Add service
+          </button>
+        ) : null}
+        {row && picking ? <AddServiceSheet row={row} treatments={treatments} onClose={() => setPicking(false)} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
             <>
@@ -155,6 +164,38 @@ function ActiveCard({
   );
 }
 
+/**
+ * v1.0.31: shop services for the live visit. Tap one to add it (amount goes up by its menu price); added ones can be
+ * removed before Complete. Same visit row, so it is still one haircut in every count.
+ */
+function AddServiceSheet({ row, treatments, onClose }: { row: ChairRequest; treatments: ShopTreatment[]; onClose: () => void }) {
+  const [busy, setBusy] = useState("");
+  const added = addedServices(row).map((n) => n.toLowerCase());
+  const run = (id: string, patch: Partial<ChairRequest>) => {
+    setBusy(id);
+    patchRequest(row.id, patch);
+    window.setTimeout(() => setBusy(""), 400);
+  };
+  return (
+    <BottomSheet title="Add service" subtitle={`${serviceLine(row, "Haircut")} · ${peso(row.price || 0)}`} onClose={onClose}
+      footer={<><Button fullWidth onClick={onClose}>Done</Button><Button className="mt-1" fullWidth variant="ghost" onClick={onClose}>Cancel</Button></>}>
+      <ul className="flex flex-col gap-2">
+        {treatments.map((svc) => {
+          const on = added.includes(svc.name.toLowerCase());
+          return (
+            <li key={svc.id} className="flex items-center gap-3 rounded-[16px] bg-surface px-3 py-2.5 ring-1 ring-grey-200">
+              <BarberIcon name={svc.icon} size={36} title={svc.name} />
+              <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{svc.name}</b><small className="text-[12.5px] font-semibold text-muted">{svc.price ? `₱${svc.price}` : ""}</small></span>
+              <Button size="sm" variant={on ? "secondary" : "primary"} loading={busy === svc.id}
+                onClick={() => run(svc.id, on ? removeServicePatch(row, svc) : addServicePatch(row, svc))}>{on ? "Remove" : "Add"}</Button>
+            </li>
+          );
+        })}
+      </ul>
+    </BottomSheet>
+  );
+}
+
 /** The page a barber opens from the link. No account. */
 export function BarberLinkScreen({ token }: { token: string }) {
   useEffect(() => { startBarberCloud(token); }, [token]);
@@ -167,7 +208,6 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const { haircut, treatments } = useShopMenu(chairPreview?.locationId || HOME_LOCATION_ID);
   const now = useNow();
   const [note, setNote] = useState("");
-  const [adding, setAdding] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [history, setHistory] = useState(false);
   const [perf, setPerf] = useState(false);
@@ -175,10 +215,6 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [install, setInstall] = useState(false);
   const installHidden = useInstallHidden(token);
   const shopsLoc = useShopLocations();
-  const [name, setName] = useState("");
-  const [picked, setPicked] = useState<string[]>([]);
-  // Walk-in: add-on services stay folded behind "Other services" until tapped (Jimboy, 2026-10-20).
-  const [showOther, setShowOther] = useState(false);
   const chair = chairPreview;
   const allowance = useWalkInAllowance(chair?.locationId || HOME_LOCATION_ID);
   useEffect(() => {
@@ -277,90 +313,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
       )}
       {note && note !== allowance.label && note !== allowance.message ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
 
-      {adding ? (
-        <section className="mt-5">
-          <h2 className="px-1 text-[12.5px] font-extrabold text-muted">Walk-in</h2>
-          <div className="mt-2 flex items-center gap-3 rounded-[16px] bg-ink px-3 py-2.5 text-on-ink">
-            <BarberIcon name={haircut.icon} size={40} title={haircut.name} />
-            <span className="min-w-0 flex-1">
-              <b className="block">{haircut.name}</b>
-              <small className="text-[12.5px] font-semibold text-on-ink/70">{haircut.price ? `₱${haircut.price}` : ""}</small>
-            </span>
-          </div>
-          {treatments.length ? (
-            <>
-              <button
-                type="button"
-                aria-expanded={showOther || picked.length > 0}
-                aria-controls="walkin-other-services"
-                onClick={() => setShowOther((v) => !v)}
-                className="mt-4 flex w-full items-center justify-center gap-1 rounded-[14px] py-2 text-center text-[13.5px] font-bold text-ink-2 hover:bg-grey-100"
-              >
-                Other services{picked.length ? ` · ${picked.length}` : ""}
-                <ChevronDown size={16} strokeWidth={2.2} aria-hidden className={`transition-transform ${showOther || picked.length ? "rotate-180" : ""}`} />
-              </button>
-              {showOther || picked.length > 0 ? <div id="walkin-other-services" className="mt-2 flex flex-col gap-2">
-                {treatments.map((service) => {
-                  const on = picked.includes(service.id);
-                  return (
-                    <button
-                      key={service.id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setPicked((cur) => on ? cur.filter((id) => id !== service.id) : [...cur, service.id])}
-                      className={`flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-left ${on ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}
-                    >
-                      <BarberIcon name={service.icon} size={40} title={service.name} />
-                      <span className="min-w-0 flex-1 font-bold">{service.name}</span>
-                      <span className="text-[13px] font-semibold">{service.price ? `₱${service.price}` : ""}</span>
-                    </button>
-                  );
-                })}
-              </div> : null}
-            </>
-          ) : null}
-          <div className="mt-4">
-            <Input label="Name" placeholder="Optional" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <Button className="mt-4" fullWidth onClick={() => {
-            if (current) {
-              setNote("Finish your current haircut first.");
-              return;
-            }
-            if (allowance.atLimit) { setNote(allowance.message); return; }
-            // eslint-disable-next-line react-hooks/purity -- runs inside the onClick handler, not during render
-            const nowAt = Date.now();
-            const chosen = treatments.filter((service) => picked.includes(service.id));
-            const sat = seatWalkInOnChair({
-              id: `wk-${nowAt}`,
-              shopId: cloud.shopId ?? "",
-              ref: refCode(),
-              channel: "walk-in",
-              status: "accepted",
-              contact: "",
-              customerLabel: name.trim() || "Walk-in",
-              serviceId: "haircut",
-              serviceName: [haircut.name, ...chosen.map((service) => service.name)].join(" · "),
-              price: Math.round(((haircut.price ?? 0) + chosen.reduce((sum, service) => sum + (service.price ?? 0), 0)) * 100),
-              slotLabel: "Now",
-              payWhere: "shop",
-              paid: false,
-              createdAt: nowAt,
-              updatedAt: nowAt,
-            }, chair.label, placeId);
-            if (!sat) {
-              setNote(`You already have a customer.`);
-              return;
-            }
-            setAdding(false);
-            setName("");
-            setPicked([]);
-            setShowOther(false);
-            setNote("");
-          }}>Accept</Button>
-          <Button className="mt-1" fullWidth variant="ghost" onClick={() => { setAdding(false); setName(""); setPicked([]); setShowOther(false); }}>Cancel</Button>
-        </section>
-      ) : scanning ? (
+      {scanning ? (
         <OnlineScan
           rows={rows.filter((row) => here(row) && row.channel === "online")}
           onCancel={() => setScanning(false)}
@@ -392,8 +345,11 @@ export function BarberLinkScreen({ token }: { token: string }) {
             return;
           }
           if (allowance.atLimit) { setNote(allowance.message); return; }
-          setNote(allowance.label);
-          setAdding(true);
+          // v1.0.31 (Jimboy): no picker or Accept step. The walk-in is created already in the chair with the
+          // shop's Haircut and price, and the timer starts at once. More services are added from the card.
+          const at = Date.now();
+          const sat = seatWalkInOnChair(newWalkIn({ shopId: cloud.shopId ?? "", ref: refCode(), haircut, at }), chair.label, placeId);
+          setNote(sat ? "" : "You already have a customer.");
           setScanning(false);
         }}
         onScan={() => {
@@ -403,7 +359,6 @@ export function BarberLinkScreen({ token }: { token: string }) {
           }
           setNote("");
           setScanning(true);
-          setAdding(false);
         }}
       />
 
