@@ -12,7 +12,7 @@ const emit = (e: RemitEvent) => { for (const l of [...listeners]) l(e); };
 let seq = 0;
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; ownerShare?: number; count: number; oldest: number }
-export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; /** Optimistic claim not yet confirmed by the server (v1.0.30). */ pending?: boolean; ownerShare?: number; sharePct?: number | null }
+export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; /** Optimistic claim not yet confirmed by the server (v1.0.30). */ pending?: boolean; ownerShare?: number; sharePct?: number | null; /** Adjusted claim (v1.0.34). */ expected?: number; received?: number; adjusted?: boolean; difference?: number }
 export interface Remit { unclaimed: UnclaimedRow[]; total: number; ownerTotal?: number; claims: ClaimRow[] }
 
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
@@ -50,14 +50,14 @@ export function useRemit(loc: string) {
     return () => window.clearInterval(t);
   }, [user, load]);
   /** Claim: optimistic (green at once in every view), rolled back to red on failure, then every view refetches. */
-  const claim = async (barberId: string, locationId: string, day?: string, bookingIds: string[] = []) => {
+  const claim = async (barberId: string, locationId: string, day?: string, bookingIds: string[] = [], adjust?: { expected: number; received: number }) => {
     const key = `${barberId}@${locationId}`;
     if (busy) return;
     setBusy(key); setError("");
     const id = `${PENDING_PREFIX}${Date.now()}-${++seq}`;
-    emit({ kind: "apply", p: { id, barberId, locationId, bookingIds, day, at: Date.now() } });
+    emit({ kind: "apply", p: { id, barberId, locationId, bookingIds, day, at: Date.now(), ...(adjust ?? {}) } });
     try {
-      await api("/api/shop/remit-claims", { method: "POST", body: JSON.stringify({ barberId, locationId, ...(day ? { day } : {}) }) });
+      await api("/api/shop/remit-claims", { method: "POST", body: JSON.stringify({ barberId, locationId, ...(day ? { day } : {}), ...(adjust && adjust.received !== adjust.expected ? { received: adjust.received } : {}) }) });
       invalidate("remit:"); invalidate("barber");
       emit({ kind: "reload" });
       await load().catch(() => undefined);

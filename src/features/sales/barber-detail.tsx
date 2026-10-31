@@ -16,6 +16,7 @@ import { SalesChartCard } from "./sales-chart";
 import { ClaimHistory } from "./sales-parts";
 import { PerformanceDashboard } from "./performance-dashboard";
 import type { Remit } from "./use-remit";
+import { claimedValue } from "@/lib/claim-adjust";
 import { UNASSIGNED } from "@/lib/cut-count";
 import { sharePct } from "@/lib/income-split";
 
@@ -46,7 +47,7 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
   const perHour = busy > 0 ? Math.round((minutes.length / (busy / 60)) * 10) / 10 : null;
 
   const toClaim = (remit?.unclaimed ?? []).filter((u) => u.barberId === id).reduce((s, u) => s + (u.ownerShare ?? u.amount), 0);
-  const claimed = (remit?.claims ?? []).filter((c) => c.barberId === id).reduce((s, c) => s + (c.ownerShare ?? c.amount), 0);
+  const claimed = (remit?.claims ?? []).filter((c) => c.barberId === id).reduce((s, c) => s + claimedValue(c), 0);
 
   const rated = cur.filter((r) => typeof r.rating === "number" && r.rating > 0);
   const avgRating = rated.length ? Math.round((rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length) * 10) / 10 : null;

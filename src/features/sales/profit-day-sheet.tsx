@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Plus, UserRound } from "lucide-react";
+import { Check, ChevronRight, Pencil, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
@@ -20,6 +20,7 @@ import type { ShopChair } from "@/lib/shop-chairs";
 import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
+import { claimAdjust, dayAdjustment, parseClaimAmount } from "@/lib/claim-adjust";
 import { ClaimTag } from "@/components/transactions/claim-tag";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
@@ -70,6 +71,19 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   // Owner sees only their split (split-view.ts), never the full sales.
   const dayTotal = records.reduce((s, r) => s + ownerPart(r, chairs), 0);
   const allClaimed = !claim.owner && claim.open === 0 && claim.claimed > 0;
+  // Editable claim (v1.0.34): owner enters the actual amount received; sales records are never touched.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [received, setReceived] = useState<number | null>(null);
+  const [openSeen, setOpenSeen] = useState(claim.open);
+  if (openSeen !== claim.open) { setOpenSeen(claim.open); setReceived(null); setEditing(false); }
+  const adj = claimAdjust(claim.open, received);
+  const draftValue = parseClaimAmount(draft);
+  const startEdit = () => { setDraft(String(adj.received)); setEditing(true); };
+  const saveEdit = () => { if (draftValue === null) return; setReceived(draftValue); setEditing(false); };
+  const doClaim = () => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id), adj.adjusted ? { expected: adj.expected, received: adj.received } : undefined);
+  const claimedAdj = dayAdjustment(records.map((r) => remit.claimOf(r.id)).filter((c): c is NonNullable<typeof c> => Boolean(c)));
+  const claimedShown = claimedAdj ? claim.claimed - claimedAdj.expected + claimedAdj.received : claim.claimed;
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -98,10 +112,33 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
               : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
               : (
                 <>
-                  <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
-                  <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>Total {peso(dayTotal)}</p>
-                  {claim.open > 0 ? (
-                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id))}>{`Claim ${peso(claim.open)}`}</Button>
+                  {claim.open > 0 && editing ? (
+                    <div className="mt-1.5">
+                      <label className="flex h-14 items-center gap-1 rounded-[16px] bg-white/10 px-3.5 ring-2 ring-white/60 focus-within:ring-white">
+                        <span className="text-[26px] font-extrabold text-on-ink-muted">₱</span>
+                        <input autoFocus inputMode="decimal" aria-label="Amount received" value={draft}
+                          onChange={(e) => setDraft(e.target.value.replace(/[^\d.,]/g, ""))}
+                          onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditing(false); }}
+                          className="min-w-0 flex-1 bg-transparent text-[30px] font-extrabold tabular-nums tracking-[-0.03em] text-on-ink outline-none" />
+                      </label>
+                      <p className="mt-2 text-[12px] font-semibold text-on-ink-muted">{draftValue === null ? "Enter a valid amount" : `Expected ${peso(adj.expected)} from the records`}</p>
+                      <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3" disabled={draftValue === null} onClick={saveEdit}>Save</Button>
+                      <button type="button" onClick={() => setEditing(false)} className="mt-1 h-10 w-full text-[14px] font-bold text-on-ink-muted">Cancel</button>
+                    </div>
+                  ) : claim.open > 0 ? (
+                    <button type="button" onClick={startEdit} aria-label="Edit amount to claim" className="mt-1 flex items-center gap-2 text-left">
+                      <b className="block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-[#FF6B6B]">{peso(adj.received)}</b>
+                      <span className="flex size-7 items-center justify-center rounded-full bg-white/15"><Pencil size={13} aria-hidden /></span>
+                    </button>
+                  ) : (
+                    <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claimedShown)}</b>
+                  )}
+                  {!editing ? <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>
+                    Total {peso(dayTotal)}
+                    {claim.open > 0 && adj.adjusted ? ` · Adjusted from ${peso(adj.expected)}` : allClaimed && claimedAdj ? ` · Adjusted from ${peso(claimedAdj.expected)}` : ""}
+                  </p> : null}
+                  {claim.open > 0 && !editing ? (
+                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={doClaim}>{`Claim ${peso(adj.received)}`}</Button>
                   ) : null}
                 </>
               )}

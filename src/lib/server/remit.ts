@@ -1,3 +1,4 @@
+import { claimAdjust } from "@/lib/claim-adjust";
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
 import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
@@ -9,6 +10,7 @@ import { CLAIM_RULE, claimIndex, isClaimable } from "@/lib/claim-rule";
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
   /** Owner/shop share claimed (amount minus the barber's split; None = all). Older claims lack it and are computed on read. */ ownerShare?: number; sharePct?: number | null;
+  /** Adjusted claim (v1.0.34): owner entered the actual amount received. expected = owner share due, difference = received − expected. */ expected?: number; received?: number; adjusted?: boolean; difference?: number;
   /** 2 = lists GCash visits too (v1.0.25). Older claims listed cash only (lib/claim-rule.ts). */ rule?: number }
 export interface Unclaimed { barberId: string; barberName: string; locationId: string; amount: number; ownerShare: number; count: number; oldest: number }
 
@@ -83,7 +85,7 @@ export async function remitSummary(shopId: string, loc: string) {
 }
 
 /** Owner marks a barber's takings as received: every unclaimed paid visit (cash and GCash) for that barber at that location, up to now (or on one Manila `day`). A lock doc serialises claims so a double tap can't claim twice. */
-export async function claimRemit(shopId: string, barberId: string, locationId: string, claimedBy: string, day?: string): Promise<RemitClaim> {
+export async function claimRemit(shopId: string, barberId: string, locationId: string, claimedBy: string, day?: string, received?: number): Promise<RemitClaim> {
   const shop = shopRef(shopId);
   const lock = shop.collection("private").doc("remitLock");
   return shop.firestore.runTransaction(async (tx) => {
@@ -101,6 +103,10 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
       ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, barberId, locationId))), 0), sharePct: pctOf(chairs, barberId, locationId),
       from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy, rule: CLAIM_RULE,
     };
+    if (typeof received === "number") {
+      const a = claimAdjust(claim.ownerShare ?? claim.amount, received);
+      if (a.adjusted) Object.assign(claim, a);
+    }
     tx.set(ref, claim);
     tx.set(lock, { at: claim.claimedAt, last: ref.id });
     cache.delete(shopId);
