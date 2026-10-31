@@ -169,7 +169,7 @@ export function HomeScreen() {
             </Link>
           </div>
         </header>
-        <section className={`relative isolate mx-4 mt-3 flex items-center overflow-hidden rounded-banner px-4 text-on-ink ${busy || mine ? "live-hero" : "bg-ink"}`} style={{ height: 150 }}>
+        <section className={`relative isolate mx-4 mt-3 flex items-center overflow-hidden rounded-banner px-4 text-on-ink ${liveHero(busy, mine)}`} style={{ height: 150 }}>
           <div className="relative z-10 min-w-0 flex-1">
             <p className="truncate text-[12px] leading-4">
               <span className="font-medium text-on-ink-muted">{greeting}, </span>
@@ -178,7 +178,7 @@ export function HomeScreen() {
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
             </h2>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{figures.cuts} haircuts · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{cutsLabel(figures.cuts)} · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
             {mine ? (
               <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold" data-testid="owner-cut">
                 <span className="live-dot" aria-hidden /><span className="truncate">{mine.serviceName} · {mine.customerLabel || "Walk-in"}</span>
@@ -202,9 +202,9 @@ export function HomeScreen() {
             <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
         </section>
         <div className="mx-4 mt-3 grid grid-cols-3 gap-3">
-          <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Customers" value={String(customers)} /></Link>
-          <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="Online" value={String(online)} /></Link>
-          <Link href="/sales/profit" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-24" /> : peso(toClaim)} /></Link>
+          <Link href="/queue" aria-label="Customers today" className="block min-w-0 rounded-card"><StatCard className="min-w-0 overflow-hidden px-3 pb-3" label="Customers" value={<FitValue full={String(customers)} compact={compactCount(customers)} />} /></Link>
+          <Link href="/queue?channel=online" aria-label="Online bookings today" className="block min-w-0 rounded-card"><StatCard className="min-w-0 overflow-hidden px-3 pb-3" label="Online" value={<FitValue full={String(online)} compact={compactCount(online)} />} /></Link>
+          <Link href="/sales/profit" aria-label="Cash to claim from barbers" className="block min-w-0 rounded-card"><StatCard className="min-w-0 overflow-hidden px-3 pb-3" label="To Claim" value={remit.loading ? <Sk className="mt-1 h-7 w-20" /> : <FitValue full={peso(toClaim)} compact={compactPeso(toClaim)} />} /></Link>
         </div>
         <ProfitReportCard className="mx-4 mt-3" />
         {needsSetup ? <SetupCard className="mx-4 mt-3" /> : null}
@@ -222,7 +222,8 @@ export function HomeScreen() {
           <HeroBanner
             size="lg"
             eyebrow={`Today · ${dayLabel}`}
-            title={`${todayTitle} · ${figures.cuts} haircuts`}
+            title={`${todayTitle} · ${cutsLabel(figures.cuts)}`}
+            className={liveHero(busy, mine, "")}
             titleSize="lg"
             description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
             contentWidth={460}
@@ -317,4 +318,29 @@ export function HomeShortcuts({ className = "" }: { className?: string }) {
       ))}
     </nav>
   );
+}
+
+/** v1.0.32: one source for the live (cut in progress) hero look, used by the phone and desktop heroes. */
+function liveHero(busy: number, mine: unknown, idle = "bg-ink") {
+  return busy || mine ? "live-hero" : idle;
+}
+
+function cutsLabel(n: number) {
+  return `${n} haircut${n === 1 ? "" : "s"}`;
+}
+
+function compactNum(n: number) {
+  const a = Math.abs(n);
+  if (a >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;
+  if (a >= 1_000) return `${+(n / 1_000).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+function compactCount(n: number) { return n >= 10_000 ? compactNum(n) : String(n); }
+function compactPeso(n: number) { return `₱${compactNum(n)}`; }
+
+/** v1.0.32: phone stat value that never overflows its card: shrinks by length, then switches to compact (₱22.8k). */
+function FitValue({ full, compact }: { full: string; compact: string }) {
+  const text = full.length > 8 ? compact : full;
+  const size = text.length <= 5 ? "text-[20px]" : text.length <= 7 ? "text-[17px]" : "text-[15px]";
+  return <span title={full} aria-label={full} className={`block max-w-full truncate tabular-nums ${size}`}>{text}</span>;
 }
