@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CloudOff, Check, RefreshCw } from "lucide-react";
+import { CloudOff, Check, RefreshCw, X } from "lucide-react";
+import { Button } from "@/components/common/button";
 import { useCloud } from "@/lib/cloud";
-import { offlineLabel } from "@/lib/offline-queue";
+import { BANNER_SHOWN, closeBanner, nextBannerHide, offlineLabel } from "@/lib/offline-queue";
 
 function subscribeOnline(cb: () => void) {
   window.addEventListener("online", cb);
@@ -23,6 +24,16 @@ export function OfflineBanner({ className = "" }: { className?: string }) {
   const n = queued.length;
   const [synced, setSynced] = useState(false);
   const had = useRef(n);
+  const [hide, setHide] = useState(BANNER_SHOWN);
+  // Adjusted while rendering (React's "state from changing props" pattern), not in an effect.
+  const nextHide = nextBannerHide(hide, n, online);
+  if (nextHide !== hide) setHide(nextHide);
+  const close = (
+    <Button variant="dark" size="sm" aria-label="Close" title="Close" onClick={() => setHide(closeBanner(n, online))}
+      className="absolute right-1 top-1/2 !h-7 !min-h-0 !w-7 -translate-y-1/2 !rounded-full !p-0">
+      <X size={15} strokeWidth={2.4} aria-hidden />
+    </Button>
+  );
   useEffect(() => {
     if (had.current > 0 && n === 0 && online) {
       setSynced(true);
@@ -32,18 +43,19 @@ export function OfflineBanner({ className = "" }: { className?: string }) {
     }
     had.current = n;
   }, [n, online]);
-  if (!online || n > 0) {
+  if ((!online || n > 0) && !hide.hidden) {
     return (
-      <div role="status" aria-live="polite" className={`sticky top-0 z-30 flex h-8 items-center justify-center gap-1.5 bg-ink px-4 text-[12.5px] font-bold text-on-ink ${className}`}>
+      <div role="status" aria-live="polite" className={`sticky top-0 z-30 flex h-8 items-center justify-center gap-1.5 bg-ink px-10 text-[12.5px] font-bold text-on-ink ${className}`}>
         {online ? <RefreshCw size={13} strokeWidth={2.4} className="animate-spin" aria-hidden /> : <CloudOff size={14} strokeWidth={2.4} aria-hidden />}
         <span className="truncate">{n ? offlineLabel(n, online) : "Offline, changes will sync"}</span>
+        {close}
       </div>
     );
   }
-  if (synced) {
+  if (synced && !hide.hidden) {
     return (
-      <div role="status" aria-live="polite" className={`sticky top-0 z-30 flex h-8 items-center justify-center gap-1.5 bg-[#1f8a4c] px-4 text-[12.5px] font-bold text-white ${className}`}>
-        <Check size={14} strokeWidth={2.6} aria-hidden />Synced
+      <div role="status" aria-live="polite" className={`sticky top-0 z-30 flex h-8 items-center justify-center gap-1.5 bg-[#1f8a4c] px-10 text-[12.5px] font-bold text-white ${className}`}>
+        <Check size={14} strokeWidth={2.6} aria-hidden />Synced{close}
       </div>
     );
   }

@@ -98,3 +98,18 @@ export function offlineLabel(n: number, online: boolean) {
   const what = `${n} ${n === 1 ? "haircut" : "haircuts"}`;
   return online ? `Syncing, ${what} waiting to sync` : `Offline, ${what} waiting to sync`;
 }
+
+/**
+ * Banner close (v1.0.38): closing only hides it. It shows again when more haircuts wait than when it was closed,
+ * or when the phone goes offline again after being online.
+ */
+export interface BannerHide { hidden: boolean; atN: number; sawOnline: boolean }
+export const BANNER_SHOWN: BannerHide = { hidden: false, atN: 0, sawOnline: false };
+export function closeBanner(n: number, online: boolean): BannerHide { return { hidden: true, atN: n, sawOnline: online }; }
+export function nextBannerHide(s: BannerHide, n: number, online: boolean): BannerHide {
+  if (!s.hidden) return s;
+  if (n > s.atN) return BANNER_SHOWN;
+  if (!online && s.sawOnline) return BANNER_SHOWN;
+  const atN = Math.min(s.atN, n), sawOnline = s.sawOnline || online;
+  return atN === s.atN && sawOnline === s.sawOnline ? s : { hidden: true, atN, sawOnline };
+}

@@ -70,3 +70,24 @@ describe("v1.0.38 offline queue", () => {
     expect(offlineLabel(2, false)).toBe("Offline, 2 haircuts waiting to sync");
   });
 });
+
+describe("v1.0.38 banner close", async () => {
+  const { BANNER_SHOWN, closeBanner, nextBannerHide } = await import("@/lib/offline-queue");
+  it("stays hidden while the count holds or drops, and while still offline", () => {
+    let s = closeBanner(2, false);
+    s = nextBannerHide(s, 2, false); expect(s.hidden).toBe(true);
+    s = nextBannerHide(s, 1, false); expect(s.hidden).toBe(true);
+  });
+  it("shows again when more haircuts wait", () => {
+    expect(nextBannerHide(closeBanner(1, false), 2, false)).toEqual(BANNER_SHOWN);
+    // count dropped (synced some), then one more queued: shows
+    let s = nextBannerHide(closeBanner(2, true), 0, true);
+    expect(s.hidden).toBe(true);
+    s = nextBannerHide(s, 1, true); expect(s.hidden).toBe(false);
+  });
+  it("shows again when the phone goes offline after being online", () => {
+    let s = closeBanner(1, false);
+    s = nextBannerHide(s, 1, true); expect(s.hidden).toBe(true);
+    s = nextBannerHide(s, 1, false); expect(s.hidden).toBe(false);
+  });
+});
