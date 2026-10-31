@@ -1,3 +1,4 @@
+import { clientId } from "@/lib/offline-queue";
 /**
  * Records the owner adds by hand from the Weekly Profit Report (e.g. encoded later when the shop was offline).
  * Times are Manila (UTC+8, no DST). A record is a finished walk-in whose completedAt (and createdAt) is on the
@@ -45,7 +46,7 @@ export function manualRecord(i: ManualRecordInput, now = Date.now()) {
   if (i.payMethod !== "cash" && i.payMethod !== "gcash") return { error: "Pick Cash or GCash." } as const;
   return {
     row: {
-      id: `wk-m${now}`, shopId: i.shopId, ref: i.ref, channel: "walk-in" as const, status: "done" as const, source: MANUAL_SOURCE,
+      id: clientId("wk-m", now), shopId: i.shopId, ref: i.ref, channel: "walk-in" as const, status: "done" as const, source: MANUAL_SOURCE,
       contact: "", customerLabel: i.customerLabel?.trim() || "Walk-in", serviceId: "haircut", serviceName: i.serviceName || "Haircut",
       price: Math.max(0, Math.round(i.price)), slotLabel: "Added", payWhere: "shop" as const, paid: true, payMethod: i.payMethod,
       barberId: i.barberId, barberName: i.barberName, locationId: i.locationId,

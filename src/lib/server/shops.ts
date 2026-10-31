@@ -321,7 +321,8 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   delete clean.createdBy; delete clean.addedBy;
   if (prev?.createdBy) { clean.createdBy = prev.createdBy; if (prev.addedBy) clean.addedBy = prev.addedBy; }
   else if (!prev && clean.channel === "walk-in" && !manual) { clean.createdBy = barber ? `barber:${barber.barberId}` : shopId; clean.addedBy = barber ? "barber" : "owner"; }
-  else if (!manual && clean.source === MANUAL_SOURCE) delete clean.source;
+  // v1.0.38: a retry of an added record keeps its source (same id = same record).
+  else if (!manual && clean.source === MANUAL_SOURCE && prev?.source !== MANUAL_SOURCE) delete clean.source;
   // A booking keeps its original time (and so its day for the walk-in limit).
   if (prev?.createdAt) clean.createdAt = prev.createdAt;
   // Customer-only fields: the shop can't change them by saving the row.

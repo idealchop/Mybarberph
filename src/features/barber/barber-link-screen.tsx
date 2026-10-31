@@ -12,6 +12,7 @@ import { QrScanner } from "@/components/scan/qr-scanner";
 import { parseTicketCode } from "@/lib/ticket-code";
 import { Avatar, Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
+import { OfflineBanner, SavedOfflineTag } from "@/components/common/offline-banner";
 import { BarChart3, CalendarDays, Check, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { cn } from "@river-apps/ui";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
@@ -124,6 +125,7 @@ function ActiveCard({
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
         <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold">Live</span></> : "Available"}</h2>
+        {row ? <div className="mt-1"><SavedOfflineTag id={row.id} onDark /></div> : null}
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${serviceLine(row, offer.label)} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
         {row && picking ? <AddServiceSheet row={row} treatments={treatments} onClose={() => setPicking(false)} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -300,6 +302,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-6">
+      <OfflineBanner className="-mx-4 -mt-6 mb-4" />
       <header className="flex min-w-0 items-center gap-2.5">
         <Avatar name={profile.name} src={profile.logoUrl || undefined} preset="sky" size={44} />
         <div className="min-w-0">
@@ -585,6 +588,7 @@ function ChairHistory({
             <b className="block truncate text-[14.5px]">{row.customerLabel || row.contact || "Walk-in"}</b>
             <small className="block truncate text-[12px] font-semibold text-muted">{[offer.label, tipOf(row) ? `Tip ${peso(tipOf(row))}` : ""].filter(Boolean).join(" · ")}</small>
           </span>
+          <SavedOfflineTag id={row.id} />
           <ClaimTag r={row} claimed={locked.has(row.id)} />
           <b className="w-[3.6rem] flex-none text-right text-[15px] tabular-nums">{peso(earningsOf(row.price || 0, tipOf(row), visitPct(row, pct)))}</b>
           {locked.has(row.id) ? <Lock size={14} className="flex-none text-subtle" aria-label="Locked" /> : <ChevronRight size={16} className="flex-none text-subtle" aria-hidden />}
@@ -596,6 +600,7 @@ function ChairHistory({
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[402px] bg-canvas px-4 pb-10 pt-4 lg:max-w-[880px] lg:px-[30px]">
+      <OfflineBanner className="-mx-4 -mt-4 mb-2 lg:-mx-[30px]" />
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Back" onClick={onBack} className="-ml-2 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink">
           <ChevronLeft size={26} strokeWidth={1.75} />

@@ -1,3 +1,4 @@
+import { clientId } from "@/lib/offline-queue";
 import type { ChairRequest } from "@/lib/chair-bookings";
 
 /** v1.0.31 (Jimboy): Walk-in starts the haircut at once; extra services are added to the live visit. */
@@ -10,7 +11,7 @@ const centavos = (peso?: number | null) => Math.round((peso ?? 0) * 100);
 /** One walk-in visit with the shop's Haircut and price. Seated by seatWalkInOnChair (same location, barber, split as before). */
 export function newWalkIn(o: { shopId: string; ref: string; haircut: Svc; at: number }): ChairRequest {
   return {
-    id: `wk-${o.at}`,
+    id: clientId("wk-", o.at), // v1.0.38: made on the phone, the idempotency key
     shopId: o.shopId,
     ref: o.ref,
     channel: "walk-in",

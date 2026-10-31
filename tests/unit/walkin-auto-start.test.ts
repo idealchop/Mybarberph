@@ -11,7 +11,7 @@ const wash = { id: "wash", name: "Hair wash", price: 50 };
 describe("v1.0.31 walk-in auto-start", () => {
   it("creates the walk-in with the shop's Haircut and price", () => {
     const r = newWalkIn({ shopId: "s1", ref: "BK-1", haircut, at: 1000 });
-    expect(r).toMatchObject({ id: "wk-1000", channel: "walk-in", serviceId: "haircut", serviceName: "Haircut", price: 20000, payWhere: "shop", paid: false });
+    expect(r).toMatchObject({ id: expect.stringMatching(/^wk-1000-\w+$/), channel: "walk-in", serviceId: "haircut", serviceName: "Haircut", price: 20000, payWhere: "shop", paid: false });
   });
   it("screen seats it straight into the chair (timer starts) with no picker or Accept step", () => {
     const s = readFileSync("src/features/barber/barber-link-screen.tsx", "utf8");

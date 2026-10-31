@@ -1,4 +1,5 @@
 "use client";
+import { clientId } from "@/lib/offline-queue";
 
 import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
@@ -48,7 +49,7 @@ export function WalkInScreen() {
   const serviceName = [haircut.name, ...chosen.map((t) => t.name)].join(" · ");
 
   const newRow = (now: number) => ({
-    id: `wk-${now}`,
+    id: clientId("wk-", now),
     shopId: cloudSnapshot().shopId ?? "",
     ref: refCode(),
     channel: "walk-in" as const,

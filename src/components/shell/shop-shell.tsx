@@ -5,6 +5,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Sidebar } from "@river-apps/ui";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { Button } from "@/components/common/button";
+import { OfflineBanner } from "@/components/common/offline-banner";
 import { AuthGateProvider } from "@/components/auth/auth-gate-provider";
 import { BarberChair } from "@/components/art";
 import { onlineOpenToday, useQueueRequests } from "@/lib/chair-bookings";
@@ -101,6 +102,7 @@ function AppScroller({ pathname, children }: { pathname: string; children: React
   }, [pathname]);
   return (
     <main id={APP_SCROLL_ID} ref={ref} className="app-scroll min-h-0 min-w-0 flex-1 pb-6 lg:pb-0">
+      <OfflineBanner />
       {children}
     </main>
   );
