@@ -19,6 +19,7 @@ import { useShopMenu } from "@/lib/shop-services";
 import type { ShopChair } from "@/lib/shop-chairs";
 import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
+import { isClaimable } from "@/lib/claim-rule";
 import { ClaimTag } from "@/components/transactions/claim-tag";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
@@ -97,11 +98,12 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                   <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claim.open > 0 ? claim.open : claim.claimed)}</b>
                   <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>Total {peso(dayTotal)}</p>
                   {claim.open > 0 ? (
-                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day)}>{`Claim ${peso(claim.open)}`}</Button>
+                    <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} onClick={() => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id))}>{`Claim ${peso(claim.open)}`}</Button>
                   ) : null}
                 </>
               )}
             {remit.error ? <p className="mt-2 text-[12.5px] font-semibold text-on-ink-muted">{remit.error}</p> : null}
+            {remit.error ? <ClaimErrorToast msg={remit.error} onDone={remit.clearError} /> : null}
           </section>
 
           <section aria-label="Records">
@@ -256,4 +258,10 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
       {f.err ? <p role="alert" className="rounded-[14px] bg-grey-100 px-3.5 py-2.5 text-[13px] font-bold">{f.err}</p> : null}
     </div>
   );
+}
+
+/** Error toast when a claim fails and its haircuts roll back to red (v1.0.30). */
+function ClaimErrorToast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => { const t = window.setTimeout(onDone, 5000); return () => window.clearTimeout(t); }, [msg, onDone]);
+  return <div role="alert" className="fixed inset-x-4 bottom-6 z-[100] mx-auto max-w-sm rounded-card bg-[#C62828] px-4 py-3 text-[13px] font-semibold text-white shadow-lg">{`Claim failed: ${msg}`}</div>;
 }
