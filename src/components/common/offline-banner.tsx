@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CloudOff, Check, RefreshCw, X } from "lucide-react";
-import { Button } from "@/components/common/button";
+import { CloudOff, Check, X } from "lucide-react";
+import { Button, Spinner } from "@/components/common/button";
 import { useCloud } from "@/lib/cloud";
 import { BANNER_SHOWN, closeBanner, nextBannerHide, offlineLabel } from "@/lib/offline-queue";
 
@@ -46,7 +46,7 @@ export function OfflineBanner({ className = "" }: { className?: string }) {
   if ((!online || n > 0) && !hide.hidden) {
     return (
       <div role="status" aria-live="polite" className={`sticky top-0 z-30 flex h-8 items-center justify-center gap-1.5 bg-ink px-10 text-[12.5px] font-bold text-on-ink ${className}`}>
-        {online ? <RefreshCw size={13} strokeWidth={2.4} className="animate-spin" aria-hidden /> : <CloudOff size={14} strokeWidth={2.4} aria-hidden />}
+        {online ? <Spinner size={14} /> : <CloudOff size={14} strokeWidth={2.4} aria-hidden />}
         <span className="truncate">{n ? offlineLabel(n, online) : "Offline, changes will sync"}</span>
         {close}
       </div>
