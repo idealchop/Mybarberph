@@ -119,16 +119,12 @@ function ActiveCard({
   // No "Walk-in" label (Jimboy, 2026-10-21): show the name when there is one.
   const who = row ? (customerName(row) || row.contact || "Now serving") : "Ready for next customer";
   return (
+    <>
     <section className={`relative isolate mt-5 flex min-h-[150px] items-center overflow-hidden rounded-banner px-4 py-4 text-on-ink ${row ? "live-hero" : "bg-ink"}`} aria-label="Current customer">
       <div className="relative z-10 min-w-0 flex-1">
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
         <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold">Live</span></> : "Available"}</h2>
         <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${serviceLine(row, offer.label)} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
-        {row && !row.home && treatments.length ? (
-          <button type="button" onClick={() => setPicking(true)} className="relative -ml-1 mt-0.5 px-1 py-1 text-[12.5px] font-bold text-on-ink underline-offset-2 hover:underline after:absolute after:inset-x-0 after:-inset-y-2 after:content-['']">
-            Add service
-          </button>
-        ) : null}
         {row && picking ? <AddServiceSheet row={row} treatments={treatments} onClose={() => setPicking(false)} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
@@ -161,6 +157,14 @@ function ActiveCard({
             {/* eslint-disable-next-line @next/next/no-img-element -- decorative pre-sized local WebP; next/image adds nothing here */}
             <img src="/barber-hero.webp" alt="" width={116} height={111} className="h-auto w-[116px]" /></div>
     </section>
+    {/* Under the card, text + icon only (Jimboy, 2026-10-31). */}
+    {row && !row.home && treatments.length ? (
+      <button type="button" onClick={() => setPicking(true)} className="mt-2 inline-flex items-center gap-1 px-1 py-2 text-[13px] font-semibold text-muted hover:text-ink">
+        <Plus size={15} strokeWidth={2.25} aria-hidden />
+        Add other service
+      </button>
+    ) : null}
+    </>
   );
 }
 

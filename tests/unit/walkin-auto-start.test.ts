@@ -19,6 +19,7 @@ describe("v1.0.31 walk-in auto-start", () => {
     expect(s).not.toContain("setAdding(");
     expect(s).not.toContain("Other services");
     expect(s).toContain("Add service");
+    expect(s).toContain("Add other service");
   });
 });
 
