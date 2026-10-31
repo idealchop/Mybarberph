@@ -27,7 +27,7 @@ import {
 } from "@/lib/chair-bookings";
 import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
-import { addDays, dayLabel, dayOf, earningsOf, historyRow } from "@/lib/barber-history";
+import { addDays, asOfLabel, dayLabel, dayOf, earningsOf, historyRow, HISTORY_REFRESH_MS } from "@/lib/barber-history";
 import { ClaimTag, dayClaimState } from "@/components/transactions/claim-tag";
 import { peso } from "@/lib/format";
 import { customerName, tipOf, visitPct } from "@/lib/income-split";
@@ -501,10 +501,19 @@ function OnlineScan({
  * crashed the whole screen. Rows are normalised, errors show with a retry, and `reload` refreshes after an edit.
  */
 function useHistoryRows(token: string, live: ChairRequest[], day: string) {
-  const [server, setServer] = useState<{ key: string; rows: ChairRequest[]; pct: number | null; locked: string[] } | null>(null);
+  const [server, setServer] = useState<{ key: string; rows: ChairRequest[]; pct: number | null; locked: string[]; at: number } | null>(null);
   const [failed, setFailed] = useState("");
   const [tick, setTick] = useState(0);
   const key = `${day}#${tick}`;
+  // v1.0.35: History refreshes itself (every minute, and when the barber returns to the tab) so it never sits on an
+  // old count: Eddie's screen read 32 while 36 were finished.
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === "visible") setTick((t) => t + 1); };
+    const id = window.setInterval(again, HISTORY_REFRESH_MS);
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("focus", again);
+    return () => { window.clearInterval(id); document.removeEventListener("visibilitychange", again); window.removeEventListener("focus", again); };
+  }, []);
   useEffect(() => {
     let off = false;
     fetch(`/api/barber/${token}/history?date=${day}`, { cache: "no-store" })
@@ -512,18 +521,20 @@ function useHistoryRows(token: string, live: ChairRequest[], day: string) {
       .then((d: { rows?: Partial<ChairRequest>[]; sharePct?: number | null; locked?: string[] }) => {
         if (off) return;
         setFailed("");
-        setServer({ key, rows: (d.rows ?? []).map((r, i) => historyRow(`row-${i}`, r)), pct: d.sharePct ?? null, locked: d.locked ?? [] });
+        setServer({ key, rows: (d.rows ?? []).map((r, i) => historyRow(`row-${i}`, r)), pct: d.sharePct ?? null, locked: d.locked ?? [], at: Date.now() });
       })
       .catch(() => { if (!off) setFailed(key); });
     return () => { off = true; };
   }, [token, day, key]);
-  const fresh = server?.key === key ? server : null;
+  // A background refresh of the same day keeps showing the last rows (no "Loading…" flash every minute).
+  const fresh = server && server.key.split("#")[0] === day ? server : null;
   const byId = new Map<string, ChairRequest>();
   for (const r of fresh?.rows ?? []) byId.set(r.id, r);
   for (const r of live) { const s = byId.get(r.id); if (!s || (r.updatedAt || 0) >= (s.updatedAt || 0)) byId.set(r.id, historyRow(r.id, r)); }
   return {
+    asOf: server?.at ?? null,
     rows: [...byId.values()], pct: fresh?.pct ?? server?.pct ?? null, locked: new Set(fresh?.locked ?? []),
-    loading: !fresh && failed !== key, error: failed === key, reload: () => setTick((t) => t + 1),
+    loading: !fresh && failed !== key, error: failed === key && !fresh, reload: () => setTick((t) => t + 1),
   };
 }
 
@@ -550,7 +561,7 @@ function ChairHistory({
   const [day, setDay] = useState(today);
   const [query, setQuery] = useState("");
   const dateRef = useRef<HTMLInputElement>(null);
-  const { rows, pct, loading, error, locked, reload } = useHistoryRows(token, live, day);
+  const { rows, pct, loading, error, locked, reload, asOf } = useHistoryRows(token, live, day);
   const needle = query.trim().toLowerCase();
   const match = (row: ChairRequest) => {
     if (!needle) return true;
@@ -601,7 +612,7 @@ function ChairHistory({
         </div>
         <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(picked.earnings)}</b>
         <p className={cn("mt-2 text-[12.5px] font-semibold tabular-nums", green ? "text-white/75" : "text-on-ink-muted")}>
-          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} haircut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `Tips ${peso(picked.tips)}` : ""].filter(Boolean).join(" · ")}
+          {loading && picked.cuts === 0 ? "Loading…" : [`${picked.cuts} haircut${picked.cuts === 1 ? "" : "s"}`, pct != null ? `your ${pct}%` : "", picked.tips ? `Tips ${peso(picked.tips)}` : "", asOf ? asOfLabel(asOf) : ""].filter(Boolean).join(" · ")}
         </p>
       </section>
 

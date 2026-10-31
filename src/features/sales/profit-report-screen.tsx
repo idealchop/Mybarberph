@@ -1,5 +1,6 @@
 "use client";
 
+import { totalLabel } from "@/lib/total-labels";
 import { useNow } from "@/lib/use-now";
 import { AppLoader } from "@/components/common/app-loader";
 import { PageBack } from "@/components/shell/page-back";
@@ -102,7 +103,7 @@ export function ProfitReportScreen() {
                   <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
                     {month ? <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
                       : <button type="button" onClick={(e) => { e.stopPropagation(); setFocus(`${row.id}@${row.locationId}`); }} aria-label={`${row.name}: show this week`} className="block w-full truncate text-left font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</button>}
-                    {where === "all" && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
+                    {(where === "all" || row.sameName) && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
                   </th>
                   {row.days.map((n, i) => {
                     const c = report.cols[i];
@@ -220,7 +221,7 @@ export function ProfitReportScreen() {
             </tbody>
             <tfoot>
               <tr className="font-bold">
-                <th scope="row" className="bg-grey-100 py-3 pl-2.5 pr-1 text-left leading-tight lg:px-3">Totals</th>
+                <th scope="row" className="bg-grey-100 py-3 pl-2.5 pr-1 text-left leading-tight lg:px-3">{totalLabel(!shops.enabled ? "shop" : where === "all" ? "all" : "branch")}</th>
                 {report.daily.map((n, i) => {
                   const c = report.cols[i];
                   return (

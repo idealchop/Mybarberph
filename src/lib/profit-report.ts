@@ -28,6 +28,8 @@ export interface ProfitRow {
   /** Owner's share (centavos) for each day of the week, Monday first. */
   days: number[];
   total: number;
+  /** v1.0.35: another barber row has the same name: always show the branch next to it. */
+  sameName?: boolean;
 }
 
 export interface ProfitWeek {
@@ -47,6 +49,7 @@ export interface ProfitChair {
   barberName?: string;
   locationId?: string;
   active?: boolean;
+  vacantAt?: number;
   sharePct?: unknown;
   shareSet?: unknown;
 }
@@ -145,7 +148,10 @@ function profitGrid(
     row.total += amount;
   }
   const off = new Set(chairs.filter((c) => c.active === false).map((c) => `${c.barberId || c.id}@${c.locationId || "home"}`));
-  const list = [...map.values()].filter((row) => row.total > 0 || !off.has(`${row.id}@${row.locationId}`));
+  const vacant = new Set(chairs.filter((c) => !!c.vacantAt).map((c) => `${c.barberId || c.id}@${c.locationId || "home"}`));
+  // v1.0.35: a barber flagged vacantAt internally is listed only when they have haircuts in the period.
+  const list = [...map.values()].filter((row) => row.total > 0 || (!off.has(`${row.id}@${row.locationId}`) && !vacant.has(`${row.id}@${row.locationId}`)));
+  markSameNames(list, chairs);
   list.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   const daily: number[] = Array(cols).fill(0);
   for (const row of list) row.days.forEach((n, i) => { daily[i] = (daily[i] ?? 0) + n; });
@@ -249,4 +255,17 @@ export function rankProfitRows(rows: ProfitRow[]): ProfitRanking {
   const ranked = rows.filter((r) => r.total > 0).sort(byTotal);
   const zero = rows.filter((r) => r.total <= 0).sort((a, b) => a.name.localeCompare(b.name));
   return { ranked, zero, top: ranked[0] ?? null, lowest: ranked.length > 1 ? ranked[ranked.length - 1]! : null, max: ranked[0]?.total ?? 0 };
+}
+
+/**
+ * v1.0.35: flag rows whose barber name matches another barber (any branch, case-insensitive), so screens show the
+ * branch next to each one (two "Raymond Dias" barbers looked identical in Add record).
+ */
+export function markSameNames<T extends { id: string; name: string; locationId: string; sameName?: boolean }>(rows: T[], chairs: { id: string; barberId?: string; barberName?: string; label?: string; locationId?: string }[] = []): T[] {
+  const keys = new Map<string, Set<string>>();
+  const add = (name: string | undefined, key: string) => { const n = name?.trim().toLowerCase(); if (!n) return; const s = keys.get(n) ?? new Set<string>(); s.add(key); keys.set(n, s); };
+  for (const c of chairs) add(c.barberName || c.label, `${c.barberId || c.id}@${c.locationId || "home"}`);
+  for (const r of rows) add(r.name, `${r.id}@${r.locationId}`);
+  for (const r of rows) r.sameName = (keys.get(r.name.trim().toLowerCase())?.size ?? 0) > 1;
+  return rows;
 }

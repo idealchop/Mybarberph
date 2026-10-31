@@ -1,5 +1,6 @@
 "use client";
 // counts-ok: rows arrive via props from sales-detail-screen, which merges useSalesRows (whole-day) with live rows.
+import { cutsLabel } from "@/lib/total-labels";
 import { Button } from "@/components/common/button";
 import { cn } from "@river-apps/ui";
 import { Star } from "lucide-react";
@@ -53,7 +54,7 @@ export function BarberDetail({ id, all, range, chairs, branches, remit }: { id: 
   const avgRating = rated.length ? Math.round((rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length) * 10) / 10 : null;
   const comments = mine.filter((r) => r.feedback?.trim()).sort((a, b) => (b.feedbackAt ?? 0) - (a.feedbackAt ?? 0)).slice(0, 5);
 
-  const series = dailySeries(all, range, "all", (r) => barberKey(r, chairs) === id).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} haircuts` }));
+  const series = dailySeries(all, range, "all", (r) => barberKey(r, chairs) === id).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: cutsLabel(d.cuts) }));
   const sales = cur.reduce((s, r) => s + (r.price || 0), 0);
 
   return (

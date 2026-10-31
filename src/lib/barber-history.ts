@@ -39,3 +39,11 @@ export function dayLabel(ymd: string, now = Date.now()) {
   const wd = new Date(ymdStart(ymd)).toLocaleDateString("en-US", { timeZone: "Asia/Manila", weekday: "short" });
   return `${wd}, ${md}`;
 }
+
+/** v1.0.35: History refetches this often (and when the barber returns to the tab). */
+export const HISTORY_REFRESH_MS = 60_000;
+
+/** "as of 5:48 PM" (Manila) for when History last loaded from the server. */
+export function asOfLabel(ms: number) {
+  return `as of ${new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" })}`;
+}

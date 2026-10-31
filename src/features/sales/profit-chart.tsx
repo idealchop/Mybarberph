@@ -29,10 +29,10 @@ export function ProfitChart({ rows, showBranch, label }: { rows: ProfitRow[]; sh
           const hi = r === top, lo = r === lowest;
           return (
             <li key={`${r.id}@${r.locationId}`} className={cn(ROW, "text-[12.5px] lg:text-[13px]")}
-              aria-label={`${r.name}${showBranch && r.locationName ? `, ${r.locationName}` : ""}: ${peso(r.total)}${hi ? ", highest" : lo ? ", lowest" : ""}`}>
+              aria-label={`${r.name}${(showBranch || r.sameName) && r.locationName ? `, ${r.locationName}` : ""}: ${peso(r.total)}${hi ? ", highest" : lo ? ", lowest" : ""}`}>
               <span className="min-w-0">
                 <span className={cn("block truncate", hi ? "font-extrabold" : "font-semibold")}>{r.name}</span>
-                {showBranch && r.locationName ? <span className="block truncate text-[10.5px] font-medium text-muted">{r.locationName}</span> : null}
+                {(showBranch || r.sameName) && r.locationName ? <span className="block truncate text-[10.5px] font-medium text-muted">{r.locationName}</span> : null}
               </span>
               <span className="h-4 overflow-hidden rounded-pill bg-grey-100 lg:h-5">
                 <span className={cn("block h-full rounded-pill", hi ? "bg-ink" : lo ? "bg-[#C62828]/75" : "bg-[#9A9A9A]")} style={{ width: `${Math.max(3, (r.total / max) * 100)}%` }} />
@@ -45,7 +45,7 @@ export function ProfitChart({ rows, showBranch, label }: { rows: ProfitRow[]; sh
           <li key={`${r.id}@${r.locationId}`} className={cn(ROW, "text-[12.5px] text-muted opacity-70 lg:text-[13px]")}>
             <span className="min-w-0">
               <span className="block truncate font-semibold">{r.name}</span>
-              {showBranch && r.locationName ? <span className="block truncate text-[10.5px] font-medium">{r.locationName}</span> : null}
+              {(showBranch || r.sameName) && r.locationName ? <span className="block truncate text-[10.5px] font-medium">{r.locationName}</span> : null}
             </span>
             <span className="h-4 rounded-pill bg-grey-100 lg:h-5" />
             <span className="text-right text-[11px] font-semibold">No haircuts</span>

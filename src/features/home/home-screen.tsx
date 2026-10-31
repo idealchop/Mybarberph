@@ -1,4 +1,5 @@
 "use client";
+import { scopeCutsLabel, totalScope } from "@/lib/total-labels";
 import { AppLoader } from "@/components/common/app-loader";
 import { Sk } from "@/components/common/skeleton";
 import { useRemit } from "@/features/sales";
@@ -178,7 +179,7 @@ export function HomeScreen() {
             <h2 className="mt-1 text-[18px] font-extrabold leading-[1.15] tracking-[-0.025em]">
               {todayTitle}
             </h2>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{cutsLabel(figures.cuts)} · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-on-ink-muted">{busy ? <span className="live-dot" aria-hidden /> : null}<span>{scopeCutsLabel(figures.cuts, totalScope(shops))} · {busy ? `${busy} barber${busy === 1 ? "" : "s"} busy` : "barbers free"}</span>{busy && Number.isFinite(oldest) ? <b className="font-bold text-on-ink tabular-nums">· {elapsedLabel(oldest, now)}</b> : null}</p>
             {mine ? (
               <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold" data-testid="owner-cut">
                 <span className="live-dot" aria-hidden /><span className="truncate">{mine.serviceName} · {mine.customerLabel || "Walk-in"}</span>
@@ -222,7 +223,7 @@ export function HomeScreen() {
           <HeroBanner
             size="lg"
             eyebrow={`Today · ${dayLabel}`}
-            title={`${todayTitle} · ${cutsLabel(figures.cuts)}`}
+            title={`${todayTitle} · ${scopeCutsLabel(figures.cuts, totalScope(shops))}`}
             className={liveHero(busy, mine, "")}
             titleSize="lg"
             description={mine ? `You’re cutting: ${mine.serviceName} · ${mine.customerLabel || "Walk-in"}${mine.startedAt ? ` · ${elapsedLabel(mine.startedAt, now)}` : ""}` : busy ? `${busy} barber${busy === 1 ? "" : "s"} with a customer` : "All barbers free"}
@@ -325,9 +326,7 @@ function liveHero(busy: number, mine: unknown, idle = "bg-ink") {
   return busy || mine ? "live-hero" : idle;
 }
 
-function cutsLabel(n: number) {
-  return `${n} haircut${n === 1 ? "" : "s"}`;
-}
+
 
 function compactNum(n: number) {
   const a = Math.abs(n);

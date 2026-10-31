@@ -47,7 +47,7 @@ export function ProfitDayBreakdown({ m, date, groups, showBranch, onBarber, onCl
   const row = (r: ProfitRow) => (
     <li key={`${r.id}@${r.locationId}`} className="border-b border-line last:border-b-0">
       <button type="button" onClick={() => onBarber(r)} className="flex min-h-[56px] w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-grey-200">
-        <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{r.name}</b>{showBranch && r.locationName ? <small className="block truncate text-[12px] font-semibold text-muted">{r.locationName}</small> : null}</span>
+        <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px]">{r.name}</b>{(showBranch || r.sameName) && r.locationName ? <small className="block truncate text-[12px] font-semibold text-muted">{r.locationName}</small> : null}</span>
         <b className="flex-none text-[15px] tabular-nums">{peso(r.total)}</b>
         <ChevronRight size={16} className="flex-none text-muted" aria-hidden />
       </button>

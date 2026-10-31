@@ -1,4 +1,5 @@
 "use client";
+import { cutsLabel } from "@/lib/total-labels";
 import { Button } from "@/components/common/button";
 import { payBucket, paySplit } from "@/lib/pay-split";
 import { cn } from "@river-apps/ui";
@@ -120,7 +121,7 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
     heat[d]!.set(h, (heat[d]!.get(h) ?? 0) + 1);
     byDay[d]!.cuts += 1; byDay[d]!.sales += r.price || 0;
   }
-  const series = [...byHour.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ label: hLabel(h), orders: v.orders, salesCentavos: v.sales, detail: `${v.orders} haircuts` }));
+  const series = [...byHour.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ label: hLabel(h), orders: v.orders, salesCentavos: v.sales, detail: cutsLabel(v.orders) }));
   const peak = [...byHour.entries()].sort((a, b) => b[1].orders - a[1].orders)[0];
   const heatMax = Math.max(1, ...heat.flatMap((m) => [...m.values()]));
   const HOURS = Array.from({ length: 16 }, (_, i) => i + 7);

@@ -229,7 +229,7 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
         <Face name={t.name} photo={photo} />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[16px]">{t.name}</b>
-          <small className="block truncate text-[12.5px] font-semibold text-muted">A finished haircut, counted on this day</small>
+          <small className="block truncate text-[12.5px] font-semibold text-muted">{[t.locationName, "A finished haircut, counted on this day"].filter(Boolean).join(" · ")}</small>
         </span>
         <span className="flex-none rounded-pill bg-ink px-3 py-1.5 text-[12.5px] font-bold text-on-ink">{longDay(t.day).replace(/, \d{4}$/, "")}</span>
       </div>

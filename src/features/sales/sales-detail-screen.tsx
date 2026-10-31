@@ -1,4 +1,5 @@
 "use client";
+import { cutsLabel } from "@/lib/total-labels";
 import { AppLoader } from "@/components/common/app-loader";
 import { StatCard } from "@river-apps/ui";
 import { useSearchParams } from "next/navigation";
@@ -59,7 +60,7 @@ export function SalesDetailScreen() {
   const busy = busyMinutes(inRange(scoped, range, loc));
   const days = range === "today" ? 1 : range === "week" ? 7 : 28; // utilization (location view only)
   const util = kind === "barber" && busy ? Math.min(100, Math.round((busy / (days * 600)) * 100)) : null;
-  const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: `${d.cuts} haircuts` }));
+  const series = dailySeries(all, range, loc, mine).map((d) => ({ label: d.label, orders: d.cuts, salesCentavos: d.sales, detail: cutsLabel(d.cuts) }));
   const services = serviceStats(scoped, range, loc).slice(0, 6);
   const remit = useRemit(kind === "barber" ? "all" : id || "all");
   const toClaim = (remit.data?.unclaimed ?? []).filter((u) => kind !== "barber" || (u.barberId === id && (!locHint || u.locationId === locHint))).reduce((s, u) => s + (u.ownerShare ?? u.amount), 0);
