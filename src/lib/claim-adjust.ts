@@ -39,3 +39,18 @@ export function dayAdjustment(claims: { id: string; adjusted?: boolean; expected
   }
   return any ? { expected: round2(expected), received: round2(received) } : null;
 }
+
+/**
+ * v1.0.37: the claim amounts are centavos (like every amount shown with peso()), the input is pesos.
+ * v1.0.34–36 put centavos straight into the input (₱50 due showed "5000") and saved typed pesos as centavos.
+ */
+export function claimInputText(centavos: number): string {
+  const p = Math.round(Math.max(0, centavos || 0)) / 100;
+  return Number.isInteger(p) ? String(p) : p.toFixed(2);
+}
+
+/** What the owner typed (pesos) → centavos, or null when it is not a usable amount. */
+export function parseClaimCentavos(text: string): number | null {
+  const p = parseClaimAmount(text);
+  return p === null ? null : Math.round(p * 100);
+}

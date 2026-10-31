@@ -22,7 +22,7 @@ import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, PICK_BARBER_MESS
 import { cn } from "@river-apps/ui";
 import { useRemit } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
-import { claimAdjust, dayAdjustment, parseClaimAmount } from "@/lib/claim-adjust";
+import { claimAdjust, claimInputText, dayAdjustment, parseClaimCentavos } from "@/lib/claim-adjust";
 import { ClaimTag } from "@/components/transactions/claim-tag";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
@@ -77,11 +77,13 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [received, setReceived] = useState<number | null>(null);
-  const [openSeen, setOpenSeen] = useState(claim.open);
-  if (openSeen !== claim.open) { setOpenSeen(claim.open); setReceived(null); setEditing(false); }
+  // v1.0.37: a new barber, branch, day or expected amount starts clean (no edit or amount from another day).
+  const editKey = `${t.id}@${t.locationId}|${t.day}|${claim.open}`;
+  const [editSeen, setEditSeen] = useState(editKey);
+  if (editSeen !== editKey) { setEditSeen(editKey); setReceived(null); setEditing(false); setDraft(""); }
   const adj = claimAdjust(claim.open, received);
-  const draftValue = parseClaimAmount(draft);
-  const startEdit = () => { setDraft(String(adj.received)); setEditing(true); };
+  const draftValue = parseClaimCentavos(draft);
+  const startEdit = () => { setDraft(claimInputText(adj.received)); setEditing(true); };
   const saveEdit = () => { if (draftValue === null) return; setReceived(draftValue); setEditing(false); };
   const doClaim = () => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id), adj.adjusted ? { expected: adj.expected, received: adj.received } : undefined);
   const claimedAdj = dayAdjustment(records.map((r) => remit.claimOf(r.id)).filter((c): c is NonNullable<typeof c> => Boolean(c)));
@@ -118,7 +120,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                     <div className="mt-1.5">
                       <label className="flex h-14 items-center gap-1 rounded-[16px] bg-white/10 px-3.5 ring-2 ring-white/60 focus-within:ring-white">
                         <span className="text-[26px] font-extrabold text-on-ink-muted">₱</span>
-                        <input autoFocus inputMode="decimal" aria-label="Amount received" value={draft}
+                        <input autoFocus inputMode="decimal" aria-label="Amount received" value={draft} onFocus={(e) => e.currentTarget.select()}
                           onChange={(e) => setDraft(e.target.value.replace(/[^\d.,]/g, ""))}
                           onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditing(false); }}
                           className="min-w-0 flex-1 bg-transparent text-[30px] font-extrabold tabular-nums tracking-[-0.03em] text-on-ink outline-none" />
