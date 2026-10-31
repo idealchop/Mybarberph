@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Clock, Plus, UserRound } from "lucide-react";
+import { Check, ChevronRight, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { BottomSheet } from "@/components/common/bottom-sheet";
 import { Button } from "@/components/common/button";
@@ -76,9 +76,12 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
     <BottomSheet title={adding ? "Add record" : t.name} subtitle={adding ? `${t.name}${t.locationName ? ` · ${t.locationName}` : ""}` : `${longDay(t.day)}${t.locationName ? ` · ${t.locationName}` : ""}`}
       onClose={adding ? () => setAdding(false) : onClose} tall
       footer={adding ? (
-        <Button data-auth="action" fullWidth onClick={add.save} className="!h-14 !text-[16px]">
-          Save record{add.amount > 0 ? ` · ${peso(add.amount)}` : ""}
-        </Button>
+        <div className="flex flex-col items-stretch gap-1">
+          <Button data-auth="action" fullWidth loading={add.saving} onClick={add.save} className="!h-14 !text-[16px]">
+            Save record{add.amount > 0 ? ` · ${peso(add.amount)}` : ""}
+          </Button>
+          <button type="button" onClick={() => setAdding(false)} className="h-11 text-[14px] font-bold text-ink-2">Cancel</button>
+        </div>
       ) : undefined}>
       {adding ? <AddRecordForm t={t} photo={photo} f={add} /> : (
         <div className="flex flex-col gap-5 pb-2 pt-1">
@@ -158,22 +161,29 @@ function useAddRecord(t: DayTarget, onDone: () => void) {
   // Menu loads after the first render: until the owner types an amount, follow the picked service's menu price.
   const [typed, setPrice] = useState<string | null>(null);
   const price = typed ?? String(menu.find((m) => m.name === service)?.price ?? "");
-  const [at, setAt] = useState(defaultManualTime(t.day));
+  // No Time field (v1.0.33): today → now, past day → noon (defaultManualTime), read at save.
+  const [saving, setSaving] = useState(false);
   const [pay, setPay] = useState<"cash" | "gcash">("cash");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const save = () => {
-    const r = manualRecord({ day: t.day, time: at, barberId: t.id, barberName: t.name, locationId: t.locationId, serviceName: service, price: Math.round((Number(price) || 0) * 100), payMethod: pay, customerLabel: name, ref: refCode(), shopId: cloudSnapshot().shopId ?? "" });
+    if (saving) return;
+    const r = manualRecord({ day: t.day, time: defaultManualTime(t.day), barberId: t.id, barberName: t.name, locationId: t.locationId, serviceName: service, price: Math.round((Number(price) || 0) * 100), payMethod: pay, customerLabel: name, ref: refCode(), shopId: cloudSnapshot().shopId ?? "" });
     if (!(Number(price) > 0)) { setErr("Enter the amount."); return; }
     if ("error" in r) { setErr(r.error ?? ""); return; }
-    saveBooking(r.row as ChairRequest);
-    onDone();
+    setSaving(true);
+    try { saveBooking(r.row as ChairRequest); onDone(); } finally { setSaving(false); }
   };
-  return { menu, service, pick: (s: string) => { setService(s); setPrice(null); }, price, setPrice, at, setAt, pay, setPay, name, setName, err, save, amount: Math.round((Number(price) || 0) * 100) };
+  return { menu, service, pick: (s: string) => { setService(s); setPrice(null); }, price, setPrice, saving, pay, setPay, name, setName, err, save, amount: Math.round((Number(price) || 0) * 100) };
 }
 
 function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: ReturnType<typeof useAddRecord> }) {
   const [showName, setShowName] = useState(false);
+  // Haircut only until the owner asks for more (v1.0.33); a non-haircut pick keeps the grid open.
+  const [showOther, setShowOther] = useState(false);
+  const haircut = f.menu[0];
+  const others = f.menu.slice(1);
+  const shown = showOther || (haircut && f.service !== haircut.name) ? f.menu : f.menu.slice(0, 1);
   const label = "px-1 text-[13px] font-bold text-muted";
   const svcIcon = (n: string) => { const s = n.toLowerCase(); return s.includes("beard") ? "beard" : s.includes("shave") ? "shave" : s.includes("kid") ? "kids-cut" : s.includes("wash") || s.includes("shampoo") ? "hair-wash" : s.includes("styl") ? "styling" : "haircut"; };
   return (
@@ -187,19 +197,10 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
         <span className="flex-none rounded-pill bg-ink px-3 py-1.5 text-[12.5px] font-bold text-on-ink">{longDay(t.day).replace(/, \d{4}$/, "")}</span>
       </div>
 
-      <label className="block">
-        <span className={label}>Time</span>
-        <span className="mt-1.5 flex h-16 items-center gap-3 rounded-[18px] bg-grey-100 px-4">
-          <Clock size={22} strokeWidth={2.2} className="flex-none text-muted" aria-hidden />
-          <input aria-label="Time" type="time" value={f.at} onChange={(e) => f.setAt(e.target.value)}
-            className="h-full min-w-0 flex-1 bg-transparent text-[24px] font-extrabold tracking-[-0.02em] tabular-nums outline-none" />
-        </span>
-      </label>
-
       <div>
         <p className={label}>Service</p>
         <div role="radiogroup" aria-label="Service" className="mt-1.5 grid grid-cols-2 gap-2">
-          {f.menu.map((m) => {
+          {shown.map((m) => {
             const on = m.name === f.service;
             return (
               <button key={m.name} type="button" role="radio" aria-checked={on} aria-label={`${m.name}, ${peso(Math.round((m.price ?? 0) * 100))}`} onClick={() => f.pick(m.name)}
@@ -213,6 +214,12 @@ function AddRecordForm({ t, photo, f }: { t: DayTarget; photo?: string; f: Retur
             );
           })}
         </div>
+        {others.length && shown.length === 1 ? (
+          <button type="button" onClick={() => setShowOther(true)} className="mt-2 inline-flex items-center gap-1 px-1 py-2 text-[13px] font-semibold text-muted hover:text-ink">
+            <Plus size={15} strokeWidth={2.25} aria-hidden />
+            Other services
+          </button>
+        ) : null}
       </div>
 
       <label className="block">

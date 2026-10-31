@@ -1,6 +1,7 @@
 "use client";
 import { ChevronLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Slide-up sheet (Jimboy, 2026-10-21): dimmed backdrop, rounded top, Back on the left, scrolls inside.
@@ -14,8 +15,11 @@ export function BottomSheet({ title, subtitle, onClose, children, footer, tall }
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", k); document.body.style.overflow = prev; };
   }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-[78] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
+  // Portal to <body> so a transformed/stacked ancestor can never trap the sheet under the bottom nav (v1.0.33).
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close" className="sheet-fade absolute inset-0 bg-ink/45" onClick={onClose} />
       <div className={`sheet-up relative z-[1] flex w-full max-w-[440px] flex-col rounded-t-[28px] bg-surface shadow-card sm:rounded-[28px] ${tall ? "h-[82dvh]" : "max-h-[90dvh]"}`}>
         <div className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-grey-200" aria-hidden />
@@ -29,6 +33,7 @@ export function BottomSheet({ title, subtitle, onClose, children, footer, tall }
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3">{children}</div>
         {footer ? <div className="flex-none border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3">{footer}</div> : <div className="h-[calc(env(safe-area-inset-bottom)+12px)] flex-none" />}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
