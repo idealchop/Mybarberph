@@ -6,6 +6,7 @@ import { completeCut } from "@/components/transactions/complete-flow";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 
 import { useWalkInAllowance } from "@/lib/walkin-limit";
+import { barberText, barberWho } from "@/lib/barber-wording";
 import { BarberPerformanceView } from "./barber-self";
 import { BarberProfileView } from "./barber-profile-view";
 import { QrScanner } from "@/components/scan/qr-scanner";
@@ -40,7 +41,7 @@ import { useShopMenu, type ShopHaircut, type ShopTreatment } from "@/lib/shop-se
 
 /** Install view (Jimboy, 2026-10-20): barber-focused lines. */
 const BARBER_FEATURES = [
-  { art: <Icon3d src="/icons3d/barbers/128/customers.webp" />, text: "Take walk-ins in a tap" },
+  { art: <Icon3d src="/icons3d/barbers/128/customers.webp" />, text: "Take customers in a tap" },
   { art: <Icon3d src="/icons3d/barbers/128/qr.webp" />, text: "Scan customer tickets" },
   { art: <Icon3d src="/icons3d/barbers/128/reports.webp" />, text: "See my sales and haircuts" },
 ];
@@ -94,7 +95,7 @@ function WaitingCard({
       <div className="flex items-center gap-3">
         <OfferIcons haircut={haircut} extras={offer.extras} />
         <div className="min-w-0 flex-1">
-          <b className="block truncate text-[16px]">{row.customerLabel || row.contact || "Customer"}</b>
+          <b className="block truncate text-[16px]">{barberWho(row.customerLabel || row.contact)}</b>
           <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{offer.label} · {row.slotLabel}</p>
           <p className="mt-0.5 text-[12.5px] font-semibold text-muted">{row.ref}</p>
         </div>
@@ -126,7 +127,7 @@ function ActiveCard({
         <p className="truncate text-[12px] leading-4 font-medium text-on-ink-muted">{who}</p>
         <h2 className="mt-1 flex items-center gap-2 text-[22px] font-extrabold leading-none tabular-nums tracking-[-0.03em]">{row ? <><span className="live-dot" aria-hidden />{elapsed}<span className="sr-only"> in progress</span><span className="rounded-pill bg-white/15 px-1.5 py-0.5 text-[10.5px] font-extrabold">Live</span></> : "Available"}</h2>
         {row ? <div className="mt-1"><SavedOfflineTag id={row.id} onDark /></div> : null}
-        <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${serviceLine(row, offer.label)} · ${row.ref}` : "Walk-in, or an online ticket"}</p>
+        <p className="mt-0.5 truncate text-[12.5px] font-medium text-on-ink-muted">{row && offer ? `${serviceLine(row, offer.label)} · ${row.ref}` : "Customer, or an online ticket"}</p>
         {row && picking ? <AddServiceSheet row={row} treatments={treatments} onClose={() => setPicking(false)} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {row ? <Button variant="white" size="sm" className={PILL} onClick={() => completeCut(row)}>Complete</Button> : (
@@ -135,11 +136,11 @@ function ActiveCard({
                 variant="white"
                 size="sm"
                 className={PILL}
-                aria-label="Walk-in"
+                aria-label="Customer"
                 leadingIcon={<Plus size={14} strokeWidth={2} />}
                 onClick={onWalkIn}
               >
-                Walk-in
+                Customer
               </Button>
               {/* Icon only (Jimboy, 2026-10-27); 44px tap target. */}
               <button
@@ -315,10 +316,10 @@ export function BarberLinkScreen({ token }: { token: string }) {
 
       {allowance.unlimited ? null : (
         <p className="mt-3 rounded-[12px] bg-grey-100 px-3 py-2 text-[12.5px] font-bold text-ink-2" aria-live="polite">
-          {allowance.atLimit ? allowance.message : allowance.label}
+          {barberText(allowance.atLimit ? allowance.message : allowance.label)}
         </p>
       )}
-      {note && note !== allowance.label && note !== allowance.message ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
+      {note && note !== barberText(allowance.label) && note !== barberText(allowance.message) ? <p className="mt-4 text-[13.5px] font-semibold">{note}</p> : null}
 
       {scanning ? (
         <OnlineScan
@@ -351,7 +352,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             setNote("Finish your current haircut first.");
             return;
           }
-          if (allowance.atLimit) { setNote(allowance.message); return; }
+          if (allowance.atLimit) { setNote(barberText(allowance.message)); return; }
           // v1.0.31 (Jimboy): no picker or Accept step. The walk-in is created already in the chair with the
           // shop's Haircut and price, and the timer starts at once. More services are added from the card.
           const at = Date.now();
@@ -388,7 +389,7 @@ export function BarberLinkScreen({ token }: { token: string }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons3d/barbers/128/waiting-area.webp" alt="" width={52} height={52} className="size-[52px] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.12)]" />
             <b className="mt-2 text-[14.5px]">No one waiting</b>
-            <span className="text-[12.5px] font-semibold text-muted">New walk-ins and online bookings show up here.</span>
+            <span className="text-[12.5px] font-semibold text-muted">New customers and online bookings show up here.</span>
           </div>
         ) : (
           <ul className="mt-2 flex flex-col gap-3">
@@ -435,7 +436,7 @@ function HomeVisitCard({ row, seat }: { row: ChairRequest; seat: string }) {
   return (
     <li className="rounded-card bg-surface px-4 py-3.5 shadow-card">
       <div className="flex items-center justify-between gap-2">
-        <b className="truncate text-[15.5px]">{row.customerLabel || "Customer"}</b>
+        <b className="truncate text-[15.5px]">{barberWho(row.customerLabel)}</b>
         <span className="inline-flex h-5 flex-none items-center rounded-pill bg-ink px-1.5 text-[10.5px] font-extrabold text-on-ink">Home</span>
       </div>
       <p className="mt-0.5 truncate text-[13px] font-medium text-muted">{row.serviceName} · {row.slotLabel}{row.price ? ` · ₱${(row.price / 100).toLocaleString("en-PH")}` : ""}</p>
@@ -482,11 +483,11 @@ function OnlineScan({
       </form>
       {needle && !match ? <p className="mt-4 text-[14px] font-semibold">No online ticket matches {code.trim()}.</p> : null}
       {match && !seatable ? (
-        <p className="mt-4 text-[14px] font-semibold">{match.customerLabel || "That customer"} is already {statusLabel(match.status).toLowerCase()}.</p>
+        <p className="mt-4 text-[14px] font-semibold">{barberWho(match.customerLabel) === "Customer" ? "That customer" : barberWho(match.customerLabel)} is already {statusLabel(match.status).toLowerCase()}.</p>
       ) : null}
       {match && seatable ? (
         <article className="mt-4 rounded-card bg-surface px-4 py-4 shadow-card">
-          <b className="block text-[18px]">{match.customerLabel || match.contact || "Customer"}</b>
+          <b className="block text-[18px]">{barberWho(match.customerLabel || match.contact)}</b>
           <p className="mt-1 text-[14px] font-medium text-muted">{match.serviceName} · {match.ref}</p>
           <p className="mt-1 text-[13px] font-semibold text-muted">Online · {match.slotLabel}</p>
           <Button className="mt-4" fullWidth onClick={() => onSeat(match)}>Accept</Button>
@@ -581,11 +582,11 @@ function ChairHistory({
     const offer = visitOffer(row, haircut, treatments);
     return (
       <li key={row.id}>
-        <button type="button" aria-label={`Order details for ${row.customerLabel || row.contact || "customer"}`} onClick={() => setOpenRow(row)}
+        <button type="button" aria-label={`Order details for ${barberWho(row.customerLabel || row.contact)}`} onClick={() => setOpenRow(row)}
           className="flex w-full items-center gap-3 px-3.5 py-3 text-left active:bg-grey-100">
           <span className="w-[3.6rem] flex-none text-[12.5px] font-semibold tabular-nums text-muted">{time(row.completedAt!)}</span>
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-[14.5px]">{row.customerLabel || row.contact || "Walk-in"}</b>
+            <b className="block truncate text-[14.5px]">{barberWho(row.customerLabel || row.contact)}</b>
             <small className="block truncate text-[12px] font-semibold text-muted">{[offer.label, tipOf(row) ? `Tip ${peso(tipOf(row))}` : ""].filter(Boolean).join(" · ")}</small>
           </span>
           <SavedOfflineTag id={row.id} />

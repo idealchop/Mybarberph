@@ -82,7 +82,7 @@ function stats(rows: ChairRequest[]) {
 }
 
 /** Shop performance for the chosen location + dates: trends, timing, mix, rankings. */
-export function PerformanceDashboard({ all, full, range, where, branches, chairs, solo = false, f }: { all: ChairRequest[]; full?: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean; f?: PerfFilters }) {
+export function PerformanceDashboard({ all, full, range, where, branches, chairs, solo = false, f, barberView = false }: { barberView?: boolean; all: ChairRequest[]; full?: ChairRequest[]; range: SalesRange; where: string; branches: { id: string; name: string }[]; chairs: Chair[]; solo?: boolean; f?: PerfFilters }) {
   const { fb = "", fc = "", fp = "", fs = "" } = f ?? {};
   const extraOk = (r: ChairRequest) =>
     (!fb || barberKey(r, chairs) === fb) &&
@@ -256,7 +256,7 @@ export function PerformanceDashboard({ all, full, range, where, branches, chairs
       </Panel>
 
       <Panel title="Mix" sub="How customers came and paid">
-        <Split className="mt-3" label="Channel" parts={[{ k: "Walk-in", v: walk, c: "bg-ink" }, { k: "Online", v: online, c: "bg-[#1b6b63]" }]} fmt={(n) => String(n)} />
+        <Split className="mt-3" label="Channel" parts={[{ k: barberView ? "Customer" : "Walk-in", v: walk, c: "bg-ink" }, { k: "Online", v: online, c: "bg-[#1b6b63]" }]} fmt={(n) => String(n)} />
         <Split className="mt-3" label="Payment" parts={[{ k: "Cash", v: cash, c: "bg-ink" }, { k: "GCash", v: gcash, c: "bg-[#0a6cff]" }, { k: "Online", v: onlinePay, c: "bg-[#1b6b63]" }, ...(otherPay ? [{ k: "Other", v: otherPay, c: "bg-grey-500" }] : []), { k: "Unpaid", v: unpaid, c: "bg-grey-300" }]} fmt={peso} />
         {known.length ? <Split className="mt-3" label="Customers" parts={[{ k: "Repeat", v: repeat, c: "bg-ink" }, { k: "New", v: known.length - repeat, c: "bg-grey-300" }]} fmt={(n) => String(n)} /> : null}
       </Panel>

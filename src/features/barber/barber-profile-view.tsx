@@ -69,7 +69,7 @@ export function BarberProfileView({ token, who, place, onBack }: { token: string
       </div>
       {d && range !== "today" ? <SalesChartCard className="mt-3" kind="day" sales={d.earnings} series={d.byDate.map((x) => ({ label: dLabel(x.date), orders: x.cuts, salesCentavos: x.earnings, detail: `${x.cuts} haircut${x.cuts === 1 ? "" : "s"}` }))} /> : null}
       {d ? <p className="mt-3 rounded-card bg-surface px-4 py-3 text-[13px] font-semibold shadow-card"><span className="text-muted">Tips (separate, all yours)</span> <b className="float-right tabular-nums">{peso(d.tips)}</b></p> : null}
-      {d ? <PerformanceDashboard solo all={d.rows as never} range={RANGE_OF[range]} where="all" branches={[{ id: d.rows[0]?.locationId || "home", name: place || "Shop" }]} chairs={[]} /> : null}
+      {d ? <PerformanceDashboard solo barberView all={d.rows as never} range={RANGE_OF[range]} where="all" branches={[{ id: d.rows[0]?.locationId || "home", name: place || "Shop" }]} chairs={[]} /> : null}
       <p className="mt-4 text-center text-[12px] font-semibold text-muted">Amounts are your share of each haircut. Tips are shown separately.</p>
     </main>
   );

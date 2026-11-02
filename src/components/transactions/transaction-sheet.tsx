@@ -55,7 +55,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false, locked
           )}
           <div className="flex min-w-0 flex-1 flex-col leading-[1.25]">
             <h1 id="txn-title" className="truncate text-[26px] font-extrabold leading-[1.15] tracking-[-0.03em]">{row.ref || row.id}</h1>
-            <p className="mt-0.5 truncate text-[13.5px] font-semibold text-ink-2">{row.channel === "walk-in" ? "Walk-in" : "Online booking"}{row.seatLabel || row.chairLabel ? ` · ${row.seatLabel || row.chairLabel}` : ""}{row.barberName ? ` · ${row.barberName}` : ""}</p>
+            <p className="mt-0.5 truncate text-[13.5px] font-semibold text-ink-2">{row.channel === "walk-in" ? (barber ? "Customer" : "Walk-in") : "Online booking"}{row.seatLabel || row.chairLabel ? ` · ${row.seatLabel || row.chairLabel}` : ""}{row.barberName ? ` · ${row.barberName}` : ""}</p>
             <StatusDot tone={tone} className="mt-1 text-[12.5px] font-semibold text-muted">{statusLabel(row.status)} · updated {when(row.updatedAt)}</StatusDot>
           </div>
         </header>
@@ -64,7 +64,7 @@ export function TransactionSheet({ row: initial, onClose, barber = false, locked
           <>
             <Card className="mt-4 px-4 py-3.5">
               <h2 className="mb-2.5 text-[13px] font-bold text-muted">Customer</h2>
-              {!who && !phone ? <p className="text-[14px] font-semibold text-ink-2">Walk-in · no customer information</p> : (
+              {!who && !phone ? <p className="text-[14px] font-semibold text-ink-2">{barber ? "No customer information" : "Walk-in · no customer information"}</p> : (
                 <div className="flex items-center gap-3">
                   {who ? <Avatar name={who} size={44} /> : <span aria-hidden className="flex size-11 flex-none items-center justify-center rounded-full bg-grey-200 text-muted"><User size={20} /></span>}
                   <span className="flex min-w-0 flex-1 flex-col leading-[1.25]">

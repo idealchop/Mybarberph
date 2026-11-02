@@ -19,5 +19,5 @@ export function ownerManifest() {
 export function barberManifest(token: string, barberName: string) {
   const path = `/b/${encodeURIComponent(token)}`;
   const name = `Barbers.ph · ${barberName}`.slice(0, 60);
-  return { ...base, id: path, name, short_name: barberName.slice(0, 12) || "Barbers.ph", description: "Your barber link: queue, walk-ins and your sales.", start_url: path, scope: path };
+  return { ...base, id: path, name, short_name: barberName.slice(0, 12) || "Barbers.ph", description: "Your barber link: queue, customers and your sales.", start_url: path, scope: path };
 }
