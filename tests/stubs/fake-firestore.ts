@@ -6,6 +6,8 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     path,
     get: async () => ({ id: path.split("/").pop()!, exists: path in store, data: () => store[path] }),
     set: async (v: Data) => { store[path] = v; },
+    delete: async () => { delete store[path]; },
+    get firestore() { return db; },
     collection: (n: string) => coll(`${path}/${n}`),
   });
   const coll = (path: string, filters: ((d: Data) => boolean)[] = [], order?: [string, "asc" | "desc"], lim?: number) => ({
@@ -27,11 +29,12 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
       return { docs, empty: docs.length === 0 };
     },
   });
-  return {
+  const db = {
     store,
     collection: (n: string) => coll(n),
     getAll: async (...refs: { get: () => Promise<unknown> }[]) => Promise.all(refs.map((r) => r.get())),
     runTransaction: async <T>(fn: (tx: { get: (r: { get: () => Promise<unknown> }) => Promise<unknown>; set: (r: { set: (v: Data) => Promise<void> }, v: Data) => void }) => Promise<T>) =>
-      fn({ get: (r) => r.get(), set: (r, v) => { void r.set(v); } }),
+      fn({ get: (r) => r.get(), set: (r, v) => { void r.set(v); }, delete: (r: { delete: () => Promise<void> }) => { void r.delete(); } } as never),
   };
+  return db;
 }

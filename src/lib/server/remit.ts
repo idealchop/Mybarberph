@@ -1,4 +1,5 @@
 import { claimAdjust } from "@/lib/claim-adjust";
+import { adjustDocId, adjustKey, adjustmentApplies, type ClaimAdjustment } from "@/lib/claim-adjusts";
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
 import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
@@ -39,13 +40,15 @@ function load(shopId: string, fresh = false) {
 }
 
 async function loadFresh(shopId: string) {
-  const [claimsSnap, doneSnap, state] = await Promise.all([
+  const [claimsSnap, doneSnap, state, adjustSnap] = await Promise.all([
     // Every claim (v1.0.24): with a 500 cap, older claims fell off and their visits looked unclaimed again.
     shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").get(),
     // Only the fields remit needs (not full booking docs).
     shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "createdAt", "splitPct").get(), // no cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim
     loadState(shopId, ["barbers.shop-chairs"]),
+    shopRef(shopId).collection("claimAdjusts").get(),
   ]);
+  const adjusts = adjustSnap.docs.map((d) => d.data() as ClaimAdjustment);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
   const claims = claimsSnap.docs.map((d) => d.data() as RemitClaim);
   const covers = claimIndex(claims, chairs);
@@ -55,7 +58,35 @@ async function loadFresh(shopId: string) {
   const covered = new Map<string, string[]>(); // claim id → GCash visit ids it covers by day (older claims only)
   for (const r of done) { if (!isCash(r) || claimed.has(r.id)) continue; const c = covers(r); if (c) { claimed.add(r.id); covered.set(c.id, [...(covered.get(c.id) ?? []), r.id]); } }
   const open = done.filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: the money is already his
-  return { chairs, claims, open, claimed, covered };
+  return { chairs, claims, open, claimed, covered, adjusts };
+}
+
+const manilaDay = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
+/** Open (unclaimed) owner share per `barber@loc|day`. */
+function openByDay(open: ChairRequest[], chairs: Chair[]) {
+  const m = new Map<string, number>();
+  for (const r of open) {
+    const k = keyOf(r, chairs);
+    const key = adjustKey(k.id, k.loc, manilaDay(r.completedAt ?? r.updatedAt ?? 0));
+    m.set(key, (m.get(key) ?? 0) + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, k.id, k.loc))));
+  }
+  return m;
+}
+
+/**
+ * v1.0.40: owner saves a barber's day To claim amount (any amount, more or less than the records; never capped).
+ * `expected` is the day's open owner share now (from the server's records). received = expected removes the edit.
+ */
+export async function saveClaimAdjust(shopId: string, barberId: string, locationId: string, day: string, received: number): Promise<ClaimAdjustment | null> {
+  const { chairs, open } = await load(shopId, true);
+  const expected = openByDay(open, chairs).get(adjustKey(barberId, locationId, day)) ?? 0;
+  if (expected <= 0) throw new Error("Nothing to claim for this day.");
+  const ref = shopRef(shopId).collection("claimAdjusts").doc(adjustDocId(barberId, locationId, day));
+  cache.delete(shopId);
+  if (Math.abs(received - expected) < 0.5) { await ref.delete(); return null; }
+  const a: ClaimAdjustment = { barberId, locationId, day, expected, received, at: Date.now() };
+  await ref.set(a);
+  return a;
 }
 
 /** Ids of every visit the owner already claimed (locked for barber edits). */
@@ -66,8 +97,11 @@ export async function claimedBookingIds(shopId: string): Promise<Set<string>> {
 
 /** Unclaimed remit per barber (all time, up to now) and recent claims. `loc` = location id or "all". */
 export async function remitSummary(shopId: string, loc: string) {
-  const { chairs, claims, open, covered } = await load(shopId);
+  const { chairs, claims, open, covered, adjusts } = await load(shopId);
   const map = new Map<string, Unclaimed>();
+  const byDay = openByDay(open, chairs);
+  // Saved To claim edits still matching the day's records (v1.0.40).
+  const live = adjusts.filter((a) => (loc === "all" || a.locationId === loc) && adjustmentApplies(a, byDay.get(adjustKey(a.barberId, a.locationId, a.day)) ?? 0));
   for (const r of open) {
     const k = keyOf(r, chairs);
     if (loc !== "all" && k.loc !== loc) continue;
@@ -76,8 +110,10 @@ export async function remitSummary(shopId: string, loc: string) {
     u.amount += r.price || 0; u.ownerShare += ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, k.id, k.loc))); u.count += 1; u.oldest = Math.min(u.oldest, r.completedAt ?? r.updatedAt ?? Date.now());
     map.set(id, u);
   }
+  for (const a of live) { const u = map.get(`${a.barberId}@${a.locationId}`); if (u) u.ownerShare += a.received - a.expected; }
   const unclaimed = [...map.values()].sort((a, b) => b.ownerShare - a.ownerShare);
   return {
+    adjusts: live,
     unclaimed, total: unclaimed.reduce((s, u) => s + u.amount, 0), ownerTotal: unclaimed.reduce((s, u) => s + u.ownerShare, 0),
     // v1.0.24: no 100-claim cap. The client marks claimed visits from this list, so a cap turned old claimed days red again.
     claims: claims.filter((c) => (loc === "all" || c.locationId === loc) && c.claimedAt >= Date.now() - 400 * 86_400_000).map((c) => ({ ...c, coveredIds: covered.get(c.id) ?? [], count: c.bookingIds.length + (covered.get(c.id)?.length ?? 0), ownerShare: claimOwnerShare(c, pctOf(chairs, c.barberId, c.locationId)) })),
@@ -90,7 +126,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
   const lock = shop.collection("private").doc("remitLock");
   return shop.firestore.runTransaction(async (tx) => {
     await tx.get(lock);
-    const { chairs, open } = await load(shopId, true);
+    const { chairs, open, adjusts } = await load(shopId, true);
     // `day` (YYYY-MM-DD, Manila) limits the claim to that day's cuts (Weekly Profit Report); otherwise everything up to now.
     const onDay = (r: ChairRequest) => !day || new Date((r.completedAt ?? r.updatedAt ?? 0) + 8 * 3600_000).toISOString().slice(0, 10) === day;
     const mine = open.filter((r) => { const k = keyOf(r, chairs); return k.id === barberId && k.loc === locationId && onDay(r); });
@@ -103,6 +139,10 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
       ownerShare: mine.reduce((s, r) => s + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, barberId, locationId))), 0), sharePct: pctOf(chairs, barberId, locationId),
       from: Math.min(...times), to: Math.max(...times), claimedAt: Date.now(), claimedBy, rule: CLAIM_RULE,
     };
+    // v1.0.40: a day claim without an amount uses the saved To claim edit (when it still matches the records).
+    const saved = day ? adjusts.find((a) => a.barberId === barberId && a.locationId === locationId && a.day === day) : undefined;
+    if (saved && received === undefined && adjustmentApplies(saved, claim.ownerShare ?? 0)) received = saved.received;
+    if (saved) tx.delete(shop.collection("claimAdjusts").doc(adjustDocId(barberId, locationId, day!)));
     if (typeof received === "number") {
       const a = claimAdjust(claim.ownerShare ?? claim.amount, received);
       if (a.adjusted) Object.assign(claim, a);

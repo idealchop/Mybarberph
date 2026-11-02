@@ -15,6 +15,7 @@ import { mergeLiveRows } from "@/lib/cut-count";
 import { cn } from "@river-apps/ui";
 import { claimStates, cellClaimState } from "@/lib/profit-claim";
 import { useRemit } from "./use-remit";
+import { claimCells, withCellAdjustments } from "./claim-cells";
 
 const cell = (n: number) => (n ? compactPeso(n) : "–");
 const todayKey = (now: number) => new Date(now + 8 * 3600_000).toISOString().slice(0, 10);
@@ -33,17 +34,20 @@ export function ProfitReportCard({ className = "" }: { className?: string }) {
   );
   const where = shops.viewingAll || !shops.enabled ? "all" : shops.scopeId ?? "all";
   const now = useNow();
-  const report = profitWeek(rows, chairs, where, 0, now, branches);
   const remit = useRemit("all");
   // Same claim colors as the profit grid: red = cash still to claim that day, green = all claimed, neutral otherwise.
   const claimMap = useMemo(() => (remit.data ? claimStates(rows, chairs, (r) => Boolean(remit.claimOf(r.id))) : null), [rows, chairs, remit]);
+  // v1.0.40: saved To claim edits show as the saved amount here too.
+  const adj = useMemo(() => claimCells(remit.data, rows, chairs, claimMap), [remit.data, rows, chairs, claimMap]);
+  const raw = profitWeek(rows, chairs, where, 0, now, branches);
+  const report = withCellAdjustments(raw, adj, raw.days.map((d) => d.key));
   const dayAgg = (day: string) => {
     let open = 0, claimed = 0, owed = 0;
     if (claimMap) for (const [k, v] of claimMap) {
       if (!k.endsWith(`|${day}`)) continue;
       const loc = k.slice(k.indexOf("@") + 1, k.indexOf("|"));
       if (where !== "all" && loc !== where) continue;
-      open += v.open; claimed += v.claimed; owed += v.openOwner;
+      open += v.open; claimed += v.claimed; owed += v.openOwner + (v.open > 0 ? adj.get(k)?.delta ?? 0 : 0);
     }
     return { open, claimed, owed };
   };

@@ -28,6 +28,8 @@ export interface ProfitRow {
   /** Owner's share (centavos) for each day of the week, Monday first. */
   days: number[];
   total: number;
+  /** v1.0.40: cells showing a saved To claim edit (same length as days). */
+  adjusted?: boolean[];
   /** v1.0.35: another barber row has the same name: always show the branch next to it. */
   sameName?: boolean;
 }

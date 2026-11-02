@@ -24,6 +24,7 @@ import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar
 import { mergeLiveRows } from "@/lib/cut-count";
 import { cellClaimState, claimStates } from "@/lib/profit-claim";
 import { useRemit } from "./use-remit";
+import { claimCells, withCellAdjustments } from "./claim-cells";
 import { ProfitChart } from "./profit-chart";
 import { ProfitBarberWeek } from "./profit-barber-week";
 
@@ -82,8 +83,12 @@ export function ProfitReportScreen() {
   const multi = shops.enabled && branches.length > 1;
   const where = multi ? picked || "all" : "all";
   const today = todayKey();
-  const week = profitWeek(rows, chairs, where, offset, now, branches);
-  const month = mode === "month" ? profitMonth(rows, chairs, where, monthOffset, now, branches) : null;
+  // v1.0.40: saved To claim edits and adjusted claims show as the saved amount in every cell and total.
+  const cells = useMemo(() => claimCells(remitAll.data, rows, chairs, claimMap), [remitAll.data, rows, chairs, claimMap]);
+  const weekRaw = profitWeek(rows, chairs, where, offset, now, branches);
+  const week = withCellAdjustments(weekRaw, cells, weekRaw.days.map((d) => d.key));
+  const monthRaw = mode === "month" ? profitMonth(rows, chairs, where, monthOffset, now, branches) : null;
+  const month = monthRaw ? withCellAdjustments(monthRaw, cells, [], (day) => { const t = Date.parse(`${day}T12:00:00+08:00`); return monthRaw.weeks.findIndex((w) => t >= w.from && t < w.to); }) : null;
   const showYear = new Set(week.days.map((d) => d.date.slice(-4))).size > 1;
   const todayStart = Date.parse(`${today}T00:00:00+08:00`);
   /** One shape for both views: week = 7 tappable days, month = W1…W5 week columns. */
@@ -116,6 +121,8 @@ export function ProfitReportScreen() {
                             aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}${st === "open" ? ", unclaimed" : st === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
                             {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
+                            {row.adjusted?.[i] ? <span className="sr-only">, adjusted</span> : null}
+                            {row.adjusted?.[i] ? <span aria-hidden title="Adjusted" className="ml-0.5 inline-block size-1.5 self-start rounded-full bg-[#D97706]" /> : null}
                           </button>
                         ) : (
                           <span className="flex min-h-11 items-center justify-center"><Amount n={n} future={!!c?.future} /></span>

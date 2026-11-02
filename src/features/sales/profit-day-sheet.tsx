@@ -21,6 +21,7 @@ import type { ShopChair } from "@/lib/shop-chairs";
 import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, PICK_BARBER_MESSAGE, resolveOwnerBarber } from "@/lib/owner-barber-pick";
 import { cn } from "@river-apps/ui";
 import { cached, fetchShared } from "@/lib/swr";
+import { adjustmentApplies } from "@/lib/claim-adjusts";
 import { CLAIM_OFFLINE, useOffline, useRemit } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
 import { claimAdjust, claimInputText, dayAdjustment, parseClaimCentavos } from "@/lib/claim-adjust";
@@ -86,10 +87,16 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   const editKey = `${t.id}@${t.locationId}|${t.day}|${claim.open}`;
   const [editSeen, setEditSeen] = useState(editKey);
   if (editSeen !== editKey) { setEditSeen(editKey); setReceived(null); setEditing(false); setDraft(""); }
-  const adj = claimAdjust(claim.open, received);
+  // v1.0.40: the saved edit for this day (server, optimistic at once) is what every view shows.
+  const savedAdj = (remit.data?.adjusts ?? []).find((a) => a.barberId === t.id && a.locationId === t.locationId && a.day === t.day && adjustmentApplies(a, claim.open));
+  const adj = claimAdjust(claim.open, received ?? savedAdj?.received);
   const draftValue = parseClaimCentavos(draft);
   const startEdit = () => { setDraft(claimInputText(adj.received)); setEditing(true); };
-  const saveEdit = () => { if (draftValue === null) return; setReceived(draftValue); setEditing(false); };
+  const saveEdit = () => {
+    if (draftValue === null) return;
+    setEditing(false); setReceived(null);
+    void remit.saveAdjust(t.id, t.locationId, t.day, claim.open, draftValue);
+  };
   const doClaim = () => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id), adj.adjusted ? { expected: adj.expected, received: adj.received } : undefined);
   const claimedAdj = dayAdjustment(records.map((r) => remit.claimOf(r.id)).filter((c): c is NonNullable<typeof c> => Boolean(c)));
   const claimedShown = claimedAdj ? claim.claimed - claimedAdj.expected + claimedAdj.received : claim.claimed;

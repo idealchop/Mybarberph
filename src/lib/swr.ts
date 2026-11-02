@@ -79,3 +79,11 @@ export function newestAt(): number | null {
   for (const e of store.values()) if (e.value !== undefined && e.at > n) n = e.at;
   return n || null;
 }
+
+/** Replace a cached value at once (optimistic edit), on this phone too. */
+export function setCached<T>(key: string, value: T) {
+  const n = { at: Date.now(), value };
+  const e = store.get(key);
+  store.set(key, e?.inflight ? { ...n, inflight: e.inflight } : n);
+  writeDisk(key, n);
+}
