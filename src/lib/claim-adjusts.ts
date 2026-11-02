@@ -56,7 +56,7 @@ export function applyAdjustment<R extends Remitish>(d: R, a: ClaimAdjustment, sc
  */
 export function cellAdjustments(
   adjusts: ClaimAdjustment[] | undefined,
-  claims: { id: string; adjusted?: boolean; expected?: number; received?: number; bookingIds?: string[] }[] | undefined,
+  claims: { id: string; barberId?: string; locationId?: string; adjusted?: boolean; expected?: number; received?: number; bookingIds?: string[]; dayDeltas?: Record<string, number> }[] | undefined,
   openOwnerOf: (key: string) => number,
   cellOfBooking: (id: string) => string | null,
 ): Map<string, { delta: number }> {
@@ -69,6 +69,8 @@ export function cellAdjustments(
     if (adjustmentApplies(a, open)) add(k, a.received - open);
   }
   for (const c of claims ?? []) {
+    // v1.0.41: per-day changes (edited claimed days, new adjusted day claims) sit on their own day.
+    if (c.dayDeltas && c.barberId) { for (const [d, v] of Object.entries(c.dayDeltas)) add(adjustKey(c.barberId, c.locationId || "home", d), v); continue; }
     if (!c.adjusted || typeof c.expected !== "number" || typeof c.received !== "number") continue;
     const cell = (c.bookingIds ?? []).map(cellOfBooking).find(Boolean);
     if (cell) add(cell, c.received - c.expected);
@@ -96,4 +98,44 @@ export function withCellAdjustments<G extends Grid>(g: G, cells: Map<string, { d
     return days2 ? { ...r, days: days2, total: rt, adjusted: adjusted! } : r;
   });
   return { ...g, rows, daily, total };
+}
+
+/* ---- v1.0.41: claimed days are editable too ---- */
+export type ClaimLike = { id: string; amount: number; ownerShare?: number; expected?: number; received?: number; adjusted?: boolean; difference?: number; bookingIds?: string[]; coveredIds?: string[]; dayDeltas?: Record<string, number> };
+
+/**
+ * The amount a claim adds to one day on top of that day's records. New claims keep it per day (`dayDeltas`);
+ * older adjusted claims (v1.0.34–40, one day each) put their whole difference on `legacyDay`.
+ */
+export function claimDayDelta(c: ClaimLike, day: string, legacyDay?: string | null): number {
+  if (c.dayDeltas) return c.dayDeltas[day] ?? 0;
+  if (c.adjusted && typeof c.received === "number" && typeof c.expected === "number" && legacyDay === day) return c.received - c.expected;
+  return 0;
+}
+
+/** The claim with its per-day changes made consistent: received = expected + Σ dayDeltas; `adjusted` only when they differ. */
+export function withDayDeltas<C extends ClaimLike>(c: C, dayDeltas: Record<string, number>): C {
+  const clean = Object.fromEntries(Object.entries(dayDeltas).filter(([, v]) => Math.abs(v) >= 0.5));
+  const expected = c.expected ?? c.ownerShare ?? c.amount;
+  const diff = Object.values(clean).reduce((s, v) => s + v, 0);
+  const out = { ...c } as C;
+  delete out.dayDeltas; delete out.adjusted; delete out.received; delete out.difference;
+  if (!Object.keys(clean).length) return { ...out, expected } as C;
+  return { ...out, expected, dayDeltas: clean, adjusted: true, received: expected + diff, difference: diff } as C;
+}
+
+/**
+ * Edit a claimed day: make the day show `target` (centavos, any amount). `shares` = each covering claim's claimed
+ * owner share ON THAT DAY from the records; `legacyDayOf` = the day an older adjusted claim's difference sits on.
+ * The change is kept on the first claim; any other claim's change for that day is cleared. Returns changed claims.
+ */
+export function editClaimedDay<C extends ClaimLike>(claims: C[], shares: Map<string, number>, day: string, target: number, legacyDayOf: (c: C) => string | null = () => null): C[] {
+  const cover = claims.filter((c) => shares.has(c.id));
+  if (!cover.length) return [];
+  const recordsTotal = cover.reduce((s, c) => s + (shares.get(c.id) ?? 0), 0);
+  return cover.map((c, i) => {
+    const base: Record<string, number> = c.dayDeltas ? { ...c.dayDeltas } : (() => { const d = legacyDayOf(c); return d ? { [d]: claimDayDelta(c, d, d) } : {}; })();
+    base[day] = i === 0 ? target - recordsTotal : 0;
+    return withDayDeltas(c, base);
+  });
 }

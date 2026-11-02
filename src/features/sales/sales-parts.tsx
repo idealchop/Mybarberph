@@ -1,4 +1,5 @@
 "use client";
+import { claimedValue } from "@/lib/claim-adjust";
 import { Card, cn } from "@river-apps/ui";
 import { Check, UserRound } from "lucide-react";
 import { useState } from "react";
@@ -69,7 +70,8 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
       <h2 className="px-1 text-[15px] font-bold">Claimed</h2>
       <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
         {shown.map((c) => {
-          const share = c.ownerShare ?? c.amount;
+          // v1.0.41: an adjusted (edited) claim shows the amount received, like every other claimed figure.
+          const share = claimedValue(c);
           const who = barberId ? `${c.count} cash haircut${c.count === 1 ? "" : "s"}` : c.barberName;
           return (
             <li key={c.id} className="flex items-center gap-3 px-4 py-3">
@@ -78,7 +80,7 @@ export function ClaimHistory({ remit, barberId, locationId, locName, className, 
                 <b className="block truncate text-[14.5px]">{who}</b>
                 <small className="flex min-w-0 items-center gap-1 text-[12px] font-semibold text-muted"><Check size={12} strokeWidth={3} className="flex-none text-[#0B7A3E]" /><span className="min-w-0 truncate">{[!barberId ? locName?.(c.locationId) : "", day(c.claimedAt)].filter(Boolean).join(" · ")}</span></small>
               </span>
-              <span className="flex-none text-right"><b className="block text-[15.5px] tabular-nums">{peso(share)}</b></span>
+              <span className="flex-none text-right"><b className="block text-[15.5px] tabular-nums">{peso(share)}</b>{c.adjusted ? <small className="block text-[11px] font-semibold text-muted">Adjusted</small> : null}</span>
             </li>
           );
         })}

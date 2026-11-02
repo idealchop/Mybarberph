@@ -17,7 +17,7 @@ export const inScope = (scope: string, locationId: string) => scope === "all" ||
 /** Apply a pending claim: its booking ids count as claimed at once. A whole-barber claim (no day) also clears the barber's To Claim row. */
 export function applyPendingClaim<R extends OptRemit>(d: R, p: PendingClaim, scope: string): R {
   if (!inScope(scope, p.locationId) || d.claims.some((c) => c.id === p.id)) return d;
-  const claim = { id: p.id, barberId: p.barberId, locationId: p.locationId, bookingIds: p.bookingIds, amount: 0, count: p.bookingIds.length, claimedAt: p.at, from: p.at, to: p.at, barberName: "", claimedBy: "", pending: true, ...(p.received !== undefined && p.expected !== undefined && p.received !== p.expected ? { adjusted: true, expected: p.expected, received: p.received, difference: Math.round((p.received - p.expected) * 100) / 100 } : {}) } as unknown as R["claims"][number];
+  const claim = { id: p.id, barberId: p.barberId, locationId: p.locationId, bookingIds: p.bookingIds, amount: 0, count: p.bookingIds.length, claimedAt: p.at, from: p.at, to: p.at, barberName: "", claimedBy: "", pending: true, ...(p.received !== undefined && p.expected !== undefined && p.received !== p.expected ? { adjusted: true, expected: p.expected, received: p.received, difference: Math.round((p.received - p.expected) * 100) / 100, ...(p.day ? { dayDeltas: { [p.day]: p.received - p.expected } } : {}) } : {}) } as unknown as R["claims"][number];
   let unclaimed = d.unclaimed, total = d.total, ownerTotal = d.ownerTotal;
   if (!p.day) {
     const hit = d.unclaimed.filter((u) => u.barberId === p.barberId && u.locationId === p.locationId);

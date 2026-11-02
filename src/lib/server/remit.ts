@@ -1,5 +1,5 @@
 import { claimAdjust } from "@/lib/claim-adjust";
-import { adjustDocId, adjustKey, adjustmentApplies, type ClaimAdjustment } from "@/lib/claim-adjusts";
+import { adjustDocId, adjustKey, adjustmentApplies, editClaimedDay, type ClaimAdjustment } from "@/lib/claim-adjusts";
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
 import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
@@ -12,7 +12,8 @@ type Chair = { id: string; label: string; barberId?: string; barberName?: string
 export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
   /** Owner/shop share claimed (amount minus the barber's split; None = all). Older claims lack it and are computed on read. */ ownerShare?: number; sharePct?: number | null;
   /** Adjusted claim (v1.0.34): owner entered the actual amount received. expected = owner share due, difference = received − expected. */ expected?: number; received?: number; adjusted?: boolean; difference?: number;
-  /** 2 = lists GCash visits too (v1.0.25). Older claims listed cash only (lib/claim-rule.ts). */ rule?: number }
+  /** 2 = lists GCash visits too (v1.0.25). Older claims listed cash only (lib/claim-rule.ts). */ rule?: number;
+  /** v1.0.41: amount added per Manila day on top of the records (edited claimed days); received = expected + Σ. */ dayDeltas?: Record<string, number> }
 export interface Unclaimed { barberId: string; barberName: string; locationId: string; amount: number; ownerShare: number; count: number; oldest: number }
 
 const HOME = "home";
@@ -58,7 +59,7 @@ async function loadFresh(shopId: string) {
   const covered = new Map<string, string[]>(); // claim id → GCash visit ids it covers by day (older claims only)
   for (const r of done) { if (!isCash(r) || claimed.has(r.id)) continue; const c = covers(r); if (c) { claimed.add(r.id); covered.set(c.id, [...(covered.get(c.id) ?? []), r.id]); } }
   const open = done.filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: the money is already his
-  return { chairs, claims, open, claimed, covered, adjusts };
+  return { chairs, claims, open, claimed, covered, adjusts, done };
 }
 
 const manilaDay = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -77,10 +78,11 @@ function openByDay(open: ChairRequest[], chairs: Chair[]) {
  * v1.0.40: owner saves a barber's day To claim amount (any amount, more or less than the records; never capped).
  * `expected` is the day's open owner share now (from the server's records). received = expected removes the edit.
  */
-export async function saveClaimAdjust(shopId: string, barberId: string, locationId: string, day: string, received: number): Promise<ClaimAdjustment | null> {
+export async function saveClaimAdjust(shopId: string, barberId: string, locationId: string, day: string, received: number): Promise<ClaimAdjustment | { claims: RemitClaim[] } | null> {
   const { chairs, open } = await load(shopId, true);
   const expected = openByDay(open, chairs).get(adjustKey(barberId, locationId, day)) ?? 0;
-  if (expected <= 0) throw new Error("Nothing to claim for this day.");
+  // v1.0.41: a fully claimed day is editable too: the change is kept on its claim.
+  if (expected <= 0) return { claims: await editClaimed(shopId, barberId, locationId, day, received) };
   const ref = shopRef(shopId).collection("claimAdjusts").doc(adjustDocId(barberId, locationId, day));
   cache.delete(shopId);
   if (Math.abs(received - expected) < 0.5) { await ref.delete(); return null; }
@@ -93,6 +95,33 @@ export async function saveClaimAdjust(shopId: string, barberId: string, location
 export async function claimedBookingIds(shopId: string): Promise<Set<string>> {
   const { claimed } = await load(shopId);
   return claimed;
+}
+
+/** Claimed owner share per claim on one barber's day, and the day an older adjusted claim's difference sits on. */
+function claimedDayShares(done: ChairRequest[], claims: RemitClaim[], covered: Map<string, string[]>, chairs: Chair[], barberId: string, locationId: string, day: string) {
+  const owner = new Map<string, string>();
+  for (const c of claims) { for (const id of c.bookingIds) owner.set(id, c.id); for (const id of covered.get(c.id) ?? []) owner.set(id, c.id); }
+  const shares = new Map<string, number>();
+  const firstDay = new Map<string, { at: number; day: string }>();
+  for (const r of done) {
+    const cid = owner.get(r.id); if (!cid || !isCash(r)) continue;
+    const k = keyOf(r, chairs), at = r.completedAt ?? r.updatedAt ?? 0, d = manilaDay(at);
+    const f = firstDay.get(cid); if (!f || at < f.at) firstDay.set(cid, { at, day: d });
+    if (k.id !== barberId || k.loc !== locationId || d !== day) continue;
+    shares.set(cid, (shares.get(cid) ?? 0) + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, k.id, k.loc))));
+  }
+  return { shares, legacyDay: (c: RemitClaim) => firstDay.get(c.id)?.day ?? null };
+}
+
+async function editClaimed(shopId: string, barberId: string, locationId: string, day: string, received: number): Promise<RemitClaim[]> {
+  const { chairs, claims, covered, done } = await load(shopId, true);
+  const { shares, legacyDay } = claimedDayShares(done, claims, covered, chairs, barberId, locationId, day);
+  const changed = editClaimedDay(claims, shares, day, received, legacyDay);
+  if (!changed.length) throw new Error("Nothing to claim for this day.");
+  const col = shopRef(shopId).collection("remitClaims");
+  for (const c of changed) await col.doc(c.id).set(c);
+  cache.delete(shopId);
+  return changed;
 }
 
 /** Unclaimed remit per barber (all time, up to now) and recent claims. `loc` = location id or "all". */
@@ -148,7 +177,7 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
     if (saved) tx.delete(shop.collection("claimAdjusts").doc(adjustDocId(barberId, locationId, day!)));
     if (typeof received === "number") {
       const a = claimAdjust(claim.ownerShare ?? claim.amount, received);
-      if (a.adjusted) Object.assign(claim, a);
+      if (a.adjusted) Object.assign(claim, a, day ? { dayDeltas: { [day]: a.difference } } : {});
     }
     tx.set(ref, claim);
     tx.set(lock, { at: claim.claimedAt, last: ref.id });

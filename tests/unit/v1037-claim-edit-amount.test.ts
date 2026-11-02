@@ -22,8 +22,8 @@ describe("v1.0.37 editing the To claim amount", () => {
   });
   it("day sheet resets the edit per barber, branch, day and expected amount", () => {
     const src = readFileSync("src/features/sales/profit-day-sheet.tsx", "utf8");
-    expect(src).toContain("const editKey = `${t.id}@${t.locationId}|${t.day}|${claim.open}`;");
-    expect(src).toContain("setDraft(claimInputText(adj.received))");
+    expect(src).toContain("const editKey = `${t.id}@${t.locationId}|${t.day}`;"); // v1.0.41: a records refresh must not reset a typed edit
+    expect(src).toContain("setDraft(claimInputText(shown))");
     expect(src).not.toContain("setDraft(String(adj.received))");
   });
 });

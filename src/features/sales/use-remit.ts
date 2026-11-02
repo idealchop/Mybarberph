@@ -7,7 +7,7 @@ import { adjustKey, applyAdjustment, type ClaimAdjustment } from "@/lib/claim-ad
 import { applyPendingClaim, PENDING_PREFIX, rollbackPendingClaim, type PendingClaim } from "@/lib/remit-optimistic";
 
 /** Every mounted useRemit (Home, Weekly Profit Report, day sheet, barber pages) hears a claim at once (v1.0.30). */
-type RemitEvent = { kind: "apply"; p: PendingClaim } | { kind: "rollback"; id: string } | { kind: "reload" } | { kind: "adjust"; a: ClaimAdjustment; undo?: ClaimAdjustment | null };
+type RemitEvent = { kind: "apply"; p: PendingClaim } | { kind: "rollback"; id: string } | { kind: "reload" } | { kind: "adjust"; a: ClaimAdjustment; undo?: ClaimAdjustment | null } | { kind: "claims"; claims: ClaimRow[] };
 const listeners = new Set<(e: RemitEvent) => void>();
 const emit = (e: RemitEvent) => { for (const l of [...listeners]) l(e); };
 let seq = 0;
@@ -17,7 +17,7 @@ function subscribeNet(cb: () => void) { window.addEventListener("online", cb); w
 export function useOffline() { return useSyncExternalStore(subscribeNet, () => navigator.onLine === false, () => false); }
 
 export interface UnclaimedRow { barberId: string; barberName: string; locationId: string; amount: number; ownerShare?: number; count: number; oldest: number }
-export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; /** Optimistic claim not yet confirmed by the server (v1.0.30). */ pending?: boolean; ownerShare?: number; sharePct?: number | null; /** Adjusted claim (v1.0.34). */ expected?: number; received?: number; adjusted?: boolean; difference?: number }
+export interface ClaimRow { id: string; barberId: string; barberName: string; locationId: string; amount: number; count: number; from: number; to: number; claimedAt: number; claimedBy: string; bookingIds?: string[]; /** GCash visits an older cash-only claim covers by day (v1.0.25). */ coveredIds?: string[]; /** Optimistic claim not yet confirmed by the server (v1.0.30). */ pending?: boolean; ownerShare?: number; sharePct?: number | null; /** Adjusted claim (v1.0.34). */ expected?: number; received?: number; adjusted?: boolean; difference?: number; /** v1.0.41: per-day change on top of the records. */ dayDeltas?: Record<string, number> }
 export interface Remit { unclaimed: UnclaimedRow[]; total: number; ownerTotal?: number; claims: ClaimRow[]; /** Saved To claim edits (v1.0.40). */ adjusts?: ClaimAdjustment[] }
 
 /**
@@ -25,7 +25,15 @@ export interface Remit { unclaimed: UnclaimedRow[]; total: number; ownerTotal?: 
  * re-applied, so a refetch that started before the save can't put the old amount back.
  */
 const pendingAdjusts = new Map<string, ClaimAdjustment>();
-const withPending = (d: Remit, loc: string) => { let out = d; for (const a of pendingAdjusts.values()) out = applyAdjustment(out, a, loc); return out; };
+/** v1.0.41: edited claims (claimed days) not yet confirmed by a refetch, by claim id. */
+const pendingClaimEdits = new Map<string, ClaimRow>();
+const putClaims = (d: Remit, list: Iterable<ClaimRow>) => {
+  const by = new Map([...list].map((c) => [c.id, c]));
+  if (!by.size || !d.claims.some((c) => by.has(c.id))) return d;
+  // Keep this copy's booking ids (the save answer leaves them out); take the amounts from the edit.
+  return { ...d, claims: d.claims.map((c) => { const e = by.get(c.id); return e ? { ...e, bookingIds: c.bookingIds, coveredIds: c.coveredIds, count: c.count } : c; }) };
+};
+const withPending = (d: Remit, loc: string) => { let out = putClaims(d, pendingClaimEdits.values()); for (const a of pendingAdjusts.values()) out = applyAdjustment(out, a, loc); return out; };
 
 /** Unclaimed barber cash + claims for a scope; claim() marks a barber's remit received. */
 export function useRemit(loc: string) {
@@ -45,6 +53,7 @@ export function useRemit(loc: string) {
       setState((s) => {
         const cur = s?.loc === loc ? s.d : cached<Remit>(`remit:${loc}`) ?? null;
         if (!cur) return s;
+        if (e.kind === "claims") { const next = putClaims(cur, e.claims); setCached(`remit:${loc}`, next); return { loc, d: next }; }
         if (e.kind === "adjust") {
           // Optimistic To claim edit; `undo` puts the previous one back (or removes it) when the save failed.
           const next = e.undo === undefined ? applyAdjustment(cur, e.a, loc)
@@ -114,6 +123,30 @@ export function useRemit(loc: string) {
       return false;
     }
   };
+  /**
+   * v1.0.41: edit a claimed day (any amount). `edited` = the covering claims with their new amounts
+   * (editClaimedDay). Shows at once everywhere; reverts if the save fails.
+   */
+  const saveClaimedDay = async (barberId: string, locationId: string, day: string, received: number, edited: ClaimRow[], before: ClaimRow[]) => {
+    setError("");
+    for (const c of edited) pendingClaimEdits.set(c.id, c);
+    emit({ kind: "claims", claims: edited });
+    const drop = () => { for (const c of edited) if (pendingClaimEdits.get(c.id) === c) pendingClaimEdits.delete(c.id); };
+    try {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error(CLAIM_OFFLINE);
+      await api("/api/shop/claim-adjusts", { method: "PUT", body: JSON.stringify({ barberId, locationId, day, received }) });
+      invalidate("remit:"); invalidate("barber");
+      emit({ kind: "reload" });
+      await load().catch(() => undefined);
+      window.setTimeout(drop, 20_000);
+      return true;
+    } catch (e) {
+      drop();
+      emit({ kind: "claims", claims: before });
+      setError((e as Error).message || "Couldn't save the amount. Try again.");
+      return false;
+    }
+  };
   /** bookingId → the claim that covered it (claimed cash stays in every total; only the outstanding figure drops). */
   const claimOf = useMemo(() => {
     const m = new Map<string, ClaimRow>();
@@ -121,5 +154,5 @@ export function useRemit(loc: string) {
     return (bookingId: string) => m.get(bookingId);
   }, [data]);
   const offline = useOffline();
-  return { data, loading: Boolean(user) && !data && !offline, unavailable: !data && offline, claim, saveAdjust, busy, error, clearError, claimOf };
+  return { data, loading: Boolean(user) && !data && !offline, unavailable: !data && offline, claim, saveAdjust, saveClaimedDay, busy, error, clearError, claimOf };
 }

@@ -21,10 +21,10 @@ import type { ShopChair } from "@/lib/shop-chairs";
 import { activeBarbersAt, NO_BARBER_MESSAGE, ownerBarberChoice, PICK_BARBER_MESSAGE, resolveOwnerBarber } from "@/lib/owner-barber-pick";
 import { cn } from "@river-apps/ui";
 import { cached, fetchShared } from "@/lib/swr";
-import { adjustmentApplies } from "@/lib/claim-adjusts";
-import { CLAIM_OFFLINE, useOffline, useRemit } from "./use-remit";
+import { adjustmentApplies, claimDayDelta, editClaimedDay } from "@/lib/claim-adjusts";
+import { CLAIM_OFFLINE, useOffline, useRemit, type ClaimRow } from "./use-remit";
 import { isClaimable } from "@/lib/claim-rule";
-import { claimAdjust, claimInputText, dayAdjustment, parseClaimCentavos } from "@/lib/claim-adjust";
+import { claimAdjust, claimInputText, parseClaimCentavos } from "@/lib/claim-adjust";
 import { ClaimTag } from "@/components/transactions/claim-tag";
 
 const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
@@ -60,7 +60,8 @@ function Face({ photo, size = 44 }: { name: string; photo?: string; size?: numbe
 
 /** Weekly Profit Report → tap a barber's day: claim that day's cash, see/edit its records, add a missed one. */
 export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: DayTarget; rows: ChairRequest[]; chairs: ShopChair[]; profileHref: string; onClose: () => void }) {
-  const remit = useRemit(t.locationId);
+  // v1.0.41: the same remit copy as the grid ("all"), so a just-saved amount is here at once when the sheet reopens.
+  const remit = useRemit("all");
   const [open, setOpen] = useState<ChairRequest | null>(null);
   const [adding, setAdding] = useState(false);
   const add = useAddRecord(t, chairs, () => setAdding(false));
@@ -82,24 +83,44 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
   // Editable claim (v1.0.34): owner enters the actual amount received; sales records are never touched.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  const [received, setReceived] = useState<number | null>(null);
-  // v1.0.37: a new barber, branch, day or expected amount starts clean (no edit or amount from another day).
-  const editKey = `${t.id}@${t.locationId}|${t.day}|${claim.open}`;
+  // A new barber, branch or day starts clean. v1.0.41: no longer keyed on the amount, so a records refresh
+  // (this sheet's own server read, a 20 s poll, a barber finishing a haircut) can't close the edit while typing.
+  const editKey = `${t.id}@${t.locationId}|${t.day}`;
   const [editSeen, setEditSeen] = useState(editKey);
-  if (editSeen !== editKey) { setEditSeen(editKey); setReceived(null); setEditing(false); setDraft(""); }
+  if (editSeen !== editKey) { setEditSeen(editKey); setEditing(false); setDraft(""); }
   // v1.0.40: the saved edit for this day (server, optimistic at once) is what every view shows.
   const savedAdj = (remit.data?.adjusts ?? []).find((a) => a.barberId === t.id && a.locationId === t.locationId && a.day === t.day && adjustmentApplies(a, claim.open));
-  const adj = claimAdjust(claim.open, received ?? savedAdj?.received);
+  const adj = claimAdjust(claim.open, savedAdj?.received);
+  // v1.0.41: claimed days are editable too. The claims covering this day, each one's claimed share that day,
+  // and the day an older adjusted claim's difference sits on (its first haircut).
+  const claimed = useMemo(() => {
+    const shares = new Map<string, number>();
+    const cover: ClaimRow[] = [];
+    for (const r of records) {
+      const c = isClaimable(r) ? remit.claimOf(r.id) : undefined; if (!c) continue;
+      if (!shares.has(c.id)) cover.push(c);
+      shares.set(c.id, (shares.get(c.id) ?? 0) + ownerPart(r, chairs));
+    }
+    const first = new Map<string, number>();
+    for (const r of source) { const c = remit.claimOf(r.id); if (c && r.completedAt && (!first.has(c.id) || r.completedAt < first.get(c.id)!)) first.set(c.id, r.completedAt); }
+    const legacyDay = (c: ClaimRow) => (first.has(c.id) ? ymd(first.get(c.id)!) : null);
+    const extra = cover.reduce((s, c) => s + claimDayDelta(c, t.day, legacyDay(c)), 0);
+    return { shares, cover, legacyDay, extra };
+  }, [records, source, remit, chairs, t.day]);
+  const claimedShown = claim.claimed + claimed.extra;
+  const editingClaimed = claim.open <= 0 && claim.claimed > 0;
+  const shown = editingClaimed ? claimedShown : adj.received;
   const draftValue = parseClaimCentavos(draft);
-  const startEdit = () => { setDraft(claimInputText(adj.received)); setEditing(true); };
+  const startEdit = () => { setDraft(claimInputText(shown)); setEditing(true); };
   const saveEdit = () => {
-    if (draftValue === null) return;
-    setEditing(false); setReceived(null);
-    void remit.saveAdjust(t.id, t.locationId, t.day, claim.open, draftValue);
+    if (draftValue === null || offline) return;
+    setEditing(false);
+    if (editingClaimed) {
+      const edited = editClaimedDay(claimed.cover, claimed.shares, t.day, draftValue, claimed.legacyDay);
+      void remit.saveClaimedDay(t.id, t.locationId, t.day, draftValue, edited, claimed.cover);
+    } else void remit.saveAdjust(t.id, t.locationId, t.day, claim.open, draftValue);
   };
   const doClaim = () => remit.claim(t.id, t.locationId, t.day, records.filter((r) => isClaimable(r) && !remit.claimOf(r.id)).map((r) => r.id), adj.adjusted ? { expected: adj.expected, received: adj.received } : undefined);
-  const claimedAdj = dayAdjustment(records.map((r) => remit.claimOf(r.id)).filter((c): c is NonNullable<typeof c> => Boolean(c)));
-  const claimedShown = claimedAdj ? claim.claimed - claimedAdj.expected + claimedAdj.received : claim.claimed;
   if (open) return <TransactionSheet row={open} onClose={() => setOpen(null)} />;
 
   return (
@@ -128,7 +149,7 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
               : !remit.data ? <p className="mt-1.5 text-[15px] font-bold text-on-ink-muted">Loading…</p>
               : (
                 <>
-                  {claim.open > 0 && editing ? (
+                  {(claim.open > 0 || editingClaimed) && editing ? (
                     <div className="mt-1.5">
                       <label className="flex h-14 items-center gap-1 rounded-[16px] bg-white/10 px-3.5 ring-2 ring-white/60 focus-within:ring-white">
                         <span className="text-[26px] font-extrabold text-on-ink-muted">₱</span>
@@ -137,8 +158,8 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                           onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditing(false); }}
                           className="min-w-0 flex-1 bg-transparent text-[30px] font-extrabold tabular-nums tracking-[-0.03em] text-on-ink outline-none" />
                       </label>
-                      <p className="mt-2 text-[12px] font-semibold text-on-ink-muted">{draftValue === null ? "Enter a valid amount" : `Expected ${peso(adj.expected)} from the records`}</p>
-                      <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3" disabled={draftValue === null} onClick={saveEdit}>Save</Button>
+                      <p className="mt-2 text-[12px] font-semibold text-on-ink-muted">{draftValue === null ? "Enter a valid amount" : offline ? CLAIM_OFFLINE : `Records add up to ${peso(editingClaimed ? claim.claimed : adj.expected)}`}</p>
+                      <Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3" disabled={draftValue === null || offline} onClick={saveEdit}>Save</Button>
                       <button type="button" onClick={() => setEditing(false)} className="mt-1 h-10 w-full text-[14px] font-bold text-on-ink-muted">Cancel</button>
                     </div>
                   ) : claim.open > 0 ? (
@@ -146,12 +167,17 @@ export function ProfitDaySheet({ t, rows, chairs, profileHref, onClose }: { t: D
                       <b className="block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-[#FF6B6B]">{peso(adj.received)}</b>
                       <span className="flex size-7 items-center justify-center rounded-full bg-white/15"><Pencil size={13} aria-hidden /></span>
                     </button>
+                  ) : editingClaimed ? (
+                    <button type="button" onClick={startEdit} aria-label="Edit claimed amount" className="mt-1 flex items-center gap-2 text-left">
+                      <b className="block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claimedShown)}</b>
+                      <span className="flex size-7 items-center justify-center rounded-full bg-white/15"><Pencil size={13} aria-hidden /></span>
+                    </button>
                   ) : (
                     <b className="mt-1 block text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{peso(claimedShown)}</b>
                   )}
                   {!editing ? <p className={cn("mt-2 text-[12px] font-semibold tabular-nums", allClaimed ? "text-white/70" : "text-on-ink-muted")}>
                     Total {peso(dayTotal)}
-                    {claim.open > 0 && adj.adjusted ? ` · Adjusted from ${peso(adj.expected)}` : allClaimed && claimedAdj ? ` · Adjusted from ${peso(claimedAdj.expected)}` : ""}
+                    {claim.open > 0 && adj.adjusted ? ` · Adjusted from ${peso(adj.expected)}` : allClaimed && Math.abs(claimed.extra) >= 0.5 ? ` · Adjusted from ${peso(claim.claimed)}` : ""}
                   </p> : null}
                   {claim.open > 0 && !editing ? (
                     <><Button data-auth="action" variant="white" size="md" pill fullWidth className="mt-3.5" loading={busy} disabled={offline} onClick={doClaim}>{`Claim ${peso(adj.received)}`}</Button>

@@ -10,6 +10,9 @@ export async function PUT(req: Request) {
   const b = (await req.json().catch(() => null)) as { barberId?: string; locationId?: string; day?: string; received?: number } | null;
   if (!b?.barberId || !b.locationId || typeof b.day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.day)) return badRequest("barberId, locationId and day are required");
   if (typeof b.received !== "number" || !Number.isFinite(b.received) || b.received < 0 || b.received > 1_000_000_000) return badRequest("Enter a valid amount");
-  try { return json({ adjust: await saveClaimAdjust(me.uid, b.barberId, b.locationId, b.day, Math.round(b.received)) }); }
+  try {
+    const r = await saveClaimAdjust(me.uid, b.barberId, b.locationId, b.day, Math.round(b.received));
+    return json(r && "claims" in r ? { adjust: null, claims: r.claims.map((c) => ({ ...c, count: c.bookingIds.length, bookingIds: undefined })) } : { adjust: r });
+  }
   catch (e) { return badRequest((e as Error).message); }
 }
