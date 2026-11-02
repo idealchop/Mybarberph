@@ -101,7 +101,10 @@ export async function remitSummary(shopId: string, loc: string) {
   const map = new Map<string, Unclaimed>();
   const byDay = openByDay(open, chairs);
   // Saved To claim edits still matching the day's records (v1.0.40).
-  const live = adjusts.filter((a) => (loc === "all" || a.locationId === loc) && adjustmentApplies(a, byDay.get(adjustKey(a.barberId, a.locationId, a.day)) ?? 0));
+  // v1.0.41: `expected` is the day's records now, so every view adds exactly received − expected.
+  const live = adjusts
+    .map((a) => ({ ...a, expected: byDay.get(adjustKey(a.barberId, a.locationId, a.day)) ?? 0 }))
+    .filter((a) => (loc === "all" || a.locationId === loc) && adjustmentApplies(a, a.expected));
   for (const r of open) {
     const k = keyOf(r, chairs);
     if (loc !== "all" && k.loc !== loc) continue;

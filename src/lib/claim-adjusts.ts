@@ -3,8 +3,10 @@
  * The owner can set a barber's day To claim to any amount (more or less than the records; never capped).
  * Before the claim it is saved as an adjustment for that barber + branch + day; once claimed, the claim keeps it.
  * Every view shows exactly the saved amount: grid cell, row total, chart, barber page, day sheet and Home To Claim.
- * An adjustment counts only while the records still add up to the amount it was made against (`expected`);
- * if a haircut is added or changed afterwards, it no longer applies and the owner sees the records again.
+ * v1.0.41: the saved amount IS that day's To claim while the day has unclaimed haircuts, whatever the records
+ * add up to on this phone or on the server right now. (v1.0.40 dropped the edit whenever the records' total
+ * differed from the total it was saved against, e.g. this phone's list was a few seconds behind the server or a
+ * barber finished another haircut, so it only showed again after a full refresh.)
  */
 export interface ClaimAdjustment { barberId: string; locationId: string; day: string; expected: number; received: number; at: number }
 
@@ -15,9 +17,9 @@ export const adjustDocId = (barberId: string, locationId: string, day: string) =
 /** Same amount within half a centavo (shares can be fractional). */
 export const sameAmount = (a: number, b: number) => Math.abs(a - b) < 0.5;
 
-/** Is a saved adjustment still in force for the day's open (unclaimed) owner share? */
-export function adjustmentApplies(a: Pick<ClaimAdjustment, "expected">, openOwner: number) {
-  return openOwner > 0 && sameAmount(a.expected, openOwner);
+/** Is a saved adjustment in force? Yes while the day still has unclaimed money (any amount, never capped). */
+export function adjustmentApplies(_a: Pick<ClaimAdjustment, "expected">, openOwner: number) {
+  return openOwner > 0;
 }
 
 type Remitish = { unclaimed: { barberId: string; locationId: string; ownerShare?: number; amount: number }[]; ownerTotal?: number; total: number; adjusts?: ClaimAdjustment[] };
@@ -34,7 +36,8 @@ export function applyAdjustment<R extends Remitish>(d: R, a: ClaimAdjustment, sc
   const before = prev ? prev.received - prev.expected : 0;
   const removing = sameAmount(a.received, a.expected);
   const after = removing ? 0 : a.received - a.expected;
-  if (prev && !removing && sameAmount(prev.received, a.received) && sameAmount(prev.expected, a.expected)) return d;
+  // Same saved amount already there (e.g. a fresh server copy, whose `expected` comes from its own records): no-op.
+  if (prev && !removing && sameAmount(prev.received, a.received)) return d;
   if (!prev && removing) return d;
   const delta = after - before;
   const adjusts = [...list.filter((x) => x !== prev), ...(removing ? [] : [a])];
@@ -61,7 +64,9 @@ export function cellAdjustments(
   const add = (k: string, d: number) => { const v = m.get(k); m.set(k, { delta: (v?.delta ?? 0) + d }); };
   for (const a of adjusts ?? []) {
     const k = adjustKey(a.barberId, a.locationId, a.day);
-    if (adjustmentApplies(a, openOwnerOf(k))) add(k, a.received - a.expected);
+    const open = openOwnerOf(k);
+    // The cell's open part shows exactly the saved amount (computed against this view's own records).
+    if (adjustmentApplies(a, open)) add(k, a.received - open);
   }
   for (const c of claims ?? []) {
     if (!c.adjusted || typeof c.expected !== "number" || typeof c.received !== "number") continue;

@@ -71,15 +71,18 @@ describe("v1.0.40 To claim edit shows everywhere", () => {
     expect(mon(grid(r))).toBe(50000);
   });
 
-  it("a new haircut that day changes the records: the old edit no longer applies (records show)", async () => {
+  it("v1.0.41: another haircut that day (or this phone's list lagging the server) still shows exactly the saved 500", async () => {
     seed("s4");
     await saveClaimAdjust("s4", "b-jery", "home", day, 50000);
     const v2 = { ...visit, id: "v2", completedAt: t0 + 3600_000, updatedAt: t0 + 3600_000 };
     fs.store["shops/s4/bookings/v2"] = v2;
     await claimRemit("s4", "b-jery", "home", "x", "2026-01-01").catch(() => undefined); // forces a fresh server read
     const r = await remitSummary("s4", "all");
-    expect(r.ownerTotal).toBe(56000);
-    expect(mon(grid(r, [visit, v2]))).toBe(56000);
+    expect(r.ownerTotal).toBe(50000);
+    expect(r.adjusts[0]).toMatchObject({ expected: 56000, received: 50000 });
+    // Server has 2 haircuts, this phone still only 1 (lagging list): the grid shows 500 either way.
+    expect(mon(grid(r, [visit, v2]))).toBe(50000);
+    expect(mon(grid(r, [visit]))).toBe(50000);
   });
 });
 
@@ -95,8 +98,10 @@ describe("v1.0.40 optimistic edit (client)", () => {
     expect(back.adjusts).toEqual([]);
     expect(applyAdjustment(base, a, "other-branch")).toBe(base);
   });
-  it("a fresh server copy that already has the edit is not changed by the pending re-apply", () => {
+  it("a fresh server copy that already has the edit is not changed by the pending re-apply (even if its records differ)", () => {
     const server = { ...base, ownerTotal: 50000, unclaimed: [{ ...base.unclaimed[0]!, ownerShare: 50000 }], adjusts: [a] };
     expect(applyAdjustment(server, a, "all")).toBe(server);
+    const other = { ...server, adjusts: [{ ...a, expected: 56000 }] };
+    expect(applyAdjustment(other, a, "all")).toBe(other);
   });
 });
