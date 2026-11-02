@@ -54,26 +54,29 @@ export function applyAdjustment<R extends Remitish>(d: R, a: ClaimAdjustment, sc
  * Per cell (`barber@loc|day`) the amount to add to the records' owner share so the cell shows the saved amount:
  * open days with a saved adjustment, and claimed days whose claim was adjusted.
  */
+export type CellDelta = { delta: number; open: number; claimed: number };
+
 export function cellAdjustments(
   adjusts: ClaimAdjustment[] | undefined,
   claims: { id: string; barberId?: string; locationId?: string; adjusted?: boolean; expected?: number; received?: number; bookingIds?: string[]; dayDeltas?: Record<string, number> }[] | undefined,
   openOwnerOf: (key: string) => number,
   cellOfBooking: (id: string) => string | null,
-): Map<string, { delta: number }> {
-  const m = new Map<string, { delta: number }>();
-  const add = (k: string, d: number) => { const v = m.get(k); m.set(k, { delta: (v?.delta ?? 0) + d }); };
+): Map<string, CellDelta> {
+  const m = new Map<string, CellDelta>();
+  // v1.0.41: `open` = change to the cell's To claim part (saved edit), `claimed` = change to its claimed part (adjusted claims).
+  const add = (k: string, d: number, part: "open" | "claimed") => { const v = m.get(k) ?? { delta: 0, open: 0, claimed: 0 }; m.set(k, { ...v, delta: v.delta + d, [part]: v[part] + d }); };
   for (const a of adjusts ?? []) {
     const k = adjustKey(a.barberId, a.locationId, a.day);
     const open = openOwnerOf(k);
     // The cell's open part shows exactly the saved amount (computed against this view's own records).
-    if (adjustmentApplies(a, open)) add(k, a.received - open);
+    if (adjustmentApplies(a, open)) add(k, a.received - open, "open");
   }
   for (const c of claims ?? []) {
     // v1.0.41: per-day changes (edited claimed days, new adjusted day claims) sit on their own day.
-    if (c.dayDeltas && c.barberId) { for (const [d, v] of Object.entries(c.dayDeltas)) add(adjustKey(c.barberId, c.locationId || "home", d), v); continue; }
+    if (c.dayDeltas && c.barberId) { for (const [d, v] of Object.entries(c.dayDeltas)) add(adjustKey(c.barberId, c.locationId || "home", d), v, "claimed"); continue; }
     if (!c.adjusted || typeof c.expected !== "number" || typeof c.received !== "number") continue;
     const cell = (c.bookingIds ?? []).map(cellOfBooking).find(Boolean);
-    if (cell) add(cell, c.received - c.expected);
+    if (cell) add(cell, c.received - c.expected, "claimed");
   }
   return m;
 }

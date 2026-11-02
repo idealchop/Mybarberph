@@ -1,4 +1,4 @@
-import { cellAdjustments, withCellAdjustments } from "@/lib/claim-adjusts";
+import { cellAdjustments, withCellAdjustments, type CellDelta } from "@/lib/claim-adjusts";
 import { remitKey } from "@/lib/profit-claim";
 import type { Remit } from "./use-remit";
 
@@ -8,7 +8,7 @@ const manilaDay = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slic
 
 /** v1.0.40: grid cell → amount to add so it shows the saved To claim edit (open days) or the adjusted claim (claimed days). */
 export function claimCells(remit: Remit | null, rows: V[], chairs: C, claimMap: Map<string, { openOwner: number }> | null) {
-  if (!remit) return new Map<string, { delta: number }>();
+  if (!remit) return new Map<string, CellDelta>();
   const byId = new Map(rows.map((r) => [r.id, r]));
   return cellAdjustments(remit.adjusts, remit.claims, (k) => claimMap?.get(k)?.openOwner ?? 0, (id) => {
     const r = byId.get(id); if (!r) return null;

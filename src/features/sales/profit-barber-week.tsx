@@ -4,15 +4,16 @@ import { Button } from "@/components/common/button";
 import { peso } from "@/lib/format";
 import type { ProfitDay, ProfitRow } from "@/lib/profit-report";
 import { barberWeekView, type ClaimCell } from "@/lib/profit-barber-week";
+import type { CellDelta } from "@/lib/claim-adjusts";
 import { cn } from "@river-apps/ui";
 import { ArrowLeft } from "lucide-react";
 
 /** One barber's week from the owner grid (same row, same claim map), full screen. Day amounts open the day sheet. */
-export function ProfitBarberWeek({ row, days, claimMap, today, range, onDay, onBack }: {
-  row: ProfitRow; days: ProfitDay[]; claimMap: Map<string, ClaimCell> | null; today: string; range: string;
+export function ProfitBarberWeek({ row, days, claimMap, cells, today, range, onDay, onBack }: {
+  row: ProfitRow; days: ProfitDay[]; claimMap: Map<string, ClaimCell> | null; cells?: Map<string, CellDelta>; today: string; range: string;
   onDay: (day: string) => void; onBack: () => void;
 }) {
-  const v = barberWeekView(row, days, claimMap, today);
+  const v = barberWeekView(row, days, claimMap, today, cells);
   const parts = [v.toClaim > 0 ? <span key="o" className="text-[#FF8A8A]">{peso(v.toClaim)} to claim</span> : null,
     v.claimed > 0 ? <span key="c">{peso(v.claimed)} claimed</span> : null].filter(Boolean);
   return (
@@ -37,11 +38,18 @@ export function ProfitBarberWeek({ row, days, claimMap, today, range, onDay, onB
               <span className={cn("text-[12px] font-semibold", d.today ? "font-bold text-ink" : "text-muted")}>{d.date}{d.today ? " · Today" : ""}</span>
             </div>
             {d.future ? <span className="text-[17px] font-extrabold text-muted opacity-40">–</span> : (
-              <button type="button" onClick={() => onDay(d.key)} aria-label={`${d.dow} ${d.date}: ${d.amount ? peso(d.amount) : "no sales"}${d.state === "open" ? ", unclaimed" : d.state === "claimed" ? ", claimed" : ""}. Claim, records and add`}
+              <button type="button" onClick={() => onDay(d.key)} aria-label={`${d.dow} ${d.date}: ${d.amount ? peso(d.amount) : "no sales"}${d.state === "mixed" ? `, ${peso(d.toClaim)} to claim, ${peso(d.claimed)} claimed` : d.state === "open" ? ", unclaimed" : d.state === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                 className="-mr-2 flex min-h-11 items-center rounded-lg px-2 active:bg-grey-200">
-                {d.amount ? (
+                {!d.amount ? <span className="text-[17px] font-extrabold text-muted">–</span>
+                  : d.state === "mixed" ? (
+                    // v1.0.41: part of the day was claimed earlier: To claim (red) and claimed (green) shown apart, like the header.
+                    <span data-testid="day-split" className="text-right leading-tight">
+                      <span className="block border-b-[1.5px] border-dotted border-[#C62828]/60 text-[17px] font-extrabold tabular-nums text-[#C62828]">{peso(d.toClaim)}</span>
+                      <small className="block text-[11.5px] font-bold tabular-nums text-[#0B7A3E]">+ {peso(d.claimed)} claimed</small>
+                    </span>
+                  ) : (
                   <span className={cn("border-b-[1.5px] border-dotted text-[17px] font-extrabold tabular-nums", d.state === "open" ? "border-[#C62828]/60 text-[#C62828]" : d.state === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}>{peso(d.amount)}</span>
-                ) : <span className="text-[17px] font-extrabold text-muted">–</span>}
+                )}
               </button>
             )}
           </li>

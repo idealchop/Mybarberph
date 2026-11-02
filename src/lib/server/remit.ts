@@ -1,5 +1,5 @@
 import { claimAdjust } from "@/lib/claim-adjust";
-import { adjustDocId, adjustKey, adjustmentApplies, editClaimedDay, type ClaimAdjustment } from "@/lib/claim-adjusts";
+import { adjustDocId, adjustKey, adjustmentApplies, editClaimedDay, withDayDeltas, type ClaimAdjustment } from "@/lib/claim-adjusts";
 import "server-only";
 import { isOwnerCut } from "@/lib/owner-cut";
 import { claimOwnerShare, ownerShareOf, sharePct, visitPct } from "@/lib/income-split";
@@ -178,6 +178,18 @@ export async function claimRemit(shopId: string, barberId: string, locationId: s
     if (typeof received === "number") {
       const a = claimAdjust(claim.ownerShare ?? claim.amount, received);
       if (a.adjusted) Object.assign(claim, a, day ? { dayDeltas: { [day]: a.difference } } : {});
+    }
+    // v1.0.41: a claim covering several days (Claim all) keeps each covered day's saved To claim edit as that day's change.
+    if (!day && received === undefined) {
+      const deltas: Record<string, number> = {};
+      for (const a of adjusts) {
+        if (a.barberId !== barberId || a.locationId !== locationId) continue;
+        const share = mine.filter((r) => manilaDay(r.completedAt ?? r.updatedAt ?? 0) === a.day).reduce((s, r) => s + ownerShareOf(r.price || 0, visitPct(r, pctOf(chairs, barberId, locationId))), 0);
+        if (share <= 0) continue;
+        if (Math.round(a.received - share)) deltas[a.day] = a.received - share;
+        tx.delete(shop.collection("claimAdjusts").doc(adjustDocId(barberId, locationId, a.day)));
+      }
+      if (Object.keys(deltas).length) Object.assign(claim, withDayDeltas({ ...claim, expected: claim.ownerShare }, deltas));
     }
     tx.set(ref, claim);
     tx.set(lock, { at: claim.claimedAt, last: ref.id });

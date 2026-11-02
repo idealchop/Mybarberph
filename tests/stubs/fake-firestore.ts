@@ -1,4 +1,5 @@
 /** Tiny in-memory Firestore for API tests: doc/collection/where(==, >=, <)/orderBy/limit/get/getAll/runTransaction. No network. */
+let autoId = 0;
 type Data = Record<string, unknown>;
 export function fakeFirestore(store: Record<string, Data> = {}) {
   const docRef = (path: string) => ({
@@ -11,7 +12,7 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     collection: (n: string) => coll(`${path}/${n}`),
   });
   const coll = (path: string, filters: ((d: Data) => boolean)[] = [], order?: [string, "asc" | "desc"], lim?: number) => ({
-    doc: (id: string) => docRef(`${path}/${id}`),
+    doc: (id?: string) => docRef(`${path}/${id ?? `auto${++autoId}`}`),
     where: (f: string, op: string, v: unknown) => coll(path, [...filters, (d) => {
       const x = d[f] as number;
       return op === "==" ? d[f] === v : op === ">=" ? x >= (v as number) : op === "<" ? x < (v as number) : false;

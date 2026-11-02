@@ -90,7 +90,7 @@ export function BarberPerformanceView({ token, who, place, onBack, extra, onProf
               {days.map((d) => (
                 <td key={d.key} className={`border-b border-line px-0 py-3 text-center tabular-nums ${d.today ? "bg-grey-100" : ""} ${d.today ? "shadow-[inset_0_0_0_1.5px_#111]" : ""}`}>
                   {d.future || !loaded ? <span className="text-muted opacity-40">–</span> : d.amount ? (
-                    <><b className={`block text-[12px] font-bold ${d.st === "open" ? "text-[#C62828]" : d.st === "claimed" ? "text-[#0B7A3E]" : ""}`}>{compactPeso(d.amount)}</b><small className="block text-[10px] font-semibold text-muted">{d.cuts} haircut{d.cuts === 1 ? "" : "s"}</small></>
+                    <><b className={`block text-[12px] font-bold ${d.st === "open" ? "text-[#C62828]" : d.st === "claimed" ? "text-[#0B7A3E]" : ""}`}>{compactPeso(d.amount)}</b>{d.st === "open" && (by.get(d.key)?.cashClaimed ?? 0) > 0 ? <small data-testid="part-claimed" className="block text-[9.5px] font-bold text-[#0B7A3E]">part claimed</small> : null}<small className="block text-[10px] font-semibold text-muted">{d.cuts} haircut{d.cuts === 1 ? "" : "s"}</small></>
                   ) : <span className="font-semibold text-muted">–</span>}
                 </td>
               ))}
