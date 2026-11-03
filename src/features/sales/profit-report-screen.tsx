@@ -10,7 +10,7 @@ import { peso } from "@/lib/format";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { useShopChairs } from "@/lib/shop-chairs";
 import { useShopProfile } from "@/lib/shop-profile";
-import { compactPeso, groupProfitRows, profitMonth, profitWeek, type ProfitRow } from "@/lib/profit-report";
+import { gridNames, gridPeso, groupProfitRows, profitMonth, profitWeek, type ProfitRow } from "@/lib/profit-report";
 import { LocationSwitcher } from "@/components/shell/location-switcher";
 import { useCloud } from "@/lib/cloud";
 import { normalizeGroups, SALES_GROUPS_KEY } from "@/lib/sales-groups";
@@ -18,6 +18,7 @@ import { cn } from "@river-apps/ui";
 import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
+import { useFitNumbers } from "./use-fit-numbers";
 import { useSalesRows } from "./use-sales-rows";
 import { ProfitDaySheet, type DayTarget } from "./profit-day-sheet";
 import { ProfitDayBreakdown, ProfitMonthCalendar } from "./profit-month-calendar";
@@ -46,7 +47,7 @@ function Amount({ n, future, bold }: { n: number; future: boolean; bold?: boolea
   if (!n) return <span className="font-semibold text-muted">–</span>;
   return (
     <span className={bold ? "font-bold" : "font-semibold"}>
-      <span className="lg:hidden">{compactPeso(n)}</span>
+      <span className="lg:hidden">{gridPeso(n)}</span>
       <span className="hidden lg:inline">{peso(n)}</span>
     </span>
   );
@@ -105,12 +106,14 @@ export function ProfitReportScreen() {
     : week.label.endsWith(`, ${today.slice(0, 4)}`) ? week.label.slice(0, -6) : week.label;
   const grouped = canGroup && view === "groups" ? groupProfitRows(report.rows, salesGroups) : null;
 
+  const shortName = new Map(report.rows.map((r, i, all) => [`${r.id}@${r.locationId}`, gridNames(all.map((x) => x.name))[i]!]));
+  const { ref: fitRef, px: fitPx } = useFitNumbers([report, cells, claimMap]);
   const renderRow = (row: ProfitRow) => (
                 <tr key={`${row.id}@${row.locationId}`} onClick={month ? undefined : () => setFocus(`${row.id}@${row.locationId}`)} className={month ? undefined : "cursor-pointer"}>
-                  <th scope="row" className="border-b border-line py-2.5 pl-2.5 pr-1 text-left lg:px-3">
+                  <th scope="row" className="border-b border-line py-2.5 pl-2 pr-0.5 text-left text-[10.5px] lg:text-[12.5px] lg:px-3">
                     {month ? <Link href={barberHref(row)} className="block truncate font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</Link>
-                      : <button type="button" onClick={(e) => { e.stopPropagation(); setFocus(`${row.id}@${row.locationId}`); }} aria-label={`${row.name}: show this week`} className="block w-full truncate text-left font-semibold underline decoration-line decoration-dotted underline-offset-2">{row.name}</button>}
-                    {(where === "all" || row.sameName) && row.locationName ? <span className="mt-0.5 block truncate text-[10px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
+                      : <button type="button" onClick={(e) => { e.stopPropagation(); setFocus(`${row.id}@${row.locationId}`); }} aria-label={`${row.name}: show this week`} className="block w-full truncate text-left font-semibold underline decoration-line decoration-dotted underline-offset-2"><span className="lg:hidden">{shortName.get(`${row.id}@${row.locationId}`) ?? row.name}</span><span className="hidden lg:inline">{row.name}</span></button>}
+                    {(where === "all" || row.sameName) && row.locationName ? <span className="mt-0.5 block truncate text-[9px] font-medium text-muted lg:text-[11px]">{row.locationName}</span> : null}
                   </th>
                   {row.days.map((n, i) => {
                     const c = report.cols[i];
@@ -123,7 +126,7 @@ export function ProfitReportScreen() {
                           <button type="button" onClick={(e) => { e.stopPropagation(); setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! }); }}
                             aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}${sp?.state === "mixed" ? `, ${peso(sp.toClaim)} to claim, ${peso(sp.claimed)} claimed` : st === "open" ? ", unclaimed" : st === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
-                            {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={sp?.state === "mixed" ? sp.toClaim : n} future={false} />{sp?.state === "mixed" ? <small data-testid="cell-claimed" className="block text-[9.5px] font-bold text-[#0B7A3E]">+{compactPeso(sp.claimed)}</small> : null}</span> : <Amount n={0} future={false} />}
+                            {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={sp?.state === "mixed" ? sp.toClaim : n} future={false} />{sp?.state === "mixed" ? <small data-testid="cell-claimed" className="block text-[0.9em] font-bold lg:text-[9.5px] text-[#0B7A3E]">+{gridPeso(sp.claimed)}</small> : null}</span> : <Amount n={0} future={false} />}
                             {row.adjusted?.[i] ? <span className="sr-only">, adjusted</span> : null}
                             {row.adjusted?.[i] ? <span aria-hidden title="Adjusted" className="ml-0.5 inline-block size-1.5 self-start rounded-full bg-[#D97706]" /> : null}
                           </button>
@@ -133,8 +136,8 @@ export function ProfitReportScreen() {
                       </td>
                     );
                   })}
-                  <td className="whitespace-nowrap border-b border-line py-2.5 pl-1 pr-2.5 text-right font-bold tabular-nums lg:px-3">
-                    <span className="lg:hidden">{compactPeso(row.total)}</span><span className="hidden lg:inline">{peso(row.total)}</span>
+                  <td className="whitespace-nowrap border-b border-line py-2.5 pl-0.5 pr-1.5 text-right font-bold tabular-nums lg:px-3">
+                    <span className="lg:hidden">{gridPeso(row.total)}</span><span className="hidden lg:inline">{peso(row.total)}</span>
                   </td>
                 </tr>
   );
@@ -197,10 +200,11 @@ export function ProfitReportScreen() {
       {month ? <ProfitMonthCalendar m={month} today={today} onPick={setDayOpen} /> : null}
 
       {report.rows.length === 0 ? null : (
-        <div className="mt-3 overflow-hidden rounded-card bg-surface shadow-card">
-          <table className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] lg:text-[12.5px]">
+        <div className="-mx-2 mt-3 overflow-hidden rounded-card bg-surface shadow-card lg:mx-0">
+          {/* v1.0.43: exact amounts; numbers shrink (never clip, never "k") until the whole week + Total fits. */}
+          <table ref={fitRef} style={{ ["--gn" as string]: `${fitPx}px` }} className="w-full table-fixed border-separate border-spacing-0 text-[11.5px] tracking-[-0.03em] lg:tracking-normal lg:text-[12.5px] [&_td]:overflow-hidden max-lg:[&_td]:text-[length:var(--gn)] max-lg:[&_td]:px-[3px]">
             <colgroup>
-              <col className="w-[4.6rem] lg:w-[11rem]" />
+              <col className="w-[3.6rem] lg:w-[11rem]" />
               {report.cols.map((c) => <col key={c.key} />)}
               <col className="w-[2.9rem] lg:w-[7rem]" />
             </colgroup>
@@ -226,14 +230,14 @@ export function ProfitReportScreen() {
                   <tr className="font-bold">
                     <th scope="row" className="border-b border-line py-2 pl-2.5 pr-1 text-left text-[10.5px] text-muted lg:px-3">Subtotal</th>
                     {g.days.map((n, k) => { const c = report.cols[k]; return <td key={c?.key ?? k} className="whitespace-nowrap border-b border-line px-0 py-2 text-center tabular-nums"><Amount n={n} future={!!c?.future} bold /></td>; })}
-                    <td className="whitespace-nowrap border-b border-line py-2 pl-1 pr-2.5 text-right tabular-nums lg:px-3"><span className="lg:hidden">{compactPeso(g.total)}</span><span className="hidden lg:inline">{peso(g.total)}</span></td>
+                    <td className="whitespace-nowrap border-b border-line py-2 pl-0.5 pr-1.5 text-right tabular-nums lg:px-3"><span className="lg:hidden">{gridPeso(g.total)}</span><span className="hidden lg:inline">{peso(g.total)}</span></td>
                   </tr>
                 </Fragment>
               )) : report.rows.map((row) => renderRow(row))}
             </tbody>
             <tfoot>
               <tr className="font-bold">
-                <th scope="row" className="bg-grey-100 py-3 pl-2.5 pr-1 text-left leading-tight lg:px-3">{totalLabel(!shops.enabled ? "shop" : where === "all" ? "all" : "branch")}</th>
+                <th scope="row" className="overflow-hidden break-words bg-grey-100 py-3 pl-2 pr-0.5 text-left text-[9.5px] leading-tight lg:px-3 lg:text-[12.5px]"><span className="lg:hidden">Total</span><span className="hidden lg:inline">{totalLabel(!shops.enabled ? "shop" : where === "all" ? "all" : "branch")}</span></th>
                 {report.daily.map((n, i) => {
                   const c = report.cols[i];
                   return (
@@ -242,8 +246,8 @@ export function ProfitReportScreen() {
                     </td>
                   );
                 })}
-                <td className="whitespace-nowrap bg-grey-100 py-3 pl-1 pr-2.5 text-right tabular-nums lg:px-3">
-                  <span className="lg:hidden">{compactPeso(report.total)}</span><span className="hidden lg:inline">{peso(report.total)}</span>
+                <td className="whitespace-nowrap bg-grey-100 py-3 pl-0.5 pr-1.5 text-right tabular-nums lg:px-3">
+                  <span className="lg:hidden">{gridPeso(report.total)}</span><span className="hidden lg:inline">{peso(report.total)}</span>
                 </td>
               </tr>
             </tfoot>

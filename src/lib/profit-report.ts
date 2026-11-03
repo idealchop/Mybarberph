@@ -161,6 +161,26 @@ function profitGrid(
 }
 
 /** Short amount for tight grids: 980 → "980", 1,600 → "1.6k", 12,400 → "12k" (pesos, from centavos). */
+/**
+ * v1.0.43 (Jimboy: "show actual and not round up"): exact grid amount, pesos with commas, no ₱, no "k".
+ * Centavos only when there are any (₱1,500.50).
+ */
+export function gridPeso(centavos: number): string {
+  const v = centavos / 100;
+  return v.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+/** Grid row label: first name only; when two rows share a first name, add the last name's initial. */
+export function gridNames(names: string[]): string[] {
+  const first = (n: string) => n.trim().split(/\s+/)[0] || n;
+  const count = new Map<string, number>();
+  for (const n of names) count.set(first(n), (count.get(first(n)) ?? 0) + 1);
+  return names.map((n) => {
+    const f = first(n), parts = n.trim().split(/\s+/);
+    return (count.get(f) ?? 0) > 1 && parts.length > 1 ? `${f} ${parts[parts.length - 1]![0]}.` : f;
+  });
+}
+
 export function compactPeso(centavos: number): string {
   const v = Math.round(centavos / 100);
   if (Math.abs(v) < 1000) return String(v);
