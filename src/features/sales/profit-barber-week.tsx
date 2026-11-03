@@ -41,15 +41,8 @@ export function ProfitBarberWeek({ row, days, claimMap, cells, today, range, onD
               <button type="button" onClick={() => onDay(d.key)} aria-label={`${d.dow} ${d.date}: ${d.amount ? peso(d.amount) : "no sales"}${d.state === "mixed" ? `, ${peso(d.toClaim)} to claim, ${peso(d.claimed)} claimed` : d.state === "open" ? ", unclaimed" : d.state === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                 className="-mr-2 flex min-h-11 items-center rounded-lg px-2 active:bg-grey-200">
                 {!d.amount ? <span className="text-[17px] font-extrabold text-muted">–</span>
-                  : d.state === "mixed" ? (
-                    // v1.0.41: part of the day was claimed earlier: To claim (red) and claimed (green) shown apart, like the header.
-                    <span data-testid="day-split" className="text-right leading-tight">
-                      <span className="block border-b-[1.5px] border-dotted border-[#C62828]/60 text-[17px] font-extrabold tabular-nums text-[#C62828]">{peso(d.toClaim)}</span>
-                      <small className="block text-[11.5px] font-bold tabular-nums text-[#0B7A3E]">+ {peso(d.claimed)} claimed</small>
-                    </span>
-                  ) : (
-                  <span className={cn("border-b-[1.5px] border-dotted text-[17px] font-extrabold tabular-nums", d.state === "open" ? "border-[#C62828]/60 text-[#C62828]" : d.state === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}>{peso(d.amount)}</span>
-                )}
+                  // v1.0.44: a partly claimed day shows its full total, red while any part is unclaimed.
+                  : <span className={cn("border-b-[1.5px] border-dotted text-[17px] font-extrabold tabular-nums", d.state === "open" || d.state === "mixed" ? "border-[#C62828]/60 text-[#C62828]" : d.state === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}>{peso(d.amount)}</span>}
               </button>
             )}
           </li>

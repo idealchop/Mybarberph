@@ -126,7 +126,7 @@ export function ProfitReportScreen() {
                           <button type="button" onClick={(e) => { e.stopPropagation(); setSheet({ id: row.id, name: row.name, locationId: row.locationId, locationName: row.locationName, day: c.day! }); }}
                             aria-label={`${row.name}, ${c.top} ${c.sub}: ${n ? peso(n) : "no sales"}${sp?.state === "mixed" ? `, ${peso(sp.toClaim)} to claim, ${peso(sp.claimed)} claimed` : st === "open" ? ", unclaimed" : st === "claimed" ? ", claimed" : ""}. Claim, records and add`}
                             className="flex min-h-11 w-full items-center justify-center py-1 active:bg-grey-200">
-                            {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={sp?.state === "mixed" ? sp.toClaim : n} future={false} />{sp?.state === "mixed" ? <small data-testid="cell-claimed" className="block text-[0.9em] font-bold lg:text-[9.5px] text-[#0B7A3E]">+{gridPeso(sp.claimed)}</small> : null}</span> : <Amount n={0} future={false} />}
+                            {n ? <span className={cn("border-b border-dotted leading-tight", st === "open" ? "border-[#C62828]/60 text-[#C62828]" : st === "claimed" ? "border-[#0B7A3E]/60 text-[#0B7A3E]" : "border-muted/70")}><Amount n={n} future={false} /></span> : <Amount n={0} future={false} />}
                             {row.adjusted?.[i] ? <span className="sr-only">, adjusted</span> : null}
                             {row.adjusted?.[i] ? <span aria-hidden title="Adjusted" className="ml-0.5 inline-block size-1.5 self-start rounded-full bg-[#D97706]" /> : null}
                           </button>
