@@ -74,7 +74,7 @@ export function WalkInScreen() {
     const now = Date.now();
     if (me) {
       seatOwnerWalkIn({ ...newRow(now) }, "Owner");
-      router.push(fromHome ? "/" : "/queue");
+      router.push(fromHome ? "/home" : "/queue"); // v1.0.45: "/home", not "/" (a redirect that has no offline copy)
       return;
     }
     if (choice.kind === "none") { setNote(NO_BARBER_MESSAGE); return; }

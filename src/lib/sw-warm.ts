@@ -3,7 +3,8 @@
  * v1.0.39: tells the service worker which pages and files to keep for offline use: the page on screen, the owner's
  * main pages (so they open offline even if not visited yet), and every same-origin JS/CSS/font/image already loaded.
  */
-export const OWNER_PAGES = ["/home", "/queue", "/sales", "/sales/profit", "/sales/barbers", "/history", "/settings", "/settings/shops", "/settings/services", "/moments"];
+// v1.0.45: /queue/new (Walk-in, Start the haircut) and /scan too: tapping them offline opened the offline page.
+export const OWNER_PAGES = ["/home", "/queue", "/queue/new", "/scan", "/sales", "/sales/profit", "/sales/barbers", "/history", "/settings", "/settings/shops", "/settings/services", "/moments"];
 
 export function warmPages(path: string): string[] {
   const clean = path.split("?")[0]!.split("#")[0]!;

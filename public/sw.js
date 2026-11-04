@@ -6,12 +6,12 @@
  * - Build assets, fonts, icons and images: stale-while-revalidate; a missing image gets a blank image, never "?".
  * - Install precaches the app shell, the offline page and every icon/image (public/sw-precache.json).
  * - Old caches are deleted on activate (cache names carry GEN and the build). */
-const GEN = "v39";
+const GEN = "v45"; // v1.0.45: /queue and /queue/new precached at install
 const VERSION = new URL(self.location.href).searchParams.get("v") || "0";
 const PAGES = `bp-pages-${GEN}-${VERSION}`;
 const ASSETS = `bp-assets-${GEN}-${VERSION}`;
 const OFFLINE = "/offline.html";
-const SHELL = ["/home", OFFLINE, "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
+const SHELL = ["/home", "/queue", "/queue/new", OFFLINE, "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 const BLANK_IMG = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
 
 const skip = (url) => url.pathname.startsWith("/api/") || url.pathname.startsWith("/__/") || url.pathname === "/sw.js";
@@ -75,9 +75,25 @@ async function asset(event, req, url) {
   }
 }
 
+/** v1.0.45: the JS/CSS a saved page needs. A page kept without its chunks opened blank offline (chunk error). */
+function pageChunks(html) {
+  const out = new Set();
+  for (const m of html.matchAll(/\/_next\/static\/[^"'\s)\\]+\.(?:js|css)/g)) out.add(new URL(m[0], self.location.origin).href);
+  return [...out];
+}
 async function precache(list, cacheName) {
   const c = await caches.open(cacheName);
-  await Promise.all(list.map(async (u) => { try { const r = await fetch(u, { cache: "reload" }); if (r.ok) await c.put(new URL(u, self.location.origin).href, await plain(r)); } catch { /* next time */ } }));
+  const chunks = new Set();
+  await Promise.all(list.map(async (u) => { try {
+    const r = await fetch(u, { cache: "reload" });
+    if (!r.ok) return;
+    if (cacheName === PAGES && (r.headers.get("content-type") || "").includes("text/html")) for (const x of pageChunks(await r.clone().text())) chunks.add(x);
+    await c.put(new URL(u, self.location.origin).href, await plain(r));
+  } catch { /* next time */ } }));
+  if (chunks.size) {
+    const a = await caches.open(ASSETS);
+    await Promise.all([...chunks].map(async (u) => { try { if (await a.match(u)) return; const r = await fetch(u); if (r.ok) await a.put(u, r); } catch { /* next time */ } }));
+  }
 }
 
 self.addEventListener("install", (event) => {
