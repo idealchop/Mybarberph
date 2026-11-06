@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyBarberLinkError, settleBarberLoad } from "@/lib/barber-link-status";
+import { barberRecoveryView, classifyBarberLinkError, settleBarberLoad } from "@/lib/barber-link-status";
 import { normalizeChairList } from "@/lib/shop-chairs";
 
 const revoked = Object.assign(new Error("This link was replaced or turned off."), { status: 404, body: { code: "not_found", error: "This link was replaced or turned off." } });
@@ -24,6 +24,27 @@ describe("Barber link failure is not guessed", () => {
     expect(settleBarberLoad(server, { online: true, hasCache: false, hasShop: true })).toEqual({ failure: "unavailable", action: "keep" });
     expect(settleBarberLoad(timeout, { online: true, hasCache: true, hasShop: false })).toEqual({ failure: "unavailable", action: "cache" });
     expect(settleBarberLoad(offline, { online: false, hasCache: false, hasShop: false })).toEqual({ failure: "offline", action: "error" });
+  });
+});
+
+describe("Which screen a barber link shows", () => {
+  const base = { mode: "barber" as const, tokenMatches: true, ready: true, shopId: "shop", linkFailure: null, hasChair: true };
+  it("TC-LINK-HP-07 a matching ready snapshot is the working home", () => {
+    expect(barberRecoveryView(base)).toBe("home");
+  });
+  it("TC-LINK-NEG-07 an owner snapshot or a different token stays on Opening", () => {
+    expect(barberRecoveryView({ ...base, mode: "owner", tokenMatches: false, hasChair: false })).toBe("opening");
+    expect(barberRecoveryView({ ...base, tokenMatches: false })).toBe("opening");
+    expect(barberRecoveryView({ ...base, ready: false })).toBe("opening");
+  });
+  it("TC-LINK-ODD-04 offline, a server miss, and a real rejection are different screens", () => {
+    expect(barberRecoveryView({ ...base, shopId: null, hasChair: false, linkFailure: "offline" })).toBe("offline");
+    expect(barberRecoveryView({ ...base, shopId: null, hasChair: false, linkFailure: "unavailable" })).toBe("unavailable");
+    expect(barberRecoveryView({ ...base, shopId: null, hasChair: false, linkFailure: null })).toBe("unavailable");
+    expect(barberRecoveryView({ ...base, shopId: null, hasChair: false, linkFailure: "revoked" })).toBe("revoked");
+  });
+  it("TC-LINK-HP-08 a saved shop stays the home while the phone is offline", () => {
+    expect(barberRecoveryView({ ...base, linkFailure: "offline" })).toBe("home");
   });
 });
 

@@ -9,6 +9,9 @@ export type BarberLinkFailure = "revoked" | "offline" | "unavailable";
 /** What to do with the phone's copy of this link after a failed load. */
 export type BarberLoadAction = "revoke" | "cache" | "keep" | "error";
 
+/** Which full-screen state the barber link page should show. */
+export type BarberRecoveryKind = "opening" | "offline" | "unavailable" | "revoked" | "home";
+
 /**
  * A 404 (or `not_found`) is the server saying this token does not resolve.
  * Timeouts and transport failures are not that, even when the phone still shows signal.
@@ -36,4 +39,26 @@ export function settleBarberLoad(
   if (opts.hasShop) return { failure, action: "keep" };
   if (opts.hasCache) return { failure, action: "cache" };
   return { failure, action: "error" };
+}
+
+/**
+ * Pick the screen from this token's own snapshot.
+ * Another mode, a different token, or a load still in flight is "opening" — never a turned-off link,
+ * and never the previous barber's home. A saved shop with this barber's chair stays the working home.
+ * Only an explicit revocation is the turned-off screen.
+ */
+export function barberRecoveryView(input: {
+  mode: "owner" | "barber" | "guest";
+  /** The open snapshot was loaded for the token in the address bar. */
+  tokenMatches: boolean;
+  ready: boolean;
+  shopId: string | null;
+  linkFailure: BarberLinkFailure | null;
+  hasChair: boolean;
+}): BarberRecoveryKind {
+  if (input.mode !== "barber" || !input.tokenMatches || !input.ready) return "opening";
+  if (input.shopId && input.hasChair) return "home";
+  if (input.linkFailure === "revoked") return "revoked";
+  if (input.linkFailure === "offline") return "offline";
+  return "unavailable";
 }

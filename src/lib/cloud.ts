@@ -9,7 +9,7 @@ import { useSyncExternalStore } from "react";
 import type { ChairRequest } from "@/lib/booking-types";
 import { hydrateSession, idToken, sessionSnapshot, subscribeSession } from "@/lib/session";
 import { setSwrScope } from "@/lib/swr";
-import { settleBarberLoad } from "@/lib/barber-link-status";
+import { settleBarberLoad, type BarberLinkFailure } from "@/lib/barber-link-status";
 import { createQueue, drainQueue, isNetworkError, type OfflineQueue } from "@/lib/offline-queue";
 
 export interface CloudShop {
@@ -33,6 +33,10 @@ interface Snap {
   ready: boolean;
   loading: boolean;
   error: string | null;
+  /** Why the last barber-link load failed. Null while opening or while a shop snapshot is on screen. */
+  linkFailure: BarberLinkFailure | null;
+  /** Token the barber snapshot belongs to. A mismatch with the address bar must not show that snapshot. */
+  barberToken: string | null;
   mode: Mode["kind"] | "guest";
   shopId: string | null;
   chairId: string | null;
@@ -43,7 +47,7 @@ interface Snap {
   queued: string[];
 }
 
-const EMPTY: Snap = { ready: false, loading: false, error: null, mode: "guest", shopId: null, chairId: null, shop: null, values: {}, bookings: [], queued: [] };
+const EMPTY: Snap = { ready: false, loading: false, error: null, linkFailure: null, barberToken: null, mode: "guest", shopId: null, chairId: null, shop: null, values: {}, bookings: [], queued: [] };
 let snap: Snap = EMPTY;
 let mode: Mode | null = null;
 let uid: string | null = null;
@@ -52,6 +56,8 @@ let pending = 0;
 /** Bumped on every local write; a poll that started before a write is stale and is dropped. */
 let writeEpoch = 0;
 let pollTimer: number | undefined;
+/** Bumped on every load. A response from an older load is dropped, so a late 404 cannot wipe a newer success. */
+let loadGen = 0;
 const listeners = new Set<() => void>();
 /** Events the older stores listen for. */
 const EVENTS = ["barbers-chairs", "barbers-bookings", "barbers-locations", "barbers-services", "barbers-profile"];
@@ -166,18 +172,23 @@ function base() {
 
 async function load(quiet = false) {
   if (!mode) return;
+  const gen = ++loadGen;
   const requestedBarber = mode.kind === "barber" ? mode.token : null;
-  if (!quiet) set({ loading: true, error: null });
-  const stillThisLoad = () => requestedBarber === (mode?.kind === "barber" ? mode.token : null);
+  if (!quiet) set({ loading: true, error: null, linkFailure: null });
+  const stillThisLoad = () => gen === loadGen && requestedBarber === (mode?.kind === "barber" ? mode.token : null);
   try {
     const epoch = writeEpoch;
     const d = await api(base());
-    // A slower response for a link the barber already left must not paint over the one they opened.
+    // A slower response for a link the barber already left, or an older attempt, must not paint over the latest one.
     if (!mode || !stillThisLoad()) return;
     // Don't clobber unsaved local edits, or anything written while this request was in flight.
     if ((pending > 0 || epoch !== writeEpoch) && quiet) return;
     const data: Cached = { shopId: d.shopId, chairId: d.chairId ?? null, shop: d.shop, values: d.values ?? {}, bookings: d.bookings ?? [] };
-    set({ ready: true, loading: false, error: null, mode: mode.kind, ...data, bookings: withQueued(data.bookings) });
+    set({
+      ready: true, loading: false, error: null, linkFailure: null, mode: mode.kind,
+      barberToken: mode.kind === "barber" ? mode.token : null,
+      ...data, bookings: withQueued(data.bookings),
+    });
     if (mode.kind === "owner" && uid) writeCache(uid, data);
     if (mode.kind === "barber") writeBarberCache(mode.token, data);
   } catch (e) {
@@ -191,25 +202,29 @@ async function load(quiet = false) {
       // The server rejected the token. Drop the saved copy so a turned-off link cannot keep working offline.
       if (decision.action === "revoke") {
         clearBarberCache(requestedBarber);
-        set({ ready: true, loading: false, error: (e as Error).message || "This link was replaced or turned off.", mode: "barber", shopId: null, chairId: null, shop: null, values: {}, bookings: [] });
+        set({
+          ready: true, loading: false, error: (e as Error).message || "This link was replaced or turned off.",
+          linkFailure: "revoked", barberToken: requestedBarber, mode: "barber",
+          shopId: null, chairId: null, shop: null, values: {}, bookings: [],
+        });
         return;
       }
       // Timeout, offline, or a 5xx: reopen the last good copy. Do not call the link replaced.
       if (decision.action === "cache") {
         const cached = readBarberCache(requestedBarber);
         if (cached?.shopId) {
-          set({ ready: true, loading: false, error: null, mode: "barber", ...cached, bookings: withQueued(cached.bookings) });
+          set({ ready: true, loading: false, error: null, linkFailure: null, barberToken: requestedBarber, mode: "barber", ...cached, bookings: withQueued(cached.bookings) });
           return;
         }
       }
       if (decision.action === "keep") {
-        set({ ready: true, loading: false, error: null });
+        set({ ready: true, loading: false, error: null, linkFailure: null });
         return;
       }
-      set({ ready: true, loading: false, error: (e as Error).message });
+      set({ ready: true, loading: false, error: (e as Error).message, linkFailure: decision.failure, barberToken: requestedBarber, mode: "barber" });
       return;
     }
-    if (snap.shopId && isNetworkError(e)) set({ ready: true, loading: false });
+    if (snap.shopId && isNetworkError(e)) set({ ready: true, loading: false, linkFailure: null });
     else set({ ready: true, loading: false, error: (e as Error).message });
   }
 }
@@ -264,13 +279,26 @@ export function startBarberCloud(token: string) {
   if (!keep) {
     const cached = readBarberCache(token);
     if (cached?.shopId) {
-      set({ ...EMPTY, ...cached, bookings: withQueued(cached.bookings), queued: queue?.ids() ?? [], ready: true, loading: true, error: null, mode: "barber" });
+      set({ ...EMPTY, ...cached, bookings: withQueued(cached.bookings), queued: queue?.ids() ?? [], ready: true, loading: true, error: null, linkFailure: null, barberToken: token, mode: "barber" });
     } else {
-      set({ ...EMPTY, queued: queue?.ids() ?? [], ready: false, loading: true, error: null, mode: "barber" });
+      set({ ...EMPTY, queued: queue?.ids() ?? [], ready: false, loading: true, error: null, linkFailure: null, barberToken: token, mode: "barber" });
     }
   }
   void syncOfflineQueue();
   void load(keep || Boolean(snap.shopId)).then(poll);
+}
+
+/**
+ * Ask again for the token already on screen. One attempt at a time.
+ * With no shop snapshot, the page shows "Opening your link" until this attempt settles.
+ * A saved shop stays on screen while the check runs. A 404 still clears that copy.
+ */
+export function retryBarberCloud(): Promise<void> {
+  if (mode?.kind !== "barber") return Promise.resolve();
+  if (snap.loading) return Promise.resolve();
+  const quiet = Boolean(snap.shopId);
+  if (!quiet) set({ ready: false, loading: true, error: null, linkFailure: null, barberToken: mode.token, mode: "barber" });
+  return load(quiet).then(() => undefined);
 }
 
 export function refreshCloud() { return load(true); }

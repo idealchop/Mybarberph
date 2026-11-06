@@ -194,3 +194,8 @@ Not run against DEV or prod. No live token was requested.
 | TC-LINK-HP-05 | an overdue review still resolves; legacy `expiresAt` is dropped on save; another shop's link is untouched; the link does not see the other barber's visit | `tests/api/barber-link-lifecycle.test.ts` | local |
 | TC-LINK-NEG-05 | turning one barber off deletes only that link; the token stays on the chair; turning them back on restores it | same | local |
 | TC-LINK-NEG-06 | removing a barber deletes only that link; a token that fails the pattern is not published | same | local |
+| TC-LINK-HP-07 | a matching ready snapshot is the working home | `tests/unit/barber-link-status.test.ts` | local |
+| TC-LINK-NEG-07 | an owner snapshot or a different token stays on Opening | same | local |
+| TC-LINK-ODD-04 | offline, a server miss, and a real rejection pick different screens | same | local |
+| TC-LINK-HP-08 | a saved shop stays the home while the phone is offline | same | local |
+| TC-LINK-UI-01..08 | local browser: opening to home, cold offline, saved home, 500 then retry, hung request, 404 stays blocked, bad token plus a second token, rapid Try again | `tests/e2e/barber-link-recovery.spec.ts` | local app only (skipped unless base URL is localhost) |

@@ -1,6 +1,5 @@
 "use client";
 import { showWaitingAndHistory } from "@/lib/barber-home";
-import { AppLoader } from "@/components/common/app-loader";
 import { PoweredBy } from "@/components/qr/shop-brand";
 import { completeCut } from "@/components/transactions/complete-flow";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
@@ -22,7 +21,9 @@ import { useInstallHidden } from "@/lib/pwa";
 import { useEffect, useRef, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
 import { BarberIcon } from "@/components/art";
-import { startBarberCloud, useCloud } from "@/lib/cloud";
+import { barberRecoveryView } from "@/lib/barber-link-status";
+import { retryBarberCloud, startBarberCloud, useCloud } from "@/lib/cloud";
+import { BarberLinkRecovery } from "./barber-link-recovery";
 import {
   acceptOnChair, elapsedLabel, patchRequest, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
@@ -233,20 +234,16 @@ export function BarberLinkScreen({ token }: { token: string }) {
     return () => window.removeEventListener("barbers-booking-gone", on);
   }, []);
 
-  // Another mode's snapshot (the owner app, or a link still loading) is not a turned-off link.
-  if (cloud.mode !== "barber" || !ready || !cloud.ready) {
-    return <AppLoader />;
-  }
-  // A rejected token has no shop snapshot, so there is no chair to open. A first open that
-  // times out with nothing saved on this phone still reaches this sentence; the offline and
-  // try-again screens are in the mockup and are not built yet.
-  if (!chair) {
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
-        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link was replaced or turned off.</h1>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send you your current barber link.</p>
-      </main>
-    );
+  const view = barberRecoveryView({
+    mode: cloud.mode,
+    tokenMatches: cloud.barberToken === token,
+    ready: cloud.ready && ready,
+    shopId: cloud.shopId,
+    linkFailure: cloud.linkFailure,
+    hasChair: Boolean(chair),
+  });
+  if (view !== "home" || !chair) {
+    return <BarberLinkRecovery kind={view === "home" ? "unavailable" : view} loading={cloud.loading} onRetry={() => retryBarberCloud()} />;
   }
 
   const placeId = chair.locationId || HOME_LOCATION_ID;
