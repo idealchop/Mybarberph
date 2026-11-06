@@ -28,8 +28,10 @@ The owner gives each barber a link `/b/{token}`. Tokens (`[a-z0-9]{8,40}`) live 
 
 **What a link can see and change.** A barber link only sees and edits that barber's own visits (`barberAccess`, `src/lib/server/shops.ts`):
 
-- *own*: `barberId` is this barber; on old rows with no `barberId`, the visit's chair/seat is this barber's chair at their location;
+- *own*: the visit's `barberId` is this barber (the same rule as Sales, `src/lib/cut-count.ts`). A visit with no `barberId` is not this barber's, even when the chair or seat label matches.
 - *open*: an unassigned visit still waiting (`requested`/`accepted`, no chair) at the barber's location, so the shared Waiting → Accept flow keeps working. The first save stamps the barber, and from then on it is theirs only.
+
+**Opening the link.** `GET /api/barber/:token` is the check. A `404` clears the copy saved on that phone, so a barber who was turned off does not keep working from it. A timeout, an offline phone, or a 5xx keeps the open snapshot or reopens the last saved copy. The screen still uses the "replaced or turned off" sentence when that request fails and this phone has nothing saved. Splitting that sentence into offline / try-again / turned-off is drawn in the mobile mockup and is not in the app yet.
 
 Anything else is hidden from `GET /api/barber/:token` and a `PUT` answers `404`. The amount a link saves is always the menu price (server-enforced); only the owner can change it.
 

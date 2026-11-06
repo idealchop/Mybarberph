@@ -15,7 +15,7 @@ Next.js 16 App Router, React 19, Tailwind 4, River Apps UI kit (`vendor/river-ap
 | `/moments`, `/moments/profile` | owner | Community feed |
 | `/companion` | owner | AI companion (flagged) |
 | `/settings/**`, `/account` | owner | Profile, services, shops/locations, billing, activity log, map credits |
-| `/b/[token]` | barber | Chair link: queue, history, own sales |
+| `/b/[token]` | barber | Chair link: queue, history, own sales. The page shows the loader until this token's own snapshot is ready (an owner snapshot in the same tab is not treated as a dead link). A server `404` shows "This link was replaced or turned off." A timeout, offline failure, or 5xx reopens the last copy saved for this token when there is one. With nothing saved, that same sentence is still shown; the offline / try-again / turned-off split is a mockup, not shipped. |
 | `/book` | customer | Book / join queue; ticket status |
 | `/privacy`, `/terms` | everyone | Legal (noindex while drafts) |
 

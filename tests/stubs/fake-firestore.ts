@@ -1,4 +1,4 @@
-/** Tiny in-memory Firestore for API tests: doc/collection/where(==, >=, <)/orderBy/limit/get/getAll/runTransaction. No network. */
+/** Tiny in-memory Firestore for API tests: doc/collection/where(==, >=, <)/orderBy/limit/get/getAll/batch/runTransaction. No network. */
 let autoId = 0;
 type Data = Record<string, unknown>;
 export function fakeFirestore(store: Record<string, Data> = {}) {
@@ -34,6 +34,24 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     store,
     collection: (n: string) => coll(n),
     getAll: async (...refs: { get: () => Promise<unknown> }[]) => Promise.all(refs.map((r) => r.get())),
+    batch() {
+      const ops: Array<() => void> = [];
+      return {
+        set(ref: { path: string }, v: Data, opts?: { merge?: boolean }) {
+          ops.push(() => { store[ref.path] = opts?.merge ? { ...(store[ref.path] ?? {}), ...v } : { ...v }; });
+        },
+        update(ref: { path: string }, v: Data) {
+          ops.push(() => {
+            if (!(ref.path in store)) throw new Error(`No document to update: ${ref.path}`);
+            store[ref.path] = { ...store[ref.path], ...v };
+          });
+        },
+        delete(ref: { path: string }) {
+          ops.push(() => { delete store[ref.path]; });
+        },
+        async commit() { for (const op of ops) op(); },
+      };
+    },
     runTransaction: async <T>(fn: (tx: { get: (r: { get: () => Promise<unknown> }) => Promise<unknown>; set: (r: { set: (v: Data) => Promise<void> }, v: Data) => void }) => Promise<T>) =>
       fn({ get: (r) => r.get(), set: (r, v) => { void r.set(v); }, delete: (r: { delete: () => Promise<void> }) => { void r.delete(); } } as never),
   };

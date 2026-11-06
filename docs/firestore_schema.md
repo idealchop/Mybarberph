@@ -67,7 +67,7 @@ Same shape as activity plus `read: boolean`. Owner bell; newest 50 listed. A dai
 
 ## `chairLinks/{token}` — barber links (server-only)
 
-`{ shopId, chairId, expiresAt }`. Token = `[a-z0-9]{8,40}`, rebuilt from the `chairs` state on each save; links past `expiresAt` resolve to 404.
+`{ shopId, chairId }`. Token = `[a-z0-9]{8,40}`, rebuilt from the `chairs` state on each save. Links do not expire. A legacy `expiresAt` is ignored on read and dropped the next time that shop's chairs are saved. The doc is deleted only when the owner turns that barber off, removes the barber, or the token no longer matches the pattern. Unknown or deleted → `404` "This link was replaced or turned off." Ignoring a 6-month review (`linkReviewAt` on the chair) does not delete the doc.
 
 ## `community_posts/{id}` — shared community feed (cross-tenant by design)
 

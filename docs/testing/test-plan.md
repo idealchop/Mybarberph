@@ -178,3 +178,19 @@ Open FAIL: **none**. Skipped automated tests: `TC-SEO-HP-02` skips itself on non
 8. **Account** — Settings › Account shows the sign-in method; no password form for Google/phone accounts.
 
 Record date, env and result here when run.
+
+## 2026-11-06 barber link open (local, in-memory only)
+
+Not run against DEV or prod. No live token was requested.
+
+| ID | Case | Where | Result |
+| :--- | :--- | :--- | :--- |
+| TC-LINK-NEG-03 | 404 is revoked online or offline | `tests/unit/barber-link-status.test.ts` | local |
+| TC-LINK-ODD-02 | timeout and HTTP 500 are unavailable, not revoked | same | local |
+| TC-LINK-ODD-03 | transport failure while offline is offline, not revoked | same | local |
+| TC-LINK-HP-06 | 404 clears a saved copy; a transient failure keeps the open snapshot or the cache | same | local |
+| TC-LINK-HP-04 | a chair row with a link and no seat label is kept; legacy `linkExpiresAt` becomes the review date | same | local |
+| TC-LINK-NEG-04 | a bad chairs payload normalizes to an empty list | same | local |
+| TC-LINK-HP-05 | an overdue review still resolves; legacy `expiresAt` is dropped on save; another shop's link is untouched; the link does not see the other barber's visit | `tests/api/barber-link-lifecycle.test.ts` | local |
+| TC-LINK-NEG-05 | turning one barber off deletes only that link; the token stays on the chair; turning them back on restores it | same | local |
+| TC-LINK-NEG-06 | removing a barber deletes only that link; a token that fails the pattern is not published | same | local |

@@ -61,20 +61,37 @@ export function chairBarberName(chair: Pick<ShopChair, "barberId" | "barberName"
   return barberName(chair.barberId);
 }
 
+/**
+ * Chairs the app will keep. Any row with an id stays, including one that has a link but no seat label.
+ * The old filter required a label plus a name or barber id. The next owner save wrote only the rows
+ * that passed, and the server then deleted `chairLinks` for everyone else, so a link could die
+ * without anyone turning that barber off.
+ * Occupancy fields are ignored (the booking says who is in service). A legacy `linkExpiresAt`
+ * becomes the review date in memory; the next owner save persists that and does not expire the link.
+ */
+export function normalizeChairList(raw: unknown): ShopChair[] {
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) as unknown : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((c): c is ShopChair => {
+        if (!c || typeof c !== "object") return false;
+        const row = c as ShopChair;
+        return typeof row.id === "string" && row.id.length > 0;
+      })
+      .map(({ occupiedAt: _o, ticketId: _t, ...c }) => c as ShopChair)
+      .map(({ linkExpiresAt, ...c }) => (c.linkToken && !c.linkReviewAt && linkExpiresAt ? { ...c, linkReviewAt: linkExpiresAt } : c) as ShopChair)
+      .sort((a, b) => a.number - b.number);
+  } catch {
+    return [];
+  }
+}
+
 function readChairs(): ShopChair[] {
   try {
     const raw = cloudStorage.getItem(KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as ShopChair[];
-    if (!Array.isArray(parsed)) return [];
-    const list = parsed
-      .filter((c) => c && c.id && c.label && (c.barberName?.trim() || c.barberId))
-      // Old saved occupancy is ignored (see occupyChair); seats show as used from their booking.
-      .map(({ occupiedAt: _o, ticketId: _t, ...c }) => c as ShopChair)
-      // Old monthly expiry becomes the review date (in memory; saved on the next owner save). No link breaks.
-      .map(({ linkExpiresAt, ...c }) => (c.linkToken && !c.linkReviewAt && linkExpiresAt ? { ...c, linkReviewAt: linkExpiresAt } : c) as ShopChair)
-      .sort((a, b) => a.number - b.number);
-    return list;
+    return normalizeChairList(raw);
   } catch {
     return [];
   }

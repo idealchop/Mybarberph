@@ -27,7 +27,7 @@ import {
   acceptOnChair, elapsedLabel, patchRequest, refCode, requestLocation, seatWalkInOnChair, statusLabel, useChairRequests,
   type ChairRequest,
 } from "@/lib/chair-bookings";
-import { chairBarberName, useShopChairs } from "@/lib/shop-chairs";
+import { chairBarberName, normalizeChairList } from "@/lib/shop-chairs";
 import { countToday, cutBarberId, manilaYmd } from "@/lib/cut-count";
 import { addDays, asOfLabel, dayLabel, dayOf, earningsOf, historyRow, HISTORY_REFRESH_MS } from "@/lib/barber-history";
 import { ClaimTag, dayClaimState } from "@/components/transactions/claim-tag";
@@ -209,9 +209,12 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const cloud = useCloud();
   const { profile } = useShopProfile();
   const greeting = useGreeting();
-  const { chairs, ready: chairsReady } = useShopChairs({ all: true });
   const { rows, ready } = useChairRequests();
-  const chairPreview = chairs.find((item) => item.linkToken === token);
+  // The server already resolved this token to chairId. Match that id first. A linkToken-only search
+  // hid chairs the server had accepted (for example a saved row with no seat label).
+  const chairs = normalizeChairList(cloud.values["barbers.shop-chairs"]);
+  const chairPreview = (cloud.chairId ? chairs.find((item) => item.id === cloud.chairId) : undefined)
+    ?? chairs.find((item) => item.linkToken === token);
   const { haircut, treatments } = useShopMenu(chairPreview?.locationId || HOME_LOCATION_ID);
   const now = useNow();
   const [note, setNote] = useState("");
@@ -230,17 +233,13 @@ export function BarberLinkScreen({ token }: { token: string }) {
     return () => window.removeEventListener("barbers-booking-gone", on);
   }, []);
 
-  if (cloud.ready && cloud.error && !cloud.shopId) {
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
-        <h1 className="text-[28px] font-extrabold tracking-[-0.03em]">This link was replaced or turned off.</h1>
-        <p className="mt-2 text-[15px] font-medium text-ink-2">Ask the shop to send you your current barber link.</p>
-      </main>
-    );
-  }
-  if (!chairsReady || !ready || !cloud.ready) {
+  // Another mode's snapshot (the owner app, or a link still loading) is not a turned-off link.
+  if (cloud.mode !== "barber" || !ready || !cloud.ready) {
     return <AppLoader />;
   }
+  // A rejected token has no shop snapshot, so there is no chair to open. A first open that
+  // times out with nothing saved on this phone still reaches this sentence; the offline and
+  // try-again screens are in the mockup and are not built yet.
   if (!chair) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-[402px] flex-col bg-canvas px-5 pt-16">
