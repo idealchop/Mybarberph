@@ -1,6 +1,10 @@
 # Changelog
 
-Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded). PROD is not deployed by this pass.
+Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
+
+## 2026-11-06 — v1.0.46
+
+- Barber links: opening, offline with nothing saved, a timeout or server error, and a real turn-off are separate screens. Try again and Check again re-request the same link. A saved copy stays the working home. A rejected token is cleared from that phone and cannot see another barber.
 
 ## 2026-10-19 — Jimboy's decisions on the open items (DEV)
 

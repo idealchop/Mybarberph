@@ -1,6 +1,6 @@
 # Size S — barber link open failure (2026-11-06)
 
-Change size: **S**. One client load path, the chair-list filter that feeds the next save, docs that contradicted the code, and regression tests. No new route, no schema migration, no publish, no UI redesign.
+Change size: **S**. One client load path, the chair-list filter that feeds the next save, the approved recovery screens, and regression tests. No new route and no schema migration. Version 1.0.46.
 
 | Phase | Status | Why |
 | :--- | :--- | :--- |
@@ -9,10 +9,10 @@ Change size: **S**. One client load path, the chair-list filter that feeds the n
 | 02 Design | PASS | Approved mockup built: opening, offline with nothing saved, couldn't open, turned off. A saved copy stays the working home plus the offline banner. |
 | 03 Build | PASS | Logic only: don't treat another snapshot or an in-flight load as a dead link; don't drop a chair row that still has an id; a confirmed 404 clears that phone's copy; a timeout / offline / 5xx keeps it. |
 | 04 Test | PASS | In-memory unit + API tests listed in `docs/testing/test-plan.md` (2026-11-06). No prod data, no live token. |
-| 05 Release | N/A | Not published. Version stays 1.0.45 until a separate publish plan. |
+| 05 Release | PASS | Version 1.0.46 (`package.json`, reported by `/api/version`). Source release to `dev` and `main` is the approved publish. |
 | 06 Operate | N/A | No deploy, no live data change, no alert change. |
 
-The reported Android screen was not reproduced. The exact URL was not supplied. The recovery copy is now in the app; publication is still not approved.
+The reported Android screen was not reproduced. The exact URL was not supplied. Version 1.0.46 is the approved source release of the recovery screens and the earlier link fixes.
 
 ## 2026-11-06 UI follow-up
 
