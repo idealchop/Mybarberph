@@ -57,6 +57,19 @@ test("TC-COPY-UI-01 Share copies the URL only, and Copy link repeats that same U
   await share(page, "Jusfter").click();
   const dialog = page.getByRole("dialog", { name: "Link copied" });
   await expect(dialog).toBeVisible();
+  const panel = page.locator(".sheet-up-solid");
+  await expect(panel).toHaveCSS("opacity", "1");
+  await expect(panel).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  const title = dialog.getByText("Link copied", { exact: true });
+  const titleBox = await title.boundingBox();
+  expect(titleBox).toBeTruthy();
+  const titleHit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("[role=dialog]") ? "dialog" : "page", { x: titleBox!.x + 12, y: titleBox!.y + 6 });
+  expect(titleHit).toBe("dialog");
+  const done = dialog.getByRole("button", { name: "Done" });
+  const doneBox = await done.boundingBox();
+  expect(doneBox).toBeTruthy();
+  const doneHit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.textContent?.trim() ?? "", { x: doneBox!.x + doneBox!.width / 2, y: doneBox!.y + doneBox!.height / 2 });
+  expect(doneHit).toBe("Done");
   await expect(dialog.getByText("Jusfter", { exact: true })).toBeVisible();
   const url = `http://127.0.0.1:3300/b/${TOKEN}`;
   await expect(dialog.getByText(url)).toBeVisible();
@@ -81,6 +94,7 @@ test("TC-COPY-UI-02 a denied clipboard shows the manual panel and does not say t
   await share(page, "Jusfter").click();
   const dialog = page.getByRole("dialog", { name: "Barber link" });
   await expect(dialog).toBeVisible();
+  await expect(page.locator(".sheet-up-solid")).toHaveCSS("opacity", "1");
   await expect(dialog.getByText("Copy this link")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Link copied" })).toHaveCount(0);
   await expect(dialog.getByText("The clipboard isn’t available, so nothing was copied.")).toBeVisible();

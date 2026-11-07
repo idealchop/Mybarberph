@@ -26,6 +26,7 @@ export function BarberLinkCopySheet({
       title={copied ? "Link copied" : "Barber link"}
       subtitle={copied ? name : "Copy this link"}
       onClose={onClose}
+      solid
       footer={
         <div className="flex flex-col gap-2">
           <Button fullWidth variant={copied ? "secondary" : "primary"} onClick={copyAgain}>Copy link</Button>

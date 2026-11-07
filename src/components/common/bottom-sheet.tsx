@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
  * Slide-up sheet (Jimboy, 2026-10-21): dimmed backdrop, rounded top, Back on the left, scrolls inside.
  * Escape and the backdrop close it. Candidate for the River UI kit.
  */
-export function BottomSheet({ title, subtitle, onClose, children, footer, tall }: { title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode; tall?: boolean }) {
+export function BottomSheet({ title, subtitle, onClose, children, footer, tall, solid }: { title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode; tall?: boolean; /** Opaque panel. The default sheet fades in, which shows the page through it. */ solid?: boolean }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", k);
@@ -21,7 +21,7 @@ export function BottomSheet({ title, subtitle, onClose, children, footer, tall }
   return createPortal(
     <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close" className="sheet-fade absolute inset-0 bg-ink/45" onClick={onClose} />
-      <div className={`sheet-up relative z-[1] flex w-full max-w-[440px] flex-col rounded-t-[28px] bg-surface shadow-card sm:rounded-[28px] ${tall ? "h-[82dvh]" : "max-h-[90dvh]"}`}>
+      <div className={`${solid ? "sheet-up-solid bg-white" : "sheet-up bg-surface"} relative z-[1] flex w-full max-w-[440px] flex-col rounded-t-[28px] shadow-card sm:rounded-[28px] ${solid ? "overflow-hidden" : ""} ${tall ? "h-[82dvh]" : "max-h-[90dvh]"}`}>
         <div className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-grey-200" aria-hidden />
         <header className="flex flex-none items-center gap-1 px-3 pb-2 pt-1">
           <button type="button" aria-label="Back" onClick={onClose} className="inline-flex size-11 flex-none items-center justify-center rounded-full"><ChevronLeft size={24} strokeWidth={1.9} /></button>

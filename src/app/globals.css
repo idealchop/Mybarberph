@@ -119,9 +119,12 @@
 /* Bottom sheet (batch 17) */
 @keyframes sheet-up { from { transform: translateY(24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
 @keyframes sheet-fade { from { opacity: 0; } to { opacity: 1; } }
+/* Share-link panel: move only. Fading the panel lets the page and tab bar show through the header and Done. */
+@keyframes sheet-up-solid { from { transform: translateY(16px); } to { transform: none; } }
 .sheet-up { animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.sheet-up-solid { animation: sheet-up-solid 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); background-color: #fff; }
 .sheet-fade { animation: sheet-fade 0.18s ease-out; }
-@media (prefers-reduced-motion: reduce) { .sheet-up, .sheet-fade { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .sheet-up, .sheet-up-solid, .sheet-fade { animation: none; } }
 
 /* iOS zooms the page when a focused field is under 16px. Keep every field at 16px on phones (pinch zoom stays on). */
 @media (max-width: 767px) {
