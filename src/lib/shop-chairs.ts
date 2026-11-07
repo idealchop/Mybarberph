@@ -146,7 +146,7 @@ export function linkReviewDue(chair: Pick<ShopChair, "linkToken" | "linkReviewAt
   return Boolean(chair.linkToken && chair.active !== false && chair.linkReviewAt && chair.linkReviewAt <= now);
 }
 
-/** Returns this chair’s barber link. The token never expires; a new one is made only on first share or Reset. */
+/** Returns this chair’s barber link. The token never expires; a new one is made only when this barber has none yet. */
 export function ensureChairLink(id: string): string {
   const cur = readChairs();
   const chair = cur.find((c) => c.id === id);

@@ -20,6 +20,8 @@ import {
   HAIRCUT_ICONS, TREATMENT_ICONS, blankTreatment, useShopMenu,
   type ShopHaircut, type ShopTreatment,
 } from "@/lib/shop-services";
+import { barberLinkUrl, writeBarberLinkUrl } from "@/lib/barber-link-copy";
+import { BarberLinkCopySheet } from "./barber-link-copy-sheet";
 import { HOME_LOCATION_ID, useShopLocations } from "@/lib/shop-locations";
 import { shareLabel, sharePct } from "@/lib/income-split";
 import { priceSummary } from "@/lib/location-prices";
@@ -238,23 +240,38 @@ export function ServicesScreen({ locationId: forLoc, embedded }: { locationId?: 
 
 const SOURCE = { shared: "Shared", changed: "Changed here", local: "This shop only" } as const;
 
-/** Outlined pill: opens the phone share sheet (or copies) with that barber's own link. */
+/** Outlined pill: copies that barber's existing link (URL only) and confirms in the app. */
 export function ShareBarberLink({ id, name, compact = false }: { id: string; name: string; compact?: boolean }) {
-  const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  const [sheet, setSheet] = useState<{ url: string; copied: boolean } | null>(null);
+  const share = () => {
+    const path = ensureChairLink(id);
+    if (!path) return;
+    const url = barberLinkUrl(window.location.origin, path);
+    // writeText is started in this tap, before any await, so iOS still counts it as a user gesture.
+    const result = writeBarberLinkUrl(url);
+    setPending(true);
+    void result.then((ok) => {
+      setPending(false);
+      setSheet({ url, copied: ok });
+    });
+  };
   return (
-    <button type="button" data-auth="action" className={compact ? "inline-flex h-7 flex-none items-center justify-center gap-1 rounded-pill px-3 text-[12px] font-bold ring-1 ring-ink" : "inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"}
-      disabled={pending} aria-busy={pending}
-      onClick={async () => {
-        setPending(true);
-        const url = `${window.location.origin}${ensureChairLink(id)}`;
-        try {
-          if (navigator.share) await navigator.share({ title: `${name} · Barbers.ph`, text: `Your barber link, ${name}`, url });
-          else { await navigator.clipboard.writeText(url); setDone(true); window.setTimeout(() => setDone(false), 1500); }
-        } catch { /* share sheet closed */ } finally { setPending(false); }
-      }}>
-      {pending ? <Spinner size={13} /> : null}{done ? <><Check size={13} strokeWidth={3} /> Link copied</> : compact ? "Share to Barber" : "Share to barber"}
-    </button>
+    <>
+      <button type="button" data-auth="action" className={compact ? "inline-flex h-7 flex-none items-center justify-center gap-1 rounded-pill px-3 text-[12px] font-bold ring-1 ring-ink" : "inline-flex h-9 items-center justify-center gap-1 rounded-pill bg-ink px-3.5 text-[13px] font-bold text-on-ink"}
+        disabled={pending} aria-busy={pending} onClick={share}>
+        {pending ? <Spinner size={13} /> : null}{compact ? "Share to Barber" : "Share to barber"}
+      </button>
+      {sheet ? (
+        <BarberLinkCopySheet
+          name={name}
+          url={sheet.url}
+          copied={sheet.copied}
+          onClose={() => setSheet(null)}
+          onCopied={(ok) => setSheet({ url: sheet.url, copied: ok })}
+        />
+      ) : null}
+    </>
   );
 }
 

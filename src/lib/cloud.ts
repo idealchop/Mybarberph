@@ -7,7 +7,8 @@
  */
 import { useSyncExternalStore } from "react";
 import type { ChairRequest } from "@/lib/booking-types";
-import { hydrateSession, idToken, sessionSnapshot, subscribeSession } from "@/lib/session";
+import { readLocalOwnerFixture } from "@/lib/local-owner-fixture";
+import { applyLocalFixtureUser, hydrateSession, idToken, sessionSnapshot, subscribeSession } from "@/lib/session";
 import { setSwrScope } from "@/lib/swr";
 import { settleBarberLoad, type BarberLinkFailure } from "@/lib/barber-link-status";
 import { createQueue, drainQueue, isNetworkError, type OfflineQueue } from "@/lib/offline-queue";
@@ -237,6 +238,23 @@ function poll() {
 /** Starts following the signed-in owner. Called by the shop shell. */
 export function startCloud() {
   if (started || typeof window === "undefined") return;
+  const fixture = readLocalOwnerFixture();
+  if (fixture) {
+    started = true;
+    applyLocalFixtureUser(fixture.shopId);
+    mode = { kind: "owner" };
+    uid = fixture.shopId;
+    openQueue();
+    const data: Cached = {
+      shopId: fixture.shopId,
+      chairId: fixture.chairId,
+      shop: fixture.shop as CloudShop | null,
+      values: fixture.values,
+      bookings: (fixture.bookings as ChairRequest[]) ?? [],
+    };
+    set({ ...EMPTY, ...data, bookings: withQueued(data.bookings), queued: queue?.ids() ?? [], ready: true, loading: false, error: null, mode: "owner" });
+    return;
+  }
   started = true;
   hydrateSession();
   const sync = () => {

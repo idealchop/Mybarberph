@@ -53,6 +53,13 @@ function writeLastUser(u: SessionUser | null) {
   try { if (u) localStorage.setItem(LAST_USER, JSON.stringify(u)); else localStorage.removeItem(LAST_USER); } catch { /* storage blocked */ }
 }
 
+/** Local fixture shop (localhost tests). Marks the session started so Firebase cannot replace it. */
+export function applyLocalFixtureUser(uid: string): void {
+  started = true;
+  snap = { ready: true, user: { uid, name: "Fixture owner", providers: [] }, signingIn: false };
+  emit();
+}
+
 /** Starts listening to Firebase Auth once. Safe to call more than once. */
 export function hydrateSession() {
   if (started || typeof window === "undefined") return;

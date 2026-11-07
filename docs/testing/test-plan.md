@@ -199,3 +199,5 @@ Not run against DEV or prod. No live token was requested.
 | TC-LINK-ODD-04 | offline, a server miss, and a real rejection pick different screens | same | local |
 | TC-LINK-HP-08 | a saved shop stays the home while the phone is offline | same | local |
 | TC-LINK-UI-01..08 | local browser: opening to home, cold offline, saved home, 500 then retry, hung request, 404 stays blocked, bad token plus a second token, rapid Try again | `tests/e2e/barber-link-recovery.spec.ts` | local app only (skipped unless base URL is localhost) |
+| TC-COPY-HP-01..03, NEG-01..04 | URL-only clipboard text; denied or missing clipboard; no navigator.share; fixture ignored off localhost | `tests/unit/barber-link-copy.test.ts` | local |
+| TC-COPY-UI-01..05 | local browser: copy URL only, repeat copy, denied then retry, missing clipboard, first token once, Back closes | `tests/e2e/barber-link-copy.spec.ts` | local app only |

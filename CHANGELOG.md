@@ -2,6 +2,10 @@
 
 Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
 
+## 2026-11-07 — v1.0.47
+
+- Share to barber copies only the barber's link. The app confirms in its own panel. The phone's share sheet is not used. "Link copied" appears only after the clipboard write succeeds.
+
 ## 2026-11-06 — v1.0.46
 
 - Barber links: opening, offline with nothing saved, a timeout or server error, and a real turn-off are separate screens. Try again and Check again re-request the same link. A saved copy stays the working home. A rejected token is cleared from that phone and cannot see another barber.

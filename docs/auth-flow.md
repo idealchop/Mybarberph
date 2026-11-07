@@ -18,6 +18,8 @@ The browser loads only the Firebase Auth web SDK (`src/lib/firebase/client.ts`, 
 
 ## Barbers — chair links (no account)
 
+**Share to barber** copies only that barber's absolute URL (`https://…/b/{token}`). The app then shows its own panel. It does not open the phone's share sheet, and it does not put the barber's name in the clipboard. "Link copied" appears only after the clipboard write succeeds. If the clipboard is missing or denies the write, the same panel shows the address to select and copy by hand. Sharing again reuses the token. A token is created only when that barber does not have one yet (`ensureChairLink`).
+
 The owner gives each barber a link `/b/{token}`. Tokens (`[a-z0-9]{8,40}`) live on the chair in the `chairs` state and are mirrored to `chairLinks/{token} = { shopId, chairId }` on each save. `chairLink(token)` resolves the shop server-side; an unknown, replaced or turned-off token returns `404 { code: "not_found" }` with "This link was replaced or turned off." The link is a capability: anyone with it acts as that barber for that one shop.
 
 **Links never expire (Jimboy's accepted decision, 2026-10-19).** The same token keeps working until the owner turns the barber off (or removes the chair); the server has no expiry check and the app never rotates a token on its own.
