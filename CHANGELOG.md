@@ -2,6 +2,10 @@
 
 Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
 
+## 2026-11-10 — v1.0.50
+
+- Install page (Shops PH v2): stays linked from Settings and barber My sales after install. Shows Installed badge + Open app when installed. Rate & send feedback sheet only — no reviews list, average, or count, and the placeholder 4.8 / 1.2k+ rating is gone.
+
 ## 2026-11-09 — v1.0.49
 
 - Owner Walk-in shows only Haircut at first. Other services stay behind a centred text toggle (tap to expand or collapse; stays open while an add-on is selected).
