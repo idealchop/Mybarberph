@@ -5,6 +5,7 @@ import { Input } from "@river-apps/ui";
 import { Button } from "@/components/common/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { BarberIcon } from "@/components/art";
 import { PageBack } from "@/components/shell/page-back";
 import { queueLocation, refCode, seatOwnerWalkIn, seatWalkInOnChair, useChairRequests } from "@/lib/chair-bookings";
@@ -30,6 +31,8 @@ export function WalkInScreen() {
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  // Other services stay folded until tapped; stay open while any add-on is selected (same pattern as barber walk-in Oct 20 / Add record v1.0.33).
+  const [showOther, setShowOther] = useState(false);
   const loc = where.locationId ?? queueLocation(shops);
   // This location's prices (not the default, and not whichever location the owner happens to be viewing).
   const { haircut, treatments } = useShopMenu(loc);
@@ -105,7 +108,7 @@ export function WalkInScreen() {
       {where.needsPick || pickedLoc ? (
         <label className="mt-4 flex flex-col gap-1.5">
           <span className="text-[13px] font-bold">Location</span>
-          <select aria-label="Location" value={pickedLoc} onChange={(e) => { setPickedLoc(e.target.value); setBarberPick(fromHome ? ME : ""); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+          <select aria-label="Location" value={pickedLoc} onChange={(e) => { setPickedLoc(e.target.value); setBarberPick(fromHome ? ME : ""); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[16px] font-semibold">
             <option value="" disabled>Pick a location</option>
             {shops.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -120,25 +123,36 @@ export function WalkInScreen() {
       </div>
       {treatments.length ? (
         <>
-          <p className="mt-4 text-[13px] font-bold">Other services</p>
-          <div className="mt-2 flex flex-col gap-2">
-            {treatments.map((t) => {
-              const on = picked.includes(t.id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setPicked((cur) => on ? cur.filter((id) => id !== t.id) : [...cur, t.id])}
-                  className={`flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-left ${on ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}
-                >
-                  <BarberIcon name={t.icon} size={40} title={t.name} />
-                  <span className="min-w-0 flex-1 font-bold">{t.name}</span>
-                  <span className="text-[13px] font-semibold">{t.price ? `₱${t.price}` : ""}</span>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            aria-expanded={showOther || picked.length > 0}
+            aria-controls="walkin-other-services"
+            onClick={() => setShowOther((v) => !v)}
+            className="mt-4 flex w-full items-center justify-center gap-1 py-2 text-center text-[13.5px] font-bold text-ink-2"
+          >
+            Other services{picked.length ? ` · ${picked.length}` : ""}
+            <ChevronDown size={16} strokeWidth={2.2} aria-hidden className={`transition-transform ${showOther || picked.length ? "rotate-180" : ""}`} />
+          </button>
+          {showOther || picked.length > 0 ? (
+            <div id="walkin-other-services" className="mt-2 flex flex-col gap-2">
+              {treatments.map((t) => {
+                const on = picked.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setPicked((cur) => on ? cur.filter((id) => id !== t.id) : [...cur, t.id])}
+                    className={`flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-left ${on ? "bg-ink text-on-ink" : "bg-surface ring-1 ring-grey-200"}`}
+                  >
+                    <BarberIcon name={t.icon} size={40} title={t.name} />
+                    <span className="min-w-0 flex-1 font-bold">{t.name}</span>
+                    <span className="text-[13px] font-semibold">{t.price ? `₱${t.price}` : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </>
       ) : null}
       <div className="mt-4">
@@ -151,7 +165,7 @@ export function WalkInScreen() {
       ) : choice.kind !== "none" || fromHome ? (
         <label className="mt-3 flex flex-col gap-1.5">
           <span className="text-[13px] font-bold">Barber</span>
-          <select aria-label="Barber" value={barberPick} onChange={(e) => { setBarberPick(e.target.value); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[15px] font-semibold">
+          <select aria-label="Barber" value={barberPick} onChange={(e) => { setBarberPick(e.target.value); setNote(""); }} className="h-12 rounded-[14px] bg-grey-100 px-3 text-[16px] font-semibold">
             <option value="" disabled>Pick a barber</option>
             {fromHome ? <option value={ME}>Me, I’ll cut</option> : null}
             {(choice.kind === "pick" ? choice.barbers : choice.kind === "auto" ? [choice.barber] : []).map((b) => <option key={b.barberId} value={b.barberId} disabled={busyLabels.has(b.label)}>{b.name}{busyLabels.has(b.label) ? " (busy)" : ""}</option>)}
