@@ -2,7 +2,7 @@
 
 Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
 
-## Unreleased
+## 2026-11-09 — v1.0.48
 
 - Firestore reads: To Claim keeps a snap of unclaimed visits instead of scanning every finished visit every 30 s. Live owner and barber polls skip the booking read when `queueRev` is unchanged, and wait 30 s after a quiet poll. A barber link reads the open queue and today's cuts once the `barberId + completedAt` index is deployed.
 

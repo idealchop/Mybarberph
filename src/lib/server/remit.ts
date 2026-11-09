@@ -98,8 +98,8 @@ async function loadFast(shopId: string): Promise<RemitLoaded> {
   const stored = await readRemitSnap(shopId);
   if (!stored) return loadFresh(shopId);
   const [bookSnap, claimSnap, state, adjustSnap] = await Promise.all([
-    shopRef(shopId).collection("bookings").where("updatedAt", ">", stored.cursor).select(...REMIT_FIELDS).get(),
-    shopRef(shopId).collection("remitClaims").where("claimedAt", ">", stored.claimCursor).get(),
+    shopRef(shopId).collection("bookings").where("updatedAt", ">=", stored.cursor).select(...REMIT_FIELDS).get(),
+    shopRef(shopId).collection("remitClaims").where("claimedAt", ">=", stored.claimCursor).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
     shopRef(shopId).collection("claimAdjusts").get(),
   ]);
