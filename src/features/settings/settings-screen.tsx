@@ -3,7 +3,6 @@
 import { AppLoader } from "@/components/common/app-loader";
 import { AppVersion } from "@/components/common/app-version";
 import { useCloud } from "@/lib/cloud";
-import { useInstallHidden } from "@/lib/pwa";
 import { ChevronRight, LogOut, MapPin, Pencil, KeyRound } from "lucide-react";
 import { RiverIcon } from "@/components/common/river-icon";
 import Link from "next/link";
@@ -25,7 +24,6 @@ const PAID_PER_MO = "₱499/mo";
 
 /** Settings hub, same shape as Laundry.ph: profile, credits, setup, features, log out. */
 export function SettingsScreen() {
-  const installHidden = useInstallHidden();
   const cloudReady = useCloud().ready;
   const { profile } = useShopProfile();
   const shops = useShopLocations();
@@ -44,8 +42,8 @@ export function SettingsScreen() {
     { href: "/settings/services", icon: "services" as const, title: "Services", subtitle: "Haircut and other services" },
     { href: "/history", icon: "orders" as const, title: "History", subtitle: "Past visits and bookings" },
     { href: "/settings/billing", icon: "billing" as const, title: "Plan & billing", subtitle: `Partner · Pro ${PAID_PER_MO} · Lifetime` },
-    // Hidden once installed on this phone; /settings/install stays reachable and shows "Installed".
-    ...(installHidden ? [] : [{ href: "/settings/install", icon: "install" as const, title: "Install app", subtitle: "Open Barbers.ph from your home screen" }]),
+    // Always linked (Shops PH v2 / Jimboy 2026-11-09): page shows Installed + Open app when already on the home screen.
+    { href: "/settings/install", icon: "install" as const, title: "Install app", subtitle: "Open Barbers.ph from your home screen" },
   ];
 
   if (!cloudReady) return <AppLoader />;

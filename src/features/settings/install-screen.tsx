@@ -9,11 +9,14 @@ const FEATURES = [
   { art: <CoinIcon size={30} />, text: "Track sales, Cash and GCash, and barber performance" },
 ];
 
-/** Settings › Install app: Barbers.ph on the owner's home screen (opens /home). */
+/** Settings › Install app: Barbers.ph on the owner's home screen (opens /home). Always reachable when installed. */
 export function InstallScreen() {
   return (
     <main className="mx-auto w-full max-w-[460px] px-4 pb-10 pt-4">
-      <PageBack fallback="/settings" />
+      <div className="flex items-center gap-1">
+        <PageBack fallback="/settings" />
+        <h2 className="text-[18px] font-extrabold tracking-[-0.02em]">Install app</h2>
+      </div>
       <InstallPanel features={FEATURES} />
     </main>
   );

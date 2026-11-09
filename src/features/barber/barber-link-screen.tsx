@@ -16,7 +16,6 @@ import { OfflineBanner, SavedOfflineTag } from "@/components/common/offline-bann
 import { BarChart3, CalendarDays, Check, ChevronLeft, ChevronRight, History, Lock, Navigation, Plus, ScanLine, Smartphone } from "lucide-react";
 import { cn } from "@river-apps/ui";
 import { Icon3d, InstallPanel } from "@/components/pwa/install-panel";
-import { useInstallHidden } from "@/lib/pwa";
 
 import { useEffect, useRef, useState } from "react";
 import { mapsLink } from "@/lib/home-service-model";
@@ -224,7 +223,6 @@ export function BarberLinkScreen({ token }: { token: string }) {
   const [perf, setPerf] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [install, setInstall] = useState(false);
-  const installHidden = useInstallHidden(token);
   const shopsLoc = useShopLocations();
   const chair = chairPreview;
   const allowance = useWalkInAllowance(chair?.locationId || HOME_LOCATION_ID);
@@ -272,8 +270,8 @@ export function BarberLinkScreen({ token }: { token: string }) {
       </main>
     );
   }
-  // Install entry lives on My sales only (Jimboy, 2026-10-20); hidden once installed (standalone, or remembered for this link).
-  const installCard = installHidden ? null : (
+  // Install entry on My sales only; always linked (Shops PH v2 / Jimboy 2026-11-09) — panel shows Installed + Open app when installed.
+  const installCard = (
     <button type="button" onClick={() => setInstall(true)} className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-surface px-3.5 py-2.5 text-left shadow-card">
       <Smartphone size={18} className="flex-none" aria-hidden />
       <span className="min-w-0 flex-1"><b className="block text-[14px]">Install app</b><small className="block truncate text-[12px] font-semibold text-muted">Open your link from the home screen</small></span>

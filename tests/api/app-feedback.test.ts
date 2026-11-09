@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { fakeFirestore } from "../stubs/fake-firestore";
 
 const fs = fakeFirestore();
@@ -7,7 +8,6 @@ let caller: { uid: string } | null = null;
 vi.mock("@/lib/server/auth", async (orig) => ({ ...(await orig<typeof import("@/lib/server/auth")>()), getCaller: async () => caller }));
 
 const { GET, POST } = await import("@/app/api/feedback/route");
-const { displayStats } = await import("@/lib/app-stats");
 
 const post = (body: Record<string, unknown>) => POST(new Request("http://local/api/feedback", { method: "POST", body: JSON.stringify(body) }));
 
@@ -30,7 +30,9 @@ describe("Rate & send feedback (server)", () => {
     expect(fs.store["appFeedback/owner_shop-a"]).toMatchObject({ rating: 5, createdAt: created });
     expect(fs.store["appStats/feedback"]).toMatchObject({ count: 1, sum: 5 });
     const res = await (await GET(new Request("http://local/api/feedback"))).json();
-    expect(res).toMatchObject({ summary: { count: 1, sum: 5 }, mine: { rating: 5 } });
+    // GET returns only the caller's review (≤1 doc); no summary for the Install UI.
+    expect(res).toMatchObject({ mine: { rating: 5 } });
+    expect(res.summary).toBeUndefined();
   });
 
   it("TC-FEEDBACK-HP-02 a barber link rates with its token, stored under a hashed id (no raw token)", async () => {
@@ -51,9 +53,36 @@ describe("Rate & send feedback (server)", () => {
     expect(Object.keys(fs.store).some((k) => k.startsWith("appFeedback/"))).toBe(false);
   });
 
-  it("TC-FEEDBACK-HP-03 stats show placeholders until 20 real ratings, then the real average and count", () => {
-    expect(displayStats({ count: 19, sum: 95 })).toMatchObject({ rating: "4.8", count: "1.2k+", real: false });
-    expect(displayStats({ count: 20, sum: 90 })).toMatchObject({ rating: "4.5", count: "20", countLabel: "ratings", real: true });
-    expect(displayStats({ count: 1534, sum: 6900 })).toMatchObject({ count: "1.5k+" });
+  it("TC-FEEDBACK-HP-03 GET without a caller returns mine:null and does not require a summary", async () => {
+    const res = await (await GET(new Request("http://local/api/feedback"))).json();
+    expect(res).toEqual({ mine: null });
+  });
+});
+
+describe("Install page v2 (Shops PH standard)", () => {
+  const panel = readFileSync(new URL("../../src/components/pwa/install-panel.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../../src/features/settings/settings-screen.tsx", import.meta.url), "utf8");
+  const barber = readFileSync(new URL("../../src/features/barber/barber-link-screen.tsx", import.meta.url), "utf8");
+
+  it("has no stats row, average, count, or review list on the Install panel", () => {
+    expect(panel).not.toContain("displayStats");
+    expect(panel).not.toContain("App stats");
+    expect(panel).not.toContain("APP_STATS");
+    expect(panel).not.toContain("Average rating");
+    expect(panel).not.toMatch(/1\.2k\+/);
+    expect(panel).toContain("Open app");
+    expect(panel).toContain("Rate & send feedback");
+    expect(panel).toMatch(/underline/);
+    expect(panel).toContain("Post");
+    expect(panel).toMatch(/text-\[16px\]/);
+    expect(panel).not.toMatch(/autoFocus|autofocus/);
+  });
+
+  it("keeps Install app linked from Settings and barber My sales even when installed", () => {
+    expect(settings).not.toContain("useInstallHidden");
+    expect(settings).toContain('href: "/settings/install"');
+    expect(barber).not.toContain("useInstallHidden");
+    expect(barber).toContain("setInstall(true)");
+    expect(barber).not.toMatch(/installHidden \? null/);
   });
 });
