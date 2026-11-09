@@ -3,6 +3,7 @@ import type { ChairRequest } from "@/lib/booking-types";
 import { barberRange, manilaYmd, type BarberPerformance, type BarberProfile, type BarberProfileRow, type BarberSalesRow } from "@/lib/barber-sales";
 import { payBucket } from "@/lib/pay-split";
 import { cutMinutes, ownerShareOf, sharePct, splitIncome, tipOf, visitPct } from "@/lib/income-split";
+import { indexMissing } from "./index-error";
 import { loadState, shopRef } from "./shops";
 import { claimedBookingIds } from "./remit";
 import { claimIndex, type ClaimDoc } from "@/lib/claim-rule";
@@ -11,10 +12,31 @@ import { cutBarberId, cutBarberName, isFinishedCut } from "@/lib/cut-count";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 
+/**
+ * Finished visits in [from, to). With a barberId, only that barber (needs the barberId+completedAt index).
+ * Until the index is deployed, the shop-wide window is used and the caller filters.
+ */
+async function completions(shopId: string, from: number, to: number | null, barberId?: string) {
+  const col = shopRef(shopId).collection("bookings");
+  const run = (id?: string) => {
+    const base = col.where("completedAt", ">=", from);
+    const withId = id ? base.where("barberId", "==", id) : base;
+    return (to != null ? withId.where("completedAt", "<", to) : withId).get();
+  };
+  if (!barberId) return run();
+  try {
+    return await run(barberId);
+  } catch (e) {
+    if (!indexMissing(e)) throw e;
+    console.error("[index-missing] bookings(barberId asc, completedAt asc): deploy firestore.indexes.json. Reading the shop-wide window.", (e as Error).message);
+    return run();
+  }
+}
+
 /** Finished visits per barber (Manila time) for salary and cash remittance. */
 export async function barberSales(shopId: string, q: { range?: string | null; from?: string | null; to?: string | null; loc?: string | null; barberId?: string | null }) {
   const r = barberRange(q.range, q.from, q.to);
-  const snap = await shopRef(shopId).collection("bookings").where("completedAt", ">=", r.from).where("completedAt", "<", r.to).get();
+  const snap = await completions(shopId, r.from, r.to, q.barberId || undefined);
   const state = await loadState(shopId, ["barbers.shop-chairs", "barbers.shop-locations"]);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
   const locs = (() => { try { return (JSON.parse(state["barbers.shop-locations"] || "{}").branches || []) as { id: string; name: string }[]; } catch { return []; } })();
@@ -53,7 +75,7 @@ export async function barberPerformance(shopId: string, q: { range?: string | nu
   const r = barberRange(q.range, q.from, q.to);
   const shop = shopRef(shopId);
   const [snap, claimSnap, state] = await Promise.all([
-    shop.collection("bookings").where("completedAt", ">=", r.from).where("completedAt", "<", r.to).get(),
+    completions(shopId, r.from, r.to, q.barberId),
     shop.collection("remitClaims").where("barberId", "==", q.barberId).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
   ]);
@@ -131,7 +153,7 @@ export async function barberDayCuts(shopId: string, q: { date: string; barberId:
   const date = /^\d{4}-\d{2}-\d{2}$/.test(q.date) ? q.date : manilaYmd(Date.now());
   const from = Date.parse(`${date}T00:00:00+08:00`), end = from + 86_400_000;
   const [snap, state, claimed] = await Promise.all([
-    shopRef(shopId).collection("bookings").where("completedAt", ">=", from).where("completedAt", "<", end).get(),
+    completions(shopId, from, end, q.barberId),
     loadState(shopId, ["barbers.shop-chairs"]),
     claimedBookingIds(shopId).catch(() => new Set<string>()),
   ]);
@@ -183,7 +205,7 @@ export async function barberProfile(shopId: string, q: { range?: string | null; 
   // Own visits (last 366 days, done + declined) for the shared Performance sections. Price = the barber's SHARE of
   // that visit (stamped %, else current), tip kept separate; no phone/contact, no other barber's rows.
   const since = now - 366 * 86_400_000;
-  const mineSnap = await shopRef(shopId).collection("bookings").where("completedAt", ">=", since).get();
+  const mineSnap = await completions(shopId, since, null, q.barberId);
   const myPct = sharePct(chairs.find((c) => c.id === q.chairId));
   const myLoc = q.locationId || chairs.find((c) => c.id === q.chairId)?.locationId || "home";
   const rows: BarberProfileRow[] = [];

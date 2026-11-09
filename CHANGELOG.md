@@ -2,6 +2,10 @@
 
 Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
 
+## Unreleased
+
+- Firestore reads: To Claim keeps a snap of unclaimed visits instead of scanning every finished visit every 30 s. Live owner and barber polls skip the booking read when `queueRev` is unchanged, and wait 30 s after a quiet poll. A barber link reads the open queue and today's cuts once the `barberId + completedAt` index is deployed.
+
 ## 2026-11-07 — v1.0.47
 
 - Share to barber copies only the barber's link. The app confirms in its own panel. The phone's share sheet is not used. "Link copied" appears only after the clipboard write succeeds. The panel stays opaque so the page does not show through it.

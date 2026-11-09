@@ -6,6 +6,8 @@ import { useSession } from "@/lib/session";
 import { cached, fetchShared } from "@/lib/swr";
 import { noteEarliest } from "@/lib/sales-report";
 
+const salesRev = new Map<string, number>();
+
 /** Last N Manila days of visits for Sales (shared across screens, refreshes every 30s while visible). */
 export function useSalesRows(days = 28, full = false, enabled = true) {
   const { user } = useSession();
@@ -14,7 +16,14 @@ export function useSalesRows(days = 28, full = false, enabled = true) {
   useEffect(() => {
     if (!user || !enabled) return;
     let live = true, tries = 0;
-    const get = (maxAge = 0) => fetchShared(key, () => api(`/api/shop/sales-rows?days=${days}${full ? "&full=1" : ""}`).then((d: { rows: ChairRequest[] }) => d.rows), maxAge)
+    const get = (maxAge = 0) => fetchShared(key, () => {
+      const rev = salesRev.get(key) ?? 0;
+      return api(`/api/shop/sales-rows?days=${days}${full ? "&full=1" : ""}${rev > 0 ? `&rev=${rev}` : ""}`).then((d: { rows?: ChairRequest[]; unchanged?: boolean; rev?: number }) => {
+        if (typeof d.rev === "number" && d.rev > 0) salesRev.set(key, d.rev);
+        if (d.unchanged) return cached<ChairRequest[]>(key) ?? d.rows ?? [];
+        return d.rows ?? [];
+      });
+    }, maxAge)
       .then((r) => { noteEarliest(r); if (live) setRows(r); })
       .catch(() => { if (live && tries++ < 3) window.setTimeout(() => get(), 1200); });
     void get(10_000);

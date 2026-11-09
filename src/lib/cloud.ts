@@ -57,6 +57,19 @@ let pending = 0;
 /** Bumped on every local write; a poll that started before a write is stale and is dropped. */
 let writeEpoch = 0;
 let pollTimer: number | undefined;
+/** Last queue revision the server confirmed. Sent back so an unchanged shop skips the booking read. */
+let liveRev = 0;
+/** 15s while the queue is moving, 30s after two quiet polls. A visible tab or a change goes back to 15s. */
+let pollEvery = 15_000;
+const POLL_FAST_MS = 15_000;
+const POLL_SLOW_MS = 30_000;
+let visWired = false;
+
+/** Next wait. A change, or returning to the tab, polls at 15s. A quiet shop backs off to 30s and no further. */
+export function nextPollEvery(current: number, unchanged: boolean) {
+  if (!unchanged) return POLL_FAST_MS;
+  return Math.min(POLL_SLOW_MS, (current || POLL_FAST_MS) + POLL_FAST_MS);
+}
 /** Bumped on every load. A response from an older load is dropped, so a late 404 cannot wipe a newer success. */
 let loadGen = 0;
 const listeners = new Set<() => void>();
@@ -179,9 +192,19 @@ async function load(quiet = false) {
   const stillThisLoad = () => gen === loadGen && requestedBarber === (mode?.kind === "barber" ? mode.token : null);
   try {
     const epoch = writeEpoch;
-    const d = await api(base());
+    const d = await api(`${base()}${liveRev > 0 ? `?rev=${liveRev}` : ""}`);
     // A slower response for a link the barber already left, or an older attempt, must not paint over the latest one.
     if (!mode || !stillThisLoad()) return;
+    if (d?.unchanged) {
+      if (typeof d.rev === "number" && d.rev > 0) liveRev = d.rev;
+      const next = nextPollEvery(pollEvery, true);
+      if (next !== pollEvery) { pollEvery = next; poll(); }
+      if (!quiet) set({ loading: false, error: null, linkFailure: null });
+      return;
+    }
+    if (typeof d.rev === "number" && d.rev > 0) liveRev = d.rev;
+    const next = nextPollEvery(pollEvery, false);
+    if (next !== pollEvery) { pollEvery = next; poll(); }
     // Don't clobber unsaved local edits, or anything written while this request was in flight.
     if ((pending > 0 || epoch !== writeEpoch) && quiet) return;
     const data: Cached = { shopId: d.shopId, chairId: d.chairId ?? null, shop: d.shop, values: d.values ?? {}, bookings: d.bookings ?? [] };
@@ -230,9 +253,21 @@ async function load(quiet = false) {
   }
 }
 
+function watchVisibility() {
+  if (visWired || typeof document === "undefined") return;
+  visWired = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !mode) return;
+    pollEvery = POLL_FAST_MS;
+    poll();
+    void load(true);
+  });
+}
+
 function poll() {
+  watchVisibility();
   window.clearInterval(pollTimer);
-  pollTimer = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 15_000);
+  pollTimer = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, pollEvery);
 }
 
 /** Starts following the signed-in owner. Called by the shop shell. */
@@ -264,6 +299,7 @@ export function startCloud() {
     if (!s.ready || s.signingIn) return;
     const next = s.user?.uid ?? null;
     if (next === uid && snap.ready) return;
+    if (next !== uid) { liveRev = 0; pollEvery = POLL_FAST_MS; }
     uid = next;
     setSwrScope(next);
     if (!next) { mode = null; window.clearInterval(pollTimer); dropCaches(); set({ ...EMPTY, ready: true }); return; }
@@ -291,6 +327,7 @@ export function startBarberCloud(token: string) {
   // Keep showing this token's open snapshot across a re-render. Any other snapshot (owner, or another link)
   // is not this barber: drop it before the screen can treat a missing chair as a turned-off link.
   const keep = mode?.kind === "barber" && mode.token === token && Boolean(snap.shopId);
+  if (!keep) { liveRev = 0; pollEvery = POLL_FAST_MS; }
   mode = { kind: "barber", token };
   started = true;
   openQueue();

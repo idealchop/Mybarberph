@@ -20,6 +20,7 @@ vi.mock("@/lib/server/shops", () => ({
   loadBookings: vi.fn(async () => []),
   effectivePlan: () => "partner",
   publicShop: (id: string) => ({ id }),
+  ensureLiveRev: async (_id: string, current: unknown) => (typeof current === "number" && current > 0 ? current : 0),
 }));
 
 const { GET: getShop } = await import("@/app/api/shop/route");

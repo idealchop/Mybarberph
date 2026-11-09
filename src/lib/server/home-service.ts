@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { ChairRequest } from "@/lib/booking-types";
 import { distanceKm, homeSlots, manilaAt, manilaYmd, parseHomeFile, type HomeLocationSettings } from "@/lib/home-service-model";
-import { menuFor, publicBarbers, refCode, shopRef, type ShopDoc } from "./shops";
+import { bumpQueueRev, menuFor, publicBarbers, refCode, shopRef, type ShopDoc } from "./shops";
 
 const s = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -142,6 +142,7 @@ export async function createHomeBooking(shopId: string, input: HomeBookingInput)
   if (input.externalId) row.externalId = s(input.externalId, 120);
   if (barber) { row.barberId = barber.id; row.barberName = barber.name; }
   await shopRef(shopId).collection("bookings").doc(row.id).set(row);
+  await bumpQueueRev(shopId);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name, role: "customer" }, locationId, ref: row.ref, amount: row.price,
     text: `${name} booked Home service: ${row.serviceName} · ${row.slotLabel} (River app)` }, true);
   void (await import("./notify")).notifyNewOnlineBooking(shopId, { ref: row.ref, customerLabel: name, serviceName: row.serviceName, slotLabel: row.slotLabel, locationId, shopName: shop.name, homeAddress: address });

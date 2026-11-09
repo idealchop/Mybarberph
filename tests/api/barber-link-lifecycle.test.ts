@@ -15,7 +15,7 @@ const jun = () => ({ id: "c2", label: "Jun", barberId: "b-jun", barberName: "Jun
 beforeEach(() => {
   for (const k of Object.keys(fs.store)) delete fs.store[k];
   fs.store["shops/shop-a"] = { name: "Shop A", menu: [] };
-  fs.store["shops/shop-a/bookings/keith-done"] = { id: "keith-done", shopId: "shop-a", status: "done", barberId: "b-keith", createdAt: 10, updatedAt: 10, price: 100 };
+  fs.store["shops/shop-a/bookings/keith-done"] = { id: "keith-done", shopId: "shop-a", status: "done", barberId: "b-keith", createdAt: 10, updatedAt: 10, completedAt: Date.now(), price: 100 };
   fs.store["shops/shop-a/bookings/jun-done"] = { id: "jun-done", shopId: "shop-a", status: "done", barberId: "b-jun", createdAt: 11, updatedAt: 11, price: 100 };
   fs.store["chairLinks/othertoken1"] = { shopId: "shop-b", chairId: "c9", expiresAt: PAST };
 });

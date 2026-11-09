@@ -27,15 +27,15 @@ Every error is `{ "error": "<human message>", "code": "<ErrorCode>" }` (`apiErro
 | `GET /api/companion/messages` | `?before=<createdAt ms>&limit=` (1–100, default 30) |
 | `GET /api/community` | newest 60 posts |
 | `GET /api/river/v1/shops` | `?limit=` ≤ 100 (default 50), of up to 500 listed shops; `lat,lng,radiusKm` |
-| `GET /api/shop/sales-rows` | `?days=` 1–3650 (default 28), `?full=1` for whole docs; capped at 5,000 rows (20,000 when `days > 124`). Aggregation input, not a UI list (justified exception) |
-| `GET /api/shop/remit-claims` | up to 8,000 done visits (aggregation, justified exception) |
+| `GET /api/shop/sales-rows` | `?days=` 1–3650 (default 28), `?full=1` for whole docs, `?rev=` returns `{ unchanged: true }` when the shop queue has not changed. Cap is `max(12000, days × 1000)` up to 150,000. Aggregation input, not a UI list |
+| `GET /api/shop/remit-claims` | To Claim from `private/remitSnap` plus visits/claims changed since the snap. The snap is built from every finished visit (no 8,000 cap) on first read and on Save / Claim |
 | `GET /api/barber/:token` | own visits (newest 200) + open ones waiting at the barber's location |
 
 ## Owner (Firebase ID token, `Authorization: Bearer`)
 
 | Method & path | Purpose | Paired read |
 | :--- | :--- | :--- |
-| `GET /api/shop` | Shop state (all keys), today's bookings, plan | — |
+| `GET /api/shop` | Shop state (all keys), newest 300 bookings, plan. `?rev=` returns `{ unchanged: true, rev }` when `queueRev` matches | — |
 | `PUT /api/shop/state/:key` | Save one state key (`profile, services, chairs, locations, …`). Body `{ value }`. Writes activity on diffs | `GET /api/shop` |
 | `PUT /api/shop/bookings/:id` | Create/update a booking (status, payment). 402 `plan_limit` for walk-ins over plan | `GET /api/shop`, `GET /api/shop/sales-rows` |
 | `DELETE /api/shop/bookings/:id` | Delete a booking | `GET /api/shop` |

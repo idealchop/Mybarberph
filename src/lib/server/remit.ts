@@ -7,6 +7,7 @@ import type { ChairRequest } from "@/lib/booking-types";
 import { loadState, shopRef } from "./shops";
 import { cutBarberId, cutBarberName } from "@/lib/cut-count";
 import { CLAIM_RULE, claimIndex, isClaimable } from "@/lib/claim-rule";
+import { buildRemitSnap, mergeRemitSnap, readRemitSnap, writeRemitSnap, type SnapClaim, type SnapVisit } from "./remit-snap";
 
 type Chair = { id: string; label: string; barberId?: string; barberName?: string; locationId?: string; sharePct?: number | null; shareSet?: boolean };
 export interface RemitClaim { id: string; barberId: string; barberName: string; locationId: string; amount: number; bookingIds: string[]; from: number; to: number; claimedAt: number; claimedBy: string;
@@ -29,37 +30,88 @@ const pctOf = (chairs: Chair[], id: string, loc: string) => {
 /** Claimable = done, paid, with a price; cash AND GCash (v1.0.25, lib/claim-rule.ts). */
 const isCash = (r: ChairRequest) => isClaimable(r);
 
-// Per-instance cache: Home, Sales and History all ask for the same summary; a claim clears it.
+// Per-instance cache: Home, Sales and History all ask for the same summary; a claim or edit clears it.
+// 15s matches the client's pending-edit hold (use-remit.ts). The snap below is what skips the history scan.
 const cache = new Map<string, { at: number; data: Promise<Awaited<ReturnType<typeof loadFresh>>> }>();
 function load(shopId: string, fresh = false) {
+  if (fresh) cache.delete(shopId);
   const hit = cache.get(shopId);
   if (!fresh && hit && Date.now() - hit.at < 15_000) return hit.data;
-  const data = loadFresh(shopId);
+  const data = fresh ? loadFresh(shopId) : loadFast(shopId);
   cache.set(shopId, { at: Date.now(), data });
   data.catch(() => cache.delete(shopId));
   return data;
 }
 
-async function loadFresh(shopId: string) {
+const REMIT_FIELDS = ["id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "createdAt", "splitPct"] as const;
+
+type RemitLoaded = {
+  chairs: Chair[];
+  claims: RemitClaim[];
+  open: ChairRequest[];
+  claimed: Set<string>;
+  covered: Map<string, string[]>;
+  adjusts: ClaimAdjustment[];
+  done: ChairRequest[];
+};
+
+function asVisit(d: { id: string; data: () => unknown }): ChairRequest {
+  const raw = d.data() as ChairRequest;
+  return { ...raw, id: raw?.id || d.id };
+}
+
+/** Same totals as a full history scan: listed ids plus legacy GCash days, then whatever is still open. */
+function settle(done: ChairRequest[], claims: RemitClaim[], chairs: Chair[], adjusts: ClaimAdjustment[]): RemitLoaded {
+  const covers = claimIndex(claims, chairs);
+  const claimed = new Set(claims.flatMap((c) => c.bookingIds));
+  const covered = new Map<string, string[]>();
+  for (const r of done) { if (!isCash(r) || claimed.has(r.id)) continue; const c = covers(r); if (c) { claimed.add(r.id); covered.set(c.id, [...(covered.get(c.id) ?? []), r.id]); } }
+  const open = done.filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r));
+  return { chairs, claims, open, claimed, covered, adjusts, done };
+}
+
+/** One full read of every finished visit and every claim. Used to build the snap, and on Save / Claim so money edits cannot drift. */
+async function loadFresh(shopId: string): Promise<RemitLoaded> {
   const [claimsSnap, doneSnap, state, adjustSnap] = await Promise.all([
     // Every claim (v1.0.24): with a 500 cap, older claims fell off and their visits looked unclaimed again.
     shopRef(shopId).collection("remitClaims").orderBy("claimedAt", "desc").get(),
-    // Only the fields remit needs (not full booking docs).
-    shopRef(shopId).collection("bookings").where("status", "==", "done").select("id", "status", "paid", "payMethod", "price", "barberId", "barberName", "seatLabel", "chairLabel", "locationId", "completedAt", "updatedAt", "createdAt", "splitPct").get(), // no cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim
+    // No cap (v1.0.24): an unordered 8,000 cap dropped arbitrary visits from To Claim. This full read runs when the
+    // snap is missing or when the owner saves/claims, not on the 30s poll.
+    shopRef(shopId).collection("bookings").where("status", "==", "done").select(...REMIT_FIELDS).get(),
     loadState(shopId, ["barbers.shop-chairs"]),
     shopRef(shopId).collection("claimAdjusts").get(),
   ]);
   const adjusts = adjustSnap.docs.map((d) => d.data() as ClaimAdjustment);
   const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
-  const claims = claimsSnap.docs.map((d) => d.data() as RemitClaim);
-  const covers = claimIndex(claims, chairs);
-  const done = doneSnap.docs.map((d) => ({ ...(d.data() as ChairRequest), id: (d.data() as ChairRequest).id || d.id }));
-  // Every claimed visit id: listed in a claim, or a GCash visit an older (cash-only) claim covers by day.
-  const claimed = new Set(claims.flatMap((c) => c.bookingIds));
-  const covered = new Map<string, string[]>(); // claim id → GCash visit ids it covers by day (older claims only)
-  for (const r of done) { if (!isCash(r) || claimed.has(r.id)) continue; const c = covers(r); if (c) { claimed.add(r.id); covered.set(c.id, [...(covered.get(c.id) ?? []), r.id]); } }
-  const open = done.filter((r) => isCash(r) && !claimed.has(r.id) && !isOwnerCut(r)); // the owner's own cuts: the money is already his
-  return { chairs, claims, open, claimed, covered, adjusts, done };
+  const claims = claimsSnap.docs.map((d) => ({ ...(d.data() as RemitClaim), id: (d.data() as RemitClaim).id || d.id }));
+  const done = doneSnap.docs.map(asVisit);
+  const settled = settle(done, claims, chairs, adjusts);
+  await writeRemitSnap(shopId, buildRemitSnap(done, claims)).catch((e) => console.error("[remit-snap] write failed", (e as Error).message));
+  return settled;
+}
+
+/**
+ * Poll path. Reads the snap plus visits/claims changed since it was built.
+ * Old unclaimed days stay in the snap, so they are not re-read and cannot fall off.
+ */
+async function loadFast(shopId: string): Promise<RemitLoaded> {
+  const stored = await readRemitSnap(shopId);
+  if (!stored) return loadFresh(shopId);
+  const [bookSnap, claimSnap, state, adjustSnap] = await Promise.all([
+    shopRef(shopId).collection("bookings").where("updatedAt", ">", stored.cursor).select(...REMIT_FIELDS).get(),
+    shopRef(shopId).collection("remitClaims").where("claimedAt", ">", stored.claimCursor).get(),
+    loadState(shopId, ["barbers.shop-chairs"]),
+    shopRef(shopId).collection("claimAdjusts").get(),
+  ]);
+  const bookings = bookSnap.docs.map(asVisit);
+  const changedClaims = claimSnap.docs.map((d) => ({ ...(d.data() as RemitClaim), id: (d.data() as RemitClaim).id || d.id }));
+  const merged = mergeRemitSnap(stored, bookings as SnapVisit[], changedClaims as SnapClaim[]);
+  if (merged.changed) await writeRemitSnap(shopId, merged.snap).catch((e) => console.error("[remit-snap] write failed", (e as Error).message));
+  const snap = merged.snap;
+  const chairs = JSON.parse(state["barbers.shop-chairs"] || "[]") as Chair[];
+  const adjusts = adjustSnap.docs.map((d) => d.data() as ClaimAdjustment);
+  // `done` here is the open pool (listed visits are on the claims). Save/Claim call loadFresh and see every visit.
+  return settle(snap.pool as ChairRequest[], snap.claims as RemitClaim[], chairs, adjusts);
 }
 
 const manilaDay = (ms: number) => new Date(ms + 8 * 3600_000).toISOString().slice(0, 10);
@@ -121,6 +173,13 @@ async function editClaimed(shopId: string, barberId: string, locationId: string,
   const col = shopRef(shopId).collection("remitClaims");
   for (const c of changed) await col.doc(c.id).set(c);
   cache.delete(shopId);
+  // The claim's claimedAt does not change, so the poll query would not see this edit. Write it into the snap.
+  const snap = await readRemitSnap(shopId);
+  if (snap) {
+    const byId = new Map(snap.claims.map((c) => [c.id, c]));
+    for (const c of changed) byId.set(c.id, c);
+    await writeRemitSnap(shopId, { ...snap, claims: [...byId.values()] });
+  }
   return changed;
 }
 

@@ -21,10 +21,11 @@ Tenant key: `shopId` = owner's Firebase Auth uid. Everything a shop owns lives u
 | `homeService` | HomeServiceFile | River Mobile home service settings |
 | `listed` | boolean | Public/partner visibility (rules allow public read only when true) |
 | `createdAt`, `updatedAt` | number | |
+| `queueRev` | number | Bumped when a booking or shop-state doc changes. Live polls send it back and skip the booking read when it matches |
 
 ## `shops/{shopId}/private/{doc}` — owner app state (JSON blob in field `json`)
 
-Doc ids from `STATE_KEYS`: `profile` (`barbers.shop-profile`), `menu` (`barbers.shop-menu`), `chairs` (`barbers.shop-chairs`: barbers/seats, link tokens, expiry, active flag), `locations` (`barbers.shop-locations`), `community` (`barbers.community.v1`), `home` (`barbers.home-service`). Also `remitLock` (`{ at, last }`) which serialises remit claims. Written only by `PUT /api/shop/state/:key` (owner). Barber links may write none (`BARBER_KEYS` is empty).
+Doc ids from `STATE_KEYS`: `profile` (`barbers.shop-profile`), `menu` (`barbers.shop-menu`), `chairs` (`barbers.shop-chairs`: barbers/seats, link tokens, expiry, active flag), `locations` (`barbers.shop-locations`), `community` (`barbers.community.v1`), `home` (`barbers.home-service`). Also `remitLock` (`{ at, last }`) which serialises remit claims, and `remitSnap` (To Claim: `cursor`, `claimCursor`, and either inline `body` or `poolParts` / `claimParts` pointing at `remitSnapP*` and `remitSnapC*`). The snap is written by the server on the first To Claim read and after Save / Claim. It is not a migration script. Written only by the server. Barber links may write none of these.
 
 ## `shops/{shopId}/bookings/{id}` — visits (`ChairRequest`, `src/lib/booking-types.ts`)
 
@@ -47,7 +48,7 @@ Doc ids from `STATE_KEYS`: `profile` (`barbers.shop-profile`), `menu` (`barbers.
 | `notes` | owner note |
 | `createdAt`, `updatedAt` | |
 
-Queries: `orderBy(createdAt desc).limit(300)` (owner snapshot), `where(createdAt >= from).limit(5000 | 20000)` (sales rows, field-trimmed), `where(status == done).select(...).limit(8000)` (remit), `where(ref == X).limit(1)` (verify). All are single-field, so `firestore.indexes.json` has no composite indexes.
+Queries: `orderBy(createdAt desc).limit(300)` (owner snapshot), `where(createdAt >= from)` capped at `max(12000, days × 1000)` (sales rows), `where(status == done)` once to build To Claim (no cap), `where(status in requested|accepted|in_chair)` plus `where(barberId ==).where(completedAt >= today)` (barber link), `where(ref == X).limit(1)` (verify). Composite indexes are in `firestore.indexes.json`: `barberId + createdAt`, and `barberId + completedAt` (ascending and descending). Deploy indexes before the app so the barber link does not fall back to the wide window.
 
 ## `shops/{shopId}/activity/{id}` — audit trail (`ActivityEntry`, `src/lib/server/activity.ts`)
 

@@ -26,7 +26,7 @@ beforeEach(() => {
     "chairLinks/keithtoken1": { shopId: "shop-a", chairId: "c1", expiresAt: NOW - 30 * 86_400_000 },
     "shops/shop-a": { name: "Shop A", menu: [] },
     "shops/shop-a/private/chairs": { json: JSON.stringify(chairs) },
-    "shops/shop-a/bookings/mine": visit("mine", { barberId: "b-keith" }),
+    "shops/shop-a/bookings/mine": visit("mine", { barberId: "b-keith", completedAt: Date.now() }),
     "shops/shop-a/bookings/juns": visit("juns", { barberId: "b-jun" }),
     "shops/shop-a/bookings/legacy-seat": visit("legacy-seat", { seatLabel: "Keith" }),
     "shops/shop-a/bookings/waiting": visit("waiting", { status: "requested", channel: "online" }),

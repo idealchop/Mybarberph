@@ -7,6 +7,7 @@ import { parseWeek } from "@/lib/shop-hours";
 import { entitledPlan } from "@/lib/entitlements";
 import "server-only";
 import { cappedGet } from "./capped-read";
+import { indexMissing } from "./index-error";
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
@@ -80,10 +81,40 @@ export interface ShopDoc {
   listed: boolean;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Bumped on every booking or shop-state write. Live polls send it back and skip the booking read when it matches.
+   * Missing on shops last written before this field existed; the next poll sets it.
+   */
+  queueRev?: number;
 }
 
 const db = () => adminDb();
 export const shopRef = (shopId: string) => db().collection("shops").doc(shopId);
+
+/**
+ * Next poll of this shop must reload the queue. Atomic so two cuts finishing together cannot share one revision.
+ * No-op when the shop doc does not exist yet (a booking write must not invent a shop).
+ */
+export async function bumpQueueRev(shopId: string) {
+  const ref = shopRef(shopId);
+  await db().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const cur = (snap.data() as { queueRev?: number }).queueRev;
+    tx.set(ref, { queueRev: (typeof cur === "number" && cur > 0 ? cur : 0) + 1 }, { merge: true });
+  });
+}
+
+/**
+ * Revision the live polls compare. 0 means there is no shop doc yet, so the caller must not answer "unchanged".
+ * A shop that has none yet gets 1 on this read, and later polls can stop re-reading.
+ */
+export async function ensureLiveRev(shopId: string, current: unknown): Promise<number> {
+  if (typeof current === "number" && Number.isFinite(current) && current > 0) return current;
+  await bumpQueueRev(shopId);
+  const again = (await shopRef(shopId).get()).data() as { queueRev?: number } | undefined;
+  return typeof again?.queueRev === "number" && again.queueRev > 0 ? again.queueRev : 0;
+}
 
 export function emptyShop(uid: string): ShopDoc {
   const now = Date.now();
@@ -205,6 +236,7 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
     existing.docs.forEach((d) => { if (!keep.has(d.id)) batch.delete(d.ref); });
   }
   await batch.commit();
+  await bumpQueueRev(shopId);
   if (prevRaw !== undefined || docId !== "community") await stateActivity(shopId, docId, prevRaw, raw, actor);
 }
 
@@ -362,7 +394,10 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     tx.set(ref, clean);
     return { saved: clean, before: cur, wrote: true };
   });
-  if (res.wrote) await bookingActivity(shopId, res.before, res.saved, barber ? { name: barber.barberName, role: "barber" } : OWNER);
+  if (res.wrote) {
+    await bumpQueueRev(shopId);
+    await bookingActivity(shopId, res.before, res.saved, barber ? { name: barber.barberName, role: "barber" } : OWNER);
+  }
   return res.saved;
 }
 
@@ -370,6 +405,7 @@ export async function deleteBooking(shopId: string, id: string) {
   const ref = shopRef(shopId).collection("bookings").doc(id);
   const prev = (await ref.get()).data() as ChairRequest | undefined;
   await ref.delete();
+  await bumpQueueRev(shopId);
   if (prev) await (await import("./activity")).logActivity(shopId, { type: "booking_deleted", actor: OWNER, locationId: prev.locationId || "home", ref: prev.ref, text: deleteSummary(prev) });
 }
 
@@ -403,16 +439,53 @@ export function barberAccess(b: ChairRequest, me: LinkBarber): "own" | "open" | 
   return OPEN_STATUSES.has(b.status) ? "open" : null;
 }
 
-/** Bookings for a barber link: their own (newest 200) plus open ones waiting at their location. */
+const LIVE_OPEN = ["requested", "accepted", "in_chair"] as const;
+
+function rowsFrom(docs: { data: () => unknown }[]): ChairRequest[] {
+  return docs.map((d) => d.data() as ChairRequest).filter((b) => b?.id);
+}
+
+/**
+ * Bookings for a barber link: the live queue (any age) plus this barber's cuts finished today.
+ * The wide newest-150/300 read stays only until the barberId+completedAt index exists.
+ */
 export async function loadBarberBookings(shopId: string, me: LinkBarber): Promise<ChairRequest[]> {
   const col = shopRef(shopId).collection("bookings");
-  // Equality-only query: no composite index needed. Recent shop rows cover open (unassigned, waiting) visits.
+  try {
+    return packBarberRows(await loadBarberWindow(col, me), me);
+  } catch (e) {
+    if (!indexMissing(e)) throw e;
+    console.error("[index-missing] bookings(barberId asc, completedAt desc): deploy firestore.indexes.json. Using the wide window until that index is ready.", (e as Error).message);
+    return packBarberRows(await loadBarberWindowWide(col, me.barberId), me);
+  }
+}
+
+/** Open queue (shop-wide, small) plus this barber's completions since Manila midnight. */
+async function loadBarberWindow(col: ReturnType<ReturnType<typeof shopRef>["collection"]>, me: LinkBarber) {
+  const [openSnap, todaySnap] = await Promise.all([
+    cappedGet(col.where("status", "in", [...LIVE_OPEN]), 200, "loadBarberBookings(open)", "window"),
+    cappedGet(
+      col.where("barberId", "==", me.barberId).where("completedAt", ">=", manilaDayStart()).orderBy("completedAt", "desc"),
+      500,
+      "loadBarberBookings(today)",
+      "window",
+    ),
+  ]);
+  return [...openSnap.docs, ...todaySnap.docs];
+}
+
+/** Previous read: newest 150 shop rows (unassigned waits) plus this barber's newest 300. */
+async function loadBarberWindowWide(col: ReturnType<ReturnType<typeof shopRef>["collection"]>, barberId: string) {
   const [recent, mine] = await Promise.all([
     cappedGet(col.orderBy("createdAt", "desc"), 150, "loadBarberBookings(recent)", "window"),
-    ownBarberRows(col, me.barberId),
+    ownBarberRows(col, barberId),
   ]);
+  return [...recent.docs, ...mine.docs];
+}
+
+function packBarberRows(docs: { data: () => unknown }[], me: LinkBarber): ChairRequest[] {
   const byId = new Map<string, ChairRequest>();
-  for (const d of [...recent.docs, ...mine.docs]) { const b = d.data() as ChairRequest; if (b?.id) byId.set(b.id, b); }
+  for (const b of rowsFrom(docs)) byId.set(b.id, b);
   const rows = [...byId.values()].filter((b) => barberAccess(b, me)).sort((a, b) => b.createdAt - a.createdAt);
   const own = rows.filter((b) => barberAccess(b, me) === "own").slice(0, 200);
   const open = rows.filter((b) => barberAccess(b, me) === "open");
@@ -446,6 +519,7 @@ export async function setBarberName(shopId: string, chairId: string, name: strin
     if (!chairs.some((c) => c.id === chairId)) throw new Error("Chair not found");
     tx.set(ref, { json: JSON.stringify(chairs.map((c) => (c.id === chairId ? { ...c, barberName: clean } : c))), updatedAt: Date.now() });
   });
+  await bumpQueueRev(shopId);
   return clean;
 }
 
@@ -591,6 +665,7 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   }
   if (input.payPref === "cash" || input.payPref === "online" || input.payPref === "gcash" || input.payPref === "maya") row.payPref = input.payPref;
   await shopRef(shopId).collection("bookings").doc(id).set(row);
+  await bumpQueueRev(shopId);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,
     text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "river" ? " (River app)" : " (QR)"}` }, true);
   void (await import("./notify")).notifyNewOnlineBooking(shopId, { ref: row.ref, customerLabel: row.customerLabel, serviceName: row.serviceName, slotLabel: row.slotLabel, locationId: row.locationId, shopName: shop.name });
@@ -603,7 +678,7 @@ export async function saveFeedback(shopId: string, id: string, rating: number, c
   const r = Math.round(Number(rating));
   if (!(r >= 1 && r <= 5)) throw new Error("Pick 1 to 5 stars");
   const ref = shopRef(shopId).collection("bookings").doc(id);
-  return db().runTransaction(async (tx) => {
+  const saved = await db().runTransaction(async (tx) => {
     const b = (await tx.get(ref)).data() as ChairRequest | undefined;
     if (!b) throw new Error("Booking not found");
     if (b.status !== "done") throw new Error("You can rate the visit once it’s done.");
@@ -615,6 +690,8 @@ export async function saveFeedback(shopId: string, id: string, rating: number, c
     tx.set(ref, next);
     return next as ChairRequest;
   });
+  await bumpQueueRev(shopId);
+  return saved;
 }
 
 export async function getBooking(shopId: string, id: string) {
@@ -641,6 +718,7 @@ export async function verifyBooking(shopId: string, code: string) {
   if (b.status === "declined") return { ok: false as const, reason: "declined" as const, booking: b };
   const next = { ...b, verifiedAt: b.verifiedAt ?? Date.now(), status: b.status === "requested" ? "accepted" as const : b.status, updatedAt: Date.now() };
   await shopRef(shopId).collection("bookings").doc(b.id).set(next);
+  await bumpQueueRev(shopId);
   return { ok: true as const, booking: next };
 }
 

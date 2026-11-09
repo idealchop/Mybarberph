@@ -6,7 +6,7 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     id: path.split("/").pop()!,
     path,
     get: async () => ({ id: path.split("/").pop()!, exists: path in store, data: () => store[path] }),
-    set: async (v: Data) => { store[path] = v; },
+    set: async (v: Data, opts?: { merge?: boolean }) => { store[path] = opts?.merge ? { ...(store[path] ?? {}), ...v } : v; },
     delete: async () => { delete store[path]; },
     get firestore() { return db; },
     collection: (n: string) => coll(`${path}/${n}`),
@@ -15,7 +15,13 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     doc: (id?: string) => docRef(`${path}/${id ?? `auto${++autoId}`}`),
     where: (f: string, op: string, v: unknown) => coll(path, [...filters, (d) => {
       const x = d[f] as number;
-      return op === "==" ? d[f] === v : op === ">=" ? x >= (v as number) : op === "<" ? x < (v as number) : false;
+      if (op === "==") return d[f] === v;
+      if (op === ">=") return x >= (v as number);
+      if (op === ">") return x > (v as number);
+      if (op === "<=") return x <= (v as number);
+      if (op === "<") return x < (v as number);
+      if (op === "in") return Array.isArray(v) && (v as unknown[]).includes(d[f]);
+      return false;
     }], order, lim),
     orderBy: (f: string, dir: "asc" | "desc" = "asc") => coll(path, filters, [f, dir], lim),
     limit: (n: number) => coll(path, filters, order, n),
@@ -52,8 +58,8 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
         async commit() { for (const op of ops) op(); },
       };
     },
-    runTransaction: async <T>(fn: (tx: { get: (r: { get: () => Promise<unknown> }) => Promise<unknown>; set: (r: { set: (v: Data) => Promise<void> }, v: Data) => void }) => Promise<T>) =>
-      fn({ get: (r) => r.get(), set: (r, v) => { void r.set(v); }, delete: (r: { delete: () => Promise<void> }) => { void r.delete(); } } as never),
+    runTransaction: async <T>(fn: (tx: { get: (r: { get: () => Promise<unknown> }) => Promise<unknown>; set: (r: { set: (v: Data, opts?: { merge?: boolean }) => Promise<void> }, v: Data, opts?: { merge?: boolean }) => void }) => Promise<T>) =>
+      fn({ get: (r) => r.get(), set: (r, v, opts) => { void r.set(v, opts); }, delete: (r: { delete: () => Promise<void> }) => { void r.delete(); } } as never),
   };
   return db;
 }

@@ -1,5 +1,5 @@
 import { getCaller, json, unauthorized } from "@/lib/server/auth";
-import { manilaDayStart, shopRef } from "@/lib/server/shops";
+import { ensureLiveRev, manilaDayStart, shopRef } from "@/lib/server/shops";
 import type { ChairRequest } from "@/lib/booking-types";
 import { cappedGet } from "@/lib/server/capped-read";
 
@@ -11,6 +11,11 @@ export async function GET(req: Request) {
   if (!me) return unauthorized();
   const days = Math.min(3650, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 28));
   const from = manilaDayStart() - (days - 1) * 86_400_000;
+  const shop = (await shopRef(me.uid).get()).data() as { queueRev?: number } | undefined;
+  const rev = await ensureLiveRev(me.uid, shop?.queueRev);
+  const since = Number(new URL(req.url).searchParams.get("rev"));
+  // Same generation as the live queue: a quiet Home stops re-reading two days of visits every 30s.
+  if (rev > 0 && since === rev) return json({ unchanged: true, rev, from, rows: [], truncated: false });
   const keep = ["id", "ref", "status", "channel", "createdAt", "updatedAt", "startedAt", "completedAt", "price", "paid", "payMethod", "payWhere", "tip", "serviceName", "serviceId", "seatLabel", "chairLabel", "locationId", "barberId", "barberName", "customerLabel", "contact", "rating", "feedback", "feedbackAt", "home", "homeFee", "homeStatus", "scheduledAt", "splitPct"] as const;
   const full = new URL(req.url).searchParams.get("full") === "1";
   const col = shopRef(me.uid).collection("bookings");
@@ -31,5 +36,5 @@ export async function GET(req: Request) {
     byId.set(d.id, (full ? b : Object.fromEntries(keep.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]))) as ChairRequest);
   }
   // truncated: the cap was hit (logged as [cap-hit]); the oldest days of the window may undercount. Never silent.
-  return json({ from, rows: [...byId.values()], truncated: doneSnap.truncated || openSnap.truncated });
+  return json({ from, rows: [...byId.values()], truncated: doneSnap.truncated || openSnap.truncated, rev });
 }
