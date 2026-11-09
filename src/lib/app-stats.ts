@@ -1,16 +1,13 @@
 /**
- * App-store style stats on the Install page (Jimboy, 2026-10-20).
- *
- * PLACEHOLDER NUMBERS: Jimboy asked for these until real feedback exists. They are not measured.
- * Once at least REAL_STATS_MIN ratings are saved (appFeedback, via /api/feedback), the page switches
- * automatically to the real average and rating count.
+ * Feedback summary helpers (server-side average from appStats/feedback).
+ * The Install page (Shops PH v2, 2026-11-09) does not show rating/count; these remain for ops/summary math.
  */
 export const APP_STATS_PLACEHOLDER = { rating: 4.8, users: "1.2k+", usersLabel: "shops" } as const;
 export const REAL_STATS_MIN = 20;
 
 export interface FeedbackSummary { count: number; sum: number }
 
-/** What the stats row shows: real numbers once there are enough ratings, else the placeholders. */
+/** Real average once enough ratings exist; else the old placeholder shape (unused by Install UI). */
 export function displayStats(real?: FeedbackSummary | null) {
   if (real && real.count >= REAL_STATS_MIN) {
     const avg = Math.round((real.sum / real.count) * 10) / 10;
