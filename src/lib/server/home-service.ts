@@ -64,7 +64,7 @@ async function shopDoc(shopId: string) {
 async function homeBookingsOn(shopId: string, ymd: string) {
   const start = manilaAt(ymd, "00:00"), end = start + 86_400_000;
   const q = await shopRef(shopId).collection("bookings").where("scheduledAt", ">=", start).where("scheduledAt", "<", end).get();
-  return q.docs.map((x) => x.data() as ChairRequest).filter((b) => b.home && b.status !== "declined");
+  return q.docs.map((x) => x.data() as ChairRequest).filter((b) => b.home && b.status !== "declined" && b.status !== "cancelled");
 }
 
 /** Free 30-min start times for a day. A slot is full when every home barber (or the named one) has a visit then. */
@@ -89,6 +89,8 @@ export interface HomeBookingInput {
   address?: string; lat?: number; lng?: number; notes?: string;
   date?: string; time?: string; scheduledAt?: number; barberId?: string;
   payWhere?: string; payPref?: string; externalId?: string;
+  /** River Mobile customer.ref (pseudonymous). */
+  customerRef?: string;
 }
 
 /** Creates a River Mobile home-service booking after validating service, radius, hours and barber. */
@@ -134,12 +136,13 @@ export async function createHomeBooking(shopId: string, input: HomeBookingInput)
     contact: s(input.contact, 120), customerLabel: name, serviceId: picked[0]!.id, serviceName: picked.map((p) => p.name).join(" · "),
     price: picked.reduce((sum, p) => sum + p.price, 0) + fee,
     slotLabel: new Date(at).toLocaleString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
-    payWhere: input.payWhere === "online" ? "online" : "shop", createdAt: now, updatedAt: now, source: "river",
+    payWhere: input.payWhere === "online" ? "online" : "shop", createdAt: now, updatedAt: now, source: "river_mobile",
     scheduledAt: at, home: { address, lat, lng, distanceKm: dist, ...(s(input.notes, 300) ? { notes: s(input.notes, 300) } : {}) }, homeFee: fee,
   };
   if (locationId !== "home") row.locationId = locationId;
   if (input.payPref === "cash" || input.payPref === "online" || input.payPref === "gcash" || input.payPref === "maya") row.payPref = input.payPref;
   if (input.externalId) row.externalId = s(input.externalId, 120);
+  if (input.customerRef) row.customerRef = s(input.customerRef, 128);
   if (barber) { row.barberId = barber.id; row.barberName = barber.name; }
   await shopRef(shopId).collection("bookings").doc(row.id).set(row);
   await bumpQueueRev(shopId);

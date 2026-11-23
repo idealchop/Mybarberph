@@ -2,6 +2,10 @@
 
 Built from the git history (newest first). `main` → PROD, `dev` → DEV (same commit, fast-forwarded).
 
+## Unreleased (feat/river-bridge-2fa-dev, DEV only)
+
+- River Partner API v1: `/api/river/v1` now needs River Bridge two-factor auth (Google OIDC + HMAC, bridge-kit) with scopes and `Idempotency-Key` on writes; the shared `RIVER_MOBILE_API_KEY` is retired. New `GET /health`, `POST /orders/{id}/cancel`, `POST /orders/{id}/check-in`. New tickets use `source: "river_mobile"` (older `river` still works). Status changes go to the Bridge as signed webhooks. Dev only: prod answers `503 not_configured` and sends no webhooks.
+
 ## 2026-11-10 — v1.0.50
 
 - Install page (Shops PH v2): stays linked from Settings and barber My sales after install. Shows Installed badge + Open app when installed. Rate & send feedback sheet only — no reviews list, average, or count, and the placeholder 4.8 / 1.2k+ rating is gone.

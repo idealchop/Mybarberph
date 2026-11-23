@@ -1,5 +1,5 @@
 import { json } from "@/lib/server/auth";
-import { riverAuth } from "@/lib/server/river";
+import { withRiver } from "@/lib/server/river";
 import { publicShop, type ShopDoc } from "@/lib/server/shops";
 import { adminDb } from "@/lib/firebase/admin";
 
@@ -11,10 +11,12 @@ function km(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   return 12742 * Math.asin(Math.sqrt(h));
 }
 
-/** GET /api/river/v1/shops?lat=&lng=&radiusKm=&limit= — listed shops, nearest first when lat/lng given. */
+/** GET /api/river/v1/shops?lat=&lng=&radiusKm=&limit= — listed shops, nearest first when lat/lng given. Scope shops:read. */
 export async function GET(req: Request) {
-  const denied = riverAuth(req);
-  if (denied) return denied;
+  return withRiver(req, { scope: "shops:read" }, () => listShops(req));
+}
+
+async function listShops(req: Request) {
   const q = new URL(req.url).searchParams;
   const lat = Number(q.get("lat")), lng = Number(q.get("lng"));
   const radius = Math.min(200, Number(q.get("radiusKm")) || 25);

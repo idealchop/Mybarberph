@@ -19,7 +19,7 @@ vi.mock("@/lib/server/activity", () => ({ logActivity, SYSTEM: { name: "Barbers.
 const webhook = (await import("@/app/api/billing/webhook/route")).POST;
 const book = (await import("@/app/api/public/bookings/route")).POST;
 const barberState = (await import("@/app/api/barber/[token]/state/[key]/route")).PUT;
-const { riverAuth } = await import("@/lib/server/river");
+const { withRiver } = await import("@/lib/server/river");
 
 afterEach(() => {
   delete process.env.PAYMONGO_WEBHOOK_SECRET;
@@ -86,20 +86,16 @@ describe("public booking + barber link", () => {
   });
 });
 
-describe("River Mobile partner API key", () => {
-  const req = (key?: string) => new Request("http://local/api/river/v1/shops", { headers: key ? { "x-api-key": key } : {} });
-  it("TC-RIVER-NEG-01 not configured → 503", () => {
-    expect(riverAuth(req("anything"))?.status).toBe(503);
+describe("River Mobile partner API (Bridge 2FA)", () => {
+  it("TC-RIVER-NEG-01 not configured (not dev / no secrets) → 503 problem+json", async () => {
+    const res = await withRiver(new Request("https://x/api/river/v1/shops"), { scope: "shops:read" }, async () => new Response("never"));
+    expect(res.status).toBe(503);
+    expect(res.headers.get("content-type")).toBe("application/problem+json");
   });
-  it("TC-RIVER-NEG-02 missing or wrong key → 401", () => {
+  it("TC-RIVER-NEG-02 the retired shared RIVER_MOBILE_API_KEY is never accepted", async () => {
     process.env.RIVER_MOBILE_API_KEY = "rk_test";
-    expect(riverAuth(req())?.status).toBe(401);
-    expect(riverAuth(req("rk_wrong"))?.status).toBe(401);
-  });
-  it("TC-RIVER-HP-01 correct key (header or Bearer) passes", () => {
-    process.env.RIVER_MOBILE_API_KEY = "rk_test";
-    expect(riverAuth(req("rk_test"))).toBeNull();
-    expect(riverAuth(new Request("http://local", { headers: { authorization: "Bearer rk_test" } }))).toBeNull();
+    const res = await withRiver(new Request("https://x/api/river/v1/shops", { headers: { "x-api-key": "rk_test", authorization: "Bearer rk_test" } }), { scope: "shops:read" }, async () => new Response("never"));
+    expect(res.status).not.toBe(200);
   });
 });
 

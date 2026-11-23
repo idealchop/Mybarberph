@@ -2,7 +2,7 @@
 
 Home service lets a River Mobile customer book a barber to come to their address. It is **only**
 available through this partner API (not on the shop QR/Schedule pages). Same base URL, auth
-(`x-api-key` / `Authorization: Bearer`, env `RIVER_MOBILE_API_KEY`) and conventions as
+(River Bridge OIDC + HMAC, scopes `shops:read` / `orders:write`, `Idempotency-Key` on POST) and conventions as
 [river-mobile-api.md](./river-mobile-api.md): money in **centavos**, times in epoch ms, wall-clock
 times in **Asia/Manila**.
 
@@ -65,10 +65,10 @@ the owner's Queue → Online with a **Home** tag, the address, a map link and th
 `status`: `requested` → `accepted` → `in_chair` → `done` | `declined`.
 For home bookings, `homeService.step` is the customer-facing progress:
 `scheduled` → `on_the_way` → `arrived` → `done` (or `declined`). The barber sets On the way / Arrived / Done
-from their barber link. Poll every 15–30 s while a visit is active.
+from their barber link. Status changes are pushed to the Bridge as signed webhooks (no polling needed).
 
 ## What River Mobile needs to do
-1. Get the `RIVER_MOBILE_API_KEY` for dev/prod from Barbers.ph (must also be set as an App Hosting secret).
+1. Call through the River Bridge (OIDC + HMAC, see [river-mobile-api.md](./river-mobile-api.md#auth-river-bridge-two-factor-oidc--hmac-dev-only-for-now)). Dev only for now; the shared key is retired.
 2. Home-service flow: list (`/home-service/shops` with the customer's lat/lng) → pick location, services, optional
    barber → fetch `/slots` for a date → `POST /home-bookings` with the address + pin → poll status.
 3. Show the total as services + `fee`, and the steps from `homeService.step`.

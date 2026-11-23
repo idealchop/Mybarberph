@@ -19,3 +19,27 @@ env:
   # Brevo transactional SMS + email for new online bookings (dev only for now).
   - variable: BREVO_API_KEY
     secret: BREVO_API_KEY
+  # River Bridge 2FA (OIDC + HMAC), DEV ONLY (Jimboy, 2026-11-23). Secret ids live in projects/mybarberph
+  # (copied from projects/rivermobile-ph/secrets/<same id>); the App Hosting runtime SA needs accessor on each.
+  # Request direction (Bridge → Barbers.ph): two versions for rotation.
+  - variable: RIVER_BRIDGE_REQUEST_SECRET_V1
+    secret: bridge-to-barbers-dev-v1
+    availability: [RUNTIME]
+  - variable: RIVER_BRIDGE_REQUEST_SECRET_V2
+    secret: bridge-to-barbers-dev-v2
+    availability: [RUNTIME]
+  # Webhook direction (Barbers.ph → Bridge): separate secrets, never the request ones.
+  - variable: RIVER_BRIDGE_WEBHOOK_SECRET_V1
+    secret: barbers-to-bridge-dev-v1
+    availability: [RUNTIME]
+  - variable: RIVER_BRIDGE_WEBHOOK_SECRET_V2
+    secret: barbers-to-bridge-dev-v2
+    availability: [RUNTIME]
+  # Key id used to sign outgoing webhooks (the other stays verifiable on the Bridge during rotation).
+  - variable: RIVER_WEBHOOK_KEY_ID
+    value: "barbers-to-bridge-dev-v1"
+    availability: [RUNTIME]
+  # Signed status webhooks to https://asia-southeast1-rivermobile-ph.cloudfunctions.net/bridge/hooks/barbers.
+  - variable: RIVER_WEBHOOKS_ENABLED
+    value: "1"
+    availability: [RUNTIME]
