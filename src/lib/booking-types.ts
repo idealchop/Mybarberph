@@ -1,4 +1,4 @@
-export type ChairStatus = "requested" | "accepted" | "in_chair" | "done" | "declined";
+export type ChairStatus = "requested" | "accepted" | "in_chair" | "done" | "declined" | "cancelled";
 export type PayWhere = "online" | "shop";
 export type Channel = "walk-in" | "online";
 /** How a visit was paid. Online bookings paid through the status page are "online". */
@@ -36,6 +36,11 @@ export interface ChairRequest {
   addedBy?: "owner" | "barber";
   /** River Mobile's own id for this booking. */
   externalId?: string;
+  /** River Mobile's pseudonymous customer ref (HMAC of the River uid; not a login). Sent back on webhooks. */
+  customerRef?: string;
+  /** When River Mobile cancelled it (customer cancel), and the optional reason. */
+  cancelledAt?: number;
+  cancelReason?: string;
   /** How it was paid (cash, GCash at the shop, or online). */
   payMethod?: PayMethod;
   /** Owner's note on this visit. */

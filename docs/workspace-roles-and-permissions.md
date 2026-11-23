@@ -7,7 +7,7 @@ Barbers.ph has no staff accounts. A shop is owned by one Firebase user; barbers 
 | **Owner** | Firebase ID token | `shopId = uid` from the verified token |
 | **Barber** | Chair link token `/b/{token}` | `chairLinks/{token}.shopId` (server) |
 | **Customer** | none (booking id = capability) | `shopId` in the booking/shop URL, public data only |
-| **River partner** | `RIVER_MOBILE_API_KEY` | `shopId` path param; listed shops only |
+| **River partner** | River Bridge OIDC + HMAC (scopes `shops:read`, `orders:read`, `orders:write`, `checkin:write`) | `shopId` path param; listed shops only |
 | **System** | PayMongo HMAC / cron secret | from signed metadata (`meta.shopId`) or job input |
 
 ## Matrix

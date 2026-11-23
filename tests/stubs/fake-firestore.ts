@@ -7,6 +7,7 @@ export function fakeFirestore(store: Record<string, Data> = {}) {
     path,
     get: async () => ({ id: path.split("/").pop()!, exists: path in store, data: () => store[path] }),
     set: async (v: Data, opts?: { merge?: boolean }) => { store[path] = opts?.merge ? { ...(store[path] ?? {}), ...v } : v; },
+    create: async (v: Data) => { if (path in store) throw Object.assign(new Error("6 ALREADY_EXISTS"), { code: 6 }); store[path] = v; },
     delete: async () => { delete store[path]; },
     get firestore() { return db; },
     collection: (n: string) => coll(`${path}/${n}`),

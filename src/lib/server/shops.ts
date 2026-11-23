@@ -240,7 +240,7 @@ export async function putState(shopId: string, key: string, raw: string, actor: 
   if (prevRaw !== undefined || docId !== "community") await stateActivity(shopId, docId, prevRaw, raw, actor);
 }
 
-const STATUSES = new Set(["requested", "accepted", "in_chair", "done", "declined"]);
+const STATUSES = new Set(["requested", "accepted", "in_chair", "done", "declined", "cancelled"]);
 
 /** Cleans a booking row coming from a client. */
 export function cleanBooking(shopId: string, b: Partial<ChairRequest>): ChairRequest {
@@ -305,7 +305,8 @@ export async function walkInsToday(shopId: string, locationId?: string) {
   return q.docs.filter((d) => { const b = d.data() as ChairRequest; return b.channel === "walk-in" && (b.locationId || "home") === loc; }).length;
 }
 
-const RANK: Record<string, number> = { requested: 0, accepted: 1, in_chair: 2, done: 3, declined: 3 };
+// Cancelled (River Mobile customer cancel) is final like declined: nothing moves it forward.
+const RANK: Record<string, number> = { requested: 0, accepted: 1, in_chair: 2, done: 3, declined: 3, cancelled: 3 };
 
 /** Saves one booking. `barber` stamps the chair link's barber (a link can't claim another barber). */
 export async function putBooking(shopId: string, row: Partial<ChairRequest>, barber?: { barberId: string; barberName: string; locationId?: string }) {
@@ -349,6 +350,10 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (clean.paid && !clean.payMethod) clean.payMethod = prev?.payMethod ?? (clean.payWhere === "online" ? "online" : "cash");
   if (!clean.paid) delete clean.payMethod;
   if (prev?.source) clean.source = prev.source;
+  // River Mobile ids stay on the ticket (status webhooks carry them back).
+  if (prev?.externalId) clean.externalId = prev.externalId;
+  if (prev?.customerRef) clean.customerRef = prev.customerRef;
+  if (prev?.cancelledAt) clean.cancelledAt = prev.cancelledAt;
   // v1.0.28 audit marker only (never used for counts or splits): who added this walk-in. Server-set; kept on later saves.
   delete clean.createdBy; delete clean.addedBy;
   if (prev?.createdBy) { clean.createdBy = prev.createdBy; if (prev.addedBy) clean.addedBy = prev.addedBy; }
@@ -378,6 +383,9 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
     const cur = (await tx.get(ref)).data() as ChairRequest | undefined;
     if (cur && RANK[clean.status]! < RANK[cur.status]!) return { saved: cur, before: cur, wrote: false };
     if (cur?.status === "declined" && clean.status !== "declined") return { saved: cur, before: cur, wrote: false };
+    if (cur?.status === "cancelled" && clean.status !== "cancelled") return { saved: cur, before: cur, wrote: false };
+    // Only River Mobile cancels (POST /api/river/v1/orders/{id}/cancel); an app write can't set it.
+    if (clean.status === "cancelled" && cur?.status !== "cancelled") throw new Error("Only the customer can cancel a River booking.");
     if (cur?.rating) { clean.rating = cur.rating; clean.feedback = cur.feedback; clean.feedbackAt = cur.feedbackAt; if (!clean.feedback) delete clean.feedback; if (!clean.feedbackAt) delete clean.feedbackAt; }
     if (cur?.scheduledAt && !clean.scheduledAt) clean.scheduledAt = cur.scheduledAt;
     // Home-service fields are set by the River API only; the app can't change the address or fee.
@@ -397,6 +405,8 @@ export async function putBooking(shopId: string, row: Partial<ChairRequest>, bar
   if (res.wrote) {
     await bumpQueueRev(shopId);
     await bookingActivity(shopId, res.before, res.saved, barber ? { name: barber.barberName, role: "barber" } : OWNER);
+    // River Mobile tickets only (checked inside); dev-only config. Never throws.
+    await (await import("./river-bridge/webhooks")).emitStatusWebhook(res.before, res.saved);
   }
   return res.saved;
 }
@@ -624,7 +634,7 @@ export async function publicBarbers(shopId: string, locationId: string) {
 }
 
 /** Creates a customer booking (public booking page or River Mobile). */
-export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; payPref?: string; locationId?: string; source: "qr" | "river"; externalId?: string; scheduledAt?: number; barberId?: string }) {
+export async function createPublicBooking(shopId: string, input: { serviceId?: string; serviceIds?: string[]; contact?: string; customerLabel?: string; slotLabel?: string; payWhere?: string; payPref?: string; locationId?: string; source: "qr" | "river" | "river_mobile"; externalId?: string; customerRef?: string; scheduledAt?: number; barberId?: string }) {
   const shop = await getPublicShop(shopId);
   if (!shop) throw new Error("Shop not found");
   const ids = (Array.isArray(input.serviceIds) && input.serviceIds.length ? input.serviceIds : [input.serviceId]).filter(Boolean);
@@ -649,6 +659,7 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
     row.locationId = str(input.locationId, 60);
   }
   if (input.externalId) row.externalId = str(input.externalId, 120);
+  if (input.customerRef) row.customerRef = str(input.customerRef, 128);
   // Scheduled visit: within the next 15 days, labelled in Manila time; an optional barber from that location.
   if (input.scheduledAt != null) {
     const at = Number(input.scheduledAt);
@@ -667,7 +678,7 @@ export async function createPublicBooking(shopId: string, input: { serviceId?: s
   await shopRef(shopId).collection("bookings").doc(id).set(row);
   await bumpQueueRev(shopId);
   await (await import("./activity")).logActivity(shopId, { type: "booking_requested", actor: { name: row.customerLabel, role: "customer" }, locationId: row.locationId || "home", ref: row.ref, amount: row.price,
-    text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "river" ? " (River app)" : " (QR)"}` }, true);
+    text: `${row.customerLabel} booked ${row.serviceName} · ${row.slotLabel}${input.source === "qr" ? " (QR)" : " (River app)"}` }, true);
   void (await import("./notify")).notifyNewOnlineBooking(shopId, { ref: row.ref, customerLabel: row.customerLabel, serviceName: row.serviceName, slotLabel: row.slotLabel, locationId: row.locationId, shopName: shop.name });
   return row;
 }
@@ -716,9 +727,11 @@ export async function verifyBooking(shopId: string, code: string) {
   const b = await findBookingByRef(shopId, code);
   if (!b) return { ok: false as const, reason: "not_found" as const };
   if (b.status === "declined") return { ok: false as const, reason: "declined" as const, booking: b };
+  if (b.status === "cancelled") return { ok: false as const, reason: "cancelled" as const, booking: b };
   const next = { ...b, verifiedAt: b.verifiedAt ?? Date.now(), status: b.status === "requested" ? "accepted" as const : b.status, updatedAt: Date.now() };
   await shopRef(shopId).collection("bookings").doc(b.id).set(next);
   await bumpQueueRev(shopId);
+  await (await import("./river-bridge/webhooks")).emitStatusWebhook(b, next);
   return { ok: true as const, booking: next };
 }
 

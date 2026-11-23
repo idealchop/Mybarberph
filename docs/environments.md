@@ -36,7 +36,9 @@ The build doesn't touch Firestore, so it still passes; a misconfigured backend f
 
 Shared values (Firebase web config, storage bucket, map style) are in `apphosting.yaml`. Every variable name and purpose is listed in [`env.example`](../env.example).
 
-**Not in the committed config:** `RIVER_MOBILE_API_KEY`, `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` are commented out in `apphosting.yaml`. Without them the partner API answers `503 not_configured` and checkout is unavailable. Whether they are set in the console for either backend is not verifiable from the repo.
+**River partner API:** dev binds `RIVER_BRIDGE_REQUEST_SECRET_V1/V2` and `RIVER_BRIDGE_WEBHOOK_SECRET_V1/V2` to Secret Manager ids `bridge-to-barbers-dev-v1/-v2` and `barbers-to-bridge-dev-v1/-v2` in `apphosting.dev.yaml`; prod has none, so the partner API answers `503 not_configured` there. `RIVER_MOBILE_API_KEY` is retired.
+
+**Not in the committed config:** `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` are commented out in `apphosting.yaml`. Without them checkout is unavailable. Whether they are set in the console for either backend is not verifiable from the repo.
 
 ## Branches → environments
 

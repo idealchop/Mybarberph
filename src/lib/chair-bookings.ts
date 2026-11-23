@@ -244,6 +244,7 @@ export function statusLabel(status: ChairStatus) {
   if (status === "accepted") return "Accepted";
   if (status === "in_chair") return "Haircut started";
   if (status === "done") return "Done";
+  if (status === "cancelled") return "Cancelled";
   return "Declined";
 }
 

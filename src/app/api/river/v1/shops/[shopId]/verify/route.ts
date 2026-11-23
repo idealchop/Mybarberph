@@ -1,13 +1,16 @@
 import { badRequest, json } from "@/lib/server/auth";
-import { riverAuth } from "@/lib/server/river";
+import { withRiver } from "@/lib/server/river";
 import { publicBooking, verifyBooking } from "@/lib/server/shops";
+import { isRiverSource, toOrder } from "@/lib/river-status";
 
-/** POST { code } — verify a ticket code (e.g. BK-7K2Q9M) at this shop. Marks it verified. */
+/** POST { code } — check-in: verify a ticket code (e.g. BK-7K2Q9M) at this shop. Scope checkin:write + Idempotency-Key. */
 export async function POST(req: Request, { params }: { params: Promise<{ shopId: string }> }) {
-  const denied = riverAuth(req);
-  if (denied) return denied;
-  const body = (await req.json().catch(() => null)) as { code?: string } | null;
-  if (!body?.code?.trim()) return badRequest("code is required");
-  const r = await verifyBooking((await params).shopId, body.code);
-  return json(r.ok ? { ok: true, booking: publicBooking(r.booking) } : { ok: false, reason: r.reason }, r.ok ? 200 : r.reason === "declined" ? 409 : 404);
+  return withRiver(req, { scope: "checkin:write", write: true }, async (ctx) => {
+    const body = ctx.body as { code?: unknown } | null;
+    const code = typeof body?.code === "string" ? body.code : "";
+    if (!code.trim()) return badRequest("code is required");
+    const r = await verifyBooking((await params).shopId, code);
+    if (!r.ok) return json({ ok: false, reason: r.reason }, r.reason === "not_found" ? 404 : 409);
+    return json({ ok: true, booking: publicBooking(r.booking), ...(isRiverSource(r.booking.source) ? { order: toOrder(r.booking) } : {}) });
+  });
 }

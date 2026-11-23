@@ -43,7 +43,7 @@ Booking (`POST /api/public/bookings`) needs no sign-in. The customer keeps their
 
 ## River Mobile (partner) — API key
 
-`/api/river/v1/*` requires `x-api-key` (or `Authorization: Bearer`) equal to `RIVER_MOBILE_API_KEY`, compared with `timingSafeEqual` (`src/lib/server/river.ts`). Unset key → `503 not_configured`; wrong key → `401 unauthenticated`.
+`/api/river/v1/*` (except `/health`) requires River Bridge two-factor auth: a Google OIDC ID token from the Bridge service account plus an HMAC-SHA256 request signature, scopes per route and `Idempotency-Key` on writes (`src/lib/server/river-bridge/`, details in [river-mobile-api.md](./river-mobile-api.md)). Dev only: outside `BARBERS_ENV=dev` on `barbersdb-dev` every call is `503 not_configured`. `RIVER_MOBILE_API_KEY` is retired.
 
 ## System callers
 
